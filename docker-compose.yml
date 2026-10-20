@@ -1,0 +1,16 @@
+services:
+  qed:
+    build: .
+    image: qed:latest
+    restart: unless-stopped
+    ports:
+      - "${QED_PORT:-4000}:4000"
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/qed.db
+      PHX_SERVER: "true"
+    volumes:
+      - qed_data:/data
+
+volumes:
+  qed_data:
