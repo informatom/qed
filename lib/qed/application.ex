@@ -10,6 +10,7 @@ defmodule Qed.Application do
     children = [
       QedWeb.Telemetry,
       Qed.Repo,
+      Qed.Vault,
       {Ecto.Migrator, repos: Application.fetch_env!(:qed, :ecto_repos), skip: skip_migrations?()},
       {DNSCluster, query: Application.get_env(:qed, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Qed.PubSub},

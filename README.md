@@ -7,7 +7,7 @@ built with Elixir, Phoenix, Ash, Tailwind and daisyUI. It runs on a server
 ## Run with Docker Compose
 
 ```sh
-cp .env.example .env   # then set SECRET_KEY_BASE and TOKEN_SIGNING_SECRET
+cp .env.example .env   # then set SECRET_KEY_BASE, TOKEN_SIGNING_SECRET and CLOAK_KEY
 docker compose up -d --build
 ```
 

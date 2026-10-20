@@ -59,7 +59,7 @@ config :spark,
 config :qed,
   ecto_repos: [Qed.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Qed.Accounts]
+  ash_domains: [Qed.Accounts, Qed.Podcasts]
 
 # Configure the endpoint
 config :qed, QedWeb.Endpoint,

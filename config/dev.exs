@@ -73,3 +73,13 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Encryption key for secrets at rest (dev only; prod reads CLOAK_KEY)
+config :qed, Qed.Vault,
+  ciphers: [
+    default:
+      {Cloak.Ciphers.AES.GCM,
+       tag: "AES.GCM.V1",
+       key: Base.decode64!("Zg5HXurTdHYTg+JS9Nqj6OB+5oOreEs3pTVbAS9TJRE="),
+       iv_length: 12}
+  ]

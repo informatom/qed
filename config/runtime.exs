@@ -63,6 +63,20 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
+  cloak_key =
+    System.get_env("CLOAK_KEY") ||
+      raise """
+      environment variable CLOAK_KEY is missing.
+      It encrypts stored secrets (SSH keys, tokens). Generate one with:
+      openssl rand -base64 32
+      """
+
+  config :qed, Qed.Vault,
+    ciphers: [
+      default:
+        {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: Base.decode64!(cloak_key), iv_length: 12}
+    ]
+
   host = System.get_env("PHX_HOST") || "example.com"
   # Public URL scheme/port; use "http"/"4000" for a plain local install.
   url_scheme = System.get_env("PHX_SCHEME") || "https"

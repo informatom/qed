@@ -39,3 +39,13 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Encryption key for secrets at rest (test only; prod reads CLOAK_KEY)
+config :qed, Qed.Vault,
+  ciphers: [
+    default:
+      {Cloak.Ciphers.AES.GCM,
+       tag: "AES.GCM.V1",
+       key: Base.decode64!("uqgW3+QRbnTYw0F78G8RgE3CTauPKR8ala0ECIwcxxA="),
+       iv_length: 12}
+  ]
