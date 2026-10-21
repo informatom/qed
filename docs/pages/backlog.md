@@ -31,9 +31,6 @@ A complete site builder without podcast features.
   byte for byte, changed TOML is merged with `toml_edit` so comments
   survive, defaults are left out, atomic saves). The app edits page
   settings in a side panel; editing blocks comes with #043.
-- **#055 Sites.** Several sites per installation. Phase 1 sites are pages-only;
-  phase 2 adds the podcast switch.
-- **#021 Site UI.** List, create and edit sites.
 - **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
   (`docs/notes/cms-handover-qed.md`; its Elixir file map no longer
   applies). *Done 2026-10-21*: nine block types (Text, Hero, Image, Text
@@ -128,6 +125,16 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#021 Site UI.** List, create and edit sites. *Done 2026-10-21*: the
+  site title in the header is a menu with up to ten recent sites
+  (`src/lib/recentSites.ts`, in local storage like the app theme; the old
+  `qed:last-site` moves into it), "Open site folder…" and "New site…";
+  the start screen lists the recent sites too; × takes a site off the
+  list. Switching asks first if the open page has unsaved changes.
+  Creating is #046, editing is the Site tab.
+- **#055 Sites.** Several sites per installation: done with #021 and
+  #046. Phase 1 sites are pages-only; phase 2 adds the podcast switch
+  (#066).
 - **#046 Site folder, phase 1.** `site.toml` (title, language, theme, menus),
   `targets.toml` (publish targets without secrets, git-ignored), pages and posts as Markdown files with
   TOML front matter, `media/` for images, `assets/` for downloads, build output in a

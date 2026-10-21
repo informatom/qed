@@ -23,6 +23,9 @@
   import MovePageDialog from "$lib/MovePageDialog.svelte";
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
+  import SiteSwitcher from "$lib/SiteSwitcher.svelte";
+  import X from "@lucide/svelte/icons/x";
+  import { forgetSite, recentSites, rememberSite } from "$lib/recentSites";
   import {
     commands,
     BLOCK_NAMES,
@@ -32,7 +35,8 @@
     type Site,
   } from "$lib/site";
 
-  const LAST_SITE_KEY = "qed:last-site";
+  /** Site folders opened before, newest first. */
+  let recent = $state(recentSites());
 
   let site = $state<Site | null>(null);
   let error = $state<string | null>(null);
@@ -113,7 +117,7 @@
       site = await commands.openSite(path);
       report = null;
       if (!site.pages.some((p) => p.file === selectedFile)) selectedFile = null;
-      remember(path);
+      recent = rememberSite(path, site.config.title);
     } catch (e) {
       site = null;
       error = String(e);
@@ -155,23 +159,23 @@
 
   async function chooseFolder() {
     const path = await open({ directory: true, title: "Open a site folder" });
-    if (typeof path === "string") await load(path);
+    if (typeof path === "string") await switchTo(path);
   }
 
-  function remember(path: string) {
-    try {
-      localStorage.setItem(LAST_SITE_KEY, path);
-    } catch {
-      // Storage can be unavailable; reopening is just a convenience.
+  /** Opens another site, after asking if edits in the open page would be lost. */
+  async function switchTo(path: string) {
+    if (editorDirty) {
+      const discard = await ask("The open page has unsaved changes. Discard them?", {
+        title: "Unsaved changes",
+        kind: "warning",
+        okLabel: "Discard",
+        cancelLabel: "Keep editing",
+      });
+      if (!discard) return;
+      editorDirty = false;
     }
-  }
-
-  function lastSite(): string | null {
-    try {
-      return localStorage.getItem(LAST_SITE_KEY);
-    } catch {
-      return null;
-    }
+    if (site && site.root !== path) selectedFile = null;
+    await load(path);
   }
 
   // Reopen the last site once, when the page first appears.
@@ -182,7 +186,7 @@
   });
 
   onMount(() => {
-    const path = lastSite();
+    const path = recent[0]?.path;
     if (path) load(path);
   });
 
@@ -205,7 +209,15 @@
           </span>
         </div>
         <div class="flex flex-wrap items-baseline gap-x-4">
-          <h1 class="text-3xl font-bold tracking-tight">{site.config.title}</h1>
+          <SiteSwitcher
+              title={site.config.title}
+              root={site.root}
+              {recent}
+              onopen={switchTo}
+              onchoose={chooseFolder}
+              onnew={() => (creatingSite = true)}
+              onforget={(path) => (recent = forgetSite(path))}
+            />
           {#if site.config.description}
             <p class="text-base-content/70">{site.config.description}</p>
           {/if}
@@ -294,7 +306,11 @@
         <div class="grid items-start gap-8 xl:grid-cols-2">
           <section class="flex flex-col gap-3">
             <h2 class="text-lg font-semibold">Settings</h2>
-            <SiteSettings {site} onsaved={(config) => site && (site.config = config)} />
+            <SiteSettings {site} onsaved={(config) => {
+              if (!site) return;
+              site.config = config;
+              recent = rememberSite(site.root, config.title);
+            }} />
           </section>
           <div class="flex flex-col gap-8">
             <section class="flex flex-col gap-3">
@@ -417,6 +433,24 @@
         A site folder has a <code>site.toml</code> and a <code>pages/</code> folder. Try
         <code>examples/demo-site</code> in the qed repository.
       </p>
+      {#if recent.length}
+        <ul id="recent-sites" class="mt-4 flex w-full max-w-2xl flex-col gap-1 text-start">
+          <li class="px-3 text-sm font-semibold text-base-content/60">Recent sites</li>
+          {#each recent as recentSite (recentSite.path)}
+            <li class="flex items-center gap-2 rounded-box hover:bg-base-200">
+              <button type="button" class="flex min-w-0 flex-1 flex-col px-3 py-2 text-start" disabled={loading}
+                onclick={() => switchTo(recentSite.path)}>
+                <span class="font-medium">{recentSite.title}</span>
+                <span class="truncate font-mono text-xs text-base-content/60">{recentSite.path}</span>
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm btn-square me-2" title="Remove from the list (the folder stays)"
+                aria-label="Remove from the list" onclick={() => (recent = forgetSite(recentSite.path))}>
+                <X class="size-4" />
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </section>
   {/if}
 </main>
@@ -433,7 +467,7 @@
   <NewSiteDialog
     oncreated={(path) => {
       view = "pages";
-      load(path);
+      switchTo(path);
     }}
     onclose={() => (creatingSite = false)}
   />
