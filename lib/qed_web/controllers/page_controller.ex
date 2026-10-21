@@ -1,7 +1,0 @@
-defmodule QedWeb.PageController do
-  use QedWeb, :controller
-
-  def home(conn, _params) do
-    render(conn, :home)
-  end
-end

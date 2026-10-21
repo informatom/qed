@@ -1,25 +1,38 @@
 # qed
 
-An open-source static site generator for podcasts that is itself a web app,
-built with Elixir, Phoenix, Ash, Tailwind and daisyUI. It runs on a server
-(yours, via Docker Compose, or a hosted demo) and can be installed as a PWA.
+A desktop app that turns a folder of pages and posts into a static website and
+publishes it to your own webspace, via SFTP, GitHub Pages or a ZIP download.
+Built for people who want their own site (and later, their own podcast)
+without learning a static site generator.
 
-## Run with Docker Compose
+Status: early development. The plan lives in [backlog.md](backlog.md).
+
+qed is built in the open with [Claude Code](https://claude.com/claude-code).
+The learning notes written along the way are in [docs/blog](docs/blog).
+
+## How it works
+
+A site is a folder: one `site.toml`, pages and posts as Markdown files, and a
+`media/` folder. The app edits these files, keeps their history in git, and
+builds the static site from them.
+
+## Development
+
+Requirements: Rust (stable), Node.js 24+, and on Linux the
+[Tauri system libraries](https://v2.tauri.app/start/prerequisites/).
 
 ```sh
-cp .env.example .env   # then set SECRET_KEY_BASE, TOKEN_SIGNING_SECRET and CLOAK_KEY
-docker compose up -d --build
+npm install
+npm run tauri dev     # run the app
+npm run check:all     # fmt, clippy, Rust tests, svelte-check
 ```
 
-Open http://localhost:4000. Data (SQLite) lives in the `qed_data` volume.
+Code layout:
 
-## Run from source
+- `crates/qed-core`: domain logic (sites, pages, site generator), no UI
+- `src-tauri`: the desktop shell that exposes qed-core to the UI
+- `src`: the Svelte UI
 
-Requires the Erlang/Elixir versions in `.tool-versions`.
+## License
 
-```sh
-mix setup
-mix phx.server
-```
-
-Open http://localhost:4000.
+[GPL-3.0-or-later](LICENSE)

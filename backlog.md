@@ -1,104 +1,174 @@
 # qed backlog
 
 Open work and open decisions. Items keep their number for good; when one is
-done or decided, move it to **Done / decided** with a short note.
+done or decided, move it to **Done / decided** with a short note. Items that no
+longer apply move to **Dropped**.
+
+qed is a single-user desktop app (Rust + Tauri) that turns a podcaster's
+content into a static site and publishes it. Decided 2026-10-21; it replaces
+the earlier Phoenix web app.
 
 ## To decide
 
-- **#001 Upload storage.** Where uploaded audio and images live: local disk
-  (Docker volume) or S3-compatible storage. What upload size limit to use.
-- **#002 Registration.** Open sign-up, invite-only, or accounts created by an
-  admin? Should the first user become the instance admin? Does the demo
-  instance need different rules?
-- **#003 Email.** Pick an email service (SMTP or an API) for account confirmation
-  and password reset. Should confirmation be required before signing in? It
-  currently is: `confirm_on_create`.
-- **#004 Site templates.** What the generated sites look like and how they're
-  themed. Which CSS: Bulma like jekyll-octopod, Tailwind or daisyUI, or plain?
-  Can users edit templates, and in which language (HEEx/EEx, or Liquid via
-  `solid`)?
-- **#005 Web player.** Use the self-hosted Podlove Web Player, as in
-  jekyll-octopod?
-- **#006 Podcast-level Apple/Podcasting 2.0 fields.** Podcast type (episodic or
-  serial), owner name and email (`itunes:owner`), cover art, funding, guid.
-- **#007 Episode-level fields.** Season, episode type (full, trailer or bonus),
-  episode image, guid stability when the slug changes.
-- **#008 Transcripts.** Model WebVTT transcripts per episode, as jekyll-octopod
-  does.
-- **#009 Audio formats.** Should users upload every format themselves (mp3,
-  m4a, ogg, opus), or should qed transcode from one master file with ffmpeg?
-- **#010 Duration and size detection.** Read duration and byte size from
-  uploads automatically (ffprobe) or enter them by hand?
-- **#011 GitHub Pages authentication.** Personal access token (as modelled now),
-  a deploy key (reusing the generated SSH key), or a GitHub App?
-- **#012 SSH transfer method.** Run `rsync` (adds rsync and openssh-client to the
-  Docker image), or SFTP with Erlang's built-in `:ssh` (no extra binaries, but
-  no delta transfer)?
-- **#013 Background jobs.** Run publishing in the background, e.g. with
-  Oban/AshOban (SQLite engine), with progress shown live?
-- **#014 Roles.** Is owner/editor enough, or is a read-only viewer role needed?
-- **#015 Global podcast slugs.** Podcast slugs are currently unique across the
-  whole instance. Keep that, or make them unique per user?
-- **#016 qed's license.** For example AGPL-3.0 (protects the hosted-service
-  case) or MIT.
-- **#017 Demo instance.** Where it's hosted, whether and when data is reset,
-  and abuse limits.
-- **#018 Offline drafting.** Should shownotes be draftable offline in the PWA
-  and synced later? Server-side generation stays either way.
-- **#019 Comments and sharing.** Carry over jekyll-octopod's share options?
-  Comments were dropped there; is that final?
+Nothing open.
 
 ## To build
 
-- **#020 Home page.** Replace the Phoenix landing page with the app's home: the
-  user's podcasts and a sign-in call to action.
-- **#021 Podcast UI.** List, create and edit podcasts (LiveView with
-  `AshPhoenix.Form`).
-- **#022 Episode editor.** Use the Markdown editor from
-  `/daten/DATA/phoenix/mercator` for shownotes. Include a chapter editor.
-- **#023 Audio files UI.** Upload with LiveView uploads, or enter an external
-  URL. One entry per format.
-- **#024 Members UI.** Invite or add members, change roles, remove members.
-- **#025 Publish targets UI.** Create and edit targets. For SSH, show the public
-  key ready to copy, plus a "regenerate key" button.
-- **#026 Site generator.** Render HTML pages (index, episode pages, imprint).
-  Generate one RSS feed per audio format with iTunes, Podcasting 2.0 and
-  Podlove Simple Chapters tags, plus paged feeds. Copy assets and audio.
-- **#027 Publisher: ZIP.** Build the site and offer it as a download.
-- **#028 Publisher: SSH.** Deploy to the document root, honouring
-  `rsync_delete`.
+### Phase 1: CMS and site generator
+
+A complete site builder without podcast features.
+
+- **#062 Release builds.** GitHub Actions builds installers for macOS,
+  Windows and Linux on every tag.
+- **#046 Site folder, phase 1.** `site.toml` (title, language, theme, menus,
+  publish targets without secrets), pages and posts as Markdown files with
+  TOML front matter, `media/` for images and downloads, build output in a
+  git-ignored folder. Old paths for redirects go into front matter.
+- **#072 Block file format.** Read and write pages as Markdown with block
+  containers (`::: hero` … `:::`, block fields as TOML) in qed-core. Writing
+  a parsed page gives the same file back, so hand edits survive the block
+  editor.
+- **#073 Git history.** Each site folder is a git repo the app manages
+  (`git2` or `gix`): "save version" commits, publishing tags the commit,
+  and any page can be restored from an earlier version.
+- **#055 Sites.** Several sites per installation. Phase 1 sites are pages-only;
+  phase 2 adds the podcast switch.
+- **#021 Site UI.** List, create and edit sites.
+- **#043 Block CMS.** Rebuild Mercator's block CMS design in Rust
+  (`docs/cms-handover-qed.md` describes it; its Elixir file map no longer
+  applies): pages as ordered lists of typed blocks stored as Markdown
+  files (#072), drafts via `draft = true`, history via git (#073), page tree
+  from the folder structure, menus, blocks (Text, Hero, Text with
+  image, Image, Gallery, Download, Columns, FAQ, Call to action, Shared).
+- **#056 Start page.** Every site gets a `home` page on creation (Hero and
+  Text). Phase 2 seeds podcast sites with Latest episodes and Subscribe.
+- **#033 Images and media library.** Import, tag, search and resize images to
+  WebP; keep PDFs for downloads. Phase 2 adds Apple's cover art rules
+  (1400–3000 px square).
+- **#040 Blog.** Pages with kind `post` under a `blog` parent, a Post list
+  block and `blog/feed.xml`.
+- **#026 Site generator.** Render HTML for published pages, posts, menus,
+  redirects (meta-refresh stubs) and the sitemap with Rust templates. Copy
+  the images used.
+- **#064 Site CSS.** Templates aren't user-editable, so compile one Tailwind +
+  daisyUI stylesheet with all themes at build time and ship it with every
+  site; the theme is a `data-theme` attribute. Typography plugin for
+  Markdown content.
+- **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
+- **#063 Secrets.** Store SSH private keys and other secrets in the OS keychain
+  (`keyring`).
+- **#025 Publish targets UI.** Create and edit targets. For SSH and GitHub,
+  show the generated public key ready to copy, plus "regenerate key".
+- **#065 Deploy manifest.** Write `.qed-manifest.json` (path, size, hash) to
+  the target. Each deploy uploads only changed files and deletes only files
+  qed put there.
+- **#027 Publisher: ZIP.** Build the whole site as a ZIP.
+- **#028 Publisher: SSH.** Deploy over SFTP using the manifest (#065).
 - **#029 Publisher: GitHub Pages.** Push the built site to the configured
-  branch.
+  branch with a deploy key.
 - **#030 SSH host key check.** Pin the server's host key on first connect and
   warn when it changes.
 - **#031 Connection test.** A "test connection" button for SSH and GitHub
   targets.
-- **#032 Publish history.** Record each publish run per target: time, user,
-  result and log.
-- **#033 Cover art and images.** Upload, resize and validate images (Apple
-  requires 1400–3000 px square).
+- **#032 Publish history.** Record each publish run per target as a git tag
+  (#073) plus a log; show progress live.
+- **#037 Backups.** Document that backing up a site means copying its folder.
+- **#071 Demo site.** Import the learning blog posts from `docs/blog/` into a
+  demo site built with qed itself.
+
+### Phase 2: Podcasting
+
+- **#066 Podcast switch.** Per site; turns on episodes, feed, contributors and
+  the podcast fields: type, owner name + email, cover, categories, explicit,
+  `podcast:guid`, funding.
+- **#067 Episodes.** Season, number, type, image, explicit, guid generated
+  once, Markdown shownotes, chapters. Episode pages and the archive at
+  `/episodes`.
+- **#022 Episode editor.** Markdown shownotes (#060) and a chapter editor.
+- **#023 Audio file.** One per episode: pick a local file or enter an external
+  URL. Read size, MIME type and duration in Rust (`symphonia` or `lofty`).
+- **#068 Podcast feed.** One feed per podcast with iTunes, Podcasting 2.0 and
+  Podlove Simple Chapters tags, plus paged feeds. Publishers copy the audio;
+  GitHub Pages warns when an episode lacks an external audio URL.
+- **#069 Podcast blocks.** Latest episodes and Subscribe blocks; seed them on
+  the `home` page of new podcast sites.
+- **#047 Contributors.** Contributors per site (name, photo, Markdown bio,
+  links), linked to episodes with a role. `podcast:person` in the feed,
+  people on episode pages, a Contributors block.
+- **#048 Transcripts.** WebVTT per episode. Deployed as a file, linked with
+  `podcast:transcript`, shown on the episode page and in the player.
+- **#049 Web player.** Self-hosted Podlove Web Player, copied into each site,
+  with chapters and transcripts.
+- **#053 Share links.** Plain share links on episode pages (Mastodon, Bluesky,
+  email, copy link), no third-party scripts.
+- **#070 Code signing.** Before a public 1.0: Apple developer account and
+  notarization, Windows signing (e.g. Azure Trusted Signing).
 - **#034 Feed import.** Import an existing podcast from its RSS feed or from a
   jekyll-octopod site (compare `octopod import`).
-- **#035 Last-owner protection.** Prevent removing or demoting a podcast's last
-  owner.
-- **#036 Docker image tools.** Add whatever the publishers need (rsync,
-  openssh-client, git, ffmpeg), depending on #009, #012 and #029.
-- **#037 SQLite backups.** Document or automate backups of the `qed_data`
-  volume.
-- **#038 CLOAK_KEY rotation.** Document how to rotate the encryption key, and
-  that losing it makes stored secrets unreadable.
-- **#039 AGENTS.md.** The generated AGENTS.md says to avoid daisyUI, which
-  contradicts the chosen stack. Update it.
 
 ## Done / decided
 
-- Stack: Elixir, Phoenix 1.8, Ash 3, SQLite, Tailwind and daisyUI. Ship as
-  source, Docker Compose, and a hosted demo usable as a PWA.
-- The server does the work. The PWA is an installable front end for a running
-  instance.
-- Multi-user: podcasts have members with roles (owner, editor).
-- Audio can be uploaded to qed or point to an external URL.
-- SSH targets use a key pair generated by qed. The private key is stored
-  encrypted (AshCloak).
-- Data model: podcast, membership, episode (Markdown shownotes, chapters),
-  audio file (per format), publish target (SSH, ZIP, GitHub Pages).
+- **Desktop app.** qed is a single-user desktop app for podcasters who can't
+  run a static site generator themselves. Stack: Rust + Tauri 2, Svelte UI,
+  files instead of a database. Open source, built with Claude as a showcase. Claude writes the
+  code and explains Rust concepts (ownership, borrowing, lifetimes) as they
+  come up.
+- **License.** GPL-3.0.
+- **#057 Data location.** One folder per site, picked by the user. No
+  database: one `site.toml` plus pages and posts as Markdown files with TOML
+  front matter (#046); blocks are containers inside the Markdown (#072);
+  drafts and history via git (#073). The app remembers recently opened site
+  folders. Publish secrets stay in the OS keychain (#063).
+- **#061 Scaffold.** Done 2026-10-21: Cargo workspace (`src-tauri`,
+  `crates/qed-core`), SvelteKit SPA with Tailwind + daisyUI, GPL-3.0
+  `LICENSE`, `npm run check:all`. Elixir code and its local data removed.
+- **#058 Frontend.** Svelte + TypeScript.
+- **#059 Signing and updates.** Phase 1 ships unsigned installers (Linux
+  AppImage/deb, Windows, macOS with "open anyway" instructions) plus Tauri's
+  updater, whose signing key is free. Revisit Apple notarization ($99/year)
+  and Windows signing before a public 1.0 (#070).
+- **#060 Markdown editor.** Keep OverType.
+- **Learning blog.** Explanations of Rust, Svelte and TypeScript go into blog
+  posts in `docs/blog/` (Markdown with front matter), not into chat. They can
+  become a demo site later (#071).
+- **Repo.** Same repo; the Elixir code is deleted (it stays in git history).
+- **Site pages** follow the design of Mercator's block CMS; Mercator stays a
+  read-only reference.
+- **Two phases.** Phase 1 builds the CMS and site generator; phase 2 adds
+  podcasting.
+- **Podcast is optional.** A site can have only static pages (#055, #066). `/` is
+  always the CMS `home` page (#056).
+- **#001 Storage.** Audio and images stay on the user's computer.
+- **#004 Site templates.** Tailwind + daisyUI. Users pick a theme and options;
+  templates aren't user-editable (#054, #064).
+- **#005 Web player.** Self-hosted Podlove Web Player (#049).
+- **#006 Podcast fields.** Apple basics, `podcast:guid`, funding (#046).
+- **#007 Episode fields.** Season, number, type, image, explicit, stable guid
+  (#046).
+- **#008 Transcripts.** WebVTT (#048).
+- **#009 Audio formats.** One format per podcast, provided by the user; one
+  feed. No transcoding.
+- **#010 Duration and size.** Read from the local file (#023).
+- **#011 GitHub Pages.** Deploy key using qed's generated key pair. Audio must
+  be external for GitHub targets.
+- **#012 SSH transfer.** SFTP with a deploy manifest (#028, #065).
+- **#016 License.** Changed from AGPL-3.0 to GPL-3.0 with the move to desktop.
+- **#019 Comments and sharing.** Share links, no comments (#053).
+- **#040 Blog.** Pages with kind `post` under a `blog` parent, with a Post
+  list block and `blog/feed.xml`.
+- **#041 Contributors.** Their own records, linked to episodes (#047).
+- **#042 Redirects.** Keep page redirects; write meta-refresh stubs at old
+  paths.
+
+## Dropped
+
+Not needed in a single-user desktop app:
+
+- #002 Registration, #003 Email, #014 Roles, #015 Global slugs, #017 Demo
+  instance, #018 Offline drafting (the app is offline), #020 Home page,
+  #024 Members UI, #035 Last-owner protection, #050 Invitations, #051 Email.
+- #013 Background jobs: a deploy is a background task in the app (#032).
+- #036 Docker image tools, #038 CLOAK_KEY rotation (#063 replaces it),
+  #039 AGENTS.md (Phoenix-specific), #052 AGPL license file (#061).
+- #044 Local audio folder and #045 Audio pass-through: the app reads files
+  directly.

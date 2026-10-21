@@ -1,0 +1,11 @@
+[package]
+name = "qed-core"
+description = "qed's domain logic: sites, pages and the site generator, independent of the desktop shell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+deunicode = "1"
