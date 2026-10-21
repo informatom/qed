@@ -25,6 +25,10 @@ pub enum Block {
     },
     Hero(Hero),
     Image(Image),
+    TextImage(TextImage),
+    Gallery(Gallery),
+    Download(Download),
+    Faq(Faq),
     CallToAction(CallToAction),
 }
 
@@ -53,6 +57,73 @@ pub struct Image {
     pub caption: Option<String>,
 }
 
+/// Text next to an image.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TextImage {
+    /// Markdown.
+    pub text: Option<String>,
+    /// File name in `media/`.
+    pub image: Option<String>,
+    pub alt: Option<String>,
+    #[serde(default)]
+    pub image_side: Side,
+}
+
+/// Which side an image goes on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Side {
+    Left,
+    #[default]
+    Right,
+}
+
+/// Several images in a grid; each links to its full size.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Gallery {
+    #[serde(default)]
+    pub images: Vec<GalleryImage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct GalleryImage {
+    /// File name in `media/`.
+    pub image: String,
+    pub alt: Option<String>,
+}
+
+/// A file to download, such as a PDF.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Download {
+    /// File name in `media/`.
+    pub file: Option<String>,
+    /// The link text; the file name if empty.
+    pub label: Option<String>,
+}
+
+/// Questions and answers that open on click.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Faq {
+    pub heading: Option<String>,
+    #[serde(default)]
+    pub items: Vec<FaqItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct FaqItem {
+    #[serde(default)]
+    pub question: String,
+    /// Markdown.
+    #[serde(default)]
+    pub answer: String,
+}
+
 /// A highlighted box that asks the visitor to do something.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -71,13 +142,25 @@ impl Block {
             Block::Text { .. } => None,
             Block::Hero(_) => Some("hero"),
             Block::Image(_) => Some("image"),
+            Block::TextImage(_) => Some("text-image"),
+            Block::Gallery(_) => Some("gallery"),
+            Block::Download(_) => Some("download"),
+            Block::Faq(_) => Some("faq"),
             Block::CallToAction(_) => Some("call-to-action"),
         }
     }
 }
 
 /// The container names, as written after `:::` in a page file.
-pub const CONTAINER_TYPES: [&str; 3] = ["hero", "image", "call-to-action"];
+pub const CONTAINER_TYPES: [&str; 7] = [
+    "hero",
+    "image",
+    "text-image",
+    "gallery",
+    "download",
+    "faq",
+    "call-to-action",
+];
 
 /// Builds a block from a container's type name and its TOML body.
 ///
@@ -86,6 +169,10 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
     match kind {
         "hero" => Ok(Block::Hero(toml::from_str(toml)?)),
         "image" => Ok(Block::Image(toml::from_str(toml)?)),
+        "text-image" => Ok(Block::TextImage(toml::from_str(toml)?)),
+        "gallery" => Ok(Block::Gallery(toml::from_str(toml)?)),
+        "download" => Ok(Block::Download(toml::from_str(toml)?)),
+        "faq" => Ok(Block::Faq(toml::from_str(toml)?)),
         "call-to-action" => Ok(Block::CallToAction(toml::from_str(toml)?)),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }

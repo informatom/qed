@@ -2,9 +2,11 @@
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
   import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+  import AppSettings from "$lib/AppSettings.svelte";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
+  import SiteSettings from "$lib/SiteSettings.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
-  import PublishDialog from "$lib/PublishDialog.svelte";
+  import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
   import { BLOCK_NAMES, buildSite, openSite, previewSite, type BuildReport, type Page, type Site } from "$lib/site";
 
@@ -37,8 +39,7 @@
   }
 
   let creatingPage = $state(false);
-  let publishingOpen = $state(false);
-  let view = $state<"pages" | "media">("pages");
+  let view = $state<"pages" | "media" | "site" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -55,6 +56,15 @@
   let report = $state<BuildReport | null>(null);
   let previewUrl = $state<string | null>(null);
 
+  // A build report is good news, not something to keep: it goes away by
+  // itself after 10 seconds. Each new report starts its own timer; the
+  // function returned here cancels the old one.
+  $effect(() => {
+    if (!report) return;
+    const timer = setTimeout(() => (report = null), 10_000);
+    return () => clearTimeout(timer);
+  });
+
   // Derived values update by themselves when `site` changes.
   let draftCount = $derived(site ? site.pages.filter((p) => p.front.draft).length : 0);
 
@@ -69,6 +79,8 @@
     } catch (e) {
       site = null;
       error = String(e);
+      // Media and Site need a site; show the error on Pages instead.
+      if (view === "media" || view === "site") view = "pages";
     } finally {
       loading = false;
     }
@@ -160,27 +172,24 @@
     {/if}
     <div class="flex gap-2">
       {#if site}
-        <button id="new-page" class="btn" onclick={() => (creatingPage = true)} disabled={loading}>
-          New page
-        </button>
-        <button id="build-site" class="btn" onclick={build} disabled={loading || building}>
-          {#if building}<span class="loading loading-spinner loading-sm"></span>{/if}
-          Build
-        </button>
-        <button id="preview-site" class="btn btn-secondary" onclick={preview} disabled={loading || building}>
-          Preview in browser
-        </button>
-        <button id="publish-site" class="btn btn-accent" onclick={() => (publishingOpen = true)} disabled={loading}>
-          Publish…
-        </button>
-        <button id="reload-site" class="btn btn-ghost" onclick={() => site && load(site.root)} disabled={loading}>
-          Reload
-        </button>
+        <!-- An icon is enough here; the tooltip and aria-label say what it does. -->
+        <div class="tooltip tooltip-left" data-tip="Preview in browser">
+          <button id="preview-site" class="btn btn-circle btn-secondary" onclick={preview} disabled={loading || building}
+            aria-label="Preview in browser">
+            {#if building}
+              <span class="loading loading-spinner loading-sm"></span>
+            {:else}
+              <!-- Heroicons "eye" (MIT). -->
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+                class="size-5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            {/if}
+          </button>
+        </div>
       {/if}
-      <button id="open-site" class="btn btn-primary" onclick={chooseFolder} disabled={loading}>
-        {#if loading}<span class="loading loading-spinner loading-sm"></span>{/if}
-        Open site folder
-      </button>
     </div>
   </header>
 
@@ -192,7 +201,7 @@
 
   {#if report}
     <div id="build-report" role="status" class="alert alert-success alert-soft">
-      <span>
+      <span class="flex-1">
         Built {report.pages} pages{report.drafts_skipped ? ` (${report.drafts_skipped} drafts skipped)` : ""},
         {report.redirects} redirects and {report.media_files} media files into
         <code class="font-mono text-sm">{report.out_dir}</code>.
@@ -201,21 +210,80 @@
           Preview: <button class="link" onclick={() => previewUrl && openUrl(previewUrl)}>{previewUrl}</button>
         {/if}
       </span>
+      <button type="button" class="btn btn-ghost btn-xs btn-square" aria-label="Close" onclick={() => (report = null)}>✕</button>
     </div>
   {/if}
 
-  {#if site}
-    <div role="tablist" class="tabs tabs-border -mb-4">
-      <button type="button" role="tab" id="view-pages" class={["tab", view === "pages" && "tab-active"]}
-        onclick={() => (view = "pages")}>Pages</button>
+  <div role="tablist" class="tabs tabs-border -mb-4">
+    <button type="button" role="tab" id="view-pages" class={["tab", view === "pages" && "tab-active"]}
+      onclick={() => (view = "pages")}>Pages</button>
+    {#if site}
       <button type="button" role="tab" id="view-media" class={["tab", view === "media" && "tab-active"]}
         onclick={() => (view = "media")}>Media</button>
-    </div>
+      <button type="button" role="tab" id="view-site" class={["tab", view === "site" && "tab-active"]}
+        onclick={() => (view = "site")}>Site</button>
+    {/if}
+    <button type="button" role="tab" id="view-app" class={["tab", view === "app" && "tab-active"]}
+      onclick={() => (view = "app")}>App</button>
+  </div>
+
+  {#if view === "app"}
+    <AppSettings />
+  {/if}
+
+  {#if site}
+    <!-- Stays mounted while hidden, so unsaved settings survive a tab switch;
+         re-created for another site. -->
+    {#key site.root}
+      <div class={["flex flex-col gap-6", view !== "site" && "hidden"]}>
+        <div class="flex flex-wrap items-center gap-3 rounded-box bg-base-200 px-4 py-3">
+          <span class="text-sm text-base-content/60">Folder</span>
+          <code class="min-w-0 flex-1 truncate font-mono text-sm">{site.root}</code>
+          <button id="reload-site" class="btn btn-ghost btn-sm" onclick={() => site && load(site.root)} disabled={loading}>
+            Reload
+          </button>
+          <button id="open-other-site" class="btn btn-sm" onclick={chooseFolder} disabled={loading}>
+            Open another site folder…
+          </button>
+        </div>
+        <div class="grid items-start gap-8 xl:grid-cols-2">
+          <section class="flex flex-col gap-3">
+            <h2 class="text-lg font-semibold">Settings</h2>
+            <SiteSettings {site} onsaved={(config) => site && (site.config = config)} />
+          </section>
+          <div class="flex flex-col gap-8">
+            <section class="flex flex-col gap-3">
+              <div class="flex items-center justify-between gap-2">
+                <h2 class="text-lg font-semibold">Build</h2>
+                <button id="build-site" class="btn btn-sm" onclick={build} disabled={loading || building}>
+                  {#if building}<span class="loading loading-spinner loading-sm"></span>{/if}
+                  Build
+                </button>
+              </div>
+              <p class="text-sm text-base-content/60">
+                Writes the website into <code>_site/</code> in the site folder, without publishing it. Preview and
+                Publish do this by themselves; this is for looking at the files or uploading them yourself.
+              </p>
+            </section>
+            <PublishPanel {site} ontargets={(targets) => site && (site.targets = targets)} />
+          </div>
+        </div>
+      </div>
+    {/key}
 
     {#if view === "media"}
       <!-- Mounted on demand, so it lists the folder fresh each time. -->
       <MediaLibrary siteRoot={site.root} />
     {/if}
+
+    <div class={["-mb-3 flex items-center gap-3", view !== "pages" && "hidden"]}>
+      <button id="new-page" class="btn btn-sm btn-primary" onclick={() => (creatingPage = true)} disabled={loading}>
+        New page
+      </button>
+      <span class="text-sm text-base-content/60">
+        {site.pages.length} pages{draftCount ? `, ${draftCount} drafts` : ""}
+      </span>
+    </div>
 
     <!-- The pages view stays mounted while hidden, so unsaved edits survive. -->
     <div
@@ -280,9 +348,13 @@
         {/key}
       {/if}
     </div>
-  {:else if !error && !loading}
+  {:else if !loading && view === "pages"}
     <section id="empty-state" class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
       <p class="text-lg">Open a site folder to see its pages.</p>
+      <button id="open-site" class="btn btn-primary" onclick={chooseFolder} disabled={loading}>
+        {#if loading}<span class="loading loading-spinner loading-sm"></span>{/if}
+        Open site folder
+      </button>
       <p class="text-sm text-base-content/60">
         A site folder has a <code>site.toml</code> and a <code>pages/</code> folder. Try
         <code>examples/demo-site</code> in the qed repository.
@@ -290,14 +362,6 @@
     </section>
   {/if}
 </main>
-
-{#if site && publishingOpen}
-  <PublishDialog
-    {site}
-    ontargets={(targets) => site && (site.targets = targets)}
-    onclose={() => (publishingOpen = false)}
-  />
-{/if}
 
 {#if site && creatingPage}
   <NewPageDialog {site} oncreated={pageCreated} onclose={() => (creatingPage = false)} />

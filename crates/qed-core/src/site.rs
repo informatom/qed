@@ -263,6 +263,39 @@ fn write_new(path: &Path, contents: &str) -> Result<(), SiteError> {
     file.write_all(contents.as_bytes()).map_err(error)
 }
 
+/// Saves the site's settings into `site.toml`, keeping comments and the
+/// formatting of everything that didn't change. Default values are left
+/// out, as in page files.
+pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
+    let path = root.join(CONFIG_FILE);
+    let invalid = |message: String| SiteError::Invalid {
+        path: PathBuf::from(CONFIG_FILE),
+        message,
+    };
+    if config.title.trim().is_empty() {
+        return Err(invalid("a site needs a title".to_string()));
+    }
+    if !crate::theme::is_theme(&config.theme) {
+        return Err(invalid(format!(
+            "there is no theme called \"{}\"",
+            config.theme
+        )));
+    }
+
+    let original = read(&path)?;
+    let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
+    // Defaults stay out of the file, unless the file already names them.
+    for (key, value, default) in [
+        ("language", &config.language, default_language()),
+        ("theme", &config.theme, default_theme()),
+    ] {
+        if *value == default && !page_writer::writes_string(&original, key, &default) {
+            document.remove(key);
+        }
+    }
+    write_atomically(&path, &page_writer::merge(&original, document))
+}
+
 /// Saves new settings for a page and returns the page as saved.
 ///
 /// The file is read again just before saving, so blocks someone edited by
@@ -613,6 +646,45 @@ mod tests {
         front.title = "  ".into();
         let result = save_front_matter(dir.path(), Path::new("pages/a.md"), front);
         assert!(matches!(result, Err(SiteError::Invalid { .. })));
+    }
+
+    #[test]
+    fn saves_site_settings_and_keeps_comments() {
+        let dir = site_with(&[(
+            "site.toml",
+            "# My site\ntitle = \"S\"  # shown everywhere\n",
+        )]);
+        let mut config = open(dir.path()).unwrap().config;
+        config.theme = "cupcake".into();
+        config.description = Some("About things.".into());
+        save_config(dir.path(), &config).unwrap();
+
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.starts_with("# My site\ntitle = \"S\"  # shown everywhere\n"),
+            "{text}"
+        );
+        assert!(text.contains("theme = \"cupcake\""), "{text}");
+        assert!(!text.contains("language"), "defaults stay out: {text}");
+
+        // A default someone wrote stays when something else changes.
+        fs::write(
+            dir.path().join("site.toml"),
+            "title = \"S\"\nlanguage = \"en\"\n",
+        )
+        .unwrap();
+        let mut config = open(dir.path()).unwrap().config;
+        config.theme = "nord".into();
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert_eq!(text, "title = \"S\"\nlanguage = \"en\"\ntheme = \"nord\"\n");
+        assert_eq!(open(dir.path()).unwrap().config, config);
+
+        config.theme = "neon-pink".into();
+        assert!(matches!(
+            save_config(dir.path(), &config),
+            Err(SiteError::Invalid { .. })
+        ));
     }
 
     #[test]

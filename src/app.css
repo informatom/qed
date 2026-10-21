@@ -2,6 +2,8 @@
    the whole project, including the site folders in docs/ and examples/, and
    every page saved there would reload the app window during development. */
 @import "tailwindcss" source("../src");
+/* All themes, so the app can switch between them and draw theme previews.
+   Light is the default, dark follows the system's dark mode. */
 @plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+  themes: all;
 }

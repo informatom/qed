@@ -2,13 +2,16 @@
   import { untrack } from "svelte";
   import ImageField from "$lib/ImageField.svelte";
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
+  import MediaPicker from "$lib/MediaPicker.svelte";
   import {
     BLOCK_NAMES,
+    mediaUrl,
     newBlock,
     normalizeBlock,
     savePageBlocks,
     type Block,
     type BlockType,
+    type GalleryBlock,
     type Page,
   } from "$lib/site";
 
@@ -35,6 +38,8 @@
 
   let items = $state<Item[]>(untrack(() => wrap(page.blocks)));
   let saving = $state(false);
+  /** The gallery an image is being picked for, if any. */
+  let pickingFor = $state<GalleryBlock | null>(null);
   let error = $state<string | null>(null);
 
   let edited = $derived(items.map((item) => normalizeBlock(item.block)));
@@ -89,6 +94,15 @@
   </span>
 {/snippet}
 
+{#if pickingFor}
+  <MediaPicker
+    {siteRoot}
+    only="image"
+    onpick={(name) => pickingFor?.images.push({ image: name, alt: null })}
+    onclose={() => (pickingFor = null)}
+  />
+{/if}
+
 <div id="block-editor" class="flex flex-col gap-4">
   {#each items as item, index (item.id)}
     <section id="block-{index}" class="@container card border border-base-300 bg-base-100">
@@ -128,7 +142,108 @@
               />
             </div>
           </div>
-        {:else}
+        {:else if item.block.type === "text-image"}
+          <div class="grid gap-3 @2xl:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              {@render field("Image")}
+              <ImageField {siteRoot} bind:value={item.block.image} />
+            </div>
+            <div class="flex flex-col gap-3">
+              <label class="flex flex-col gap-1">
+                {@render field("Alternative text")}
+                <input class="input w-full" bind:value={item.block.alt} />
+              </label>
+              <div class="flex items-center gap-4 text-sm">
+                <span class="font-medium">Image on the</span>
+                <label class="flex items-center gap-2">
+                  <input type="radio" class="radio radio-sm" value="left" bind:group={item.block.image_side} /> left
+                </label>
+                <label class="flex items-center gap-2">
+                  <input type="radio" class="radio radio-sm" value="right" bind:group={item.block.image_side} /> right
+                </label>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1 @2xl:col-span-2">
+              {@render field("Text", "Markdown")}
+              <MarkdownEditor
+                bind:value={() => (item.block.type === "text-image" ? (item.block.text ?? "") : ""),
+                (text) => {
+                  if (item.block.type === "text-image") item.block.text = text;
+                }}
+                minHeight="100px"
+              />
+            </div>
+          </div>
+        {:else if item.block.type === "gallery"}
+          {@const gallery = item.block}
+          <div class="flex flex-col gap-3">
+            {#if gallery.images.length}
+              <ul class="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3">
+                {#each gallery.images as image, i (i)}
+                  <li class="flex flex-col gap-2 rounded-box border border-base-300 p-2">
+                    <img src={mediaUrl(siteRoot, image.image)} alt="" class="aspect-square w-full rounded-field object-cover" />
+                    <input class="input input-sm w-full" placeholder="Alternative text" bind:value={image.alt} />
+                    <div class="flex justify-between">
+                      <div>
+                        <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move left" disabled={i === 0}
+                          onclick={() => gallery.images.splice(i - 1, 0, ...gallery.images.splice(i, 1))}>←</button>
+                        <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move right"
+                          disabled={i === gallery.images.length - 1}
+                          onclick={() => gallery.images.splice(i + 1, 0, ...gallery.images.splice(i, 1))}>→</button>
+                      </div>
+                      <button type="button" class="btn btn-ghost btn-xs text-error" onclick={() => gallery.images.splice(i, 1)}>
+                        Remove
+                      </button>
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+            <div>
+              <button type="button" class="btn btn-sm" onclick={() => (pickingFor = gallery)}>+ Add image…</button>
+            </div>
+          </div>
+        {:else if item.block.type === "download"}
+          <div class="grid gap-3 @2xl:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              {@render field("File")}
+              <ImageField {siteRoot} accept="file" bind:value={item.block.file} />
+            </div>
+            <label class="flex flex-col gap-1">
+              {@render field("Link text", "the file name if empty")}
+              <input class="input w-full" bind:value={item.block.label} />
+            </label>
+          </div>
+        {:else if item.block.type === "faq"}
+          {@const faq = item.block}
+          <div class="flex flex-col gap-3">
+            <label class="flex flex-col gap-1">
+              {@render field("Heading", "optional")}
+              <input class="input w-full" bind:value={faq.heading} />
+            </label>
+            {#each faq.items as entry, i (i)}
+              <div class="flex flex-col gap-2 rounded-box border border-base-300 p-3">
+                <div class="flex items-center gap-2">
+                  <input class="input w-full" placeholder="Question" bind:value={entry.question} />
+                  <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move up" disabled={i === 0}
+                    onclick={() => faq.items.splice(i - 1, 0, ...faq.items.splice(i, 1))}>↑</button>
+                  <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move down"
+                    disabled={i === faq.items.length - 1}
+                    onclick={() => faq.items.splice(i + 1, 0, ...faq.items.splice(i, 1))}>↓</button>
+                  <button type="button" class="btn btn-ghost btn-xs text-error" onclick={() => faq.items.splice(i, 1)}>
+                    Remove
+                  </button>
+                </div>
+                <MarkdownEditor bind:value={entry.answer} placeholder="Answer, in Markdown…" minHeight="60px" />
+              </div>
+            {/each}
+            <div>
+              <button type="button" class="btn btn-sm" onclick={() => faq.items.push({ question: "", answer: "" })}>
+                + Question
+              </button>
+            </div>
+          </div>
+        {:else if item.block.type === "hero" || item.block.type === "call-to-action"}
           <!-- Hero and Call to action share most fields. -->
           <div class="grid gap-3 @2xl:grid-cols-2">
             {#if item.block.type === "hero"}

@@ -16,8 +16,10 @@
   onMount(() => dialog.showModal());
 
   function pick(name: string) {
-    dialog.close();
+    // Report the choice before closing: closing may tell the parent to
+    // forget what the picker was opened for.
     onpick(name);
+    dialog.close();
   }
 </script>
 

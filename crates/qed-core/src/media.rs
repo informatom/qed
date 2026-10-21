@@ -190,6 +190,24 @@ pub fn references(page: &Page) -> Vec<String> {
                 names.extend(image.image.as_deref().and_then(media_name));
                 markdown_texts.extend(image.caption.as_deref());
             }
+            Block::TextImage(block) => {
+                names.extend(block.image.as_deref().and_then(media_name));
+                markdown_texts.extend(block.text.as_deref());
+            }
+            Block::Gallery(gallery) => {
+                names.extend(
+                    gallery
+                        .images
+                        .iter()
+                        .filter_map(|image| media_name(&image.image)),
+                );
+            }
+            Block::Download(download) => {
+                names.extend(download.file.as_deref().and_then(media_name))
+            }
+            Block::Faq(faq) => {
+                markdown_texts.extend(faq.items.iter().map(|item| item.answer.as_str()))
+            }
             Block::CallToAction(cta) => markdown_texts.extend(cta.text.as_deref()),
         }
     }
@@ -348,6 +366,75 @@ mod tests {
         assert!(!dir.path().join("media/unused.txt").exists());
 
         assert!(delete(&site, "../site.toml").is_err());
+    }
+
+    #[test]
+    fn renders_and_tracks_the_newer_blocks() {
+        let dir = site_dir();
+        fs::write(
+            dir.path().join("pages/more.md"),
+            r#"+++
+title = "More"
++++
+
+::: text-image
+text = "Some *text*."
+image = "team.png"
+alt = "Team"
+image_side = "left"
+:::
+
+::: gallery
+[[images]]
+image = "team.png"
+alt = "One"
+
+[[images]]
+image = "logos/a.png"
+:::
+
+::: download
+file = "menu.pdf"
+label = "Our menu"
+:::
+
+::: faq
+heading = "Questions"
+
+[[items]]
+question = "Open on Sundays?"
+answer = "See [the menu](/media/menu.pdf)."
+:::
+"#,
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+        let more = site.pages.iter().find(|p| p.path == "more").unwrap();
+        assert_eq!(references(more), ["logos/a.png", "menu.pdf", "team.png"]);
+
+        let out = tempfile::tempdir().unwrap();
+        crate::generator::build_into(&site, out.path()).unwrap();
+        let html = fs::read_to_string(out.path().join("more/index.html")).unwrap();
+        assert!(html.contains("md:order-first"), "image on the left");
+        assert!(html.contains("<p>Some <em>text</em>.</p>"), "{html}");
+        assert!(
+            html.contains(r#"<a href="../media/logos/a.png""#),
+            "gallery links to full size"
+        );
+        assert!(
+            html.contains(r#"<a href="../media/menu.pdf" download"#),
+            "{html}"
+        );
+        assert!(
+            html.contains(">PDF</span>") && html.contains(">Our menu</span>"),
+            "{html}"
+        );
+        assert!(
+            html.contains(
+                "<summary class=\"collapse-title font-medium\">Open on Sundays?</summary>"
+            ),
+            "{html}"
+        );
     }
 
     #[test]

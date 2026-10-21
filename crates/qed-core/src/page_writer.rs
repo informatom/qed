@@ -32,8 +32,11 @@ pub fn write(content: &PageContent, original: Option<&str>) -> String {
 
     let front = match &previous {
         Some(p) if p.content.front == content.front => p.front_toml.clone(),
-        Some(p) => merge(&p.front_toml, front_document(&content.front)),
-        None => front_document(&content.front).to_string(),
+        Some(p) => merge(
+            &p.front_toml,
+            front_document(&content.front, Some(&p.front_toml)),
+        ),
+        None => front_document(&content.front, None).to_string(),
     };
 
     let mut file = format!("+++\n{}\n+++\n", front.trim_end());
@@ -84,6 +87,10 @@ fn block_document(block: &Block) -> DocumentMut {
         Block::Text { .. } => Ok(DocumentMut::new()),
         Block::Hero(hero) => toml_edit::ser::to_document(hero),
         Block::Image(image) => toml_edit::ser::to_document(image),
+        Block::TextImage(block) => toml_edit::ser::to_document(block),
+        Block::Gallery(block) => toml_edit::ser::to_document(block),
+        Block::Download(block) => toml_edit::ser::to_document(block),
+        Block::Faq(block) => toml_edit::ser::to_document(block),
         Block::CallToAction(cta) => toml_edit::ser::to_document(cta),
     };
     // Structs of strings always serialize; an empty document is a safe fallback.
@@ -93,7 +100,11 @@ fn block_document(block: &Block) -> DocumentMut {
 }
 
 /// The page settings as a fresh TOML document, without default values.
-fn front_document(front: &FrontMatter) -> DocumentMut {
+/// The page settings as a TOML document. Values at their defaults are left
+/// out, unless `original` (the settings as written) already has that line
+/// with that same default: a `draft = false` someone wrote stays, but a
+/// `menu = "main"` changed back to no menu goes away.
+fn front_document(front: &FrontMatter, original: Option<&str>) -> DocumentMut {
     let mut document = toml_edit::ser::to_document(front).unwrap_or_default();
 
     let defaults: [DefaultCheck; 6] = [
@@ -104,8 +115,13 @@ fn front_document(front: &FrontMatter) -> DocumentMut {
         ("authors", is_empty_array),
         ("tags", is_empty_array),
     ];
+    let original = original.and_then(|text| text.parse::<DocumentMut>().ok());
     for (key, is_default) in defaults {
-        if document.get(key).is_some_and(is_default) {
+        let written_as_default = original
+            .as_ref()
+            .and_then(|document| document.get(key))
+            .is_some_and(is_default);
+        if document.get(key).is_some_and(is_default) && !written_as_default {
             document.remove(key);
         }
     }
@@ -124,6 +140,21 @@ fn front_document(front: &FrontMatter) -> DocumentMut {
 /// A setting's name and a test for whether it holds its default value.
 type DefaultCheck = (&'static str, fn(&Item) -> bool);
 
+/// Whether the TOML text `original` sets `key` to the string `value`, to
+/// tell a default someone wrote from one they didn't.
+pub(crate) fn writes_string(original: &str, key: &str, value: &str) -> bool {
+    original
+        .parse::<DocumentMut>()
+        .ok()
+        .and_then(|document| {
+            document
+                .get(key)
+                .and_then(|item| item.as_str())
+                .map(|text| text == value)
+        })
+        .unwrap_or(false)
+}
+
 fn is_empty_array(item: &Item) -> bool {
     item.as_array().is_some_and(|array| array.is_empty())
 }
@@ -131,13 +162,37 @@ fn is_empty_array(item: &Item) -> bool {
 /// Writes strings that contain line breaks as `"""` blocks, so Markdown in
 /// a hero text stays readable in the file.
 fn use_multiline_strings(document: &mut DocumentMut) {
-    for (_, item) in document.iter_mut() {
-        if let Some(text) = item.as_str()
-            && text.contains('\n')
-        {
-            let literal = format!("\"\"\"\n{}\"\"\"", escape_multiline(text));
-            if let Ok(value) = literal.parse::<Value>() {
-                *item = Item::Value(value);
+    readable(document.as_table_mut());
+}
+
+/// Makes a table read well by hand: lists of tables become `[[name]]`
+/// sections instead of one long inline line, and strings with line breaks
+/// become `"""` blocks. Goes into nested sections too.
+fn readable(table: &mut toml_edit::Table) {
+    for (_, item) in table.iter_mut() {
+        let is_list_of_tables = item
+            .as_array()
+            .is_some_and(|array| !array.is_empty() && array.iter().all(Value::is_inline_table));
+        if is_list_of_tables {
+            let list = std::mem::take(item);
+            *item = list
+                .into_array_of_tables()
+                .map(Item::ArrayOfTables)
+                .unwrap_or_else(|list| list);
+        }
+
+        match item {
+            Item::ArrayOfTables(tables) => tables.iter_mut().for_each(readable),
+            Item::Table(nested) => readable(nested),
+            _ => {
+                if let Some(text) = item.as_str()
+                    && text.contains('\n')
+                {
+                    let literal = format!("\"\"\"\n{}\"\"\"", escape_multiline(text));
+                    if let Ok(value) = literal.parse::<Value>() {
+                        *item = Item::Value(value);
+                    }
+                }
             }
         }
     }
@@ -156,7 +211,7 @@ fn escape_multiline(text: &str) -> String {
 
 /// Applies the values of `new` to the TOML text `original`, keeping
 /// everything about `original` that the new values don't change.
-fn merge(original: &str, new: DocumentMut) -> String {
+pub(crate) fn merge(original: &str, new: DocumentMut) -> String {
     let Ok(mut document) = original.parse::<DocumentMut>() else {
         return new.to_string();
     };
@@ -294,6 +349,17 @@ More text.
     }
 
     #[test]
+    fn keeps_default_values_that_were_written_by_hand() {
+        let original = "+++\ntitle = \"A\"\ndraft = false\n+++\n";
+        let mut content = parse(original).unwrap();
+        content.front.title = "B".into();
+        assert_eq!(
+            write(&content, Some(original)),
+            "+++\ntitle = \"B\"\ndraft = false\n+++\n"
+        );
+    }
+
+    #[test]
     fn writes_new_pages_without_defaults() {
         let content = parse("+++\ntitle = \"New\"\n+++\n").unwrap();
         assert_eq!(write(&content, None), "+++\ntitle = \"New\"\n+++\n");
@@ -319,6 +385,33 @@ More text.
         };
         let file = write(&content, None);
         assert!(file.contains("text = \"\"\"\nLine one\n\nLine"), "{file}");
+        assert_eq!(parse(&file).unwrap(), content);
+    }
+
+    #[test]
+    fn writes_lists_in_blocks_as_sections() {
+        use crate::block::{Faq, FaqItem};
+        let content = PageContent {
+            front: parse("+++\ntitle = \"T\"\n+++\n").unwrap().front,
+            blocks: vec![Block::Faq(Faq {
+                heading: Some("Questions".into()),
+                items: vec![
+                    FaqItem {
+                        question: "Why?".into(),
+                        answer: "Because.\n\nReally.".into(),
+                    },
+                    FaqItem {
+                        question: "How?".into(),
+                        answer: "Like this.".into(),
+                    },
+                ],
+            })],
+        };
+        let file = write(&content, None);
+        assert!(
+            file.contains("::: faq\nheading = \"Questions\"\n\n[[items]]\nquestion = \"Why?\"\nanswer = \"\"\"\nBecause.\n\nReally.\"\"\"\n\n[[items]]"),
+            "{file}"
+        );
         assert_eq!(parse(&file).unwrap(), content);
     }
 

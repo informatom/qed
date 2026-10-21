@@ -33,6 +33,39 @@ export interface ImageBlock {
   caption: string | null;
 }
 
+export type Side = "left" | "right";
+
+export interface TextImageBlock {
+  text: string | null;
+  image: string | null;
+  alt: string | null;
+  image_side: Side;
+}
+
+export interface GalleryImage {
+  image: string;
+  alt: string | null;
+}
+
+export interface GalleryBlock {
+  images: GalleryImage[];
+}
+
+export interface DownloadBlock {
+  file: string | null;
+  label: string | null;
+}
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface FaqBlock {
+  heading: string | null;
+  items: FaqItem[];
+}
+
 export interface CallToAction {
   headline: string | null;
   text: string | null;
@@ -46,6 +79,10 @@ export type Block =
   | { type: "text"; markdown: string }
   | ({ type: "hero" } & Hero)
   | ({ type: "image" } & ImageBlock)
+  | ({ type: "text-image" } & TextImageBlock)
+  | ({ type: "gallery" } & GalleryBlock)
+  | ({ type: "download" } & DownloadBlock)
+  | ({ type: "faq" } & FaqBlock)
   | ({ type: "call-to-action" } & CallToAction);
 
 export interface Page {
@@ -132,6 +169,10 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   text: "Text",
   hero: "Hero",
   image: "Image",
+  "text-image": "Text with image",
+  gallery: "Gallery",
+  download: "Download",
+  faq: "FAQ",
   "call-to-action": "Call to action",
 };
 
@@ -144,18 +185,37 @@ export function newBlock(type: BlockType): Block {
       return { type, image: null, headline: null, text: null, button_label: null, button_link: null };
     case "image":
       return { type, image: null, alt: null, caption: null };
+    case "text-image":
+      return { type, text: null, image: null, alt: null, image_side: "right" };
+    case "gallery":
+      return { type, images: [] };
+    case "download":
+      return { type, file: null, label: null };
+    case "faq":
+      return { type, heading: null, items: [{ question: "", answer: "" }] };
     case "call-to-action":
       return { type, headline: null, text: null, button_label: null, button_link: null };
   }
 }
 
-/** Empty text fields become null, so "" and "nothing" count as the same. */
+/** Fields that may be empty in a file. Everything else is always text. */
+const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading"]);
+
+/** Empty optional fields become null, so "" and "nothing" count as the same. */
 export function normalizeBlock(block: Block): Block {
-  const entries = Object.entries(block).map(([key, value]) => [
-    key,
-    key !== "type" && key !== "markdown" && typeof value === "string" && value.trim() === "" ? null : value,
-  ]);
-  return Object.fromEntries(entries) as Block;
+  return normalize(block, true) as Block;
+}
+
+function normalize(value: unknown, topLevel: boolean): unknown {
+  if (Array.isArray(value)) return value.map((item) => normalize(item, false));
+  if (value === null || typeof value !== "object") return value;
+  const entries = Object.entries(value).map(([key, field]) => {
+    // A gallery image's file is required; only its alt text is optional.
+    const optional = topLevel ? OPTIONAL.has(key) : key === "alt";
+    if (optional && typeof field === "string" && field.trim() === "") return [key, null];
+    return [key, normalize(field, false)];
+  });
+  return Object.fromEntries(entries);
 }
 
 export type MediaKind = "image" | "document" | "other";
@@ -272,4 +332,14 @@ export function publishSite(root: string, targetName: string, onProgress: (p: Pr
   const channel = new Channel<Progress>();
   channel.onmessage = onProgress;
   return invoke<PublishReport>("publish_site", { root, targetName, onProgress: channel });
+}
+
+/** The daisyUI theme names, from Rust (the list lives in qed-core). */
+export function listThemes(): Promise<string[]> {
+  return invoke<string[]>("list_themes");
+}
+
+/** Saves the site's settings into site.toml. */
+export function saveSiteConfig(root: string, config: SiteConfig): Promise<void> {
+  return invoke<void>("save_site_config", { root, config });
 }

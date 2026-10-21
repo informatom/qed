@@ -49,7 +49,8 @@ A complete site builder without podcast features.
 - **#055 Sites.** Several sites per installation. Phase 1 sites are pages-only;
   phase 2 adds the podcast switch.
 - **#021 Site UI.** List, create and edit sites.
-- **#043 Block CMS.** *Block editor done 2026-10-21*: Content/Settings tabs
+- **#043 Block CMS.** *Text with image, Gallery, Download and FAQ done
+  2026-10-21.* *Block editor done 2026-10-21*: Content/Settings tabs
   per page, OverType for Markdown, Hero and Call-to-action fields, add,
   remove, move up/down, save with `site::save_blocks`, warning before
   losing unsaved changes. Still open: the remaining block types, an image
@@ -90,6 +91,10 @@ A complete site builder without podcast features.
   `og:image`, copying only the media files that are used, and links that
   leave the site folder.
 - **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
+  *Themes done 2026-10-21*: Site settings dialog edits `site.toml` (title,
+  description, language, web address, theme); the app has its own theme
+  (App settings, per computer, can follow the system). Logo and other
+  options are still open.
 - **#029 Publisher: GitHub Pages.** Push the built site to the configured
   branch with a deploy key. Needs a second `Target` kind, its own key
   handling and connection test (#031).

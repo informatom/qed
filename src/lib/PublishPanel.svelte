@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from "svelte";
+  import { untrack } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import TargetForm from "$lib/TargetForm.svelte";
@@ -19,12 +19,10 @@
     site: Site;
     /** Called after targets changed, so the app's copy of the site matches. */
     ontargets: (targets: Target[]) => void;
-    onclose: () => void;
   }
 
-  let { site, ontargets, onclose }: Props = $props();
+  let { site, ontargets }: Props = $props();
 
-  let dialog: HTMLDialogElement;
   let targets = $state(untrack(() => $state.snapshot(site.targets)));
   /** Which target is being edited: its index, -1 for a new one, null for none. */
   let editing = $state<number | null>(null);
@@ -37,7 +35,6 @@
   let progress = $state<Progress | null>(null);
   let report = $state<PublishReport | null>(null);
 
-  onMount(() => dialog.showModal());
 
   function changed(updated: Target[]) {
     targets = updated;
@@ -121,14 +118,17 @@
   };
 </script>
 
-<dialog bind:this={dialog} id="publish-dialog" class="modal" onclose={onclose}>
-  <div class="modal-box flex max-h-[90vh] w-11/12 max-w-5xl flex-col gap-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold">Publish {site.config.title}</h2>
-      <button type="button" class="btn btn-ghost btn-sm btn-square" onclick={() => dialog.close()} aria-label="Close">✕</button>
+<section id="publish-panel" class="flex flex-col gap-3">
+    <div class="flex items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold">Publishing</h2>
+      {#if editing === null}
+        <button type="button" id="add-target" class="btn btn-sm" onclick={() => (editing = -1)} disabled={!!publishing}>
+          Add target
+        </button>
+      {/if}
     </div>
 
-    <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+    <div class="flex flex-col gap-3">
       {#each targets as target, index (target.name)}
         {#if editing === index}
           <TargetForm siteRoot={site.root} {targets} {index} initial={target} onsaved={changed} oncancel={() => (editing = null)} />
@@ -218,11 +218,4 @@
       {/if}
     </div>
 
-    {#if editing === null}
-      <div class="modal-action mt-0">
-        <button type="button" id="add-target" class="btn" onclick={() => (editing = -1)} disabled={!!publishing}>Add target</button>
-      </div>
-    {/if}
-  </div>
-  <form method="dialog" class="modal-backdrop"><button>close</button></form>
-</dialog>
+</section>

@@ -13,6 +13,11 @@
   <meta name="generator" content="qed">
   <link rel="stylesheet" href="{{ root }}style.css">
 </head>
+{%- macro img(picture, classes) %}
+<img src="{{ picture.src }}" alt="{{ picture.alt }}"
+  {%- if let Some(width) = picture.width %} width="{{ width }}"{% endif %}
+  {%- if let Some(height) = picture.height %} height="{{ height }}"{% endif %} loading="lazy" class="{{ classes }}">
+{%- endmacro %}
 <body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased">
   <header class="border-b border-base-300">
     <nav class="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
@@ -71,6 +76,49 @@
         {%- endif %}
       </figure>
       {%- endif %}
+      {%- when RenderedBlock::TextImage with { text_html, picture, image_left } %}
+      <section class="grid items-center gap-8 md:grid-cols-2">
+        {%- if let Some(picture) = picture %}
+        {%- if *image_left %}
+        {%- call img(picture, "h-auto w-full rounded-box md:order-first") %}{% endcall %}
+        {%- else %}
+        {%- call img(picture, "h-auto w-full rounded-box md:order-last") %}{% endcall %}
+        {%- endif %}
+        {%- endif %}
+        {%- if let Some(text_html) = text_html %}
+        <div class="prose max-w-none">{{ text_html|safe }}</div>
+        {%- endif %}
+      </section>
+      {%- when RenderedBlock::Gallery with { pictures } %}
+      {%- if !pictures.is_empty() %}
+      <section class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {%- for picture in pictures %}
+        <a href="{{ picture.src }}" class="group block overflow-hidden rounded-box">
+          {%- call img(picture, "aspect-square h-full w-full object-cover transition-transform duration-300 group-hover:scale-105") %}{% endcall %}
+        </a>
+        {%- endfor %}
+      </section>
+      {%- endif %}
+      {%- when RenderedBlock::Download with { href, label, kind, size } %}
+      {%- if let Some(href) = href %}
+      <a href="{{ href }}" download class="flex items-center gap-4 rounded-box border border-base-300 p-4 transition-colors hover:bg-base-200">
+        {%- if !kind.is_empty() %}<span class="badge badge-neutral font-mono">{{ kind }}</span>{% endif %}
+        <span class="flex-1 font-medium">{{ label }}</span>
+        {%- if let Some(size) = size %}<span class="text-sm text-base-content/60">{{ size }}</span>{% endif %}
+      </a>
+      {%- endif %}
+      {%- when RenderedBlock::Faq with { heading, items } %}
+      <section class="flex flex-col gap-2">
+        {%- if let Some(heading) = heading %}
+        <h2 class="mb-2 text-2xl font-bold tracking-tight">{{ heading }}</h2>
+        {%- endif %}
+        {%- for item in items %}
+        <details class="collapse collapse-arrow border border-base-300 bg-base-100">
+          <summary class="collapse-title font-medium">{{ item.question }}</summary>
+          <div class="collapse-content prose max-w-none">{{ item.answer_html|safe }}</div>
+        </details>
+        {%- endfor %}
+      </section>
       {%- when RenderedBlock::CallToAction with { headline, text_html, button } %}
       <section class="card bg-primary text-primary-content">
         <div class="card-body items-center gap-4 text-center sm:py-10">

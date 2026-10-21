@@ -14,3 +14,4 @@ pub mod sftp;
 pub mod site;
 pub mod slug;
 pub mod target;
+pub mod theme;

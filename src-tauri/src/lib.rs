@@ -12,7 +12,7 @@ use qed_core::media::{self, MediaFile};
 use qed_core::page::{FrontMatter, PageDate};
 use qed_core::preview::Preview;
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
-use qed_core::site::{self, Page, Site};
+use qed_core::site::{self, Page, Site, SiteConfig};
 use qed_core::target::{self, SftpAuth, SftpTarget, Target};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
@@ -144,6 +144,18 @@ fn sftp_part(target: Target) -> SftpTarget {
     sftp
 }
 
+/// Saves the site's settings into site.toml.
+#[tauri::command]
+async fn save_site_config(root: PathBuf, config: SiteConfig) -> Result<(), String> {
+    site::save_config(&root, &config).map_err(|error| error.to_string())
+}
+
+/// The daisyUI theme names the app and generated sites can use.
+#[tauri::command]
+fn list_themes() -> Vec<&'static str> {
+    qed_core::theme::THEMES.to_vec()
+}
+
 /// Replaces the site's publish targets in targets.toml.
 #[tauri::command]
 async fn save_targets(root: PathBuf, targets: Vec<Target>) -> Result<(), String> {
@@ -264,6 +276,8 @@ pub fn run() {
             delete_media,
             save_page_settings,
             save_page_blocks,
+            save_site_config,
+            list_themes,
             save_targets,
             set_target_password,
             target_secrets,

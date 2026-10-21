@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use askama::Template;
 use serde::Serialize;
 
-use crate::block::Block;
+use crate::block::{Block, Side};
 use crate::links::LinkContext;
 use crate::markdown;
 use crate::page::Menu;
@@ -303,11 +303,43 @@ enum RenderedBlock {
         width: Option<u32>,
         height: Option<u32>,
     },
+    TextImage {
+        text_html: Option<String>,
+        picture: Option<Picture>,
+        image_left: bool,
+    },
+    Gallery {
+        pictures: Vec<Picture>,
+    },
+    Download {
+        /// `None` while no file is chosen; nothing is shown then.
+        href: Option<String>,
+        label: String,
+        /// The file extension, e.g. "PDF".
+        kind: String,
+        size: Option<String>,
+    },
+    Faq {
+        heading: Option<String>,
+        items: Vec<FaqEntry>,
+    },
     CallToAction {
         headline: Option<String>,
         text_html: Option<String>,
         button: Option<Button>,
     },
+}
+
+struct Picture {
+    src: String,
+    alt: String,
+    width: Option<u32>,
+    height: Option<u32>,
+}
+
+struct FaqEntry {
+    question: String,
+    answer_html: String,
 }
 
 fn render_page(
@@ -416,11 +448,97 @@ fn render_block(block: &Block, links: &LinkContext, media_dir: &Path) -> Rendere
                 height: size.map(|(_, height)| height),
             }
         }
+        Block::TextImage(block) => RenderedBlock::TextImage {
+            text_html: markdown(&block.text),
+            picture: block
+                .image
+                .as_deref()
+                .and_then(|name| picture(name, block.alt.as_deref(), links, media_dir)),
+            image_left: block.image_side == Side::Left,
+        },
+        Block::Gallery(gallery) => RenderedBlock::Gallery {
+            pictures: gallery
+                .images
+                .iter()
+                .filter_map(|image| picture(&image.image, image.alt.as_deref(), links, media_dir))
+                .collect(),
+        },
+        Block::Download(download) => {
+            let file = download
+                .file
+                .as_deref()
+                .map(str::trim)
+                .filter(|name| !name.is_empty());
+            RenderedBlock::Download {
+                href: file.map(|name| media_link(name, links)),
+                label: download
+                    .label
+                    .clone()
+                    .filter(|label| !label.trim().is_empty())
+                    .or_else(|| {
+                        file.map(|name| name.rsplit('/').next().unwrap_or(name).to_string())
+                    })
+                    .unwrap_or_default(),
+                kind: file
+                    .and_then(|name| name.rsplit_once('.'))
+                    .map(|(_, extension)| extension.to_uppercase())
+                    .unwrap_or_default(),
+                size: file
+                    .and_then(|name| std::fs::metadata(media_dir.join(name)).ok())
+                    .map(|metadata| format_size(metadata.len())),
+            }
+        }
+        Block::Faq(faq) => RenderedBlock::Faq {
+            heading: faq
+                .heading
+                .clone()
+                .filter(|heading| !heading.trim().is_empty()),
+            items: faq
+                .items
+                .iter()
+                .filter(|item| !item.question.trim().is_empty())
+                .map(|item| FaqEntry {
+                    question: item.question.clone(),
+                    answer_html: markdown::render(&item.answer, links),
+                })
+                .collect(),
+        },
         Block::CallToAction(cta) => RenderedBlock::CallToAction {
             headline: cta.headline.clone(),
             text_html: markdown(&cta.text),
             button: button(&cta.button_label, &cta.button_link),
         },
+    }
+}
+
+/// An image ready for the page. Width and height let the browser reserve
+/// space before the image loads, so the page doesn't jump; only the file's
+/// header is read to get them.
+fn picture(
+    name: &str,
+    alt: Option<&str>,
+    links: &LinkContext,
+    media_dir: &Path,
+) -> Option<Picture> {
+    let name = name.trim();
+    if name.is_empty() {
+        return None;
+    }
+    let size = image::image_dimensions(media_dir.join(name)).ok();
+    Some(Picture {
+        src: media_link(name, links),
+        alt: alt.unwrap_or_default().to_string(),
+        width: size.map(|(width, _)| width),
+        height: size.map(|(_, height)| height),
+    })
+}
+
+/// "1.4 MB", "820 KB", "12 bytes".
+fn format_size(bytes: u64) -> String {
+    match bytes {
+        1_000_000.. => format!("{:.1} MB", bytes as f64 / 1_000_000.0),
+        1_000.. => format!("{} KB", (bytes as f64 / 1_000.0).round()),
+        _ => format!("{bytes} bytes"),
     }
 }
 
