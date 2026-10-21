@@ -1,6 +1,6 @@
 +++
 title = "Deleting pages"
-description = "Deleting pages: asking three questions at once, ignoring an error on purpose, and finding what's gone"
+description = "Deleting pages: asking two questions at once, ignoring an error on purpose, and finding what's gone"
 menu = "main"
 weight = 18
 date = 2026-10-21
@@ -12,35 +12,31 @@ summary = "Pages can now be deleted, and deleted pages can be brought back from 
 The page editor has a delete button now, next to the ✕. Before anything is
 deleted, qed asks, and the question tells you what you need to know: which
 pages link to this one (their links would stop working), whether you'd
-lose unsaved changes, and whether the page can come back. It can only if a
-saved version has it, and then only as it was in that version, so a page
-created and deleted between two versions is gone for good, and the
-question says so. The Versions tab lists deleted pages with a **Restore**
-button.
+lose unsaved changes, and whether the page can come back (it can if the
+site has a version history). The Versions tab lists deleted pages with a
+**Restore** button.
 
 Two pages can't be deleted: the start page, because a site needs one, and
 pages with pages below them (`/about` while `/about/team` exists), because
 those would lose their place in the menu. The error says which pages are in
 the way.
 
-## Asking three questions at once
+## Asking two questions at once
 
-The confirmation needs three answers from Rust: who links to the page,
-whether there's a history and what changed since the last version, and
-which versions have this page. None depends on the others, so the editor
-asks all three at once:
+The confirmation needs two answers from Rust: who links to the page, and
+whether there's a history. Neither depends on the other, so the editor asks
+both at once:
 
 ```ts
-const [links, history, versions] = await Promise.all([
+const [links, history] = await Promise.all([
   commands.pagesLinkingTo(siteRoot, page.path),
   commands.historyStatus(siteRoot),
-  commands.listVersions(siteRoot, page.file),
 ]);
 ```
 
 [`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all)
 takes a list of promises and gives back one promise for all their results,
-in the same order, so destructuring with `[links, history, versions]` gets each
+in the same order, so destructuring with `[links, history]` gets each
 answer into its own name. If either fails, the whole thing fails, and the
 `catch` shows the error. In Elixir this is `Task.async/1` for each and
 `Task.await_many/1` for the results. Both Rust commands are `async`, so

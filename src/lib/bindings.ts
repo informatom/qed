@@ -79,8 +79,13 @@ export const commands = {
 	time: number,
 	/**  Tags on this version, such as the publishes. */
 	tags: string[],
+	/**  Still open: later saves go into it until it's closed. */
+	open: boolean,
 } | null>("start_history", { root }),
-	/**  Saves the site folder as a new version; `None` if nothing changed. */
+	/**
+	 *  Closes the open version with a note (or saves a new one); `None` if
+	 *  there was nothing to save.
+	 */
 	saveVersion: (root: string, note: string) => __TAURI_INVOKE<{
 	/**  The commit id, in full. */
 	id: string,
@@ -91,6 +96,8 @@ export const commands = {
 	time: number,
 	/**  Tags on this version, such as the publishes. */
 	tags: string[],
+	/**  Still open: later saves go into it until it's closed. */
+	open: boolean,
 } | null>("save_version", { root, note }),
 	/**  The versions of the site, or of one file in it, newest first. */
 	listVersions: (root: string, file: string | null) => __TAURI_INVOKE<Version[]>("list_versions", { root, file }),
@@ -457,5 +464,7 @@ export type Version = {
 	time: number,
 	/**  Tags on this version, such as the publishes. */
 	tags: string[],
+	/**  Still open: later saves go into it until it's closed. */
+	open: boolean,
 };
 

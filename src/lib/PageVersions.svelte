@@ -78,7 +78,7 @@
     </p>
   {:else if versions.length === 0}
     <p class="rounded-box border border-dashed border-base-300 p-8 text-center text-base-content/60">
-      This page isn't in any saved version yet. Use “Save version” in the Versions tab at the top.
+      This page isn't in any version yet. Saving it puts it into one.
     </p>
   {:else}
     <div class="grid items-start gap-4 lg:grid-cols-[minmax(16rem,24rem)_1fr]">
@@ -87,7 +87,9 @@
           <li>
             <button type="button" class={["flex flex-col items-start gap-0.5", selected?.id === version.id && "menu-active"]}
               onclick={() => show(version)}>
-              <span class="font-medium">{version.summary}</span>
+              <span class="font-medium">
+                {version.summary}{#if version.open}<span class="badge badge-warning badge-soft badge-xs ms-1.5">open</span>{/if}
+              </span>
               <span class="text-xs opacity-70">{formatTime(version.time)} · {version.author}</span>
               {#if version.tags.length}
                 <span class="flex flex-wrap gap-1">

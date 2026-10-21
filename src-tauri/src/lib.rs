@@ -64,10 +64,12 @@ async fn import_media(
     library: Library,
     paths: Vec<PathBuf>,
 ) -> Result<Vec<String>, String> {
-    paths
+    let names = paths
         .iter()
         .map(|path| media::import(&root, library, path).map_err(|error| error.to_string()))
-        .collect()
+        .collect();
+    record(&root);
+    names
 }
 
 /// Deletes a file that no page uses.
@@ -75,7 +77,9 @@ async fn import_media(
 #[specta::specta]
 async fn delete_media(root: PathBuf, library: Library, name: String) -> Result<(), String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
-    media::delete(&site, library, &name).map_err(|error| error.to_string())
+    media::delete(&site, library, &name).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(())
 }
 
 /// Moves the files in `media/` that aren't images into `assets/` and
@@ -84,7 +88,9 @@ async fn delete_media(root: PathBuf, library: Library, name: String) -> Result<(
 #[specta::specta]
 async fn move_documents_to_assets(root: PathBuf) -> Result<usize, String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
-    media::move_documents_to_assets(&site).map_err(|error| error.to_string())
+    let moved = media::move_documents_to_assets(&site).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(moved)
 }
 
 /// Saves a page's settings into its file and returns the saved page.
@@ -95,7 +101,9 @@ async fn save_page_settings(
     file: PathBuf,
     front: FrontMatter,
 ) -> Result<Page, String> {
-    site::save_front_matter(&root, &file, front).map_err(|error| error.to_string())
+    let page = site::save_front_matter(&root, &file, front).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(page)
 }
 
 /// Saves a page's blocks into its file and returns the page as it reads back.
@@ -106,7 +114,9 @@ async fn save_page_blocks(
     file: PathBuf,
     blocks: Vec<Block>,
 ) -> Result<Page, String> {
-    site::save_blocks(&root, &file, blocks).map_err(|error| error.to_string())
+    let page = site::save_blocks(&root, &file, blocks).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(page)
 }
 
 /// Creates an empty page below `parent` (a URL path, `""` for the top level).
@@ -118,7 +128,10 @@ async fn create_page(
     title: String,
     date: Option<PageDate>,
 ) -> Result<Page, String> {
-    site::create_page(&root, &parent, &title, date).map_err(|error| error.to_string())
+    let page =
+        site::create_page(&root, &parent, &title, date).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(page)
 }
 
 /// The pages that link to the page at `path`, for the delete confirmation.
@@ -134,7 +147,21 @@ async fn pages_linking_to(root: PathBuf, path: String) -> Result<Vec<String>, St
 #[specta::specta]
 async fn delete_page(root: PathBuf, file: PathBuf) -> Result<(), String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
-    site::delete_page(&site, &file).map_err(|error| error.to_string())
+    // Close the open version first, so it keeps the page. Otherwise the
+    // deletion would go into the same open version, and a page made and
+    // deleted in it would leave no trace to bring back.
+    let tracked = history::status(&root)
+        .map_err(|error| error.to_string())?
+        .tracked;
+    if let Some(page) = site.pages.iter().find(|page| page.file == file)
+        && tracked
+    {
+        history::save_version(&root, &format!("Before deleting /{}", page.path))
+            .map_err(|error| error.to_string())?;
+    }
+    site::delete_page(&site, &file).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(())
 }
 
 /// Pages that earlier versions had and the folder doesn't any more.
@@ -148,7 +175,9 @@ async fn deleted_pages(root: PathBuf) -> Result<Vec<DeletedPage>, String> {
 #[tauri::command]
 #[specta::specta]
 async fn restore_page(root: PathBuf, file: String, version: String) -> Result<(), String> {
-    history::restore_page(&root, &file, &version).map_err(|error| error.to_string())
+    history::restore_page(&root, &file, &version).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(())
 }
 
 /// Builds the site at `path` into its `_site` folder.
@@ -202,7 +231,9 @@ fn sftp_part(target: Target) -> SftpTarget {
 #[tauri::command]
 #[specta::specta]
 async fn save_site_config(root: PathBuf, config: SiteConfig) -> Result<(), String> {
-    site::save_config(&root, &config).map_err(|error| error.to_string())
+    site::save_config(&root, &config).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(())
 }
 
 /// The page icons: names and SVG markup, from qed's built-in set.
@@ -354,7 +385,18 @@ async fn start_history(root: PathBuf) -> Result<Option<Version>, String> {
     history::start(&root).map_err(|error| error.to_string())
 }
 
-/// Saves the site folder as a new version; `None` if nothing changed.
+/// Records a change the app just saved in the site's open version (see
+/// `history::record_save`). The change itself is saved already, and a
+/// problem with the history mustn't turn that into an error; the Versions
+/// tab then shows the files as changed since the last version.
+fn record(root: &std::path::Path) {
+    if let Err(error) = history::record_save(root) {
+        eprintln!("qed: couldn't record the change in the history: {error}");
+    }
+}
+
+/// Closes the open version with a note (or saves a new one); `None` if
+/// there was nothing to save.
 #[tauri::command]
 #[specta::specta]
 async fn save_version(root: PathBuf, note: String) -> Result<Option<Version>, String> {

@@ -150,7 +150,13 @@ A complete site builder without podcast features.
   bundled libgit2): a top-level Versions tab starts the history (git init
   plus `.gitignore` for `_site/` and `targets.toml`), shows changed files,
   saves versions with a note and lists them. Publishing saves a version
-  first and tags it (`publish/<target>/<UTC time>`). Each page has a
+  first and tags it (`publish/<target>/<UTC time>`). *Open versions
+  2026-10-21*: every save in the app goes into an open version (a commit
+  marked `qed-draft: true`, amended by later saves); "Close version" gives
+  it its note, publishing closes it too. qed amends only its own open
+  version, never someone else's commit and never one that was pushed.
+  Deleting a page closes the open version first, so the page can come
+  back. Possible later: closing open versions by themselves after a while. Each page has a
   Versions tab (Content / Versions / Settings) with what each version
   changed and "Restore", which puts it into the editor as unsaved changes.
   A site folder inside a larger repository (like `docs/`) works too: qed

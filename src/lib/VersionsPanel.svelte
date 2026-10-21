@@ -18,6 +18,8 @@
 
   let status = $state<HistoryStatus | null>(null);
   let versions = $state<Version[]>([]);
+  // The newest version, if it's still open (only the newest can be).
+  let open = $derived(versions[0]?.open ? versions[0] : null);
   let note = $state("");
   let busy = $state(false);
   let error = $state<string | null>(null);
@@ -96,6 +98,12 @@
             include only this folder; other changes there are left alone.
           </p>
         {/if}
+        {#if open}
+          <p class="text-sm">
+            Your saves since the last version are kept in the open version “{open.summary}”, last saved
+            {formatTime(open.time)}. Close it with a note, so the next saves start a new one.
+          </p>
+        {/if}
         {#if status.changes.length}
           <details class="text-sm">
             <summary class="cursor-pointer">
@@ -106,7 +114,7 @@
               {#each status.changes as file (file)}<li>{file}</li>{/each}
             </ul>
           </details>
-        {:else}
+        {:else if !open}
           <p class="text-sm text-base-content/60">Nothing changed since the last version.</p>
         {/if}
         {#if editing}
@@ -117,14 +125,15 @@
           run(() => commands.saveVersion(siteRoot, note));
         }}>
           <input id="version-note" class="input flex-1" placeholder="What changed? (optional)" bind:value={note} />
-          <button id="save-version" class="btn btn-primary" disabled={busy || status.changes.length === 0}>
+          <button id="save-version" class="btn btn-primary" disabled={busy || (!open && status.changes.length === 0)}>
             {#if busy}<span class="loading loading-spinner loading-sm"></span>{:else}<Save class="size-4" />{/if}
-            Save version
+            {open ? "Close version" : "Save version"}
           </button>
         </form>
         {#if message}<p class="text-sm text-success">{message}</p>{/if}
         <p class="text-sm text-base-content/60">
-          Publishing saves a version by itself and marks it with the target's name.
+          Every save in qed goes into the open version, so nothing saved is lost. Publishing closes it by itself and
+          marks it with the target's name.
         </p>
       </section>
 
@@ -137,6 +146,7 @@
             {#each versions as version (version.id)}
               <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2">
                 <span class="font-medium">{version.summary}</span>
+                {#if version.open}<span class="badge badge-warning badge-soft badge-sm">open</span>{/if}
                 {#each version.tags as tag (tag)}<span class="badge badge-soft badge-sm">{tag}</span>{/each}
                 <span class="ms-auto text-sm text-base-content/60">{formatTime(version.time)} · {version.author}</span>
               </li>

@@ -42,10 +42,9 @@
 
   async function remove() {
     try {
-      const [links, history, versions] = await Promise.all([
+      const [links, history] = await Promise.all([
         commands.pagesLinkingTo(siteRoot, page.path),
         commands.historyStatus(siteRoot),
-        commands.listVersions(siteRoot, page.file),
       ]);
       const lines = [`Delete “${page.front.title}”?`];
       if (links.length) {
@@ -53,18 +52,13 @@
         lines.push(`${names} ${links.length === 1 ? "links" : "link"} to it; those links will stop working.`);
       }
       if (dirty) lines.push("Your unsaved changes are lost too.");
-      // Only a saved version can bring it back, and only as it was then.
-      if (!history.tracked) {
-        lines.push("This can't be undone: the site has no version history.");
-      } else if (versions.length === 0) {
-        lines.push("This can't be undone: the page was never saved as a version.");
-      } else if (history.changes.includes(page.file)) {
-        lines.push(
-          `You can bring it back from the Versions tab, as it was in “${versions[0].summary}”; changes since then are lost.`,
-        );
-      } else {
-        lines.push("You can bring it back from the Versions tab.");
-      }
+      // Deleting saves the page into a version first (see delete_page in
+      // src-tauri), so with a history it can always come back as saved.
+      lines.push(
+        history.tracked
+          ? "You can bring it back from the Versions tab."
+          : "This can't be undone: the site has no version history.",
+      );
       const sure = await ask(lines.join("\n\n"), {
         title: "Delete page",
         kind: "warning",

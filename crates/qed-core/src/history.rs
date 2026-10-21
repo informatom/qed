@@ -1,7 +1,11 @@
 //! A site's version history, kept with git.
 //!
-//! "Save version" commits the site folder's current state; publishing saves
-//! one first and tags it. Any page can be read back as it was in an earlier
+//! Every save in the app records the site folder in an *open version*: the
+//! first save after a version was closed starts one (a commit marked
+//! [`DRAFT_MARK`]), and later saves amend it. "Save version" closes it with
+//! a note; publishing closes it and tags it. So every saved state can be
+//! brought back, and the history still has one version per piece of work,
+//! not one per click. Any page can be read back as it was in an earlier
 //! version.
 //!
 //! The site folder can be a repository of its own, or a folder inside a
@@ -26,6 +30,13 @@ use crate::generator::OUTPUT_DIR;
 use crate::page::{self, PageContent};
 use crate::slug::slugify;
 use crate::target::TARGETS_FILE;
+
+/// The last line of an open version's commit message. Only commits with it
+/// are ever amended.
+pub const DRAFT_MARK: &str = "qed-draft: true";
+
+/// The note of an open version.
+const DRAFT_NOTE: &str = "Work in progress";
 
 /// How many versions a list shows at most.
 const MAX_VERSIONS: usize = 200;
@@ -83,6 +94,8 @@ pub struct Version {
     pub time: i64,
     /// Tags on this version, such as the publishes.
     pub tags: Vec<String>,
+    /// Still open: later saves go into it until it's closed.
+    pub open: bool,
 }
 
 /// A page that a version had and the site folder doesn't any more.
@@ -246,10 +259,129 @@ pub fn start(root: &Path) -> Result<Option<Version>, HistoryError> {
     save_version(root, "First version")
 }
 
-/// Commits the site folder as it is now. Returns `None` if nothing changed
-/// since the last version.
+/// Records the site folder after a save in the app: in the open version
+/// if there is one, otherwise in a new one. Returns `None` for a site
+/// without history, or if nothing changed.
+pub fn record_save(root: &Path) -> Result<Option<Version>, HistoryError> {
+    let Some(site) = SiteRepo::open(root)? else {
+        return Ok(None);
+    };
+    let tree = site_tree(&site)?;
+    let repo = &site.repo;
+    let signature = signature(repo)?;
+    let id = match open_version(&site)? {
+        Some(open) if open.tree_id() == tree.id() => return Ok(None),
+        Some(open) => open.amend(
+            Some("HEAD"),
+            None,
+            Some(&signature),
+            None,
+            None,
+            Some(&tree),
+        )?,
+        None => {
+            let head = head_commit(repo);
+            if head
+                .as_ref()
+                .is_some_and(|commit| commit.tree_id() == tree.id())
+            {
+                return Ok(None);
+            }
+            let message = format!("{DRAFT_NOTE}\n\n{DRAFT_MARK}\n");
+            let parents: Vec<&git2::Commit> = head.iter().collect();
+            repo.commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                &message,
+                &tree,
+                &parents,
+            )?
+        }
+    };
+    Ok(Some(version(repo, id, &BTreeMap::new())?))
+}
+
+/// Closes the open version with `note`, after recording the site folder
+/// in it. Without an open version, saves the folder as a new version.
+/// Returns `None` if there was nothing to save.
 pub fn save_version(root: &Path, note: &str) -> Result<Option<Version>, HistoryError> {
     let site = SiteRepo::open(root)?.ok_or(HistoryError::NotTracked)?;
+    let tree = site_tree(&site)?;
+    let repo = &site.repo;
+    let signature = signature(repo)?;
+    let note = if note.trim().is_empty() {
+        "Saved version"
+    } else {
+        note.trim()
+    };
+    let id = match open_version(&site)? {
+        Some(open) => open.amend(
+            Some("HEAD"),
+            None,
+            Some(&signature),
+            None,
+            Some(note),
+            Some(&tree),
+        )?,
+        None => {
+            let head = head_commit(repo);
+            if head
+                .as_ref()
+                .is_some_and(|commit| commit.tree_id() == tree.id())
+            {
+                return Ok(None);
+            }
+            let parents: Vec<&git2::Commit> = head.iter().collect();
+            repo.commit(Some("HEAD"), &signature, &signature, note, &tree, &parents)?
+        }
+    };
+    Ok(Some(version(repo, id, &BTreeMap::new())?))
+}
+
+/// The open version, if the latest commit is one and may still change:
+/// qed made it (it has [`DRAFT_MARK`]) and it hasn't been pushed anywhere.
+/// The latest commit may well be someone else's when the site shares a
+/// repository; that one is never touched.
+fn open_version(site: &SiteRepo) -> Result<Option<git2::Commit<'_>>, HistoryError> {
+    let repo = &site.repo;
+    let Some(head) = head_commit(repo) else {
+        return Ok(None);
+    };
+    if !is_open(&head) {
+        return Ok(None);
+    }
+    for reference in repo.references_glob("refs/remotes/*")? {
+        let Some(pushed) = reference?.target() else {
+            continue;
+        };
+        if pushed == head.id() || repo.graph_descendant_of(pushed, head.id())? {
+            return Ok(None);
+        }
+    }
+    Ok(Some(head))
+}
+
+fn is_open(commit: &git2::Commit) -> bool {
+    commit
+        .message()
+        .is_ok_and(|message| message.lines().any(|line| line.trim() == DRAFT_MARK))
+}
+
+fn head_commit(repo: &Repository) -> Option<git2::Commit<'_>> {
+    repo.head().ok().and_then(|head| head.peel_to_commit().ok())
+}
+
+fn signature(repo: &Repository) -> Result<Signature<'static>, HistoryError> {
+    Ok(repo
+        .signature()
+        .or_else(|_| Signature::now("qed", "qed@localhost"))?)
+}
+
+/// Stages the site folder and builds the tree for its next commit: the
+/// latest commit's tree with only the site folder replaced, so anything
+/// else staged in the repository stays out.
+fn site_tree(site: &SiteRepo) -> Result<git2::Tree<'_>, HistoryError> {
     let repo = &site.repo;
 
     // Stage the site folder: new and changed files, and deletions.
@@ -261,10 +393,7 @@ pub fn save_version(root: &Path, note: &str) -> Result<Option<Version>, HistoryE
     index.update_all([site.spec()], Some(&mut skip))?;
     index.write()?;
 
-    // The new commit's tree: the last version's tree with only the site
-    // folder replaced, so anything else staged in the repository stays out.
-    let head = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
-    let base = match &head {
+    let base = match head_commit(repo) {
         Some(commit) => commit.tree()?,
         None => repo.find_tree(repo.treebuilder(None)?.write()?)?,
     };
@@ -293,26 +422,8 @@ pub fn save_version(root: &Path, note: &str) -> Result<Option<Version>, HistoryE
         }
         TreeWalkResult::Ok
     })?;
-    let tree_id = update.create_updated(repo, &base)?;
-    if head
-        .as_ref()
-        .is_some_and(|commit| commit.tree_id() == tree_id)
-    {
-        return Ok(None);
-    }
-
-    let tree = repo.find_tree(tree_id)?;
-    let signature = repo
-        .signature()
-        .or_else(|_| Signature::now("qed", "qed@localhost"))?;
-    let note = if note.trim().is_empty() {
-        "Saved version"
-    } else {
-        note.trim()
-    };
-    let parents: Vec<&git2::Commit> = head.iter().collect();
-    let id = repo.commit(Some("HEAD"), &signature, &signature, note, &tree, &parents)?;
-    Ok(Some(version(repo, id, &BTreeMap::new())?))
+    let id = update.create_updated(repo, &base)?;
+    Ok(repo.find_tree(id)?)
 }
 
 /// Tags the current version as published to `target`. Does nothing for a
@@ -559,6 +670,7 @@ fn version(
 ) -> Result<Version, HistoryError> {
     let commit = repo.find_commit(id)?;
     Ok(Version {
+        open: is_open(&commit),
         id: id.to_string(),
         summary: commit
             .summary()
@@ -741,6 +853,114 @@ mod tests {
         let tag = tag_publish(dir.path(), "My Server").unwrap().unwrap();
         assert!(tag.starts_with("publish/my-server/"), "{tag}");
         assert_eq!(versions(dir.path(), None).unwrap()[0].tags, [tag]);
+    }
+
+    #[test]
+    fn saves_go_into_one_open_version_until_it_is_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        site(dir.path());
+        start(dir.path()).unwrap();
+        let repo = Repository::open(dir.path()).unwrap();
+        let count = || versions(dir.path(), None).unwrap().len();
+        assert_eq!(count(), 1);
+
+        let home = dir.path().join("pages/index.md");
+        fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nOne.\n").unwrap();
+        let open = record_save(dir.path()).unwrap().unwrap();
+        assert!(open.open);
+        assert_eq!(open.summary, "Work in progress");
+        fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nTwo.\n").unwrap();
+        record_save(dir.path()).unwrap().unwrap();
+        assert!(record_save(dir.path()).unwrap().is_none(), "nothing new");
+        assert_eq!(count(), 2, "the second save amended the open version");
+
+        let closed = save_version(dir.path(), "New intro").unwrap().unwrap();
+        assert!(!closed.open);
+        assert_eq!(count(), 2, "closing doesn't add a version");
+        let text = file_at(dir.path(), "pages/index.md", &closed.id)
+            .unwrap()
+            .unwrap();
+        assert!(text.contains("Two."));
+
+        fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nThree.\n").unwrap();
+        record_save(dir.path()).unwrap().unwrap();
+        assert_eq!(count(), 3, "a closed version stays as it is");
+
+        // Once pushed, the open version isn't changed any more.
+        let head = repo.head().unwrap().target().unwrap();
+        repo.reference("refs/remotes/origin/main", head, true, "pushed")
+            .unwrap();
+        fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nFour.\n").unwrap();
+        record_save(dir.path()).unwrap().unwrap();
+        assert_eq!(count(), 4);
+        let pushed = file_at(dir.path(), "pages/index.md", &head.to_string())
+            .unwrap()
+            .unwrap();
+        assert!(pushed.contains("Three."), "the pushed version is unchanged");
+    }
+
+    #[test]
+    fn a_page_made_and_deleted_in_one_open_version_can_come_back() {
+        let dir = tempfile::tempdir().unwrap();
+        site(dir.path());
+        start(dir.path()).unwrap();
+        let page = dir.path().join("pages/new.md");
+        fs::write(&page, "+++\ntitle = \"New\"\n+++\n").unwrap();
+        record_save(dir.path()).unwrap();
+
+        // What the app does when deleting: close the open version, delete,
+        // record the deletion in a new open version.
+        save_version(dir.path(), "Before deleting /new").unwrap();
+        fs::remove_file(&page).unwrap();
+        record_save(dir.path()).unwrap();
+
+        let deleted = deleted_pages(dir.path()).unwrap();
+        assert_eq!(deleted.len(), 1);
+        assert_eq!(deleted[0].title, "New");
+    }
+
+    #[test]
+    fn never_amends_someone_elses_commit() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = Repository::init(dir.path()).unwrap();
+        let docs = dir.path().join("docs");
+        site(&docs);
+        save_version(&docs, "Docs").unwrap();
+        // The owner's own commit on top, as when committing code.
+        fs::write(dir.path().join("code.rs"), "fn main() {}\n").unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("code.rs")).unwrap();
+        index.write().unwrap();
+        let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+        let parent = repo.head().unwrap().peel_to_commit().unwrap();
+        let signature = Signature::now("Owner", "owner@example.com").unwrap();
+        let theirs = repo
+            .commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                "Code",
+                &tree,
+                &[&parent],
+            )
+            .unwrap();
+
+        fs::write(
+            docs.join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\nNew.\n",
+        )
+        .unwrap();
+        record_save(&docs).unwrap().unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        assert_eq!(
+            head.parent_id(0).unwrap(),
+            theirs,
+            "a new commit on top of theirs"
+        );
+        assert_eq!(
+            repo.find_commit(theirs).unwrap().summary().unwrap(),
+            Some("Code")
+        );
     }
 
     #[test]
