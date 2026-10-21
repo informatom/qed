@@ -9,6 +9,27 @@
 //! image = "team.jpg"
 //! :::
 //! ```
+//!
+//! Columns hold blocks of their own, so they use four colons. Inside,
+//! `::: column` starts each column and holds its settings; the blocks after
+//! it belong to that column:
+//!
+//! ```text
+//! :::: columns
+//! ::: column
+//! title = "Our team"
+//! :::
+//! We are **three** people.
+//!
+//! ::: image
+//! image = "team.jpg"
+//! :::
+//! ::: column
+//! title = "Contact"
+//! :::
+//! Write to us.
+//! ::::
+//! ```
 
 use serde::{Deserialize, Serialize};
 
@@ -135,8 +156,8 @@ pub struct FaqItem {
     pub answer: String,
 }
 
-/// Two to four columns side by side, each with a title and text. On narrow
-/// screens they stack.
+/// Two to four columns side by side, each with an optional title and
+/// blocks of its own. On narrow screens they stack.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
@@ -145,14 +166,22 @@ pub struct Columns {
     pub items: Vec<Column>,
 }
 
+/// One column: an optional title above its blocks.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Column {
     pub title: Option<String>,
-    /// Markdown; images work with `![alt](/media/file.jpg)`.
+    /// Any of [`COLUMN_TYPES`] and text.
     #[serde(default)]
-    pub text: String,
+    pub blocks: Vec<Block>,
+}
+
+/// The settings on a `::: column` line, as written in the file.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ColumnSettings {
+    pub title: Option<String>,
 }
 
 /// A highlighted box that asks the visitor to do something.
@@ -185,6 +214,25 @@ impl Block {
 }
 
 /// The container names, as written after `:::` in a page file.
+/// Every block in a list, outer ones first, including the blocks inside
+/// columns.
+pub fn all_blocks(blocks: &[Block]) -> Vec<&Block> {
+    let mut all = Vec::new();
+    for block in blocks {
+        all.push(block);
+        if let Block::Columns(columns) = block {
+            for column in &columns.items {
+                all.extend(all_blocks(&column.blocks));
+            }
+        }
+    }
+    all
+}
+
+/// The blocks a column can hold, besides text. Hero, Gallery and Columns
+/// need the full width.
+pub const COLUMN_TYPES: [&str; 5] = ["image", "text-image", "download", "faq", "call-to-action"];
+
 pub const CONTAINER_TYPES: [&str; 8] = [
     "hero",
     "image",
@@ -207,7 +255,6 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
         "gallery" => Ok(Block::Gallery(toml::from_str(toml)?)),
         "download" => Ok(Block::Download(toml::from_str(toml)?)),
         "faq" => Ok(Block::Faq(toml::from_str(toml)?)),
-        "columns" => Ok(Block::Columns(toml::from_str(toml)?)),
         "call-to-action" => Ok(Block::CallToAction(toml::from_str(toml)?)),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }

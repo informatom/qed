@@ -22,14 +22,6 @@
   {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
 {%- endfor %}
 {%- endmacro %}
-{#- `sizes` tells the browser how wide the image will be shown, so it can
-    pick from `srcset` before it has laid out the page. #}
-{%- macro img(picture, classes, sizes, loading) %}
-<img src="{{ picture.src }}" alt="{{ picture.alt }}"
-  {%- if let Some(srcset) = picture.srcset %} srcset="{{ srcset }}" sizes="{{ sizes }}"{% endif %}
-  {%- if let Some(width) = picture.width %} width="{{ width }}"{% endif %}
-  {%- if let Some(height) = picture.height %} height="{{ height }}"{% endif %} loading="{{ loading }}" class="{{ classes }}">
-{%- endmacro %}
 <body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased">
   <header class="border-b border-base-300">
     <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
@@ -71,110 +63,8 @@
     {%- endif %}
 
     <div class="flex flex-col gap-12">
-      {%- for block in blocks %}
-      {%- match block %}
-      {%- when RenderedBlock::Text with { html } %}
-      <div class="prose max-w-none">{{ html|safe }}</div>
-      {%- when RenderedBlock::Hero with { image, headline, text_html, button } %}
-      <section class="hero relative min-h-80 overflow-hidden rounded-box {% if image.is_some() %}text-neutral-content{% else %}bg-base-200{% endif %}">
-        {%- if let Some(image) = image %}
-        {%- call img(image, "absolute inset-0 h-full w-full object-cover", "(min-width: 56rem) 56rem, 100vw", "eager") %}{% endcall %}
-        <div class="hero-overlay absolute inset-0"></div>
-        {%- endif %}
-        <div class="hero-content relative py-16 text-center">
-          <div class="max-w-xl">
-            {%- if let Some(headline) = headline %}
-            <h1 class="text-4xl font-bold tracking-tight text-balance sm:text-5xl">{{ headline }}</h1>
-            {%- endif %}
-            {%- if let Some(text_html) = text_html %}
-            <div class="prose mt-5 max-w-none text-lg {% if image.is_some() %}text-neutral-content{% endif %}">{{ text_html|safe }}</div>
-            {%- endif %}
-            {%- if let Some(button) = button %}
-            <a href="{{ button.href }}" class="btn btn-primary mt-8">{{ button.label }}</a>
-            {%- endif %}
-          </div>
-        </div>
-      </section>
-      {%- when RenderedBlock::Image with { picture, caption_html } %}
-      {%- if let Some(picture) = picture %}
-      <figure class="flex flex-col gap-3">
-        {%- call img(picture, "h-auto w-full rounded-box", "(min-width: 56rem) 56rem, 100vw", "lazy") %}{% endcall %}
-        {%- if let Some(caption_html) = caption_html %}
-        <figcaption class="prose prose-sm max-w-none text-base-content/70">{{ caption_html|safe }}</figcaption>
-        {%- endif %}
-      </figure>
-      {%- endif %}
-      {%- when RenderedBlock::TextImage with { text_html, picture, image_left } %}
-      <section class="grid items-center gap-8 md:grid-cols-2">
-        {%- if let Some(picture) = picture %}
-        {%- if *image_left %}
-        {%- call img(picture, "h-auto w-full rounded-box md:order-first", "(min-width: 48rem) 28rem, 100vw", "lazy") %}{% endcall %}
-        {%- else %}
-        {%- call img(picture, "h-auto w-full rounded-box md:order-last", "(min-width: 48rem) 28rem, 100vw", "lazy") %}{% endcall %}
-        {%- endif %}
-        {%- endif %}
-        {%- if let Some(text_html) = text_html %}
-        <div class="prose max-w-none">{{ text_html|safe }}</div>
-        {%- endif %}
-      </section>
-      {%- when RenderedBlock::Gallery with { pictures } %}
-      {%- if !pictures.is_empty() %}
-      <section class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {%- for picture in pictures %}
-        <a href="{{ picture.src }}" class="group block overflow-hidden rounded-box">
-          {%- call img(picture, "aspect-square h-full w-full object-cover transition-transform duration-300 group-hover:scale-105", "(min-width: 56rem) 18rem, (min-width: 40rem) 33vw, 50vw", "lazy") %}{% endcall %}
-        </a>
-        {%- endfor %}
-      </section>
-      {%- endif %}
-      {%- when RenderedBlock::Download with { href, label, kind, size } %}
-      {%- if let Some(href) = href %}
-      <a href="{{ href }}" download class="flex items-center gap-4 rounded-box border border-base-300 p-4 transition-colors hover:bg-base-200">
-        {%- if !kind.is_empty() %}<span class="badge badge-neutral font-mono">{{ kind }}</span>{% endif %}
-        <span class="flex-1 font-medium">{{ label }}</span>
-        {%- if let Some(size) = size %}<span class="text-sm text-base-content/60">{{ size }}</span>{% endif %}
-      </a>
-      {%- endif %}
-      {%- when RenderedBlock::Faq with { heading, items } %}
-      <section class="flex flex-col gap-2">
-        {%- if let Some(heading) = heading %}
-        <h2 class="mb-2 text-2xl font-bold tracking-tight">{{ heading }}</h2>
-        {%- endif %}
-        {%- for item in items %}
-        <details class="collapse collapse-arrow border border-base-300 bg-base-100">
-          <summary class="collapse-title font-medium">{{ item.question }}</summary>
-          <div class="collapse-content prose max-w-none">{{ item.answer_html|safe }}</div>
-        </details>
-        {%- endfor %}
-      </section>
-      {%- when RenderedBlock::Columns with { grid, columns } %}
-      <section class="grid gap-8 {{ grid }}">
-        {%- for column in columns %}
-        <div class="flex flex-col gap-2">
-          {%- if let Some(title) = column.title %}
-          <h2 class="text-xl font-semibold tracking-tight">{{ title }}</h2>
-          {%- endif %}
-          <div class="prose max-w-none">{{ column.text_html|safe }}</div>
-        </div>
-        {%- endfor %}
-      </section>
-      {%- when RenderedBlock::CallToAction with { headline, text_html, button } %}
-      <section class="card bg-primary text-primary-content">
-        <div class="card-body items-center gap-4 text-center sm:py-10">
-          {%- if let Some(headline) = headline %}
-          <h2 class="card-title text-2xl">{{ headline }}</h2>
-          {%- endif %}
-          {%- if let Some(text_html) = text_html %}
-          <div class="max-w-xl [&_a]:underline">{{ text_html|safe }}</div>
-          {%- endif %}
-          {%- if let Some(button) = button %}
-          <div class="card-actions mt-2">
-            <a href="{{ button.href }}" class="btn">{{ button.label }}</a>
-          </div>
-          {%- endif %}
-        </div>
-      </section>
-      {%- endmatch %}
+      {%- for html in blocks %}
+      {{ html|safe }}
       {%- endfor %}
     </div>
   </main>

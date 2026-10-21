@@ -144,15 +144,16 @@ export type CallToAction = {
 	button_link: string | null,
 };
 
+/**  One column: an optional title above its blocks. */
 export type Column = {
 	title: string | null,
-	/**  Markdown; images work with `![alt](/media/file.jpg)`. */
-	text?: string,
+	/**  Any of [`COLUMN_TYPES`] and text. */
+	blocks?: Block[],
 };
 
 /**
- *  Two to four columns side by side, each with a title and text. On narrow
- *  screens they stack.
+ *  Two to four columns side by side, each with an optional title and
+ *  blocks of its own. On narrow screens they stack.
  */
 export type Columns = {
 	items?: Column[],

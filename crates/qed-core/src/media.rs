@@ -12,7 +12,7 @@ use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::block::Block;
+use crate::block::{self, Block};
 use crate::markdown;
 use crate::site::{self, ASSETS_DIR, MEDIA_DIR, Page, Site, SiteError};
 use crate::slug::slugify;
@@ -220,7 +220,7 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
     let mut downloads = Vec::new();
     let mut markdown_texts: Vec<&str> = Vec::new();
 
-    for block in &page.content.blocks {
+    for block in block::all_blocks(&page.content.blocks) {
         match block {
             Block::Text { markdown } => markdown_texts.push(markdown),
             Block::Hero(hero) => {
@@ -249,9 +249,8 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             Block::Faq(faq) => {
                 markdown_texts.extend(faq.items.iter().map(|item| item.answer.as_str()))
             }
-            Block::Columns(columns) => {
-                markdown_texts.extend(columns.items.iter().map(|column| column.text.as_str()))
-            }
+            // Their blocks come next in `all_blocks`.
+            Block::Columns(_) => {}
             Block::CallToAction(cta) => markdown_texts.extend(cta.text.as_deref()),
         }
     }
@@ -341,6 +340,16 @@ pub fn move_documents_to_assets(site: &Site) -> Result<usize, SiteError> {
 
 /// Points a block's download and its Markdown links at the moved files.
 fn rename_in_block(block: &mut Block, moved: &[(String, String)]) {
+    if let Block::Columns(columns) = block {
+        for inner in columns
+            .items
+            .iter_mut()
+            .flat_map(|column| column.blocks.iter_mut())
+        {
+            rename_in_block(inner, moved);
+        }
+        return;
+    }
     if let Block::Download(download) = block
         && let Some(file) = &mut download.file
         && let Some((_, new_name)) = moved.iter().find(|(old, _)| old == file.trim())
@@ -358,7 +367,8 @@ fn rename_in_block(block: &mut Block, moved: &[(String, String)]) {
     });
 }
 
-/// Calls `change` on every Markdown text in a block.
+/// Calls `change` on every Markdown text in a block (not in the blocks
+/// inside columns).
 fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)) {
     match block {
         Block::Text { markdown } => change(markdown),
@@ -369,12 +379,8 @@ fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)) {
             .items
             .iter_mut()
             .for_each(|item| change(&mut item.answer)),
-        Block::Columns(columns) => columns
-            .items
-            .iter_mut()
-            .for_each(|column| change(&mut column.text)),
         Block::CallToAction(cta) => cta.text.iter_mut().for_each(change),
-        Block::Gallery(_) | Block::Download(_) => {}
+        Block::Gallery(_) | Block::Download(_) | Block::Columns(_) => {}
     }
 }
 
@@ -562,15 +568,15 @@ answer = "See [the menu](/media/menu.pdf)."
         .unwrap();
         fs::write(
             dir.path().join("pages/cols.md"),
-            "+++\ntitle = \"Cols\"\n+++\n\n::: columns\n[[items]]\ntitle = \"One\"\ntext = \"![x](/media/team.png)\"\n\n[[items]]\ntext = \"Two\"\n\n[[items]]\ntitle = \"Three\"\n:::\n",
+            "+++\ntitle = \"Cols\"\n+++\n\n:::: columns\n::: column\ntitle = \"One\"\n:::\n![x](/media/team.png)\n\n::: image\nimage = \"logos/a.png\"\n:::\n::: column\n:::\nTwo\n::: column\ntitle = \"Three\"\n:::\n::::\n",
         )
         .unwrap();
         let site = site::open(dir.path()).unwrap();
         let cols = site.pages.iter().find(|p| p.path == "cols").unwrap();
         assert_eq!(
             references(cols, Library::Media),
-            ["team.png"],
-            "images in column text count"
+            ["logos/a.png", "team.png"],
+            "images inside columns count"
         );
         let more = site.pages.iter().find(|p| p.path == "more").unwrap();
         assert_eq!(

@@ -343,11 +343,26 @@ pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result
 /// joined, because that's how the file will read back. The returned page is
 /// what the file now contains.
 pub fn save_blocks(root: &Path, file: &Path, blocks: Vec<Block>) -> Result<Page, SiteError> {
-    let blocks = blocks
+    let blocks = without_empty_text(blocks);
+    update_page(root, file, |content| content.blocks = blocks)
+}
+
+/// Leaves out text blocks with nothing in them, inside columns too. A file
+/// can't hold them anyway: they'd read back as nothing.
+fn without_empty_text(blocks: Vec<Block>) -> Vec<Block> {
+    blocks
         .into_iter()
         .filter(|block| !matches!(block, Block::Text { markdown } if markdown.trim().is_empty()))
-        .collect();
-    update_page(root, file, |content| content.blocks = blocks)
+        .map(|block| match block {
+            Block::Columns(mut columns) => {
+                for column in &mut columns.items {
+                    column.blocks = without_empty_text(std::mem::take(&mut column.blocks));
+                }
+                Block::Columns(columns)
+            }
+            other => other,
+        })
+        .collect()
 }
 
 /// Reads a page file, lets `change` modify its content, and saves it.

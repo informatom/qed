@@ -41,8 +41,6 @@ A complete site builder without podcast features.
   byte for byte, changed TOML is merged with `toml_edit` so comments
   survive, defaults are left out, atomic saves). The app edits page
   settings in a side panel; editing blocks comes with #043.
-- **#074 Nested blocks.** Columns contain blocks, so containers must nest
-  (e.g. `::::` for the outer container, as markdown-it-container does).
 - **#055 Sites.** Several sites per installation. Phase 1 sites are pages-only;
   phase 2 adds the podcast switch.
 - **#021 Site UI.** List, create and edit sites.
@@ -135,6 +133,15 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#074 Nested blocks.** Done 2026-10-21: a column holds blocks (Text,
+  Image, Text with image, Download, FAQ, Call to action) plus an optional
+  title. In the file, `:::: columns` (four colons) wraps the columns and
+  `::: column` lines start each one and hold its title; the writer keeps
+  what's written inside columns like anywhere else. Blocks render one at a
+  time (`block.html`), so a column renders its blocks the same way; the
+  editor's block list (`BlockList.svelte`) uses itself for each column.
+  Only Columns nest; a full-width Section block could use the same format
+  later.
 - **#073 Git history.** Done 2026-10-21 (`qed_core::history`, git2 with
   bundled libgit2): a top-level Versions tab starts the history (git init
   plus `.gitignore` for `_site/` and `targets.toml`), shows changed files,

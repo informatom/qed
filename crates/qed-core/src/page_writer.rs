@@ -16,8 +16,8 @@
 
 use toml_edit::{DocumentMut, Item, Value};
 
-use crate::block::Block;
-use crate::page::{self, FrontMatter, PageContent, ParsedPage};
+use crate::block::{Block, Column, ColumnSettings};
+use crate::page::{self, BlockSource, ColumnSource, FrontMatter, PageContent};
 
 /// Turns a page into the text of its file. `original` is the file's current
 /// text, if it has one.
@@ -40,41 +40,92 @@ pub fn write(content: &PageContent, original: Option<&str>) -> String {
     };
 
     let mut file = format!("+++\n{}\n+++\n", front.trim_end());
-    for (index, block) in content.blocks.iter().enumerate() {
-        file.push('\n');
-        file.push_str(&write_block(
-            block,
-            previous_block(previous.as_ref(), index),
-        ));
-        file.push('\n');
-    }
+    let sources = previous
+        .as_ref()
+        .map(|p| (p.content.blocks.as_slice(), p.block_sources.as_slice()));
+    file.push_str(&write_blocks(&content.blocks, sources));
     file
 }
 
-/// The block that was at `index` before, with its TOML as written.
-fn previous_block(previous: Option<&ParsedPage>, index: usize) -> Option<(&Block, &str)> {
-    let previous = previous?;
-    let block = previous.content.blocks.get(index)?;
-    let toml = previous.block_tomls.get(index)?.as_deref()?;
-    Some((block, toml))
+/// Blocks as they were before, each with how it was written.
+type Previous<'a> = Option<(&'a [Block], &'a [BlockSource])>;
+
+/// Writes a list of blocks, each after a blank line. Blocks are compared
+/// with the one at the same position before, to keep what was written.
+fn write_blocks(blocks: &[Block], previous: Previous) -> String {
+    let mut text = String::new();
+    for (index, block) in blocks.iter().enumerate() {
+        let before =
+            previous.and_then(|(blocks, sources)| Some((blocks.get(index)?, sources.get(index)?)));
+        text.push('\n');
+        text.push_str(&write_block(block, before));
+        text.push('\n');
+    }
+    text
 }
 
-fn write_block(block: &Block, previous: Option<(&Block, &str)>) -> String {
-    let Some(kind) = block.container_type() else {
+fn write_block(block: &Block, previous: Option<(&Block, &BlockSource)>) -> String {
+    match block {
         // Text blocks are their own Markdown.
-        return match block {
-            Block::Text { markdown } => markdown.clone(),
-            _ => String::new(),
-        };
-    };
-
-    let toml = match previous {
-        Some((old, toml)) if old == block => toml.to_string(),
-        Some((old, toml)) if old.container_type() == Some(kind) => {
-            merge(toml, block_document(block))
+        Block::Text { markdown } => markdown.clone(),
+        Block::Columns(columns) => {
+            let previous = match previous {
+                Some((Block::Columns(old), BlockSource::Columns(sources))) => {
+                    Some((old.items.as_slice(), sources.as_slice()))
+                }
+                _ => None,
+            };
+            let mut text = String::from(":::: columns\n");
+            for (index, column) in columns.items.iter().enumerate() {
+                if index > 0 {
+                    text.push('\n');
+                }
+                let before = previous
+                    .and_then(|(items, sources)| Some((items.get(index)?, sources.get(index)?)));
+                text.push_str(&write_column(column, before));
+            }
+            text.push_str("::::");
+            text
         }
-        _ => block_document(block).to_string(),
+        _ => {
+            let kind = block.container_type().unwrap_or_default();
+            let toml = match previous {
+                Some((old, BlockSource::Toml(toml))) if old == block => toml.clone(),
+                Some((old, BlockSource::Toml(toml))) if old.container_type() == Some(kind) => {
+                    merge(toml, block_document(block))
+                }
+                _ => block_document(block).to_string(),
+            };
+            container(kind, &toml)
+        }
+    }
+}
+
+/// A `::: column` line with the column's settings, then its blocks.
+fn write_column(column: &Column, previous: Option<(&Column, &ColumnSource)>) -> String {
+    let settings = ColumnSettings {
+        title: column.title.clone(),
     };
+    let fresh = || {
+        let mut document = toml_edit::ser::to_document(&settings).unwrap_or_default();
+        use_multiline_strings(&mut document);
+        document
+    };
+    let toml = match previous {
+        Some((old, source)) if old.title == column.title => source.toml.clone(),
+        Some((_, source)) => merge(&source.toml, fresh()),
+        None => fresh().to_string(),
+    };
+    let inner = previous.map(|(old, source)| (old.blocks.as_slice(), source.blocks.as_slice()));
+    format!(
+        "{}\n{}",
+        container("column", &toml),
+        write_blocks(&column.blocks, inner)
+    )
+}
+
+/// A `:::` container with its TOML body.
+fn container(kind: &str, toml: &str) -> String {
     match toml.trim_end() {
         "" => format!("::: {kind}\n:::"),
         toml => format!("::: {kind}\n{toml}\n:::"),
@@ -84,14 +135,14 @@ fn write_block(block: &Block, previous: Option<(&Block, &str)>) -> String {
 /// A block's fields as a fresh TOML document. Empty fields are left out.
 fn block_document(block: &Block) -> DocumentMut {
     let document = match block {
-        Block::Text { .. } => Ok(DocumentMut::new()),
+        // Written by `write_block` itself.
+        Block::Text { .. } | Block::Columns(_) => Ok(DocumentMut::new()),
         Block::Hero(hero) => toml_edit::ser::to_document(hero),
         Block::Image(image) => toml_edit::ser::to_document(image),
         Block::TextImage(block) => toml_edit::ser::to_document(block),
         Block::Gallery(block) => toml_edit::ser::to_document(block),
         Block::Download(block) => toml_edit::ser::to_document(block),
         Block::Faq(block) => toml_edit::ser::to_document(block),
-        Block::Columns(block) => toml_edit::ser::to_document(block),
         Block::CallToAction(cta) => toml_edit::ser::to_document(cta),
     };
     // Structs of strings always serialize; an empty document is a safe fallback.
@@ -321,6 +372,50 @@ More text.
         // The blocks didn't change, so they're copied as written.
         assert!(file.contains("headline = 'Hello'\n# The button"), "{file}");
         assert_eq!(parse(&file).unwrap(), content);
+    }
+
+    #[test]
+    fn keeps_what_was_written_inside_columns() {
+        let original = "+++\ntitle = \"Cols\"\n+++\n\n:::: columns\n::: column\ntitle = 'Left'  # short\n:::\n\nLeft text.\n\n::: call-to-action\n# Keep me\nbutton_label = \"Go\"\nbutton_link = \"/go\"\n:::\n\n::: column\n:::\n\nRight text.\n::::\n";
+        let mut content = parse(original).unwrap();
+        assert_eq!(
+            write(&content, Some(original)),
+            original,
+            "unchanged stays as it was"
+        );
+
+        let Block::Columns(columns) = &mut content.blocks[0] else {
+            panic!()
+        };
+        columns.items[1].blocks.push(Block::Text {
+            markdown: "More.".into(),
+        });
+        if let Block::CallToAction(cta) = &mut columns.items[0].blocks[1] {
+            cta.button_label = Some("Start".into());
+        }
+        columns.items.push(crate::block::Column {
+            title: Some("New".into()),
+            blocks: vec![],
+        });
+
+        let file = write(&content, Some(original));
+        assert!(file.contains("title = 'Left'  # short"), "{file}");
+        assert!(
+            file.contains("# Keep me\nbutton_label = \"Start\""),
+            "{file}"
+        );
+        assert!(file.contains("::: column\ntitle = \"New\"\n:::"), "{file}");
+        // Two text blocks in a row read back as one.
+        let Block::Columns(read) = &parse(&file).unwrap().blocks[0] else {
+            panic!()
+        };
+        assert_eq!(read.items.len(), 3);
+        assert_eq!(
+            read.items[1].blocks,
+            [Block::Text {
+                markdown: "Right text.\n\nMore.".into()
+            }]
+        );
     }
 
     #[test]

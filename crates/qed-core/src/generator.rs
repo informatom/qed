@@ -323,7 +323,19 @@ struct PageTemplate<'a> {
     width: &'static str,
     /// Date and authors, e.g. "2026-10-21 · Claude".
     byline: String,
-    blocks: Vec<RenderedBlock>,
+    /// Each block's HTML, from `block.html`.
+    blocks: Vec<String>,
+}
+
+/// One block, rendered on its own so columns can hold blocks.
+#[derive(Template)]
+#[template(path = "block.html")]
+struct BlockTemplate<'a> {
+    block: &'a RenderedBlock,
+    /// `sizes` for an image as wide as the block, and for one half as wide
+    /// (Text with image).
+    full_sizes: &'static str,
+    half_sizes: &'static str,
 }
 
 #[derive(Template)]
@@ -410,7 +422,8 @@ struct Picture {
 
 struct ColumnEntry {
     title: Option<String>,
-    text_html: String,
+    /// The column's blocks, each rendered with `block.html`.
+    blocks: Vec<String>,
 }
 
 struct FaqEntry {
@@ -479,8 +492,12 @@ fn render_page(
             .content
             .blocks
             .iter()
-            .map(|b| render_block(b, &links, &site.root, images))
-            .collect(),
+            .map(|block| render_html(block, &links, &site.root, images, false))
+            .collect::<Result<_, _>>()
+            .map_err(|source| BuildError::Template {
+                page: page.path.clone(),
+                source,
+            })?,
     };
 
     template.render().map_err(|source| BuildError::Template {
@@ -489,13 +506,46 @@ fn render_page(
     })
 }
 
+/// A block's HTML. `in_column` makes images expect less room.
+fn render_html(
+    block: &Block,
+    links: &LinkContext,
+    root: &Path,
+    images: &Images,
+    in_column: bool,
+) -> Result<String, askama::Error> {
+    let rendered = render_block(block, links, root, images)?;
+    let (full_sizes, half_sizes) = if in_column {
+        (
+            "(min-width: 48rem) 28rem, 100vw",
+            "(min-width: 48rem) 14rem, 100vw",
+        )
+    } else {
+        (
+            "(min-width: 56rem) 56rem, 100vw",
+            "(min-width: 48rem) 28rem, 100vw",
+        )
+    };
+    BlockTemplate {
+        block: &rendered,
+        full_sizes,
+        half_sizes,
+    }
+    .render()
+}
+
 /// A menu entry is current on its own page and on the pages below it, except
 /// for the start page, which would otherwise be current everywhere.
 fn is_within(page: &str, entry: &str) -> bool {
     page == entry || (!entry.is_empty() && page.starts_with(&format!("{entry}/")))
 }
 
-fn render_block(block: &Block, links: &LinkContext, root: &Path, images: &Images) -> RenderedBlock {
+fn render_block(
+    block: &Block,
+    links: &LinkContext,
+    root: &Path,
+    images: &Images,
+) -> Result<RenderedBlock, askama::Error> {
     let markdown = |text: &Option<String>| text.as_deref().map(|t| markdown::render(t, links));
     let button = |label: &Option<String>, link: &Option<String>| match (label, link) {
         (Some(label), Some(link)) => Some(Button {
@@ -505,7 +555,7 @@ fn render_block(block: &Block, links: &LinkContext, root: &Path, images: &Images
         _ => None,
     };
 
-    match block {
+    Ok(match block {
         Block::Text { markdown: text } => RenderedBlock::Text {
             html: markdown::render(text, links),
         },
@@ -600,21 +650,27 @@ fn render_block(block: &Block, links: &LinkContext, root: &Path, images: &Images
             columns: columns
                 .items
                 .iter()
-                .map(|column| ColumnEntry {
-                    title: column
-                        .title
-                        .clone()
-                        .filter(|title| !title.trim().is_empty()),
-                    text_html: markdown::render(&column.text, links),
+                .map(|column| {
+                    Ok(ColumnEntry {
+                        title: column
+                            .title
+                            .clone()
+                            .filter(|title| !title.trim().is_empty()),
+                        blocks: column
+                            .blocks
+                            .iter()
+                            .map(|inner| render_html(inner, links, root, images, true))
+                            .collect::<Result<_, _>>()?,
+                    })
                 })
-                .collect(),
+                .collect::<Result<_, askama::Error>>()?,
         },
         Block::CallToAction(cta) => RenderedBlock::CallToAction {
             headline: cta.headline.clone(),
             text_html: markdown(&cta.text),
             button: button(&cta.button_label, &cta.button_link),
         },
-    }
+    })
 }
 
 /// An image ready for the page. Width and height let the browser reserve
@@ -913,6 +969,19 @@ mod tests {
                 r#"<img src="media/small.png" alt="" width="300" height="200" loading="lazy""#
             ),
             "{home}"
+        );
+    }
+
+    #[test]
+    fn renders_blocks_inside_columns() {
+        let out = tempfile::tempdir().unwrap();
+        build_into(&demo_site(), out.path()).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(home.contains("grid gap-8 md:grid-cols-3"), "{home}");
+        assert!(home.contains(">Join in</h2>"), "{home}");
+        assert!(
+            home.contains("Suggest a topic</a>"),
+            "call to action inside a column"
         );
     }
 

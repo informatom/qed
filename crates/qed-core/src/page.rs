@@ -16,7 +16,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::block::{self, Block, CONTAINER_TYPES, ContainerError};
+use crate::block::{
+    self, Block, COLUMN_TYPES, CONTAINER_TYPES, Column, ColumnSettings, Columns, ContainerError,
+};
 
 /// Settings at the top of a page file.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
@@ -123,7 +125,6 @@ impl ParseError {
 }
 
 const FENCE: &str = "+++";
-const CONTAINER: &str = ":::";
 
 /// A parsed page plus the original TOML of its parts, so the writer can keep
 /// what the user wrote (comments, formatting) for everything that didn't
@@ -132,8 +133,26 @@ const CONTAINER: &str = ":::";
 pub(crate) struct ParsedPage {
     pub content: PageContent,
     pub front_toml: String,
-    /// One entry per block: the container's TOML body, `None` for text.
-    pub block_tomls: Vec<Option<String>>,
+    /// One entry per block: how it was written.
+    pub block_sources: Vec<BlockSource>,
+}
+
+/// How a block was written, so the writer can keep it.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum BlockSource {
+    /// Markdown text is its own source.
+    Text,
+    /// A `:::` container's TOML body.
+    Toml(String),
+    /// Each column's settings and blocks.
+    Columns(Vec<ColumnSource>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ColumnSource {
+    /// The TOML body of the `::: column` line.
+    pub toml: String,
+    pub blocks: Vec<BlockSource>,
 }
 
 /// Parses the text of a page file.
@@ -189,43 +208,80 @@ pub(crate) fn parse_parts(source: &str) -> Result<ParsedPage, ParseError> {
         ));
     }
 
-    let (blocks, block_tomls) = parse_body(lines)?.into_iter().unzip();
+    let body: Vec<(usize, &str)> = lines.collect();
+    let mut blocks = Vec::new();
+    let mut block_sources = Vec::new();
+    for piece in parse_body(&body, false)? {
+        // Column markers only come back from inside columns.
+        if let Piece::Block(block, source) = piece {
+            blocks.push(block);
+            block_sources.push(source);
+        }
+    }
     Ok(ParsedPage {
         content: PageContent { front, blocks },
         front_toml,
-        block_tomls,
+        block_sources,
     })
 }
 
-/// A block and, for containers, its TOML body as written.
-type BlockWithSource = (Block, Option<String>);
+/// What the body of a page (or of a columns block) is made of.
+enum Piece {
+    Block(Block, BlockSource),
+    /// A `::: column` line: a new column starts here.
+    Column(ColumnSettings, String),
+}
 
-/// Splits the body into Markdown text and containers.
-fn parse_body<'a>(
-    lines: impl Iterator<Item = (usize, &'a str)>,
-) -> Result<Vec<BlockWithSource>, ParseError> {
-    let mut blocks = Vec::new();
+/// A `:::` container that's open: its type, first line and body lines.
+struct Open<'a> {
+    kind: &'a str,
+    start: usize,
+    body: Vec<&'a str>,
+}
+
+/// Splits a body into Markdown text and blocks. `in_columns` is true inside
+/// `:::: columns`, where `::: column` lines separate the columns.
+fn parse_body<'a>(lines: &[(usize, &'a str)], in_columns: bool) -> Result<Vec<Piece>, ParseError> {
+    let mut pieces = Vec::new();
     let mut text: Vec<&str> = Vec::new();
-    // The open container: its type, the line it started on, and its body.
-    let mut container: Option<(&str, usize, Vec<&str>)> = None;
-    // Inside a ``` code fence, `:::` is just text.
+    let mut open: Option<Open> = None;
+    // An open `:::: columns`: its first line and the lines inside.
+    let mut columns: Option<(usize, Vec<(usize, &'a str)>)> = None;
+    // Inside a ``` code fence, colons are just text.
     let mut in_code = false;
 
-    for (number, line) in lines {
-        if let Some((kind, start, body)) = container.as_mut() {
-            match container_marker(line) {
-                Some("") => {
-                    let block = container_block(kind, *start, body)?;
-                    blocks.push((block, Some(body.join("\n"))));
-                    container = None;
+    for &(number, line) in lines {
+        if let Some((_, inner)) = columns.as_mut() {
+            if is_code_fence(line) {
+                in_code = !in_code;
+            }
+            if !in_code && marker(line) == Some((4, "")) {
+                if let Some((start, inner)) = columns.take() {
+                    pieces.push(columns_block(start, &inner)?);
+                }
+            } else {
+                inner.push((number, line));
+            }
+            continue;
+        }
+
+        if let Some(container) = open.as_mut() {
+            match marker(line) {
+                Some((3, "")) => {
+                    if let Some(container) = open.take() {
+                        pieces.push(close(container, in_columns)?);
+                    }
                 }
                 Some(_) => {
                     return Err(ParseError::new(
                         number,
-                        "blocks can't be nested yet; close the open block with ::: first",
+                        format!(
+                            "blocks can't go inside a {} block; close it with ::: first",
+                            container.kind
+                        ),
                     ));
                 }
-                None => body.push(line),
+                None => container.body.push(line),
             }
             continue;
         }
@@ -233,33 +289,122 @@ fn parse_body<'a>(
         if is_code_fence(line) {
             in_code = !in_code;
         }
-
-        match container_marker(line).filter(|_| !in_code) {
-            Some("") => {
-                return Err(ParseError::new(number, "this ::: doesn't close any block"));
+        let Some((colons, kind)) = marker(line).filter(|_| !in_code) else {
+            text.push(line);
+            continue;
+        };
+        let error = |message: String| Err(ParseError::new(number, message));
+        match (colons, kind) {
+            (3, "") => return error("this ::: doesn't close any block".into()),
+            (3, "column") if !in_columns => {
+                return error("::: column only works inside a :::: columns block".into());
             }
-            Some(kind) => {
-                push_text(&mut blocks, &mut text);
-                container = Some((kind, number, Vec::new()));
+            (3, "columns") => {
+                return error("columns hold blocks, so they use four colons: :::: columns".into());
             }
-            None => text.push(line),
+            (3, kind) => {
+                push_text(&mut pieces, &mut text);
+                open = Some(Open {
+                    kind,
+                    start: number,
+                    body: Vec::new(),
+                });
+            }
+            (4, "") => return error("this :::: doesn't close any columns block".into()),
+            (4, "columns") if in_columns => return error("columns can't go inside columns".into()),
+            (4, "columns") => {
+                push_text(&mut pieces, &mut text);
+                columns = Some((number, Vec::new()));
+            }
+            (4, kind) => {
+                return error(format!(
+                    "only columns use ::::; write ::: {kind} for a {kind} block"
+                ));
+            }
+            _ => return error("use ::: for blocks and :::: for columns".into()),
         }
     }
 
-    if let Some((kind, start, _)) = container {
+    if let Some(container) = open {
         return Err(ParseError::new(
-            start,
-            format!("the {kind} block isn't closed; add a ::: line after it"),
+            container.start,
+            format!(
+                "the {} block isn't closed; add a ::: line after it",
+                container.kind
+            ),
         ));
     }
-    push_text(&mut blocks, &mut text);
-    Ok(blocks)
+    if let Some((start, _)) = columns {
+        return Err(ParseError::new(
+            start,
+            "the columns block isn't closed; add a :::: line after it",
+        ));
+    }
+    push_text(&mut pieces, &mut text);
+    Ok(pieces)
 }
 
-/// For a `:::` line, returns what follows the colons (empty for a closing
-/// line). Returns `None` for any other line.
-fn container_marker(line: &str) -> Option<&str> {
-    line.trim_end().strip_prefix(CONTAINER).map(str::trim)
+/// For a line of three or more colons, how many and what follows them
+/// (empty for a closing line). `None` for any other line.
+fn marker(line: &str) -> Option<(usize, &str)> {
+    let line = line.trim_end();
+    let colons = line.chars().take_while(|&c| c == ':').count();
+    (colons >= 3).then(|| (colons, line[colons..].trim()))
+}
+
+/// A closed `:::` container: a block, or a column marker inside columns.
+fn close(container: Open, in_columns: bool) -> Result<Piece, ParseError> {
+    let Open { kind, start, body } = container;
+    let toml = body.join("\n");
+    if kind == "column" {
+        let settings =
+            toml::from_str(&toml).map_err(|error| toml_error(&error, &body, start + 1))?;
+        return Ok(Piece::Column(settings, toml));
+    }
+    if in_columns && CONTAINER_TYPES.contains(&kind) && !COLUMN_TYPES.contains(&kind) {
+        return Err(ParseError::new(
+            start,
+            format!("a {kind} block can't go inside a column; it needs the full width"),
+        ));
+    }
+    let block = container_block(kind, start, &body)?;
+    Ok(Piece::Block(block, BlockSource::Toml(toml)))
+}
+
+/// Groups the inside of `:::: columns` into its columns.
+fn columns_block(start: usize, lines: &[(usize, &str)]) -> Result<Piece, ParseError> {
+    let mut items: Vec<Column> = Vec::new();
+    let mut sources: Vec<ColumnSource> = Vec::new();
+    for piece in parse_body(lines, true)? {
+        match piece {
+            Piece::Column(settings, toml) => {
+                items.push(Column {
+                    title: settings.title,
+                    blocks: Vec::new(),
+                });
+                sources.push(ColumnSource {
+                    toml,
+                    blocks: Vec::new(),
+                });
+            }
+            Piece::Block(block, source) => match (items.last_mut(), sources.last_mut()) {
+                (Some(column), Some(column_source)) => {
+                    column.blocks.push(block);
+                    column_source.blocks.push(source);
+                }
+                _ => {
+                    return Err(ParseError::new(
+                        start + 1,
+                        "start each column with a ::: column line",
+                    ));
+                }
+            },
+        }
+    }
+    Ok(Piece::Block(
+        Block::Columns(Columns { items }),
+        BlockSource::Columns(sources),
+    ))
 }
 
 fn is_code_fence(line: &str) -> bool {
@@ -268,10 +413,10 @@ fn is_code_fence(line: &str) -> bool {
 }
 
 /// Turns collected Markdown lines into a text block, unless they're blank.
-fn push_text(blocks: &mut Vec<BlockWithSource>, text: &mut Vec<&str>) {
+fn push_text(pieces: &mut Vec<Piece>, text: &mut Vec<&str>) {
     let markdown = text.join("\n").trim_matches('\n').to_string();
     if !markdown.trim().is_empty() {
-        blocks.push((Block::Text { markdown }, None));
+        pieces.push(Piece::Block(Block::Text { markdown }, BlockSource::Text));
     }
     text.clear();
 }
@@ -466,6 +611,58 @@ mod tests {
     fn rejects_unclosed_blocks_at_their_start() {
         let error = parse(&page("\n::: hero\nheadline = \"Hi\"\n")).unwrap_err();
         assert_eq!(error.line, 5);
+    }
+
+    #[test]
+    fn reads_columns_with_blocks_inside() {
+        let content = parse(&page(
+            ":::: columns\n::: column\ntitle = \"Team\"\n:::\nWe are **three**.\n\n::: image\nimage = \"team.jpg\"\n:::\n::: column\n:::\n```\n::::\n```\n::::\n\nAfter.\n",
+        ))
+        .unwrap();
+        let [Block::Columns(columns), Block::Text { markdown: after }] = content.blocks.as_slice()
+        else {
+            panic!("{:?}", content.blocks);
+        };
+        assert_eq!(after, "After.");
+        assert_eq!(columns.items.len(), 2);
+        assert_eq!(columns.items[0].title.as_deref(), Some("Team"));
+        assert!(matches!(
+            &columns.items[0].blocks[..],
+            [Block::Text { .. }, Block::Image(_)]
+        ));
+        assert_eq!(columns.items[1].title, None);
+        assert_eq!(
+            columns.items[1].blocks,
+            [Block::Text {
+                markdown: "```\n::::\n```".into()
+            }],
+            "colons in code stay text"
+        );
+    }
+
+    #[test]
+    fn explains_mistakes_with_columns() {
+        let error_for = |body: &str| parse(&page(body)).unwrap_err();
+        // Lines: 1-3 front matter, so the body starts on line 4.
+        let error = error_for("::: columns\n:::\n");
+        assert!(error.message.contains("four colons"), "{error:?}");
+        let error = error_for(":::: columns\nText first\n::::\n");
+        assert!(error.message.contains("::: column line"), "{error:?}");
+        let error = error_for(":::: columns\n::: column\n:::\n::: hero\n:::\n::::\n");
+        assert_eq!(error.line, 7);
+        assert!(
+            error.message.contains("can't go inside a column"),
+            "{error:?}"
+        );
+        let error = error_for(":::: columns\n::: column\n:::\n:::: columns\n::::\n::::\n");
+        assert!(error.message.contains("inside columns"), "{error:?}");
+        let error = error_for("::: column\n:::\n");
+        assert!(error.message.contains("only works inside"), "{error:?}");
+        let error = error_for(":::: columns\n::: column\n:::\n");
+        assert_eq!(error.line, 4);
+        assert!(error.message.contains("isn't closed"), "{error:?}");
+        let error = error_for(":::: hero\n::::\n");
+        assert!(error.message.contains("only columns use ::::"), "{error:?}");
     }
 
     #[test]

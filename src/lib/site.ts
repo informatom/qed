@@ -65,6 +65,9 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   "call-to-action": "Call to action",
 };
 
+/** The blocks a column can hold (see COLUMN_TYPES in block.rs). */
+export const COLUMN_BLOCK_TYPES: BlockType[] = ["text", "image", "text-image", "download", "faq", "call-to-action"];
+
 /** A new, empty block of the given type. */
 export function newBlock(type: BlockType): Block {
   switch (type) {
@@ -83,7 +86,13 @@ export function newBlock(type: BlockType): Block {
     case "faq":
       return { type, heading: null, items: [{ question: "", answer: "" }] };
     case "columns":
-      return { type, items: [{ title: null, text: "" }, { title: null, text: "" }] };
+      return {
+        type,
+        items: [
+          { title: null, blocks: [{ type: "text", markdown: "" }] },
+          { title: null, blocks: [{ type: "text", markdown: "" }] },
+        ],
+      };
     case "call-to-action":
       return { type, headline: null, text: null, button_label: null, button_link: null };
   }
@@ -100,9 +109,11 @@ export function normalizeBlock(block: Block): Block {
 function normalize(value: unknown, topLevel: boolean): unknown {
   if (Array.isArray(value)) return value.map((item) => normalize(item, false));
   if (value === null || typeof value !== "object") return value;
+  // Blocks inside columns have the same fields as those on the page.
+  const isBlock = topLevel || "type" in value;
   const entries = Object.entries(value).map(([key, field]) => {
     // Inside lists, only alt texts and column titles are optional.
-    const optional = topLevel ? OPTIONAL.has(key) : key === "alt" || key === "title";
+    const optional = isBlock ? OPTIONAL.has(key) : key === "alt" || key === "title";
     if (optional && typeof field === "string" && field.trim() === "") return [key, null];
     return [key, normalize(field, false)];
   });

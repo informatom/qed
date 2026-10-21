@@ -25,3 +25,4 @@ comparisons to Elixir.
 - [Responsive images: srcset, a cache, RefCell and scoped threads](/blog/2026-10-21-responsive-images)
 - [Assets: one module for two folders, and changing a format without breaking old sites](/blog/2026-10-21-assets)
 - [Versions with git: commits from Rust, a tree that changes one folder, and restoring into the editor](/blog/2026-10-21-versions)
+- [Blocks in columns: a recursive type, a parser that calls itself, and a component that uses itself](/blog/2026-10-21-blocks-in-columns)
