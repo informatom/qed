@@ -23,25 +23,6 @@ Nothing open.
 
 A complete site builder without podcast features.
 
-- **#046 Site folder, phase 1.** `site.toml` (title, language, theme, menus),
-  `targets.toml` (publish targets without secrets, git-ignored), pages and posts as Markdown files with
-  TOML front matter, `media/` for images, `assets/` for downloads, build output in a
-  git-ignored folder. Old paths for redirects go into front matter.
-  *Reading done 2026-10-21* (`qed_core::site::open`, `examples/demo-site`).
-  *Creating pages done 2026-10-21* (`site::create_page`, "New page" dialog;
-  posts get a date prefix; never overwrites). *Deleting pages done
-  2026-10-21* (`site::delete_page`): the confirmation names the pages that
-  link to it; the start page and pages with pages below them can't be
-  deleted; the Versions tab lists deleted pages and restores them
-  (`history::deleted_pages`, `restore_page`). *New site done 2026-10-21*
-  (`site::create_site`, "New site…" dialog on the empty start screen and
-  in the Site tab): title, language, location (Documents by default) and
-  folder name (from the title); the folder must be new or empty (hidden
-  files are fine); writes `site.toml`, the start page (#056), empty
-  `media/` and `assets/`, and starts the version history. Still open:
-  renaming and moving pages, decided 2026-10-21: the old address goes into
-  `redirect_from`, links in other pages (and relative links in the moved
-  pages) are updated, and pages below move along.
 - **#072 Block file format.** Read and write pages as Markdown with block
   containers (`::: hero` … `:::`, block fields as TOML) in qed-core. Writing
   a parsed page gives the same file back, so hand edits survive the block
@@ -147,6 +128,30 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#046 Site folder, phase 1.** `site.toml` (title, language, theme, menus),
+  `targets.toml` (publish targets without secrets, git-ignored), pages and posts as Markdown files with
+  TOML front matter, `media/` for images, `assets/` for downloads, build output in a
+  git-ignored folder. Old paths for redirects go into front matter.
+  *Reading done 2026-10-21* (`qed_core::site::open`, `examples/demo-site`).
+  *Creating pages done 2026-10-21* (`site::create_page`, "New page" dialog;
+  posts get a date prefix; never overwrites). *Deleting pages done
+  2026-10-21* (`site::delete_page`): the confirmation names the pages that
+  link to it; the start page and pages with pages below them can't be
+  deleted; the Versions tab lists deleted pages and restores them
+  (`history::deleted_pages`, `restore_page`). *New site done 2026-10-21*
+  (`site::create_site`, "New site…" dialog on the empty start screen and
+  in the Site tab): title, language, location (Documents by default) and
+  folder name (from the title); the folder must be new or empty (hidden
+  files are fine); writes `site.toml`, the start page (#056), empty
+  `media/` and `assets/`, and starts the version history. *Moving and
+  renaming done 2026-10-21* (`qed_core::moving`, "Move or rename" in the
+  page editor): pages below move along, each moved page gets its old
+  address in `redirect_from` (and a redirect that a new address takes
+  over is dropped), links to moved pages and relative links in them are
+  updated in Markdown and buttons (`markdown::replace_link_targets` keeps
+  the rest of the text as it was), and the open version is closed first.
+  Links that were broken already, and relative links to built pages
+  (`../about/`), stay as they are.
 - **#079 A note before publishing.** Done 2026-10-21: the Publish button
   opens a dialog that names the destination and, when there's an open
   version or a change since the last version (`HistoryStatus::needs_note`),
