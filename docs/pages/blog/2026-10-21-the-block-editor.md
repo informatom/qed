@@ -6,10 +6,10 @@ weight = 7
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "closures", "svelte", "components", "overtype"]
-summary = "qed can now edit page content: Markdown text with a live editor, hero and call-to-action fields, adding, removing and reordering blocks. Rust contributes FnOnce and into_iter; Svelte brings two-way props, snippets and a JavaScript library wrapped in a component."
+summary = "q.e.d. can now edit page content: Markdown text with a live editor, hero and call-to-action fields, adding, removing and reordering blocks. Rust contributes FnOnce and into_iter; Svelte brings two-way props, snippets and a JavaScript library wrapped in a component."
 +++
 
-Until now, qed could change a page's settings but not its content. The
+Until now, q.e.d. could change a page's settings but not its content. The
 block editor fills that gap. Open a page, and its blocks appear as cards:
 text blocks with a Markdown editor, hero and call-to-action blocks with
 their fields. Blocks can be added, removed and moved up or down, and "Save"

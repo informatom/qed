@@ -9,7 +9,7 @@ tags = ["ci", "github-actions", "tauri", "rust"]
 summary = "Pushing a version tag now builds installers for macOS, Windows and Linux on GitHub Actions and puts them into a draft release. How a workflow with a build matrix works, why each installer has to be made on its own system, and what a universal Mac app and an AppImage are."
 +++
 
-Until now, running qed meant building it yourself. Now pushing a tag such
+Until now, running q.e.d. meant building it yourself. Now pushing a tag such
 as `v0.2.0` to [github.com/informatom/qed](https://github.com/informatom/qed)
 makes installers for the three desktop systems and puts them into a draft
 release. How to make one is under "Releasing" on the
@@ -20,7 +20,7 @@ release. How to make one is under "Releasing" on the
 [GitHub Actions](https://docs.github.com/en/actions) runs *workflows*: YAML
 files in `.github/workflows/` that say when to run (`on:`) and what to do
 (`jobs:`). Each job runs on a fresh virtual machine, a *runner*.
-qed's [`release.yml`](../../../.github/workflows/release.yml) has two jobs.
+q.e.d.'s [`release.yml`](../../../.github/workflows/release.yml) has two jobs.
 The first checks the version, and the second does the build, once per
 system:
 
@@ -69,7 +69,7 @@ usually built on that system.
 ## One Mac app for both kinds of Mac
 
 Macs come with Apple's own chips (ARM) or with Intel chips, and the two run
-different machine code. `--target universal-apple-darwin` builds qed twice,
+different machine code. `--target universal-apple-darwin` builds q.e.d. twice,
 once per chip, and joins both into one *universal* program, so a single
 `.dmg` works on every Mac. That's why the macOS runner gets both Rust
 targets: `aarch64-apple-darwin,x86_64-apple-darwin`.

@@ -6,11 +6,11 @@ weight = 2
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "serde", "error-handling", "svelte", "typescript"]
-summary = "qed now reads a whole site: settings from site.toml and pages from Markdown files with blocks. Along the way: structs and serde, enums that carry data, Result and the ? operator, Path and PathBuf, and a first lifetime."
+summary = "q.e.d. now reads a whole site: settings from site.toml and pages from Markdown files with blocks. Along the way: structs and serde, enums that carry data, Result and the ? operator, Path and PathBuf, and a first lifetime."
 +++
 
 In the [first post](2026-10-21-one-title-three-languages.md), one string went
-from Svelte to Rust and back. Now qed reads a whole site folder. The
+from Svelte to Rust and back. Now q.e.d. reads a whole site folder. The
 interesting part isn't the reading. It's how Rust's types let us turn
 "a folder of text files" into data the rest of the app can trust, and how
 they make the errors useful.
@@ -98,7 +98,7 @@ cases before you can use the text inside.
 
 On the TypeScript side, the same field is `description: string | null`. TS
 also tracks this ("this might be null") when `strict` mode is on, which it is
-in qed.
+in q.e.d.
 
 ## Enums that carry data
 
@@ -330,7 +330,7 @@ Three more Svelte features appear:
   renders a list. The `(page.path)` is a key, so Svelte can tell which row is
   which when the list changes, like `phx-update="stream"` ids.
 - [`onMount`](https://svelte.dev/docs/svelte/lifecycle-hooks) runs once when
-  the page appears. qed uses it to reopen the last site folder.
+  the page appears. q.e.d. uses it to reopen the last site folder.
 
 ## Further reading
 

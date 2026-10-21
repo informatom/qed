@@ -6,7 +6,7 @@ weight = 8
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "typescript", "enums", "tauri", "security", "svelte"]
-summary = "qed got a media library and an Image block. Adding the block showed one of the best things about Rust's enums, and TypeScript's unions turned out to do the same. Plus: loops that end with return, Option as a tiny collection, and why the app window may only see one folder."
+summary = "q.e.d. got a media library and an Image block. Adding the block showed one of the best things about Rust's enums, and TypeScript's unions turned out to do the same. Plus: loops that end with return, Option as a tiny collection, and why the app window may only see one folder."
 +++
 
 Pages can now show images. The app has a media library: thumbnails of
@@ -113,7 +113,7 @@ can't happen" and would crash loudly if it ever did.
 
 ## Option is a tiny collection
 
-To find which files a page uses, qed collects names from all blocks:
+To find which files a page uses, q.e.d. collects names from all blocks:
 
 ```rust
 Block::Hero(hero) => {
@@ -139,7 +139,7 @@ URL or a site path), using
 `condition.then(|| x)` is `Some(x)` if the condition holds, `None` if not.
 
 Links in Markdown count too: `![Logo](/media/logo.png)` or
-`[Menu](/media/menu.pdf#page=2)`. qed parses the Markdown with comrak, as
+`[Menu](/media/menu.pdf#page=2)`. q.e.d. parses the Markdown with comrak, as
 the generator does, and collects the link targets.
 
 ## The app window may see one folder
@@ -153,7 +153,7 @@ Tauri offers the
 [asset protocol](https://v2.tauri.app/reference/javascript/api/namespacecore/#convertfilesrc):
 `convertFileSrc(path)` turns a file path into a special URL the window can
 load. But only for paths inside the protocol's *scope*, which starts empty
-in qed's [`tauri.conf.json`](../../../src-tauri/tauri.conf.json):
+in q.e.d.'s [`tauri.conf.json`](../../../src-tauri/tauri.conf.json):
 
 ```json
 "assetProtocol": { "enable": true, "scope": [] }
@@ -170,7 +170,7 @@ app.asset_protocol_scope()
 The window can show your site's images, and nothing else on your disk. It's
 the same idea as the permissions in
 [`capabilities/default.json`](../../../src-tauri/capabilities/default.json),
-which list the few things the UI may do besides calling qed's own commands:
+which list the few things the UI may do besides calling q.e.d.'s own commands:
 open a folder or file dialog, ask a yes/no question, open a URL. The UI gets
 only what it needs.
 

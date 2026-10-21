@@ -6,7 +6,7 @@ weight = 21
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "utf-8", "markdown", "files"]
-summary = "A page can now get a new address: renamed, or moved below another page, with the pages below it. The old address redirects, and links everywhere are updated. How qed checks everything before it touches a file, how it rewrites link targets in Markdown without reformatting the rest, and why cutting a Rust string at ASCII bytes is always safe."
+summary = "A page can now get a new address: renamed, or moved below another page, with the pages below it. The old address redirects, and links everywhere are updated. How q.e.d. checks everything before it touches a file, how it rewrites link targets in Markdown without reformatting the rest, and why cutting a Rust string at ASCII bytes is always safe."
 +++
 
 The page editor has a new button next to Delete: **Move or rename**. It
@@ -40,12 +40,12 @@ let moves = plan(site, page, &new_path)?;   // check everything
 `plan` builds a list of `Move { old_path, new_path, old_file, new_file }`
 and fails *before anything is written* if a new address belongs to
 another page, or a file is in the way. The `?` returns the error at once.
-Only when the plan stands does qed write anything.
+Only when the plan stands does q.e.d. write anything.
 
 Elixir has a tool for this shape of work:
 [`Ecto.Multi`](https://hexdocs.pm/ecto/Ecto.Multi.html) collects steps and
 runs them in one database transaction. A file system has no transactions,
-so qed does the next best thing: all the checks that can fail come first,
+so q.e.d. does the next best thing: all the checks that can fail come first,
 and the writes come after. What's left is a disk error halfway, which
 would name the file. For that case, the app closes the open version
 before a move ("Before moving /about"), as it does before deleting a page,
@@ -53,7 +53,7 @@ so the Versions tab has the site as it was.
 
 ## Rewriting links without rewriting the text
 
-The links are in Markdown that people wrote by hand. qed reads Markdown
+The links are in Markdown that people wrote by hand. q.e.d. reads Markdown
 with [comrak](https://docs.rs/comrak), which could also write it back
 out, but in its own style: different list markers, different line breaks.
 That would change text the user didn't touch, the same problem as with

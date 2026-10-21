@@ -129,7 +129,7 @@ pub struct PageDate(toml::value::Datetime);
 ## A test that writes a file
 
 Where does `src/lib/bindings.ts` come from? The usual setup writes it every
-time the app starts in development. qed writes it from a test instead:
+time the app starts in development. q.e.d. writes it from a test instead:
 
 ```rust
 #[test]

@@ -5,7 +5,7 @@ icon = "book-open"
 description = "Notes on building qed: Rust, Tauri, Svelte and TypeScript, explained along the way."
 +++
 
-Notes on building qed, written while it's being built. Each post explains the
+Notes on building q.e.d., written while it's being built. Each post explains the
 Rust, Svelte and TypeScript concepts that came up in one step, with
 comparisons to Elixir.
 

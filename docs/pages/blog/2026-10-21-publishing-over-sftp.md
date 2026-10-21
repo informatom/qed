@@ -6,14 +6,14 @@ weight = 9
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "async", "tokio", "ssh", "security", "testing", "docker"]
-summary = "qed can publish to a real server now. That brings async Rust, implementing a library's trait, an error that's really a question for the user, progress sent to the UI as it happens, and tests against a throwaway server in Docker."
+summary = "q.e.d. can publish to a real server now. That brings async Rust, implementing a library's trait, an error that's really a question for the user, progress sent to the UI as it happens, and tests against a throwaway server in Docker."
 +++
 
-This is the step where qed becomes useful: click "Publish…", pick a server,
+This is the step where q.e.d. becomes useful: click "Publish…", pick a server,
 and the website goes online. The first publish uploads everything; later
 ones upload only what changed, thanks to the checksum list described in
 [`deploy.rs`](../../../crates/qed-core/src/deploy.rs). Logging in works with
-a password or with a key qed generates, and both live in the operating
+a password or with a key q.e.d. generates, and both live in the operating
 system's keychain, never in the site folder.
 
 ## Async Rust: waiting without blocking
@@ -31,7 +31,7 @@ let exists = connection.sftp.try_exists(folder.as_str()).await?;
 An `async fn` returns a *future*, a value describing work that hasn't
 happened yet. `.await` runs it and pauses the function until the result is
 there, freeing the thread for other work meanwhile. Futures do nothing until
-someone awaits them; a *runtime* drives them. qed uses
+someone awaits them; a *runtime* drives them. q.e.d. uses
 [tokio](https://tokio.rs/), which Tauri already runs, so the publish command
 is just an `async fn` like the others.
 
@@ -81,7 +81,7 @@ impl client::Handler for HostKeyCheck {
 ```
 
 This is a `behaviour` and its callbacks, in Elixir terms: russh defines what
-a handler must offer, qed's `HostKeyCheck` provides it. Two new pieces:
+a handler must offer, q.e.d.'s `HostKeyCheck` provides it. Two new pieces:
 
 - `type Error = russh::Error;` is an *associated type*: the trait leaves a
   type open, and each implementation fills it in.
@@ -95,7 +95,7 @@ the code outside can read afterwards.
 
 ## An error that's really a question
 
-The first time qed connects to a server, it doesn't know the server's key,
+The first time q.e.d. connects to a server, it doesn't know the server's key,
 so it can't tell the real server from an impostor. SSH's answer is *trust on
 first use*: show the key's fingerprint, let the person decide, remember the
 answer, and refuse loudly if the key ever changes.
@@ -158,7 +158,7 @@ LiveView `send(self(), {:progress, …})` loop, across the language border.
 `targets.toml`, next to `site.toml`, lists targets with everything that
 isn't secret: server, user, folder, the trusted fingerprint. It's a separate
 file because site folders get copied, synced and put on GitHub, like this
-one, and server names don't belong in a public repository either; qed's
+one, and server names don't belong in a public repository either; q.e.d.'s
 `.gitignore` leaves `targets.toml` out. Passwords and private keys go to the
 system keychain
 through the [keyring](https://docs.rs/keyring) crate, in
@@ -173,7 +173,7 @@ system. The app shows the public half, ready to paste into the server's
 
 Code that talks to servers needs a server to be tested against. The
 repository has a throwaway one in `dev/test-server/compose.yml`: an SFTP
-container and an nginx container sharing one folder, so whatever qed
+container and an nginx container sharing one folder, so whatever q.e.d.
 publishes shows up at `http://localhost:8080`. The
 [Development page](../development.md) explains how to start it.
 
@@ -194,7 +194,7 @@ run until you ask for it with `--ignored`.
 They paid off right away: they found that deleting a page left its empty
 folder behind on the server (nginx then answers "forbidden" instead of "not
 found"), and that nginx puts its own `index.html` into a fresh web folder.
-The first became a fix in qed, the second a fix in the test setup.
+The first became a fix in q.e.d., the second a fix in the test setup.
 
 ## Further reading
 

@@ -6,11 +6,11 @@ weight = 4
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "askama", "iterators", "closures", "threads", "tauri"]
-summary = "qed now builds real websites, including this one. The generator brings templates the compiler checks, iterator chains, closures, a web server in a background thread, and shared state with Arc and Mutex."
+summary = "q.e.d. now builds real websites, including this one. The generator brings templates the compiler checks, iterator chains, closures, a web server in a background thread, and shared state with Arc and Mutex."
 +++
 
-Until now, qed could *read* a site. Now it builds one. You're probably
-looking at the result: this blog is a qed site, and the page you're reading
+Until now, q.e.d. could *read* a site. Now it builds one. You're probably
+looking at the result: this blog is a q.e.d. site, and the page you're reading
 was rendered by the code this post describes.
 
 The generator lives in
@@ -30,7 +30,7 @@ Liquid:
 ```
 
 The difference from EEx or Liquid: the template is turned into Rust code when
-qed compiles. Each template belongs to a struct that holds its data:
+q.e.d. compiles. Each template belongs to a struct that holds its data:
 
 ```rust
 #[derive(Template)]
@@ -44,7 +44,7 @@ struct PageTemplate<'a> {
 }
 ```
 
-If the template uses `{{ subtitle }}` and the struct has no `subtitle`, qed
+If the template uses `{{ subtitle }}` and the struct has no `subtitle`, q.e.d.
 doesn't compile. A typo in a template can't reach a user. HEEx gives you some
 of this in Phoenix; askama goes all the way, because the template *is* Rust
 code after compiling.
@@ -141,7 +141,7 @@ write:
 | `https://…`, `#top`  | unchanged                       |
 
 The Markdown renderer, [comrak](https://docs.rs/comrak), first parses a page
-into a tree. qed walks the tree and rewrites every link before turning it
+into a tree. q.e.d. walks the tree and rewrites every link before turning it
 into HTML:
 
 ```rust
@@ -164,7 +164,7 @@ need it, but it's how linked structures like trees are built.
 
 ## A web server in a background thread
 
-"Preview in browser" needs a web server. qed brings a tiny one,
+"Preview in browser" needs a web server. q.e.d. brings a tiny one,
 [`preview.rs`](../../../crates/qed-core/src/preview.rs), built on
 [tiny_http](https://docs.rs/tiny_http). It listens only on `127.0.0.1`, on a
 free port the system picks, and runs in its own

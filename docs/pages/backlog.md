@@ -1,6 +1,6 @@
 +++
 title = "Backlog"
-description = "Open work and decisions for qed, numbered #nnn."
+description = "Open work and decisions for q.e.d., numbered #nnn."
 menu = "footer"
 weight = 10
 +++
@@ -9,7 +9,7 @@ Open work and open decisions. Items keep their number for good; when one is
 done or decided, move it to **Done / decided** with a short note. Items that no
 longer apply move to **Dropped**.
 
-qed is a single-user desktop app (Rust + Tauri) that turns a podcaster's
+q.e.d. is a single-user desktop app (Rust + Tauri) that turns a podcaster's
 content into a static site and publishes it. Decided 2026-10-21; it replaces
 the earlier Phoenix web app.
 
@@ -109,12 +109,12 @@ A complete site builder without podcast features.
   branch with a deploy key. Needs a second `Target` kind, its own key
   handling and connection test (#031). For podcasts, GitHub Pages warns
   when an episode lacks an external audio URL (#068).
-- **#011 GitHub Pages.** Decided: deploy key using qed's generated key
+- **#011 GitHub Pages.** Decided: deploy key using q.e.d.'s generated key
   pair. Audio must be external for GitHub targets.
 
 ## Done / decided
 
-- **Desktop app.** qed is a single-user desktop app for podcasters who can't
+- **Desktop app.** q.e.d. is a single-user desktop app for podcasters who can't
   run a static site generator themselves. Stack: Rust + Tauri 2, Svelte UI,
   files instead of a database. Open source, built with Claude as a showcase. Claude writes the
   code and explains Rust concepts (ownership, borrowing, lifetimes) as they
@@ -196,13 +196,13 @@ A complete site builder without podcast features.
   first and tags it (`publish/<target>/<UTC time>`). *Open versions
   2026-10-21*: every save in the app goes into an open version (a commit
   marked `qed-draft: true`, amended by later saves); "Close version" gives
-  it its note, publishing closes it too. qed amends only its own open
+  it its note, publishing closes it too. q.e.d. amends only its own open
   version, never someone else's commit and never one that was pushed.
   Deleting a page closes the open version first, so the page can come
   back. Possible later: closing open versions by themselves after a while. Each page has a
   Versions tab (Content / Versions / Settings) with what each version
   changed and "Restore", which puts it into the editor as unsaved changes.
-  A site folder inside a larger repository (like `docs/`) works too: qed
+  A site folder inside a larger repository (like `docs/`) works too: q.e.d.
   commits only that folder, never other staged changes, and prefixes its
   tags (`docs/publish/…`). Still open: restoring the whole site, signed
   commits (libgit2 doesn't sign).
@@ -240,11 +240,11 @@ A complete site builder without podcast features.
 - **Page icons.** Done 2026-10-21: `icon = "book-open"` on a page shows a
   Lucide icon in the menus of the generated site (plain SVG, no
   JavaScript) and in the app's page list. A curated set of 60 icons lives
-  in `crates/qed-core/assets/icons/` and is built into qed; unknown names
+  in `crates/qed-core/assets/icons/` and is built into q.e.d.; unknown names
   are an error with the line number. The page settings have a picker.
 - **#064 Site CSS.** Done 2026-10-21: one Tailwind + daisyUI stylesheet with
   all 35 themes and the typography plugin (77 KB, 14 KB gzipped), compiled
-  by `npm run build:site-css` and built into qed with `include_str!`. The
+  by `npm run build:site-css` and built into q.e.d. with `include_str!`. The
   theme is the `data-theme` attribute.
 - **SFTP publishing.** Done 2026-10-21 (#025, #028, #030, #031 for SFTP,
   #063, #065): targets in `targets.toml` (`[[targets]]`, nothing secret,
@@ -252,7 +252,7 @@ A complete site builder without podcast features.
   passwords and generated Ed25519 keys in the OS keychain, `russh` with the
   `ring` backend, trust on first connection and a hard stop when the
   server key changes, `.qed-manifest.json` so only changed files are
-  uploaded and only qed's own files deleted, emptied folders removed, live
+  uploaded and only q.e.d.'s own files deleted, emptied folders removed, live
   progress over a Tauri channel. A throwaway server for testing lives in
   `dev/test-server/` (see the Development page).
 - **#061 Scaffold.** Done 2026-10-21: Cargo workspace (`src-tauri`,
@@ -264,7 +264,7 @@ A complete site builder without podcast features.
   updater, whose signing key is free. Revisit Apple notarization ($99/year)
   and Windows signing before a public 1.0 (#070). *Updater built
   2026-10-21* (tauri-plugin-updater and -process, `src/lib/updates.svelte.ts`):
-  qed checks `latest.json` of the latest published GitHub release at start,
+  q.e.d. checks `latest.json` of the latest published GitHub release at start,
   a bar offers "Install and restart", the App tab shows the version and
   "Check for updates". The release workflow signs the updates with the
   `TAURI_SIGNING_PRIVATE_KEY` secret (`tauri.release.conf.json`); steps in
@@ -273,7 +273,7 @@ A complete site builder without podcast features.
 - **#060 Markdown editor.** Keep OverType.
 - **Learning blog.** Explanations of Rust, Svelte and TypeScript go into blog
   posts in `docs/pages/blog/` (Markdown with front matter), not into chat.
-- **#071 Demo site.** Done 2026-10-21: `docs/` is a qed site (home page,
+- **#071 Demo site.** Done 2026-10-21: `docs/` is a q.e.d. site (home page,
   blog with the learning posts). A test keeps it valid. Pages gained
   `date`, `authors`, `tags` and `summary`.
 - **Repo.** Same repo; the Elixir code is deleted (it stays in git history).

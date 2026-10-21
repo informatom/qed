@@ -6,15 +6,15 @@ weight = 1
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "svelte", "typescript", "tauri", "borrowing"]
-summary = "The first screen of qed turns a page title into a URL slug. Following one keystroke from the input field to Rust and back shows how the app is put together, and gives a first, gentle look at Rust's borrowing."
+summary = "The first screen of q.e.d. turns a page title into a URL slug. Following one keystroke from the input field to Rust and back shows how the app is put together, and gives a first, gentle look at Rust's borrowing."
 +++
 
-qed's first screen is tiny: you type a page title, and below it appears the
+q.e.d.'s first screen is tiny: you type a page title, and below it appears the
 slug, the part of the URL a page will live at. "Über uns & Team" becomes
 `/ueber-uns-team`.
 
 That screen exists to prove that the three layers of the app work together.
-Following one keystroke through them is a good way to see how qed is built.
+Following one keystroke through them is a good way to see how q.e.d. is built.
 
 ## The three layers
 
@@ -25,7 +25,7 @@ invoke("slugify", …)       #[tauri::command]        pub fn slugify(…)
 ```
 
 - **qed-core** is a plain [Rust](https://www.rust-lang.org/) library. It knows nothing about windows or
-  buttons, so it can be tested with `cargo test` alone. Everything qed
+  buttons, so it can be tested with `cargo test` alone. Everything q.e.d.
   actually *does* will live here: reading site folders, rendering pages,
   publishing.
 - **src-tauri** is the desktop shell, built with
@@ -215,7 +215,7 @@ cargo test -p qed-core
 
 ## What's next
 
-The next step makes qed read a real site folder: `site.toml` and pages as
+The next step makes q.e.d. read a real site folder: `site.toml` and pages as
 Markdown files. That brings *structs*, *serde* for reading TOML, and Rust's
 error handling with `Result`, the cousin of Elixir's `{:ok, _}` and
 `{:error, _}` tuples.

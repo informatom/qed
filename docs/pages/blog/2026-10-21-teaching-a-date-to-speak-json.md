@@ -6,10 +6,10 @@ weight = 3
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "traits", "serde"]
-summary = "Blog posts need a date, and qed's UI wants it as plain text. A tiny wrapper type and two hand-written trait implementations show what traits are, and why Rust has them."
+summary = "Blog posts need a date, and q.e.d.'s UI wants it as plain text. A tiny wrapper type and two hand-written trait implementations show what traits are, and why Rust has them."
 +++
 
-This blog is now a qed site itself: the `docs/` folder of the repository has
+This blog is now a q.e.d. site itself: the `docs/` folder of the repository has
 a `site.toml` and a `pages/` folder, and this post is one of its pages. For
 that to work, pages needed blog fields: `date`, `authors`, `tags` and
 `summary`. Most of them were one line each. The date took a little more, and
@@ -115,16 +115,16 @@ fn sends_dates_to_the_ui_as_text() {
 
 ## Derive versus impl
 
-So far every trait in qed came from `#[derive(…)]`: `Debug`, `Clone`,
+So far every trait in q.e.d. came from `#[derive(…)]`: `Debug`, `Clone`,
 `Serialize`, and others. Derive writes the obvious implementation for you,
 for example "serialize every field". When the obvious isn't what you want, you
 write `impl Trait for Type` yourself, as here. That's the same choice as
 `@derive Jason.Encoder` versus a hand-written `defimpl` in Elixir.
 
 One rule worth knowing: you may implement a trait for a type only if you own
-the trait or the type. qed owns neither `Serialize` (serde's) nor `Datetime`
+the trait or the type. q.e.d. owns neither `Serialize` (serde's) nor `Datetime`
 (toml's), so it can't change how `Datetime` serializes. Wrapping it in a
-newtype makes a type qed owns, and then the impl is allowed. This is the
+newtype makes a type q.e.d. owns, and then the impl is allowed. This is the
 [orphan rule](https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#using-the-newtype-pattern-to-implement-external-traits-on-external-types),
 and the newtype is the standard way around it.
 

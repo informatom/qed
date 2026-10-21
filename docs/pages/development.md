@@ -1,10 +1,10 @@
 +++
 title = "Development"
-description = "How to build qed from source, run its checks, and test publishing against a local throwaway server."
+description = "How to build q.e.d. from source, run its checks, and test publishing against a local throwaway server."
 menu = "footer"
 +++
 
-qed is a Rust and Tauri desktop app with a Svelte UI. The source is on
+q.e.d. is a Rust and Tauri desktop app with a Svelte UI. The source is on
 [GitHub](https://github.com/informatom/qed); the plan lives in
 [backlog](backlog.md).
 
@@ -52,9 +52,9 @@ Both only listen on your own computer. The password is public, so never use
 this setup for anything real.
 
 To try publishing from the app, add a target with exactly those details. On
-the first connection, qed shows the server's key fingerprint and asks
+the first connection, q.e.d. shows the server's key fingerprint and asks
 whether to trust it. The server makes a new key each time it's recreated with
-`down -v`, so qed will warn that the key changed; that's expected here, and
+`down -v`, so q.e.d. will warn that the key changed; that's expected here, and
 exactly the warning you'd want to take seriously with a real server. To
 continue, open the target with "Edit", click "Forget" next to the trusted
 key, save, and test the connection again.
@@ -105,12 +105,12 @@ To make a release:
    AppImage and one for the `.deb` (`linux-x86_64-deb`). Each installed
    copy looks for its own kind first (`linux-x86_64-deb`), then for the
    system (`linux-x86_64`).
-5. Once it's published, installed copies of qed offer the update at
+5. Once it's published, installed copies of q.e.d. offer the update at
    their next start. Drafts stay invisible to them.
 
 ### Updates
 
-qed updates itself with Tauri's
+q.e.d. updates itself with Tauri's
 [updater plugin](https://v2.tauri.app/plugin/updater/). At start (not in
 `npm run tauri dev`) it fetches `latest.json` from the latest published
 release, and if the version there is newer, a bar offers "Install and

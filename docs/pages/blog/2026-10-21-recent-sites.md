@@ -9,7 +9,7 @@ tags = ["typescript", "svelte", "storage"]
 summary = "The site title in the header is now a menu with the sites opened before, and the start screen lists them too. The list lives in the window's local storage. Why data read back from storage is treated as unknown, how a TypeScript type guard turns it into a checked type, and how the old \"last site\" setting moves into the list."
 +++
 
-Until now qed remembered one site: the last one, opened again at start.
+Until now q.e.d. remembered one site: the last one, opened again at start.
 Now the site title at the top of the window is a menu. It lists up to ten
 sites opened before (newest first), with "Open site folder…" and
 "New site…" below. When no site is open, the start screen shows the same
@@ -32,13 +32,13 @@ localStorage.setItem(KEY, JSON.stringify(list));
 ```
 
 Every access sits in `try … catch`. Storage can be switched off or full,
-and remembering sites is a convenience: without it qed still works, it
+and remembering sites is a convenience: without it q.e.d. still works, it
 just forgets.
 
 ## `unknown` instead of `any`
 
 Reading the list back is the interesting part. Whatever comes out of
-storage was written by an older qed, or edited by hand, or is half
+storage was written by an older q.e.d., or edited by hand, or is half
 written. TypeScript can't know, and
 [`JSON.parse`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse)
 admits it by returning `any`: a type that switches type checking off.
@@ -95,8 +95,8 @@ promise.
 
 ## Moving the old setting
 
-Before the list, qed stored the last site under `qed:last-site`. Someone
-updating qed would start with an empty list and lose their site. So
+Before the list, q.e.d. stored the last site under `qed:last-site`. Someone
+updating q.e.d. would start with an empty list and lose their site. So
 `recentSites()` falls back to the old key when the new one is missing, and
 the first save of the list removes the old key:
 

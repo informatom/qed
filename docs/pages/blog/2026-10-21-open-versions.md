@@ -6,11 +6,11 @@ weight = 19
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "git"]
-summary = "Every save in qed now lands in the history, without turning it into one version per click: saves go into an open version that later saves amend, until you close it with a note. What amending a commit really does, the rules that keep it safe, and why a history error only gets logged."
+summary = "Every save in q.e.d. now lands in the history, without turning it into one version per click: saves go into an open version that later saves amend, until you close it with a note. What amending a commit really does, the rules that keep it safe, and why a history error only gets logged."
 +++
 
 Until now, a version existed only once you clicked **Save version**. A page
-created and deleted in between left nothing behind. Now every save in qed
+created and deleted in between left nothing behind. Now every save in q.e.d.
 (pages, settings, media, deleting a page) is recorded at once, in an *open
 version*:
 
@@ -48,14 +48,14 @@ referenced from elsewhere, which is what the rules below are about.
 
 ## Three rules that keep it safe
 
-Because amending replaces a commit, qed only does it when replacing can't
+Because amending replaces a commit, q.e.d. only does it when replacing can't
 hurt anyone. `open_version` checks:
 
-1. **The latest commit is qed's own open version.** qed ends the message of
+1. **The latest commit is q.e.d.'s own open version.** q.e.d. ends the message of
    an open version with a line `qed-draft: true`, similar to the
    `Signed-off-by:` lines git uses (called *trailers*). Only a commit with
    that line is ever amended. This matters for a site inside a larger
-   repository, like qed's own `docs/`: there the latest commit is often the
+   repository, like q.e.d.'s own `docs/`: there the latest commit is often the
    owner's own, and that one must never be touched. A test commits "Code"
    on top and checks that the next save makes a new commit on top of it.
 2. **It hasn't been pushed.** If any remote branch (`refs/remotes/*`)
@@ -95,7 +95,7 @@ fn record(root: &std::path::Path) {
 }
 ```
 
-Elsewhere qed passes every error on to the UI. Here it doesn't, on purpose:
+Elsewhere q.e.d. passes every error on to the UI. Here it doesn't, on purpose:
 by the time `record` runs, the page is saved. If the history fails (a
 repository in the middle of a rebase, a locked index), reporting "saving
 failed" would be wrong, and the user might save again and again for

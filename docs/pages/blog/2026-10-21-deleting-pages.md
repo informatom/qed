@@ -10,7 +10,7 @@ summary = "Pages can now be deleted, and deleted pages can be brought back from 
 +++
 
 The page editor has a delete button now, next to the ✕. Before anything is
-deleted, qed asks, and the question tells you what you need to know: which
+deleted, q.e.d. asks, and the question tells you what you need to know: which
 pages link to this one (their links would stop working), whether you'd
 lose unsaved changes, and whether the page can come back (it can if the
 site has a version history). The Versions tab lists deleted pages with a

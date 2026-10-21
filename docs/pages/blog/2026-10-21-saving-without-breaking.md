@@ -6,15 +6,15 @@ weight = 5
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "toml", "pattern-matching", "svelte", "typescript", "components"]
-summary = "qed can now save page settings back to their files, keeping comments and formatting the user wrote by hand. On the Rust side: toml_edit, let-else and let chains, functions as values, atomic writes. On the Svelte side: a first component with props and callbacks."
+summary = "q.e.d. can now save page settings back to their files, keeping comments and formatting the user wrote by hand. On the Rust side: toml_edit, let-else and let chains, functions as values, atomic writes. On the Svelte side: a first component with props and callbacks."
 +++
 
 Page files belong to the people who write them. Someone may open
 `pages/about.md` in a text editor, add a comment, line things up the way
-they like, and later change the title in qed. If saving from the app wiped
+they like, and later change the title in q.e.d. If saving from the app wiped
 out their comment, they'd stop trusting either the app or their editor.
 
-So qed's writer, in
+So q.e.d.'s writer, in
 [`page_writer.rs`](../../../crates/qed-core/src/page_writer.rs), follows one
 rule: change only what changed.
 
@@ -41,7 +41,7 @@ weren't touched, so they're copied as written, down to `'single quotes'`.
 
 ## toml_edit: a document, not just data
 
-The [`toml`](https://docs.rs/toml) crate qed uses for reading turns TOML into
+The [`toml`](https://docs.rs/toml) crate q.e.d. uses for reading turns TOML into
 structs and forgets how it looked. Its sibling
 [`toml_edit`](https://docs.rs/toml_edit) keeps the whole document: every
 comment and space is stored next to the value it belongs to (toml_edit calls
@@ -166,7 +166,7 @@ writing, the original file is untouched; the worst case is a leftover
 `.qed-saving` file.
 
 Also, the file path comes from the UI, and the UI shouldn't be able to make
-qed write anywhere it likes. `page_file` in
+q.e.d. write anywhere it likes. `page_file` in
 [`site.rs`](../../../crates/qed-core/src/site.rs) accepts only plain relative
 paths inside `pages/` that end in `.md` and already exist. `../site.toml` or
 `/etc/passwd` gets an error, and a test checks exactly that.

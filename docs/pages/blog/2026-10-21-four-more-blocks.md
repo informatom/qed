@@ -9,7 +9,7 @@ tags = ["rust", "toml", "askama", "svelte"]
 summary = "Text with image, Gallery, Download and FAQ join the block editor. Two of them hold lists, which brings TOML's [[sections]], a recursive helper with std::mem::take, range patterns in match, and a reusable askama macro."
 +++
 
-qed has four new block types: **Text with image**, **Gallery**,
+q.e.d. has four new block types: **Text with image**, **Gallery**,
 **Download** and **FAQ**. Adding them went the way the
 [media post](2026-10-21-media-and-the-compiler-as-checklist.md) described:
 four new enum variants, and the compiler listed the three places that had to
@@ -54,7 +54,7 @@ pub struct Faq {
 
 ## Writing lists back readably
 
-When qed writes a block, `toml_edit` produces a list of tables as one long
+When q.e.d. writes a block, `toml_edit` produces a list of tables as one long
 inline line: `items = [{ question = "…", answer = "…" }, …]`. Valid, but
 not what anyone wants to edit by hand. So the writer, in
 [`page_writer.rs`](../../../crates/qed-core/src/page_writer.rs), walks the
@@ -134,7 +134,7 @@ text-with-image keeps the proportions.
 The questions open and close on click, with no script at all. Each one is an
 HTML [`<details>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/details)
 element, which browsers can already open and close; daisyUI's `collapse`
-classes only style it. Generated qed sites stay script-free.
+classes only style it. Generated q.e.d. sites stay script-free.
 
 ## Further reading
 

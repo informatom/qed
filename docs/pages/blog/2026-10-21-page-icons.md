@@ -6,7 +6,7 @@ weight = 12
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "macros", "svg", "svelte"]
-summary = "Pages can have an icon now, shown in the menus of the generated site. The icons are SVG files compiled into qed, listed by a small macro_rules! macro, the first macro qed defines itself."
+summary = "Pages can have an icon now, shown in the menus of the generated site. The icons are SVG files compiled into q.e.d., listed by a small macro_rules! macro, the first macro q.e.d. defines itself."
 +++
 
 A page can now have an icon: `icon = "book-open"` in its settings, or a click
@@ -21,7 +21,7 @@ package, which draws icons with JavaScript. Generated sites have no
 JavaScript, so their icons must be plain SVG in the HTML. And the HTML is
 written by Rust, which can't use a Svelte package.
 
-So qed carries its own copies: 60 Lucide icons chosen for typical pages
+So q.e.d. carries its own copies: 60 Lucide icons chosen for typical pages
 (house, book, newspaper, people, mail, calendar, microphone, scales for an
 imprint, a shield for privacy, …), as SVG files in
 [`crates/qed-core/assets/icons/`](../../../crates/qed-core/assets/icons),
@@ -96,7 +96,7 @@ export function pageIcons(): Promise<Map<string, string>> {
 `??=` assigns only if the variable is still `null`: the first caller starts
 the request, every later one gets the same promise. The SVG text is then
 inserted with Svelte's [`{@html …}`](https://svelte.dev/docs/svelte/@html),
-which is only safe because the markup is qed's own; text from users never
+which is only safe because the markup is q.e.d.'s own; text from users never
 goes through `{@html}`.
 
 ## Further reading
