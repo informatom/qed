@@ -10,6 +10,7 @@ pub mod images;
 pub mod links;
 pub mod markdown;
 pub mod media;
+pub mod moving;
 pub mod page;
 pub mod page_writer;
 pub mod preview;

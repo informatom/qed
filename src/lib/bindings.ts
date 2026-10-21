@@ -66,6 +66,11 @@ export const commands = {
 	pagesLinkingTo: (root: string, path: string) => __TAURI_INVOKE<string[]>("pages_linking_to", { root, path }),
 	/**  Deletes a page's file. */
 	deletePage: (root: string, file: string) => __TAURI_INVOKE<null>("delete_page", { root, file }),
+	/**
+	 *  Gives a page a new address (see `moving::move_page`) and returns it at
+	 *  its new place.
+	 */
+	movePage: (root: string, file: string, parent: string, slug: string) => __TAURI_INVOKE<Page>("move_page", { root, file, parent, slug }),
 	/**  Pages that earlier versions had and the folder doesn't any more. */
 	deletedPages: (root: string) => __TAURI_INVOKE<DeletedPage[]>("deleted_pages", { root }),
 	/**  Brings a deleted page back, as it was in `version`. */

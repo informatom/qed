@@ -356,7 +356,7 @@ fn rename_in_block(block: &mut Block, moved: &[(String, String)]) {
     {
         *file = new_name.clone();
     }
-    for_each_markdown(block, &mut |text| {
+    block::for_each_markdown(block, &mut |text| {
         for (old, new_name) in moved {
             *text = replace_link(
                 text,
@@ -365,23 +365,6 @@ fn rename_in_block(block: &mut Block, moved: &[(String, String)]) {
             );
         }
     });
-}
-
-/// Calls `change` on every Markdown text in a block (not in the blocks
-/// inside columns).
-fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)) {
-    match block {
-        Block::Text { markdown } => change(markdown),
-        Block::Hero(hero) => hero.text.iter_mut().for_each(change),
-        Block::Image(image) => image.caption.iter_mut().for_each(change),
-        Block::TextImage(block) => block.text.iter_mut().for_each(change),
-        Block::Faq(faq) => faq
-            .items
-            .iter_mut()
-            .for_each(|item| change(&mut item.answer)),
-        Block::CallToAction(cta) => cta.text.iter_mut().for_each(change),
-        Block::Gallery(_) | Block::Download(_) | Block::Columns(_) => {}
-    }
 }
 
 /// Replaces the link `from` with `to` where it's a whole link, so

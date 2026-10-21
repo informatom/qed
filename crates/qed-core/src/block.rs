@@ -229,6 +229,36 @@ pub fn all_blocks(blocks: &[Block]) -> Vec<&Block> {
     all
 }
 
+/// Calls `change` on every block in a list, outer ones first, including
+/// the blocks inside columns.
+pub fn for_each_block_mut(blocks: &mut [Block], change: &mut impl FnMut(&mut Block)) {
+    for block in blocks {
+        change(block);
+        if let Block::Columns(columns) = block {
+            for column in &mut columns.items {
+                for_each_block_mut(&mut column.blocks, change);
+            }
+        }
+    }
+}
+
+/// Calls `change` on every Markdown text in a block (not in the blocks
+/// inside columns).
+pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)) {
+    match block {
+        Block::Text { markdown } => change(markdown),
+        Block::Hero(hero) => hero.text.iter_mut().for_each(change),
+        Block::Image(image) => image.caption.iter_mut().for_each(change),
+        Block::TextImage(block) => block.text.iter_mut().for_each(change),
+        Block::Faq(faq) => faq
+            .items
+            .iter_mut()
+            .for_each(|item| change(&mut item.answer)),
+        Block::CallToAction(cta) => cta.text.iter_mut().for_each(change),
+        Block::Gallery(_) | Block::Download(_) | Block::Columns(_) => {}
+    }
+}
+
 /// The blocks a column can hold, besides text. Hero, Gallery and Columns
 /// need the full width.
 pub const COLUMN_TYPES: [&str; 5] = ["image", "text-image", "download", "faq", "call-to-action"];

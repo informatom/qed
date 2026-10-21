@@ -20,6 +20,7 @@
   import VersionsPanel from "$lib/VersionsPanel.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
   import NewSiteDialog from "$lib/NewSiteDialog.svelte";
+  import MovePageDialog from "$lib/MovePageDialog.svelte";
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
   import {
@@ -68,11 +69,19 @@
 
   let creatingPage = $state(false);
   let creatingSite = $state(false);
+  let movingPage = $state(false);
   let view = $state<"pages" | "media" | "assets" | "site" | "versions" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
     // Reload, so the new page lands in its place in the tree, then open it.
+    await load(site.root);
+    selectedFile = page.file;
+  }
+
+  async function pageMoved(page: Page) {
+    if (!site) return;
+    // Other pages changed too (links, redirects): read the whole site again.
     await load(site.root);
     selectedFile = page.file;
   }
@@ -388,6 +397,7 @@
             onsaved={replacePage}
             onclose={() => select(null)}
             ondeleted={pageDeleted}
+            onmove={() => (movingPage = true)}
             bind:dirty={editorDirty}
           />
         {/key}
@@ -413,6 +423,10 @@
 
 {#if site && creatingPage}
   <NewPageDialog {site} oncreated={pageCreated} onclose={() => (creatingPage = false)} />
+{/if}
+
+{#if site && selected && movingPage}
+  <MovePageDialog {site} page={selected} onmoved={pageMoved} onclose={() => (movingPage = false)} />
 {/if}
 
 {#if creatingSite}

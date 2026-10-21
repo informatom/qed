@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ask, message } from "@tauri-apps/plugin-dialog";
+  import FolderInput from "@lucide/svelte/icons/folder-input";
   import Trash from "@lucide/svelte/icons/trash";
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
@@ -13,11 +14,13 @@
     onclose: () => void;
     /** Called after the page's file was deleted. */
     ondeleted: () => void;
+    /** Asks for the Move dialog. */
+    onmove: () => void;
     /** True while either tab has unsaved changes. */
     dirty?: boolean;
   }
 
-  let { page, siteRoot, onsaved, onclose, ondeleted, dirty = $bindable(false) }: Props = $props();
+  let { page, siteRoot, onsaved, onclose, ondeleted, onmove, dirty = $bindable(false) }: Props = $props();
 
   let tab = $state<"content" | "versions" | "settings">("content");
   let contentDirty = $state(false);
@@ -99,6 +102,12 @@
         Settings{#if settingsDirty}<span class="ms-1 text-warning">•</span>{/if}
       </button>
     </div>
+    <button type="button" id="move-page-open" class="btn btn-ghost btn-sm btn-square" onclick={onmove}
+      disabled={page.path === "" || dirty}
+      title={page.path === "" ? "The start page always stays at /" : dirty ? "Save your changes first" : "Move or rename"}
+      aria-label="Move or rename">
+      <FolderInput class="size-4" />
+    </button>
     <button type="button" id="delete-page" class="btn btn-ghost btn-sm btn-square text-error" onclick={remove}
       disabled={page.path === ""} title={page.path === "" ? "The start page can't be deleted" : "Delete page"}
       aria-label="Delete page">

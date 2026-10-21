@@ -461,7 +461,7 @@ pub fn pages_linking_to(site: &Site, path: &str) -> Vec<String> {
 }
 
 /// Every link written in a list of blocks: Markdown links and buttons.
-fn link_targets(blocks: &[Block]) -> Vec<String> {
+pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
     let mut texts: Vec<&str> = Vec::new();
     let mut targets = Vec::new();
     for block in crate::block::all_blocks(blocks) {

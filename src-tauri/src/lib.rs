@@ -10,6 +10,7 @@ use qed_core::block::Block;
 use qed_core::generator::{self, BuildReport};
 use qed_core::history::{self, DeletedPage, DiffLine, HistoryStatus, Version};
 use qed_core::media::{self, Library, MediaFile};
+use qed_core::moving;
 use qed_core::page::{FrontMatter, PageContent, PageDate};
 use qed_core::preview::Preview;
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
@@ -176,6 +177,34 @@ async fn delete_page(root: PathBuf, file: PathBuf) -> Result<(), String> {
     site::delete_page(&site, &file).map_err(|error| error.to_string())?;
     record(&root);
     Ok(())
+}
+
+/// Gives a page a new address (see `moving::move_page`) and returns it at
+/// its new place.
+#[tauri::command]
+#[specta::specta]
+async fn move_page(
+    root: PathBuf,
+    file: PathBuf,
+    parent: String,
+    slug: String,
+) -> Result<Page, String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    // As before deleting: close the open version first, so the site from
+    // before the move stays in the history.
+    let tracked = history::status(&root)
+        .map_err(|error| error.to_string())?
+        .tracked;
+    if let Some(page) = site.pages.iter().find(|page| page.file == file)
+        && tracked
+    {
+        history::save_version(&root, &format!("Before moving /{}", page.path))
+            .map_err(|error| error.to_string())?;
+    }
+    let page =
+        moving::move_page(&site, &file, &parent, &slug).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(page)
 }
 
 /// Pages that earlier versions had and the folder doesn't any more.
@@ -474,6 +503,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             create_page,
             pages_linking_to,
             delete_page,
+            move_page,
             deleted_pages,
             restore_page,
             history_status,
