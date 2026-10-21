@@ -166,7 +166,10 @@ A complete site builder without podcast features.
   (`history::close_for_publish`, `HistoryError::NoteNeeded`). The note
   closes the version; the publish tag stays as it was. Without anything
   new, the last version is published as it is. Replaces the automatic
-  note "Before publishing to X".
+  note "Before publishing to X". The dialog also lists the files changed since the last
+  publish to that target (`history::since_publish`, from the publish
+  tags), since a version saved in between is still new there; fixed
+  2026-10-21 after "Nothing new" hid three unpublished posts.
 - **#062 Release builds.** Built 2026-10-21:
   `.github/workflows/release.yml` on github.com/informatom/qed builds, for
   a `v*` tag, a universal macOS `.dmg`, a Windows `.exe` (NSIS), and a
