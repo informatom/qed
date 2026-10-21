@@ -1,19 +1,23 @@
 <script lang="ts">
+  import { ask, message } from "@tauri-apps/plugin-dialog";
+  import Trash from "@lucide/svelte/icons/trash";
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import PageVersions from "$lib/PageVersions.svelte";
-  import type { Page, PageContent, Version } from "$lib/site";
+  import { commands, type Page, type PageContent, type Version } from "$lib/site";
 
   interface Props {
     page: Page;
     siteRoot: string;
     onsaved: (page: Page) => void;
     onclose: () => void;
+    /** Called after the page's file was deleted. */
+    ondeleted: () => void;
     /** True while either tab has unsaved changes. */
     dirty?: boolean;
   }
 
-  let { page, siteRoot, onsaved, onclose, dirty = $bindable(false) }: Props = $props();
+  let { page, siteRoot, onsaved, onclose, ondeleted, dirty = $bindable(false) }: Props = $props();
 
   let tab = $state<"content" | "versions" | "settings">("content");
   let contentDirty = $state(false);
@@ -34,6 +38,45 @@
     restoredFrom = version;
     restoreCount += 1;
     tab = "content";
+  }
+
+  async function remove() {
+    try {
+      const [links, history, versions] = await Promise.all([
+        commands.pagesLinkingTo(siteRoot, page.path),
+        commands.historyStatus(siteRoot),
+        commands.listVersions(siteRoot, page.file),
+      ]);
+      const lines = [`Delete “${page.front.title}”?`];
+      if (links.length) {
+        const names = links.map((path) => `/${path}`).join(", ");
+        lines.push(`${names} ${links.length === 1 ? "links" : "link"} to it; those links will stop working.`);
+      }
+      if (dirty) lines.push("Your unsaved changes are lost too.");
+      // Only a saved version can bring it back, and only as it was then.
+      if (!history.tracked) {
+        lines.push("This can't be undone: the site has no version history.");
+      } else if (versions.length === 0) {
+        lines.push("This can't be undone: the page was never saved as a version.");
+      } else if (history.changes.includes(page.file)) {
+        lines.push(
+          `You can bring it back from the Versions tab, as it was in “${versions[0].summary}”; changes since then are lost.`,
+        );
+      } else {
+        lines.push("You can bring it back from the Versions tab.");
+      }
+      const sure = await ask(lines.join("\n\n"), {
+        title: "Delete page",
+        kind: "warning",
+        okLabel: "Delete",
+        cancelLabel: "Keep",
+      });
+      if (!sure) return;
+      await commands.deletePage(siteRoot, page.file);
+      ondeleted();
+    } catch (e) {
+      await message(String(e), { title: "Can't delete the page", kind: "error" });
+    }
   }
 
   // Once saved (or the changes are undone), the notice has done its job.
@@ -62,6 +105,11 @@
         Settings{#if settingsDirty}<span class="ms-1 text-warning">•</span>{/if}
       </button>
     </div>
+    <button type="button" id="delete-page" class="btn btn-ghost btn-sm btn-square text-error" onclick={remove}
+      disabled={page.path === ""} title={page.path === "" ? "The start page can't be deleted" : "Delete page"}
+      aria-label="Delete page">
+      <Trash class="size-4" />
+    </button>
     <button type="button" id="close-editor" class="btn btn-ghost btn-sm btn-square" onclick={onclose} aria-label="Close">
       ✕
     </button>

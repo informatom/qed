@@ -44,6 +44,12 @@ pub enum HistoryError {
         source: std::io::Error,
     },
 
+    #[error("{0} exists; move it away to bring back the deleted page")]
+    Exists(String),
+
+    #[error("{0} isn't in that version")]
+    Missing(String),
+
     #[error("{file} in version {version} isn't a readable page: {message}")]
     BadPage {
         file: String,
@@ -77,6 +83,20 @@ pub struct Version {
     pub time: i64,
     /// Tags on this version, such as the publishes.
     pub tags: Vec<String>,
+}
+
+/// A page that a version had and the site folder doesn't any more.
+#[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct DeletedPage {
+    /// The file, relative to the site folder: `pages/about.md`.
+    pub file: String,
+    pub title: String,
+    /// The last version that still had it.
+    pub version: String,
+    /// When the version without it was saved; `None` if that hasn't
+    /// happened yet (deleted since the last version).
+    pub deleted_at: Option<i64>,
 }
 
 /// One line of a comparison between two versions of a file.
@@ -418,6 +438,100 @@ pub fn changes_in(root: &Path, file: &str, version: &str) -> Result<Vec<DiffLine
     Ok(lines)
 }
 
+/// Pages that earlier versions had and the site folder doesn't, most
+/// recently deleted first.
+pub fn deleted_pages(root: &Path) -> Result<Vec<DeletedPage>, HistoryError> {
+    let Some(site) = SiteRepo::open(root)? else {
+        return Ok(Vec::new());
+    };
+    let repo = &site.repo;
+    let Ok(head) = repo.head().and_then(|head| head.peel_to_commit()) else {
+        return Ok(Vec::new());
+    };
+    let pages = site.git_path("pages/");
+    let workdir = repo.workdir().map(Path::to_path_buf).unwrap_or_default();
+    let mut found: Vec<DeletedPage> = Vec::new();
+    let mut add = |git_path: &str, version: &git2::Commit, deleted_at: Option<i64>| {
+        let gone = !workdir.join(git_path).is_file();
+        let file = git_path
+            .strip_prefix(site.prefix.as_str())
+            .unwrap_or(git_path);
+        if gone && git_path.ends_with(".md") && !found.iter().any(|page| page.file == file) {
+            let title = version
+                .tree()
+                .ok()
+                .and_then(|tree| entry_id(&tree, git_path))
+                .and_then(|id| repo.find_blob(id).ok())
+                .and_then(|blob| page::parse(&String::from_utf8_lossy(blob.content())).ok())
+                .map_or_else(|| file.to_string(), |content| content.front.title);
+            found.push(DeletedPage {
+                file: file.to_string(),
+                title,
+                version: version.id().to_string(),
+                deleted_at,
+            });
+        }
+    };
+
+    // Deleted since the last version: still in it, gone from the folder.
+    let mut in_head = Vec::new();
+    head.tree()?.walk(TreeWalkMode::PreOrder, |dir, entry| {
+        let path = format!("{dir}{}", entry.name().unwrap_or_default());
+        if path.starts_with(&pages) && entry.kind() == Some(git2::ObjectType::Blob) {
+            in_head.push(path);
+        }
+        TreeWalkResult::Ok
+    })?;
+    for path in &in_head {
+        add(path, &head, None);
+    }
+
+    // Deleted in a saved version: there in its parent, gone in it.
+    let mut walk = repo.revwalk()?;
+    walk.push(head.id())?;
+    walk.set_sorting(git2::Sort::TIME)?;
+    for id in walk.take(MAX_VERSIONS) {
+        let commit = repo.find_commit(id?)?;
+        let Ok(parent) = commit.parent(0) else {
+            continue;
+        };
+        let mut options = DiffOptions::new();
+        options.pathspec(&pages);
+        let diff = repo.diff_tree_to_tree(
+            Some(&parent.tree()?),
+            Some(&commit.tree()?),
+            Some(&mut options),
+        )?;
+        for delta in diff.deltas() {
+            if delta.status() == git2::Delta::Deleted
+                && let Some(path) = delta.old_file().path()
+            {
+                let path = path.to_string_lossy().replace('\\', "/");
+                add(&path, &parent, Some(commit.time().seconds()));
+            }
+        }
+    }
+    Ok(found)
+}
+
+/// Writes a deleted page back into the site folder, as it was in `version`.
+pub fn restore_page(root: &Path, file: &str, version: &str) -> Result<(), HistoryError> {
+    let text =
+        file_at(root, file, version)?.ok_or_else(|| HistoryError::Missing(file.to_string()))?;
+    let target = root.join(file);
+    if target.exists() {
+        return Err(HistoryError::Exists(file.to_string()));
+    }
+    let io = |source| HistoryError::Io {
+        path: target.clone(),
+        source,
+    };
+    if let Some(folder) = target.parent() {
+        fs::create_dir_all(folder).map_err(io)?;
+    }
+    fs::write(&target, text).map_err(io)
+}
+
 fn file_at(root: &Path, file: &str, version: &str) -> Result<Option<String>, HistoryError> {
     let site = SiteRepo::open(root)?.ok_or(HistoryError::NotTracked)?;
     let commit = site.repo.find_commit(Oid::from_str(version)?)?;
@@ -627,6 +741,57 @@ mod tests {
         let tag = tag_publish(dir.path(), "My Server").unwrap().unwrap();
         assert!(tag.starts_with("publish/my-server/"), "{tag}");
         assert_eq!(versions(dir.path(), None).unwrap()[0].tags, [tag]);
+    }
+
+    #[test]
+    fn finds_and_restores_deleted_pages() {
+        let dir = tempfile::tempdir().unwrap();
+        site(dir.path());
+        fs::write(
+            dir.path().join("pages/about.md"),
+            "+++\ntitle = \"About us\"\n+++\n",
+        )
+        .unwrap();
+        fs::create_dir(dir.path().join("pages/blog")).unwrap();
+        fs::write(
+            dir.path().join("pages/blog/old.md"),
+            "+++\ntitle = \"Old post\"\n+++\n",
+        )
+        .unwrap();
+        start(dir.path()).unwrap();
+        assert!(deleted_pages(dir.path()).unwrap().is_empty());
+
+        fs::remove_file(dir.path().join("pages/blog/old.md")).unwrap();
+        save_version(dir.path(), "Remove the old post").unwrap();
+        fs::remove_file(dir.path().join("pages/about.md")).unwrap();
+
+        let deleted = deleted_pages(dir.path()).unwrap();
+        let summary: Vec<(&str, &str, bool)> = deleted
+            .iter()
+            .map(|page| {
+                (
+                    page.file.as_str(),
+                    page.title.as_str(),
+                    page.deleted_at.is_some(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            summary,
+            [
+                ("pages/about.md", "About us", false),
+                ("pages/blog/old.md", "Old post", true)
+            ]
+        );
+
+        let old = &deleted[1];
+        restore_page(dir.path(), &old.file, &old.version).unwrap();
+        assert!(dir.path().join("pages/blog/old.md").is_file());
+        assert!(
+            restore_page(dir.path(), &old.file, &old.version).is_err(),
+            "won't overwrite"
+        );
+        assert_eq!(deleted_pages(dir.path()).unwrap().len(), 1);
     }
 
     #[test]

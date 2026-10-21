@@ -99,6 +99,23 @@ impl LinkContext {
         url.to_string()
     }
 
+    /// The URL path of the page a link points to (`/about`, `about.md`,
+    /// `../index.md#top`), or `None` for links to files and other sites.
+    pub fn page_path_of(&self, url: &str) -> Option<String> {
+        if is_external(url) || url.starts_with('#') || url.is_empty() {
+            return None;
+        }
+        let target = url.split(['#', '?']).next().unwrap_or_default();
+        if let Some(site_path) = target.strip_prefix('/') {
+            let site_path = site_path.trim_end_matches('/');
+            return (!looks_like_file(site_path)).then(|| site_path.to_string());
+        }
+        if target.ends_with(".md") {
+            return self.markdown_target(target);
+        }
+        None
+    }
+
     /// Resolves a relative `.md` link against this page's file and returns
     /// the target page's URL path, if it lands inside `pages/`.
     fn markdown_target(&self, target: &str) -> Option<String> {
@@ -218,6 +235,24 @@ mod tests {
         let page = context("blog/post", "pages/blog/post.md");
         assert_eq!(page.resolve("../../../src/main.rs"), "../../../src/main.rs");
         assert_eq!(page.resolve("../../notes/x.md"), "../../notes/x.md");
+    }
+
+    #[test]
+    fn tells_which_page_a_link_points_to() {
+        let post = context("blog/first", "pages/blog/first.md");
+        assert_eq!(post.page_path_of("/about/").as_deref(), Some("about"));
+        assert_eq!(
+            post.page_path_of("../about.md#team").as_deref(),
+            Some("about")
+        );
+        assert_eq!(
+            post.page_path_of("second.md").as_deref(),
+            Some("blog/second")
+        );
+        assert_eq!(post.page_path_of("../index.md").as_deref(), Some(""));
+        assert_eq!(post.page_path_of("/media/a.png"), None);
+        assert_eq!(post.page_path_of("https://example.com/about"), None);
+        assert_eq!(post.page_path_of("#top"), None);
     }
 
     #[test]

@@ -17,6 +17,8 @@ use std::path::{Component, Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::block::Block;
+use crate::links::LinkContext;
+use crate::markdown;
 use crate::page::{self, FrontMatter, PageContent, PageDate};
 use crate::page_writer;
 use crate::slug::slugify;
@@ -363,6 +365,93 @@ fn without_empty_text(blocks: Vec<Block>) -> Vec<Block> {
             other => other,
         })
         .collect()
+}
+
+/// The pages that link to the page at `path` (URL paths, sorted), from
+/// Markdown links and buttons.
+pub fn pages_linking_to(site: &Site, path: &str) -> Vec<String> {
+    let mut found: Vec<String> = site
+        .pages
+        .iter()
+        .filter(|page| page.path != path)
+        .filter(|page| {
+            let links = LinkContext::new(&page.path, &page.file);
+            link_targets(&page.content.blocks)
+                .iter()
+                .any(|target| links.page_path_of(target).as_deref() == Some(path))
+        })
+        .map(|page| page.path.clone())
+        .collect();
+    found.sort();
+    found
+}
+
+/// Every link written in a list of blocks: Markdown links and buttons.
+fn link_targets(blocks: &[Block]) -> Vec<String> {
+    let mut texts: Vec<&str> = Vec::new();
+    let mut targets = Vec::new();
+    for block in crate::block::all_blocks(blocks) {
+        match block {
+            Block::Text { markdown } => texts.push(markdown),
+            Block::Hero(hero) => {
+                texts.extend(hero.text.as_deref());
+                targets.extend(hero.button_link.clone());
+            }
+            Block::CallToAction(cta) => {
+                texts.extend(cta.text.as_deref());
+                targets.extend(cta.button_link.clone());
+            }
+            Block::Image(image) => texts.extend(image.caption.as_deref()),
+            Block::TextImage(block) => texts.extend(block.text.as_deref()),
+            Block::Faq(faq) => texts.extend(faq.items.iter().map(|item| item.answer.as_str())),
+            Block::Gallery(_) | Block::Download(_) | Block::Columns(_) => {}
+        }
+    }
+    for text in texts {
+        targets.extend(markdown::link_targets(text));
+    }
+    targets
+}
+
+/// Deletes a page's file. The start page and pages with pages below them
+/// can't be deleted.
+pub fn delete_page(site: &Site, file: &Path) -> Result<(), SiteError> {
+    let full = page_file(&site.root, file)?;
+    let invalid = |message: String| SiteError::Invalid {
+        path: file.to_path_buf(),
+        message,
+    };
+    let page = site
+        .pages
+        .iter()
+        .find(|page| page.file == file)
+        .ok_or_else(|| SiteError::NotAPage(file.to_path_buf()))?;
+    if page.path.is_empty() {
+        return Err(invalid("the start page can't be deleted".to_string()));
+    }
+    let below: Vec<String> = site
+        .pages
+        .iter()
+        .filter(|other| other.path.starts_with(&format!("{}/", page.path)))
+        .map(|other| format!("/{}", other.path))
+        .collect();
+    if !below.is_empty() {
+        return Err(invalid(format!(
+            "it has pages below it ({}); delete or move those first",
+            below.join(", ")
+        )));
+    }
+    fs::remove_file(&full).map_err(|source| SiteError::Write {
+        path: full.clone(),
+        source,
+    })?;
+    // A page kept as `about/index.md` leaves an empty folder behind.
+    if let Some(folder) = full.parent()
+        && folder != site.root.join(PAGES_DIR)
+    {
+        let _ = fs::remove_dir(folder); // Only succeeds if it's empty.
+    }
+    Ok(())
 }
 
 /// Reads a page file, lets `change` modify its content, and saves it.
@@ -749,6 +838,51 @@ mod tests {
         let site = open(dir.path()).unwrap();
         assert_eq!(site.config.theme, "light");
         assert!(site.pages.is_empty());
+    }
+
+    #[test]
+    fn deletes_pages_and_tells_who_links_to_them() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("pages/about")).unwrap();
+        fs::write(root.join("site.toml"), "title = \"S\"\n").unwrap();
+        fs::write(
+            root.join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\nSee [us](about/index.md).\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("pages/about/index.md"),
+            "+++\ntitle = \"About\"\n+++\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("pages/about/team.md"),
+            "+++\ntitle = \"Team\"\n+++\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("pages/contact.md"),
+            "+++\ntitle = \"Contact\"\n+++\n\n::: call-to-action\nbutton_label = \"Team\"\nbutton_link = \"/about/team/\"\n:::\n",
+        )
+        .unwrap();
+        let site = open(root).unwrap();
+
+        assert_eq!(pages_linking_to(&site, "about"), [""]);
+        assert_eq!(pages_linking_to(&site, "about/team"), ["contact"]);
+        assert!(pages_linking_to(&site, "contact").is_empty());
+
+        let error = delete_page(&site, Path::new("pages/index.md")).unwrap_err();
+        assert!(error.to_string().contains("start page"), "{error}");
+        let error = delete_page(&site, Path::new("pages/about/index.md")).unwrap_err();
+        assert!(error.to_string().contains("/about/team"), "{error}");
+        assert!(delete_page(&site, Path::new("../site.toml")).is_err());
+
+        delete_page(&site, Path::new("pages/about/team.md")).unwrap();
+        let site = open(root).unwrap();
+        delete_page(&site, Path::new("pages/about/index.md")).unwrap();
+        assert!(!root.join("pages/about").exists(), "empty folder removed");
+        assert_eq!(open(root).unwrap().pages.len(), 2);
     }
 
     #[test]

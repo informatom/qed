@@ -41,6 +41,13 @@
   // True while the open page has unsaved changes.
   let editorDirty = $state(false);
 
+  /** The open page's file is gone: close it and read the site again. */
+  async function pageDeleted() {
+    editorDirty = false;
+    selectedFile = null;
+    if (site) await load(site.root);
+  }
+
   /** Opens another page (or none), after asking if edits would be lost. */
   async function select(file: string | null) {
     if (file === selectedFile) return;
@@ -300,7 +307,7 @@
     {:else if view === "assets"}
       <MediaLibrary siteRoot={site.root} library="assets" />
     {:else if view === "versions"}
-      <VersionsPanel siteRoot={site.root} editing={editorDirty} />
+      <VersionsPanel siteRoot={site.root} editing={editorDirty} onrestored={() => site && load(site.root)} />
     {/if}
 
     <div class={["-mb-3 flex items-center gap-3", view !== "pages" && "hidden"]}>
@@ -374,6 +381,7 @@
             siteRoot={site.root}
             onsaved={replacePage}
             onclose={() => select(null)}
+            ondeleted={pageDeleted}
             bind:dirty={editorDirty}
           />
         {/key}

@@ -55,6 +55,14 @@ export const commands = {
 	publishSite: (root: string, targetName: string, onProgress: Channel<Progress>) => __TAURI_INVOKE<PublishReport>("publish_site", { root, targetName, onProgress }),
 	/**  Creates an empty page below `parent` (a URL path, `""` for the top level). */
 	createPage: (root: string, parent: string, title: string, date: string | null) => __TAURI_INVOKE<Page>("create_page", { root, parent, title, date }),
+	/**  The pages that link to the page at `path`, for the delete confirmation. */
+	pagesLinkingTo: (root: string, path: string) => __TAURI_INVOKE<string[]>("pages_linking_to", { root, path }),
+	/**  Deletes a page's file. */
+	deletePage: (root: string, file: string) => __TAURI_INVOKE<null>("delete_page", { root, file }),
+	/**  Pages that earlier versions had and the folder doesn't any more. */
+	deletedPages: (root: string) => __TAURI_INVOKE<DeletedPage[]>("deleted_pages", { root }),
+	/**  Brings a deleted page back, as it was in `version`. */
+	restorePage: (root: string, file: string, version: string) => __TAURI_INVOKE<null>("restore_page", { root, file, version }),
 	/**
 	 *  Whether the site has a version history, and what changed since the last
 	 *  version.
@@ -157,6 +165,20 @@ export type Column = {
  */
 export type Columns = {
 	items?: Column[],
+};
+
+/**  A page that a version had and the site folder doesn't any more. */
+export type DeletedPage = {
+	/**  The file, relative to the site folder: `pages/about.md`. */
+	file: string,
+	title: string,
+	/**  The last version that still had it. */
+	version: string,
+	/**
+	 *  When the version without it was saved; `None` if that hasn't
+	 *  happened yet (deleted since the last version).
+	 */
+	deleted_at: number | null,
 };
 
 export type DiffKind = "added" | "removed" | 

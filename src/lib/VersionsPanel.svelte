@@ -2,15 +2,19 @@
   import { onMount } from "svelte";
   import History from "@lucide/svelte/icons/history";
   import Save from "@lucide/svelte/icons/save";
-  import { commands, formatTime, type HistoryStatus, type Version } from "$lib/site";
+  import Undo from "@lucide/svelte/icons/undo-2";
+  import { commands, formatTime, type DeletedPage, type HistoryStatus, type Version } from "$lib/site";
 
   interface Props {
     siteRoot: string;
     /** A page has unsaved changes, which a version wouldn't include. */
     editing?: boolean;
+    /** Called after a deleted page came back, so the page list can update. */
+    onrestored?: () => void;
   }
 
-  let { siteRoot, editing = false }: Props = $props();
+  let { siteRoot, editing = false, onrestored }: Props = $props();
+  let deleted = $state<DeletedPage[]>([]);
 
   let status = $state<HistoryStatus | null>(null);
   let versions = $state<Version[]>([]);
@@ -23,6 +27,7 @@
     try {
       status = await commands.historyStatus(siteRoot);
       versions = status.tracked ? await commands.listVersions(siteRoot, null) : [];
+      deleted = status.tracked ? await commands.deletedPages(siteRoot) : [];
       error = null;
     } catch (e) {
       error = String(e);
@@ -30,6 +35,21 @@
   }
 
   onMount(refresh);
+
+  async function restore(page: DeletedPage) {
+    busy = true;
+    message = null;
+    try {
+      await commands.restorePage(siteRoot, page.file, page.version);
+      message = `“${page.title}” is back, as it was in its last version.`;
+      await refresh();
+      onrestored?.();
+    } catch (e) {
+      error = String(e);
+    } finally {
+      busy = false;
+    }
+  }
 
   async function run(action: () => Promise<Version | null>) {
     busy = true;
@@ -125,6 +145,28 @@
           <p class="text-sm text-base-content/60">
             To bring back an earlier version of a page, open the page and use its Versions tab.
           </p>
+        {/if}
+
+        <h2 class="mt-4 text-lg font-semibold">Deleted pages</h2>
+        {#if deleted.length === 0}
+          <p class="text-sm text-base-content/60">
+            None. Pages you delete show up here if they were saved in a version before.
+          </p>
+        {:else}
+          <ul id="deleted-pages" class="flex flex-col divide-y divide-base-300 rounded-box border border-base-300">
+            {#each deleted as page (page.file)}
+              <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
+                <span class="font-medium">{page.title}</span>
+                <span class="font-mono text-xs text-base-content/60">{page.file}</span>
+                <span class="ms-auto text-sm text-base-content/60">
+                  {page.deleted_at === null ? "deleted since the last version" : `deleted ${formatTime(page.deleted_at)}`}
+                </span>
+                <button type="button" class="btn btn-sm" disabled={busy} onclick={() => restore(page)}>
+                  <Undo class="size-4" /> Restore
+                </button>
+              </li>
+            {/each}
+          </ul>
         {/if}
       </section>
     </div>

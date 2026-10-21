@@ -8,7 +8,7 @@ use std::sync::Mutex;
 
 use qed_core::block::Block;
 use qed_core::generator::{self, BuildReport};
-use qed_core::history::{self, DiffLine, HistoryStatus, Version};
+use qed_core::history::{self, DeletedPage, DiffLine, HistoryStatus, Version};
 use qed_core::media::{self, Library, MediaFile};
 use qed_core::page::{FrontMatter, PageContent, PageDate};
 use qed_core::preview::Preview;
@@ -119,6 +119,36 @@ async fn create_page(
     date: Option<PageDate>,
 ) -> Result<Page, String> {
     site::create_page(&root, &parent, &title, date).map_err(|error| error.to_string())
+}
+
+/// The pages that link to the page at `path`, for the delete confirmation.
+#[tauri::command]
+#[specta::specta]
+async fn pages_linking_to(root: PathBuf, path: String) -> Result<Vec<String>, String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    Ok(site::pages_linking_to(&site, &path))
+}
+
+/// Deletes a page's file.
+#[tauri::command]
+#[specta::specta]
+async fn delete_page(root: PathBuf, file: PathBuf) -> Result<(), String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    site::delete_page(&site, &file).map_err(|error| error.to_string())
+}
+
+/// Pages that earlier versions had and the folder doesn't any more.
+#[tauri::command]
+#[specta::specta]
+async fn deleted_pages(root: PathBuf) -> Result<Vec<DeletedPage>, String> {
+    history::deleted_pages(&root).map_err(|error| error.to_string())
+}
+
+/// Brings a deleted page back, as it was in `version`.
+#[tauri::command]
+#[specta::specta]
+async fn restore_page(root: PathBuf, file: String, version: String) -> Result<(), String> {
+    history::restore_page(&root, &file, &version).map_err(|error| error.to_string())
 }
 
 /// Builds the site at `path` into its `_site` folder.
@@ -385,6 +415,10 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             test_target,
             publish_site,
             create_page,
+            pages_linking_to,
+            delete_page,
+            deleted_pages,
+            restore_page,
             history_status,
             start_history,
             save_version,
