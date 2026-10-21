@@ -8,6 +8,7 @@
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import Globe from "@lucide/svelte/icons/globe";
   import Hammer from "@lucide/svelte/icons/hammer";
+  import FileDown from "@lucide/svelte/icons/file-down";
   import Image from "@lucide/svelte/icons/image";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Settings from "@lucide/svelte/icons/settings";
@@ -55,7 +56,7 @@
   }
 
   let creatingPage = $state(false);
-  let view = $state<"pages" | "media" | "site" | "app">("pages");
+  let view = $state<"pages" | "media" | "assets" | "site" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -95,8 +96,8 @@
     } catch (e) {
       site = null;
       error = String(e);
-      // Media and Site need a site; show the error on Pages instead.
-      if (view === "media" || view === "site") view = "pages";
+      // Media, Assets and Site need a site; show the error on Pages instead.
+      if (view !== "pages" && view !== "app") view = "pages";
     } finally {
       loading = false;
     }
@@ -219,7 +220,7 @@
     <div id="build-report" role="status" class="alert alert-success alert-soft">
       <span class="flex-1">
         Built {report.pages} pages{report.drafts_skipped ? ` (${report.drafts_skipped} drafts skipped)` : ""},
-        {report.redirects} redirects and {report.media_files} media files into
+        {report.redirects} redirects, {report.media_files} media files and {report.resized_images} resized images into
         <code class="font-mono text-sm">{report.out_dir}</code>.
         <button class="link" onclick={() => report && revealItemInDir(report.out_dir)}>Show in file manager</button>
         {#if previewUrl}
@@ -236,6 +237,8 @@
     {#if site}
       <button type="button" role="tab" id="view-media" class={["tab", view === "media" && "tab-active"]}
         onclick={() => (view = "media")}><Image class="me-1.5 size-4" />Media</button>
+      <button type="button" role="tab" id="view-assets" class={["tab", view === "assets" && "tab-active"]}
+        onclick={() => (view = "assets")}><FileDown class="me-1.5 size-4" />Assets</button>
       <button type="button" role="tab" id="view-site" class={["tab", view === "site" && "tab-active"]}
         onclick={() => (view = "site")}><Globe class="me-1.5 size-4" />Site</button>
     {/if}
@@ -289,7 +292,9 @@
 
     {#if view === "media"}
       <!-- Mounted on demand, so it lists the folder fresh each time. -->
-      <MediaLibrary siteRoot={site.root} />
+      <MediaLibrary siteRoot={site.root} editing={editorDirty} onmoved={() => site && load(site.root)} />
+    {:else if view === "assets"}
+      <MediaLibrary siteRoot={site.root} library="assets" />
     {/if}
 
     <div class={["-mb-3 flex items-center gap-3", view !== "pages" && "hidden"]}>

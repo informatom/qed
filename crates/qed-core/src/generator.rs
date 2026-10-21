@@ -7,7 +7,9 @@
 //!   index.html            the start page
 //!   about/index.html      /about/
 //!   style.css             one stylesheet for every site and theme
-//!   media/…               copied from the site's media folder
+//!   media/…               copied from the site's media folder, plus smaller
+//!                         copies of photos (`team.480w.jpg`, see images.rs)
+//!   assets/…              copied from the site's assets folder (downloads)
 //!   sitemap.xml           only if `base_url` is set
 //! ```
 
@@ -18,10 +20,11 @@ use askama::Template;
 use serde::Serialize;
 
 use crate::block::{Block, Side};
+use crate::images::{self, ImageError, Images};
 use crate::links::LinkContext;
 use crate::markdown;
 use crate::page::Menu;
-use crate::site::{MEDIA_DIR, Navigation, Page, Site, SiteConfig};
+use crate::site::{ASSETS_DIR, MEDIA_DIR, Navigation, Page, Site, SiteConfig};
 
 pub const OUTPUT_DIR: &str = "_site";
 
@@ -39,7 +42,10 @@ pub struct BuildReport {
     pub pages: usize,
     pub drafts_skipped: usize,
     pub redirects: usize,
+    /// Images in `media/` and downloads in `assets/`.
     pub media_files: usize,
+    /// Smaller copies of photos, for phones and narrow columns.
+    pub resized_images: usize,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -61,6 +67,9 @@ pub enum BuildError {
 
     #[error("/{page} wants a redirect from /{from}, but a page already lives there")]
     RedirectOverPage { page: String, from: String },
+
+    #[error(transparent)]
+    Image(#[from] ImageError),
 }
 
 /// Builds the site into `_site/` inside its folder.
@@ -78,11 +87,12 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
         .filter(|p| !p.content.front.draft)
         .collect();
     let media_dir = site.root.join(MEDIA_DIR);
+    let images = Images::new(&media_dir);
     let main_menu = menu(&published, Menu::Main);
     let footer_menu = menu(&published, Menu::Footer);
 
     for page in &published {
-        let html = render_page(&site.config, &media_dir, page, &main_menu, &footer_menu)?;
+        let html = render_page(site, &images, page, &main_menu, &footer_menu)?;
         write(&page_file(out_dir, &page.path), html)?;
     }
 
@@ -111,7 +121,10 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
 
     write(&out_dir.join("style.css"), STYLESHEET.to_string())?;
 
-    let media_files = copy_dir(&site.root.join(MEDIA_DIR), &out_dir.join(MEDIA_DIR))?;
+    let media_files = copy_dir(&media_dir, &out_dir.join(MEDIA_DIR))?
+        + copy_dir(&site.root.join(ASSETS_DIR), &out_dir.join(ASSETS_DIR))?;
+    let resized_images =
+        images.write(&out_dir.join(MEDIA_DIR), &site.root.join(images::CACHE_DIR))?;
 
     if let Some(base_url) = &site.config.base_url {
         write(&out_dir.join("sitemap.xml"), sitemap(base_url, &published))?;
@@ -123,6 +136,7 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
         drafts_skipped: site.pages.len() - published.len(),
         redirects,
         media_files,
+        resized_images,
     })
 }
 
@@ -341,18 +355,16 @@ enum RenderedBlock {
         html: String,
     },
     Hero {
-        image: Option<String>,
+        /// A background photo; decorative, so its `alt` is empty.
+        image: Option<Picture>,
         headline: Option<String>,
         text_html: Option<String>,
         button: Option<Button>,
     },
     Image {
         /// `None` while no image is chosen; nothing is shown then.
-        src: Option<String>,
-        alt: String,
+        picture: Option<Picture>,
         caption_html: Option<String>,
-        width: Option<u32>,
-        height: Option<u32>,
     },
     TextImage {
         text_html: Option<String>,
@@ -388,6 +400,9 @@ enum RenderedBlock {
 
 struct Picture {
     src: String,
+    /// The smaller copies and the original, with their widths, for the
+    /// browser to choose from: `media/a.480w.jpg 480w, …, media/a.jpg 2400w`.
+    srcset: Option<String>,
     alt: String,
     width: Option<u32>,
     height: Option<u32>,
@@ -404,12 +419,13 @@ struct FaqEntry {
 }
 
 fn render_page(
-    config: &SiteConfig,
-    media_dir: &Path,
+    site: &Site,
+    images: &Images,
     page: &Page,
     main_menu: &[MenuEntry],
     footer_menu: &[MenuEntry],
 ) -> Result<String, BuildError> {
+    let config = &site.config;
     let front = &page.content.front;
     let links = LinkContext::new(&page.path, &page.file);
 
@@ -463,7 +479,7 @@ fn render_page(
             .content
             .blocks
             .iter()
-            .map(|b| render_block(b, &links, media_dir))
+            .map(|b| render_block(b, &links, &site.root, images))
             .collect(),
     };
 
@@ -479,7 +495,7 @@ fn is_within(page: &str, entry: &str) -> bool {
     page == entry || (!entry.is_empty() && page.starts_with(&format!("{entry}/")))
 }
 
-fn render_block(block: &Block, links: &LinkContext, media_dir: &Path) -> RenderedBlock {
+fn render_block(block: &Block, links: &LinkContext, root: &Path, images: &Images) -> RenderedBlock {
     let markdown = |text: &Option<String>| text.as_deref().map(|t| markdown::render(t, links));
     let button = |label: &Option<String>, link: &Option<String>| match (label, link) {
         (Some(label), Some(link)) => Some(Button {
@@ -494,40 +510,34 @@ fn render_block(block: &Block, links: &LinkContext, media_dir: &Path) -> Rendere
             html: markdown::render(text, links),
         },
         Block::Hero(hero) => RenderedBlock::Hero {
-            image: hero.image.as_deref().map(|image| media_link(image, links)),
+            image: hero
+                .image
+                .as_deref()
+                .and_then(|name| picture(name, None, links, images)),
             headline: hero.headline.clone(),
             text_html: markdown(&hero.text),
             button: button(&hero.button_label, &hero.button_link),
         },
-        Block::Image(image) => {
-            let file = image
+        Block::Image(image) => RenderedBlock::Image {
+            picture: image
                 .image
                 .as_deref()
-                .filter(|name| !name.trim().is_empty());
-            // Width and height let the browser reserve space before the image
-            // loads, so the page doesn't jump. Only the file header is read.
-            let size = file.and_then(|name| image::image_dimensions(media_dir.join(name)).ok());
-            RenderedBlock::Image {
-                src: file.map(|name| media_link(name, links)),
-                alt: image.alt.clone().unwrap_or_default(),
-                caption_html: markdown(&image.caption),
-                width: size.map(|(width, _)| width),
-                height: size.map(|(_, height)| height),
-            }
-        }
+                .and_then(|name| picture(name, image.alt.as_deref(), links, images)),
+            caption_html: markdown(&image.caption),
+        },
         Block::TextImage(block) => RenderedBlock::TextImage {
             text_html: markdown(&block.text),
             picture: block
                 .image
                 .as_deref()
-                .and_then(|name| picture(name, block.alt.as_deref(), links, media_dir)),
+                .and_then(|name| picture(name, block.alt.as_deref(), links, images)),
             image_left: block.image_side == Side::Left,
         },
         Block::Gallery(gallery) => RenderedBlock::Gallery {
             pictures: gallery
                 .images
                 .iter()
-                .filter_map(|image| picture(&image.image, image.alt.as_deref(), links, media_dir))
+                .filter_map(|image| picture(&image.image, image.alt.as_deref(), links, images))
                 .collect(),
         },
         Block::Download(download) => {
@@ -536,8 +546,17 @@ fn render_block(block: &Block, links: &LinkContext, media_dir: &Path) -> Rendere
                 .as_deref()
                 .map(str::trim)
                 .filter(|name| !name.is_empty());
+            // A file name, or else a URL or site path to link as it is.
+            let (href, local) = match file {
+                Some(name) if !name.contains(':') && !name.starts_with('/') => {
+                    let (href, path) = download_location(name, links, root);
+                    (Some(href), Some(path))
+                }
+                Some(link) => (Some(links.resolve(link)), None),
+                None => (None, None),
+            };
             RenderedBlock::Download {
-                href: file.map(|name| media_link(name, links)),
+                href,
                 label: download
                     .label
                     .clone()
@@ -550,8 +569,8 @@ fn render_block(block: &Block, links: &LinkContext, media_dir: &Path) -> Rendere
                     .and_then(|name| name.rsplit_once('.'))
                     .map(|(_, extension)| extension.to_uppercase())
                     .unwrap_or_default(),
-                size: file
-                    .and_then(|name| std::fs::metadata(media_dir.join(name)).ok())
+                size: local
+                    .and_then(|path| std::fs::metadata(path).ok())
                     .map(|metadata| format_size(metadata.len())),
             }
         }
@@ -599,25 +618,47 @@ fn render_block(block: &Block, links: &LinkContext, media_dir: &Path) -> Rendere
 }
 
 /// An image ready for the page. Width and height let the browser reserve
-/// space before the image loads, so the page doesn't jump; only the file's
-/// header is read to get them.
-fn picture(
-    name: &str,
-    alt: Option<&str>,
-    links: &LinkContext,
-    media_dir: &Path,
-) -> Option<Picture> {
+/// space before the image loads, so the page doesn't jump; `srcset` lets it
+/// load a smaller copy where a smaller one is enough.
+fn picture(name: &str, alt: Option<&str>, links: &LinkContext, images: &Images) -> Option<Picture> {
     let name = name.trim();
     if name.is_empty() {
         return None;
     }
-    let size = image::image_dimensions(media_dir.join(name)).ok();
+    let src = media_link(name, links);
+    let info = media_name(name).and_then(|file| images.info(file).map(|info| (file, info)));
+    let srcset = info
+        .as_ref()
+        .filter(|(_, info)| !info.widths.is_empty())
+        .map(|(file, info)| {
+            let mut candidates: Vec<String> = info
+                .widths
+                .iter()
+                .map(|&width| format!("{} {width}w", links.media(&images::copy_name(file, width))))
+                .collect();
+            candidates.push(format!("{src} {}w", info.width));
+            candidates.join(", ")
+        });
     Some(Picture {
-        src: media_link(name, links),
+        src,
+        srcset,
         alt: alt.unwrap_or_default().to_string(),
-        width: size.map(|(width, _)| width),
-        height: size.map(|(_, height)| height),
+        width: info.as_ref().map(|(_, info)| info.width),
+        height: info.as_ref().map(|(_, info)| info.height),
     })
+}
+
+/// The link to a download block's file and where it is on disk. Downloads
+/// live in `assets/`; sites from before that kept them in `media/`, so a
+/// file found only there is linked there.
+fn download_location(name: &str, links: &LinkContext, root: &Path) -> (String, PathBuf) {
+    let asset = root.join(ASSETS_DIR).join(name);
+    let old = root.join(MEDIA_DIR).join(name);
+    if !asset.is_file() && old.is_file() {
+        (links.media(name), old)
+    } else {
+        (links.asset(name), asset)
+    }
 }
 
 /// "1.4 MB", "820 KB", "12 bytes".
@@ -626,6 +667,20 @@ fn format_size(bytes: u64) -> String {
         1_000_000.. => format!("{:.1} MB", bytes as f64 / 1_000_000.0),
         1_000.. => format!("{} KB", (bytes as f64 / 1_000.0).round()),
         _ => format!("{bytes} bytes"),
+    }
+}
+
+/// The file inside `media/` an image field points to: `team.jpg` or
+/// `/media/team.jpg`. Full URLs and other site paths aren't media files.
+fn media_name(image: &str) -> Option<&str> {
+    if image.contains(':') {
+        None
+    } else if let Some(name) = image.strip_prefix("/media/") {
+        Some(name)
+    } else if image.starts_with('/') {
+        None
+    } else {
+        Some(image)
     }
 }
 
@@ -814,6 +869,51 @@ mod tests {
         let home = read(out.path().join("index.html"));
         let icon = crate::icons::svg("users").unwrap();
         assert!(home.contains(&format!("{icon}About</a>")), "{home}");
+    }
+
+    #[test]
+    fn offers_smaller_copies_of_photos() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("pages")).unwrap();
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        fs::write(dir.path().join("site.toml"), "title = \"Photos\"\n").unwrap();
+        fs::write(
+            dir.path().join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\n::: hero\nimage = \"wide.jpg\"\nheadline = \"Hi\"\n:::\n\n::: gallery\n[[images]]\nimage = \"wide.jpg\"\n\n[[images]]\nimage = \"small.png\"\n:::\n",
+        )
+        .unwrap();
+        image::RgbImage::new(2000, 1000)
+            .save(dir.path().join("media/wide.jpg"))
+            .unwrap();
+        image::RgbImage::new(300, 200)
+            .save(dir.path().join("media/small.png"))
+            .unwrap();
+
+        let site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        let report = build_into(&site, &out).unwrap();
+        let home = read(out.join("index.html"));
+
+        assert_eq!(report.resized_images, 3, "once per photo, not per use");
+        assert!(out.join("media/wide.480w.jpg").is_file());
+        assert!(home.contains(
+            r#"srcset="media/wide.480w.jpg 480w, media/wide.960w.jpg 960w, media/wide.1600w.jpg 1600w, media/wide.jpg 2000w""#
+        ));
+        assert!(
+            home.contains(r#"sizes="(min-width: 56rem) 18rem"#),
+            "gallery sizes"
+        );
+        assert!(
+            home.contains(r#"loading="eager""#),
+            "the hero loads at once"
+        );
+        // Too small for copies: a plain image.
+        assert!(
+            home.contains(
+                r#"<img src="media/small.png" alt="" width="300" height="200" loading="lazy""#
+            ),
+            "{home}"
+        );
     }
 
     #[test]

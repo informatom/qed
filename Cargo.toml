@@ -16,3 +16,19 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# Decoding and resizing photos is ~25x slower unoptimized, and `tauri dev`
+# and the tests use the dev profile. Optimizing just these crates keeps
+# builds of qed's own code as fast as before.
+[profile.dev.package]
+image = { opt-level = 3 }
+zune-jpeg = { opt-level = 3 }
+zune-core = { opt-level = 3 }
+png = { opt-level = 3 }
+fdeflate = { opt-level = 3 }
+miniz_oxide = { opt-level = 3 }
+flate2 = { opt-level = 3 }
+crc32fast = { opt-level = 3 }
+adler2 = { opt-level = 3 }
+simd-adler32 = { opt-level = 3 }
+moxcms = { opt-level = 3 }

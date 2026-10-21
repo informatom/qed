@@ -29,8 +29,9 @@ current.
 
 There is no database. A site is a folder: `site.toml`, Markdown pages and
 posts with TOML front matter (`+++`), block containers (`::: type` … `:::`)
-inside the Markdown, and `media/`. History is git. Secrets (SSH keys, tokens)
-live in the OS keychain, never in the site folder.
+inside the Markdown, `media/` (images) and `assets/` (files to download).
+History is git. Secrets (SSH keys, tokens) live in the OS keychain, never in
+the site folder.
 
 ## Rules
 

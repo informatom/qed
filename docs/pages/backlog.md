@@ -27,7 +27,7 @@ A complete site builder without podcast features.
   Windows and Linux on every tag.
 - **#046 Site folder, phase 1.** `site.toml` (title, language, theme, menus),
   `targets.toml` (publish targets without secrets, git-ignored), pages and posts as Markdown files with
-  TOML front matter, `media/` for images and downloads, build output in a
+  TOML front matter, `media/` for images, `assets/` for downloads, build output in a
   git-ignored folder. Old paths for redirects go into front matter.
   *Reading done 2026-10-21* (`qed_core::site::open`, `examples/demo-site`).
   *Creating pages done 2026-10-21* (`site::create_page`, "New page" dialog;
@@ -69,10 +69,7 @@ A complete site builder without podcast features.
   (`qed_core::media`): list with size, dimensions and usage, import with
   clean names, delete only unused files, image picker, Image block with
   width/height and lazy loading. Still open: resizing to several sizes
-  with a build cache (#075), tags.
-- **#075 Responsive images.** Resize images at build time to a few widths
-  (`srcset`), keep the originals in `media/`, cache the results so builds
-  stay fast.
+  with a build cache (#075, done), tags.
 - **#040 Blog.** Pages with kind `post` under a `blog` parent, a Post list
   block and `blog/feed.xml`.
 - **#026 Site generator.** Render HTML for published pages, posts, menus,
@@ -140,6 +137,23 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#078 Assets for downloads.** Done 2026-10-21: `assets/` holds files
+  to download (PDFs, but any type); `media/` takes only images. An Assets
+  tab lists, imports (clean names) and deletes them like Media
+  (`qed_core::media` with a `Library` parameter); the Download block picks
+  from assets and links to `/assets/…`. Sites with downloads still in
+  `media/` keep working (the generator falls back to `media/`), and the
+  Media tab offers "Move to Assets", which moves them and updates the
+  pages' Download blocks and `/media/…` links.
+- **#075 Responsive images.** Done 2026-10-21 (`qed_core::images`): JPEG
+  and PNG images in Image, Text with image, Gallery and Hero blocks get
+  copies 480, 960 and 1600 px wide (only those under 90% of the original),
+  in the original's format, next to it in the built site
+  (`media/team.480w.jpg`), listed in `srcset` with a `sizes` hint per
+  block. Camera rotation (EXIF) is applied. Copies are cached in the site's
+  self-ignoring `.qed-cache/` and made on all cores. The Hero is now an
+  `<img>` behind the text instead of a CSS background. Still open: images
+  inside Markdown text keep the original only; WebP copies.
 - **#076 Generated TypeScript types.** Done 2026-10-21: tauri-specta
   writes `src/lib/bindings.ts` (types and one function per command) from
   `commands()` in `src-tauri`; the `bindings_are_current` test rewrites it

@@ -8,7 +8,7 @@ use std::sync::Mutex;
 
 use qed_core::block::Block;
 use qed_core::generator::{self, BuildReport};
-use qed_core::media::{self, MediaFile};
+use qed_core::media::{self, Library, MediaFile};
 use qed_core::page::{FrontMatter, PageDate};
 use qed_core::preview::Preview;
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
@@ -47,30 +47,43 @@ async fn open_site(app: AppHandle, path: PathBuf) -> Result<Site, String> {
     Ok(site)
 }
 
-/// Lists the site's media files with their size and usage.
+/// Lists the files in `media/` or `assets/` with their size and usage.
 #[tauri::command]
 #[specta::specta]
-async fn list_media(root: PathBuf) -> Result<Vec<MediaFile>, String> {
+async fn list_media(root: PathBuf, library: Library) -> Result<Vec<MediaFile>, String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
-    media::list(&site).map_err(|error| error.to_string())
+    media::list(&site, library).map_err(|error| error.to_string())
 }
 
-/// Copies files into the media folder; returns their new names.
+/// Copies files into `media/` or `assets/`; returns their new names.
 #[tauri::command]
 #[specta::specta]
-async fn import_media(root: PathBuf, paths: Vec<PathBuf>) -> Result<Vec<String>, String> {
+async fn import_media(
+    root: PathBuf,
+    library: Library,
+    paths: Vec<PathBuf>,
+) -> Result<Vec<String>, String> {
     paths
         .iter()
-        .map(|path| media::import(&root, path).map_err(|error| error.to_string()))
+        .map(|path| media::import(&root, library, path).map_err(|error| error.to_string()))
         .collect()
 }
 
-/// Deletes a media file that no page uses.
+/// Deletes a file that no page uses.
 #[tauri::command]
 #[specta::specta]
-async fn delete_media(root: PathBuf, name: String) -> Result<(), String> {
+async fn delete_media(root: PathBuf, library: Library, name: String) -> Result<(), String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
-    media::delete(&site, &name).map_err(|error| error.to_string())
+    media::delete(&site, library, &name).map_err(|error| error.to_string())
+}
+
+/// Moves the files in `media/` that aren't images into `assets/` and
+/// updates the pages; returns how many moved.
+#[tauri::command]
+#[specta::specta]
+async fn move_documents_to_assets(root: PathBuf) -> Result<usize, String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    media::move_documents_to_assets(&site).map_err(|error| error.to_string())
 }
 
 /// Saves a page's settings into its file and returns the saved page.
@@ -298,6 +311,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             list_media,
             import_media,
             delete_media,
+            move_documents_to_assets,
             save_page_settings,
             save_page_blocks,
             save_site_config,

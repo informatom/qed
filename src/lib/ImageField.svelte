@@ -4,9 +4,9 @@
 
   interface Props {
     siteRoot: string;
-    /** A file name in media/, or null. */
+    /** A file name in media/ (images) or assets/ (files), or null. */
     value: string | null;
-    /** "image" picks and previews images; "file" picks any file. */
+    /** "image" picks and previews images from media/; "file" picks a file to download from assets/. */
     accept?: "image" | "file";
   }
 
@@ -39,6 +39,7 @@
 </div>
 
 {#if picking}
-  <MediaPicker {siteRoot} only={accept === "image" ? "image" : undefined} onpick={(name) => (value = name)}
+  <MediaPicker {siteRoot} library={accept === "image" ? "media" : "assets"} only={accept === "image" ? "image" : undefined}
+    onpick={(name) => (value = name)}
     onclose={() => (picking = false)} />
 {/if}

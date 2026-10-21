@@ -16,12 +16,17 @@ export const commands = {
 	 *  thumbnails); the asset protocol starts with an empty scope.
 	 */
 	openSite: (path: string) => __TAURI_INVOKE<Site>("open_site", { path }),
-	/**  Lists the site's media files with their size and usage. */
-	listMedia: (root: string) => __TAURI_INVOKE<MediaFile[]>("list_media", { root }),
-	/**  Copies files into the media folder; returns their new names. */
-	importMedia: (root: string, paths: string[]) => __TAURI_INVOKE<string[]>("import_media", { root, paths }),
-	/**  Deletes a media file that no page uses. */
-	deleteMedia: (root: string, name: string) => __TAURI_INVOKE<null>("delete_media", { root, name }),
+	/**  Lists the files in `media/` or `assets/` with their size and usage. */
+	listMedia: (root: string, library: Library) => __TAURI_INVOKE<MediaFile[]>("list_media", { root, library }),
+	/**  Copies files into `media/` or `assets/`; returns their new names. */
+	importMedia: (root: string, library: Library, paths: string[]) => __TAURI_INVOKE<string[]>("import_media", { root, library, paths }),
+	/**  Deletes a file that no page uses. */
+	deleteMedia: (root: string, library: Library, name: string) => __TAURI_INVOKE<null>("delete_media", { root, library, name }),
+	/**
+	 *  Moves the files in `media/` that aren't images into `assets/` and
+	 *  updates the pages; returns how many moved.
+	 */
+	moveDocumentsToAssets: (root: string) => __TAURI_INVOKE<number>("move_documents_to_assets", { root }),
 	/**  Saves a page's settings into its file and returns the saved page. */
 	savePageSettings: (root: string, file: string, front: FrontMatter) => __TAURI_INVOKE<Page>("save_page_settings", { root, file, front }),
 	/**  Saves a page's blocks into its file and returns the page as it reads back. */
@@ -89,7 +94,10 @@ export type BuildReport = {
 	pages: number,
 	drafts_skipped: number,
 	redirects: number,
+	/**  Images in `media/` and downloads in `assets/`. */
 	media_files: number,
+	/**  Smaller copies of photos, for phones and narrow columns. */
+	resized_images: number,
 };
 
 /**  A highlighted box that asks the visitor to do something. */
@@ -189,9 +197,16 @@ export type Image = {
 	caption: string | null,
 };
 
-/**  One file in the media folder. */
+/**  Which of the two folders. */
+export type Library = 
+/**  `media/`: images only. */
+"media" | 
+/**  `assets/`: files to download, of any type. */
+"assets";
+
+/**  One file in `media/` or `assets/`. */
 export type MediaFile = {
-	/**  Path inside `media/`, with `/` between folders: `team.jpg`, `logos/a.png`. */
+	/**  Path inside the folder, with `/` between folders: `team.jpg`, `logos/a.png`. */
 	name: string,
 	/**  Size in bytes. */
 	size: number,

@@ -1,19 +1,27 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
+  import FolderInput from "@lucide/svelte/icons/folder-input";
   import Trash from "@lucide/svelte/icons/trash";
   import Upload from "@lucide/svelte/icons/upload";
-  import { commands, formatSize, mediaUrl, type MediaFile, type MediaKind } from "$lib/site";
+  import { commands, formatSize, mediaUrl, type Library, type MediaFile, type MediaKind } from "$lib/site";
 
   interface Props {
     siteRoot: string;
+    /** `media/` (images) or `assets/` (files to download). */
+    library?: Library;
     /** When set, clicking a file picks it instead of showing delete. */
     onpick?: (name: string) => void;
     /** Show only files of this kind. */
     only?: MediaKind;
+    /** Called after files moved to assets/, which changes pages. */
+    onmoved?: () => void;
+    /** A page has unsaved changes; moving files (which edits pages) waits. */
+    editing?: boolean;
   }
 
-  let { siteRoot, onpick, only }: Props = $props();
+  let { siteRoot, library = "media", onpick, only, onmoved, editing = false }: Props = $props();
+  let folder = $derived(library === "media" ? "media" : "assets");
 
   let files = $state<MediaFile[]>([]);
   let loading = $state(true);
@@ -29,7 +37,7 @@
 
   async function refresh() {
     try {
-      files = await commands.listMedia(siteRoot);
+      files = await commands.listMedia(siteRoot, library);
       error = null;
     } catch (e) {
       error = String(e);
@@ -41,11 +49,15 @@
   onMount(refresh);
 
   async function importFiles() {
-    const picked = await open({ multiple: true, title: "Import into the media folder" });
+    const picked = await open({
+      multiple: true,
+      title: library === "media" ? "Import images" : "Import files to download",
+      filters: library === "media" ? [{ name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif"] }] : [],
+    });
     if (!picked || picked.length === 0) return;
     busy = true;
     try {
-      const names = await commands.importMedia(siteRoot, picked);
+      const names = await commands.importMedia(siteRoot, library, picked);
       await refresh();
       // In the picker, importing one file usually means "use this one".
       if (onpick && names.length === 1) onpick(names[0]);
@@ -57,7 +69,7 @@
   }
 
   async function remove(file: MediaFile) {
-    const sure = await ask(`Delete ${file.name}? This removes the file from the media folder.`, {
+    const sure = await ask(`Delete ${file.name}? This removes the file from the ${folder} folder.`, {
       title: "Delete file",
       kind: "warning",
       okLabel: "Delete",
@@ -65,34 +77,73 @@
     });
     if (!sure) return;
     try {
-      await commands.deleteMedia(siteRoot, file.name);
+      await commands.deleteMedia(siteRoot, library, file.name);
       await refresh();
     } catch (e) {
       error = String(e);
     }
   }
+
+  // Sites from before assets/ kept downloads in media/.
+  let misplaced = $derived(library === "media" && !onpick ? files.filter((file) => file.kind !== "image") : []);
+
+  async function moveToAssets() {
+    const sure = await ask(
+      `Move ${misplaced.length} ${misplaced.length === 1 ? "file" : "files"} to Assets? Pages that use them are updated to match.`,
+      { title: "Move to Assets", okLabel: "Move", cancelLabel: "Cancel" },
+    );
+    if (!sure) return;
+    busy = true;
+    try {
+      await commands.moveDocumentsToAssets(siteRoot);
+      await refresh();
+      onmoved?.();
+    } catch (e) {
+      error = String(e);
+    } finally {
+      busy = false;
+    }
+  }
 </script>
 
-<div id="media-library" class="flex flex-col gap-4">
+<div id={library === "media" ? "media-library" : "assets-library"} class="flex flex-col gap-4">
   <div class="flex flex-wrap items-center gap-3">
-    <input id="media-search" class="input w-64" type="search" placeholder="Search by name" bind:value={search} />
+    <input id="{library}-search" class="input w-64" type="search" placeholder="Search by name" bind:value={search} />
     <span class="text-sm text-base-content/60">{shown.length} of {files.length} files</span>
     <div class="flex-1"></div>
-    <button type="button" id="import-media" class="btn btn-primary" onclick={importFiles} disabled={busy}>
+    <button type="button" id="import-{library}" class="btn btn-primary" onclick={importFiles} disabled={busy}>
       {#if busy}<span class="loading loading-spinner loading-sm"></span>{:else}<Upload class="size-4" />{/if}
-      Import files…
+      {library === "media" ? "Import images…" : "Import files…"}
     </button>
   </div>
 
+  {#if misplaced.length}
+    <div id="misplaced-files" role="status" class="alert alert-info alert-soft flex flex-wrap text-sm">
+      <span class="flex-1">
+        {misplaced.length === 1 ? "1 file here isn't an image" : `${misplaced.length} files here aren't images`}. Files to
+        download now go into Assets.{#if editing} Save or discard the page you're editing first.{/if}
+      </span>
+      <button type="button" id="move-to-assets" class="btn btn-sm" onclick={moveToAssets} disabled={busy || editing}>
+        <FolderInput class="size-4" /> Move to Assets
+      </button>
+    </div>
+  {/if}
+
   {#if error}
-    <div id="media-error" role="alert" class="alert alert-error alert-soft text-sm">{error}</div>
+    <div id="{library}-error" role="alert" class="alert alert-error alert-soft text-sm">{error}</div>
   {/if}
 
   {#if loading}
     <span class="loading loading-spinner"></span>
   {:else if shown.length === 0}
     <p class="rounded-box border border-dashed border-base-300 p-8 text-center text-base-content/60">
-      {files.length === 0 ? "The media folder is empty. Import images or documents to use them on pages." : "No file matches."}
+      {#if files.length > 0}
+        No file matches.
+      {:else if library === "media"}
+        The media folder is empty. Import images to use them on pages.
+      {:else}
+        No files to download yet. Import PDFs or other files to offer them with a Download block.
+      {/if}
     </p>
   {:else}
     <ul class="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3">

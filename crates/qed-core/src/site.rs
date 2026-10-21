@@ -25,6 +25,8 @@ use crate::target::Target;
 pub const CONFIG_FILE: &str = "site.toml";
 pub const PAGES_DIR: &str = "pages";
 pub const MEDIA_DIR: &str = "media";
+/// Files to download, such as PDFs. Images go into `media/`.
+pub const ASSETS_DIR: &str = "assets";
 
 /// Settings from `site.toml`.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -353,7 +355,7 @@ pub fn save_blocks(root: &Path, file: &Path, blocks: Vec<Block>) -> Result<Page,
 /// The file is read again right before saving, so whatever someone edited
 /// by hand in the meantime, outside of what `change` touches, is kept.
 /// Returns the page as it reads back from the saved file.
-fn update_page(
+pub(crate) fn update_page(
     root: &Path,
     file: &Path,
     change: impl FnOnce(&mut PageContent),

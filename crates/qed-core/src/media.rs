@@ -1,19 +1,41 @@
-//! The site's `media/` folder: images and downloads that pages use.
+//! The site's two folders of files that pages use: `media/` for images and
+//! `assets/` for files to download, such as PDFs.
 //!
-//! Pages refer to media files by name: `image = "team.jpg"` in a block, or
-//! `![Team](/media/team.jpg)` in Markdown. The files stay as they are; the
+//! Pages refer to these files by name: `image = "team.jpg"` and
+//! `file = "menu.pdf"` in blocks, or `![Team](/media/team.jpg)` and
+//! `[Menu](/assets/menu.pdf)` in Markdown. The files stay as they are; the
 //! site generator copies them into the built site.
 
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::block::Block;
 use crate::markdown;
-use crate::site::{MEDIA_DIR, Page, Site, SiteError};
+use crate::site::{self, ASSETS_DIR, MEDIA_DIR, Page, Site, SiteError};
 use crate::slug::slugify;
+
+/// Which of the two folders.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum Library {
+    /// `media/`: images only.
+    Media,
+    /// `assets/`: files to download, of any type.
+    Assets,
+}
+
+impl Library {
+    pub fn dir(self) -> &'static str {
+        match self {
+            Library::Media => MEDIA_DIR,
+            Library::Assets => ASSETS_DIR,
+        }
+    }
+}
 
 /// What kind of file a media file is, judged by its extension.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -25,11 +47,11 @@ pub enum MediaKind {
     Other,
 }
 
-/// One file in the media folder.
+/// One file in `media/` or `assets/`.
 #[derive(Debug, Clone, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct MediaFile {
-    /// Path inside `media/`, with `/` between folders: `team.jpg`, `logos/a.png`.
+    /// Path inside the folder, with `/` between folders: `team.jpg`, `logos/a.png`.
     pub name: String,
     /// Size in bytes.
     pub size: u64,
@@ -40,9 +62,9 @@ pub struct MediaFile {
     pub used_by: Vec<String>,
 }
 
-/// Lists every file in the media folder, sorted by name.
-pub fn list(site: &Site) -> Result<Vec<MediaFile>, SiteError> {
-    let folder = site.root.join(MEDIA_DIR);
+/// Lists every file in one of the folders, sorted by name.
+pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> {
+    let folder = site.root.join(library.dir());
     let mut names = Vec::new();
     if folder.is_dir() {
         collect(&folder, &folder, &mut names)?;
@@ -52,7 +74,7 @@ pub fn list(site: &Site) -> Result<Vec<MediaFile>, SiteError> {
     let usage: Vec<(&str, Vec<String>)> = site
         .pages
         .iter()
-        .map(|page| (page.path.as_str(), references(page)))
+        .map(|page| (page.path.as_str(), references(page, library)))
         .collect();
 
     names
@@ -89,12 +111,13 @@ pub fn list(site: &Site) -> Result<Vec<MediaFile>, SiteError> {
         .collect()
 }
 
-/// Copies a file into the media folder and returns its new name.
+/// Copies a file into one of the folders and returns its new name. `media/`
+/// takes only images.
 ///
 /// The name is made URL-friendly (`Team Photo.JPG` becomes `team-photo.jpg`),
 /// and gets a number if it's taken (`team-photo-2.jpg`). Existing files are
 /// never overwritten.
-pub fn import(root: &Path, source: &Path) -> Result<String, SiteError> {
+pub fn import(root: &Path, library: Library, source: &Path) -> Result<String, SiteError> {
     let read_error = |source_error| SiteError::Io {
         path: source.to_path_buf(),
         source: source_error,
@@ -103,6 +126,17 @@ pub fn import(root: &Path, source: &Path) -> Result<String, SiteError> {
         return Err(SiteError::Invalid {
             path: source.to_path_buf(),
             message: "only files can be imported".to_string(),
+        });
+    }
+
+    let original_name = source
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_default();
+    if library == Library::Media && kind_of(&original_name) != MediaKind::Image {
+        return Err(SiteError::Invalid {
+            path: source.to_path_buf(),
+            message: "isn't an image; files to download go into Assets".to_string(),
         });
     }
 
@@ -120,7 +154,7 @@ pub fn import(root: &Path, source: &Path) -> Result<String, SiteError> {
         .map(|e| format!(".{}", e.to_string_lossy().to_lowercase()))
         .unwrap_or_default();
 
-    let folder = root.join(MEDIA_DIR);
+    let folder = root.join(library.dir());
     fs::create_dir_all(&folder).map_err(|source| SiteError::Write {
         path: folder.clone(),
         source,
@@ -158,46 +192,51 @@ pub fn import(root: &Path, source: &Path) -> Result<String, SiteError> {
     unreachable!("the loop above runs until it returns")
 }
 
-/// Deletes a media file, unless a page still uses it.
-pub fn delete(site: &Site, name: &str) -> Result<(), SiteError> {
-    let path = media_path(&site.root, name)?;
+/// Deletes a file from one of the folders, unless a page still uses it.
+pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError> {
+    let path = file_path(&site.root, library, name)?;
     let used_by: Vec<String> = site
         .pages
         .iter()
-        .filter(|page| references(page).iter().any(|n| n == name))
+        .filter(|page| references(page, library).iter().any(|n| n == name))
         .map(|page| format!("/{}", page.path))
         .collect();
     if !used_by.is_empty() {
         return Err(SiteError::Invalid {
-            path: PathBuf::from(MEDIA_DIR).join(name),
+            path: PathBuf::from(library.dir()).join(name),
             message: format!("still used by {}", used_by.join(", ")),
         });
     }
     fs::remove_file(&path).map_err(|source| SiteError::Write { path, source })
 }
 
-/// The media files a page uses, by name.
-pub fn references(page: &Page) -> Vec<String> {
-    let mut names = Vec::new();
+/// The files in `library` a page uses, by name.
+///
+/// Download blocks name files in `assets/`. Sites from before `assets/`
+/// existed kept them in `media/`, so their names count there too, until
+/// [`move_documents_to_assets`] has moved them.
+pub fn references(page: &Page, library: Library) -> Vec<String> {
+    let mut images = Vec::new();
+    let mut downloads = Vec::new();
     let mut markdown_texts: Vec<&str> = Vec::new();
 
     for block in &page.content.blocks {
         match block {
             Block::Text { markdown } => markdown_texts.push(markdown),
             Block::Hero(hero) => {
-                names.extend(hero.image.as_deref().and_then(media_name));
+                images.extend(hero.image.as_deref().and_then(media_name));
                 markdown_texts.extend(hero.text.as_deref());
             }
             Block::Image(image) => {
-                names.extend(image.image.as_deref().and_then(media_name));
+                images.extend(image.image.as_deref().and_then(media_name));
                 markdown_texts.extend(image.caption.as_deref());
             }
             Block::TextImage(block) => {
-                names.extend(block.image.as_deref().and_then(media_name));
+                images.extend(block.image.as_deref().and_then(media_name));
                 markdown_texts.extend(block.text.as_deref());
             }
             Block::Gallery(gallery) => {
-                names.extend(
+                images.extend(
                     gallery
                         .images
                         .iter()
@@ -205,7 +244,7 @@ pub fn references(page: &Page) -> Vec<String> {
                 );
             }
             Block::Download(download) => {
-                names.extend(download.file.as_deref().and_then(media_name))
+                downloads.extend(download.file.as_deref().and_then(media_name))
             }
             Block::Faq(faq) => {
                 markdown_texts.extend(faq.items.iter().map(|item| item.answer.as_str()))
@@ -217,10 +256,15 @@ pub fn references(page: &Page) -> Vec<String> {
         }
     }
 
+    let mut names = downloads;
+    if library == Library::Media {
+        names.extend(images);
+    }
+    let prefix = format!("{}/", library.dir());
     for text in markdown_texts {
         for target in markdown::link_targets(text) {
             let path = target.split(['?', '#']).next().unwrap_or_default();
-            if let Some(name) = path.trim_start_matches('/').strip_prefix("media/") {
+            if let Some(name) = path.trim_start_matches('/').strip_prefix(prefix.as_str()) {
                 names.push(name.to_string());
             }
         }
@@ -238,21 +282,118 @@ fn media_name(value: &str) -> Option<String> {
         .then(|| value.to_string())
 }
 
-/// Checks a media name from the UI and returns the file's full path.
-fn media_path(root: &Path, name: &str) -> Result<PathBuf, SiteError> {
+/// Checks a file name from the UI and returns the file's full path.
+fn file_path(root: &Path, library: Library, name: &str) -> Result<PathBuf, SiteError> {
     let relative = Path::new(name);
     let plain = relative
         .components()
         .all(|c| matches!(c, Component::Normal(_)));
-    let path = root.join(MEDIA_DIR).join(relative);
+    let path = root.join(library.dir()).join(relative);
     if plain && path.is_file() {
         Ok(path)
     } else {
         Err(SiteError::Invalid {
-            path: PathBuf::from(MEDIA_DIR).join(name),
-            message: "no such media file".to_string(),
+            path: PathBuf::from(library.dir()).join(name),
+            message: "no such file".to_string(),
         })
     }
+}
+
+/// Moves every file in `media/` that isn't an image into `assets/`, and
+/// changes the pages that use them to match. Returns how many files moved.
+///
+/// For sites from before `assets/` existed, when `media/` held downloads
+/// too.
+pub fn move_documents_to_assets(site: &Site) -> Result<usize, SiteError> {
+    let media = site.root.join(MEDIA_DIR);
+    let mut names = Vec::new();
+    if media.is_dir() {
+        collect(&media, &media, &mut names)?;
+    }
+
+    // Old name in media/ → new name in assets/.
+    let mut moved = Vec::new();
+    for name in names {
+        if kind_of(&name) == MediaKind::Image {
+            continue;
+        }
+        let source = media.join(&name);
+        let new_name = import(&site.root, Library::Assets, &source)?;
+        fs::remove_file(&source).map_err(|error| SiteError::Write {
+            path: source.clone(),
+            source: error,
+        })?;
+        moved.push((name, new_name));
+    }
+
+    for page in &site.pages {
+        let used = references(page, Library::Media);
+        if moved.iter().any(|(old, _)| used.contains(old)) {
+            site::update_page(&site.root, &page.file, |content| {
+                for block in &mut content.blocks {
+                    rename_in_block(block, &moved);
+                }
+            })?;
+        }
+    }
+    Ok(moved.len())
+}
+
+/// Points a block's download and its Markdown links at the moved files.
+fn rename_in_block(block: &mut Block, moved: &[(String, String)]) {
+    if let Block::Download(download) = block
+        && let Some(file) = &mut download.file
+        && let Some((_, new_name)) = moved.iter().find(|(old, _)| old == file.trim())
+    {
+        *file = new_name.clone();
+    }
+    for_each_markdown(block, &mut |text| {
+        for (old, new_name) in moved {
+            *text = replace_link(
+                text,
+                &format!("/{MEDIA_DIR}/{old}"),
+                &format!("/{ASSETS_DIR}/{new_name}"),
+            );
+        }
+    });
+}
+
+/// Calls `change` on every Markdown text in a block.
+fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)) {
+    match block {
+        Block::Text { markdown } => change(markdown),
+        Block::Hero(hero) => hero.text.iter_mut().for_each(change),
+        Block::Image(image) => image.caption.iter_mut().for_each(change),
+        Block::TextImage(block) => block.text.iter_mut().for_each(change),
+        Block::Faq(faq) => faq
+            .items
+            .iter_mut()
+            .for_each(|item| change(&mut item.answer)),
+        Block::Columns(columns) => columns
+            .items
+            .iter_mut()
+            .for_each(|column| change(&mut column.text)),
+        Block::CallToAction(cta) => cta.text.iter_mut().for_each(change),
+        Block::Gallery(_) | Block::Download(_) => {}
+    }
+}
+
+/// Replaces the link `from` with `to` where it's a whole link, so
+/// `/media/menu.pdf` doesn't match the start of `/media/menu.pdf.old`.
+fn replace_link(text: &str, from: &str, to: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(index) = rest.find(from) {
+        let after = &rest[index + from.len()..];
+        let whole = after.chars().next().is_none_or(|c| {
+            matches!(c, ')' | '#' | '?' | '"' | '\'' | '>' | ']') || c.is_whitespace()
+        });
+        result.push_str(&rest[..index]);
+        result.push_str(if whole { to } else { from });
+        rest = after;
+    }
+    result.push_str(rest);
+    result
 }
 
 fn collect(folder: &Path, dir: &Path, names: &mut Vec<String>) -> Result<(), SiteError> {
@@ -330,7 +471,7 @@ mod tests {
     #[test]
     fn lists_files_with_kind_size_dimensions_and_usage() {
         let dir = site_dir();
-        let files = list(&site::open(dir.path()).unwrap()).unwrap();
+        let files = list(&site::open(dir.path()).unwrap(), Library::Media).unwrap();
         let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
         assert_eq!(names, ["logos/a.png", "menu.pdf", "team.png", "unused.txt"]);
 
@@ -353,8 +494,14 @@ mod tests {
         let source = dir.path().join("Team Photo.PNG");
         fs::write(&source, png()).unwrap();
 
-        assert_eq!(import(dir.path(), &source).unwrap(), "team-photo.png");
-        assert_eq!(import(dir.path(), &source).unwrap(), "team-photo-2.png");
+        assert_eq!(
+            import(dir.path(), Library::Media, &source).unwrap(),
+            "team-photo.png"
+        );
+        assert_eq!(
+            import(dir.path(), Library::Media, &source).unwrap(),
+            "team-photo-2.png"
+        );
         assert!(dir.path().join("media/team-photo-2.png").is_file());
     }
 
@@ -363,14 +510,14 @@ mod tests {
         let dir = site_dir();
         let site = site::open(dir.path()).unwrap();
 
-        let error = delete(&site, "team.png").unwrap_err();
+        let error = delete(&site, Library::Media, "team.png").unwrap_err();
         assert!(error.to_string().contains("still used by /"), "{error}");
         assert!(dir.path().join("media/team.png").exists());
 
-        delete(&site, "unused.txt").unwrap();
+        delete(&site, Library::Media, "unused.txt").unwrap();
         assert!(!dir.path().join("media/unused.txt").exists());
 
-        assert!(delete(&site, "../site.toml").is_err());
+        assert!(delete(&site, Library::Media, "../site.toml").is_err());
     }
 
     #[test]
@@ -421,12 +568,15 @@ answer = "See [the menu](/media/menu.pdf)."
         let site = site::open(dir.path()).unwrap();
         let cols = site.pages.iter().find(|p| p.path == "cols").unwrap();
         assert_eq!(
-            references(cols),
+            references(cols, Library::Media),
             ["team.png"],
             "images in column text count"
         );
         let more = site.pages.iter().find(|p| p.path == "more").unwrap();
-        assert_eq!(references(more), ["logos/a.png", "menu.pdf", "team.png"]);
+        assert_eq!(
+            references(more, Library::Media),
+            ["logos/a.png", "menu.pdf", "team.png"]
+        );
 
         let out = tempfile::tempdir().unwrap();
         crate::generator::build_into(&site, out.path()).unwrap();
@@ -439,7 +589,7 @@ answer = "See [the menu](/media/menu.pdf)."
         );
         assert!(
             html.contains(r#"<a href="../media/menu.pdf" download"#),
-            "{html}"
+            "a download still in media/, from before assets/: {html}"
         );
         assert!(
             html.contains(">PDF</span>") && html.contains(">Our menu</span>"),
@@ -483,5 +633,100 @@ answer = "See [the menu](/media/menu.pdf)."
             "{html}"
         );
         assert!(html.contains("In <em>2026</em>"), "{html}");
+    }
+
+    #[test]
+    fn media_takes_only_images_and_assets_take_anything() {
+        let dir = site_dir();
+        let pdf = dir.path().join("Speisekarte Herbst 2026.PDF");
+        fs::write(&pdf, "%PDF").unwrap();
+
+        let error = import(dir.path(), Library::Media, &pdf).unwrap_err();
+        assert!(error.to_string().contains("isn't an image"), "{error}");
+        assert_eq!(
+            import(dir.path(), Library::Assets, &pdf).unwrap(),
+            "speisekarte-herbst-2026.pdf"
+        );
+        assert!(
+            dir.path()
+                .join("assets/speisekarte-herbst-2026.pdf")
+                .is_file()
+        );
+    }
+
+    #[test]
+    fn tracks_downloads_in_assets() {
+        let dir = site_dir();
+        fs::create_dir(dir.path().join("assets")).unwrap();
+        fs::write(dir.path().join("assets/price-list.pdf"), "%PDF").unwrap();
+        fs::write(dir.path().join("assets/flyer.pdf"), "%PDF").unwrap();
+        fs::write(
+            dir.path().join("pages/prices.md"),
+            "+++\ntitle = \"Prices\"\n+++\n\n::: download\nfile = \"price-list.pdf\"\n:::\n\nAlso [our flyer](/assets/flyer.pdf).\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+
+        let files = list(&site, Library::Assets).unwrap();
+        let used: Vec<(&str, &[String])> = files
+            .iter()
+            .map(|f| (f.name.as_str(), f.used_by.as_slice()))
+            .collect();
+        assert_eq!(
+            used,
+            [
+                ("flyer.pdf", &["prices".to_string()][..]),
+                ("price-list.pdf", &["prices".to_string()][..])
+            ]
+        );
+        assert!(delete(&site, Library::Assets, "flyer.pdf").is_err());
+
+        let out = tempfile::tempdir().unwrap();
+        crate::generator::build_into(&site, out.path()).unwrap();
+        let html = fs::read_to_string(out.path().join("prices/index.html")).unwrap();
+        assert!(
+            html.contains(r#"<a href="../assets/price-list.pdf" download"#),
+            "{html}"
+        );
+        assert!(html.contains(r#"href="../assets/flyer.pdf""#), "{html}");
+        assert!(out.path().join("assets/price-list.pdf").is_file());
+    }
+
+    #[test]
+    fn moves_downloads_out_of_media() {
+        let dir = site_dir();
+        fs::write(
+            dir.path().join("pages/menu.md"),
+            "+++\ntitle = \"Menu\"\n+++\n\n::: download\nfile = \"menu.pdf\"\nlabel = \"Our menu\"\n:::\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+
+        assert_eq!(move_documents_to_assets(&site).unwrap(), 2);
+        assert!(dir.path().join("assets/menu.pdf").is_file());
+        assert!(dir.path().join("assets/unused.txt").is_file());
+        assert!(!dir.path().join("media/menu.pdf").exists());
+        assert!(dir.path().join("media/team.png").is_file(), "images stay");
+
+        let home = fs::read_to_string(dir.path().join("pages/index.md")).unwrap();
+        assert!(
+            home.contains("[the PDF](/assets/menu.pdf#page=2)"),
+            "{home}"
+        );
+        assert!(home.contains("![logo](/media/logos/a.png)"), "{home}");
+        let menu = fs::read_to_string(dir.path().join("pages/menu.md")).unwrap();
+        assert!(menu.contains("file = \"menu.pdf\""), "{menu}");
+    }
+
+    #[test]
+    fn replaces_only_whole_links() {
+        assert_eq!(
+            replace_link(
+                "[a](/media/a.pdf) [b](/media/a.pdf.old)",
+                "/media/a.pdf",
+                "/assets/a.pdf"
+            ),
+            "[a](/assets/a.pdf) [b](/media/a.pdf.old)"
+        );
     }
 }

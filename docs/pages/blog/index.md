@@ -22,3 +22,5 @@ comparisons to Elixir.
 - [Two themes: one for the app, one for the website](/blog/2026-10-21-themes)
 - [Page icons: SVG files built into the program, and a first macro_rules! of our own](/blog/2026-10-21-page-icons)
 - [Types from Rust: generating the UI's TypeScript from the commands](/blog/2026-10-21-types-from-rust)
+- [Responsive images: srcset, a cache, RefCell and scoped threads](/blog/2026-10-21-responsive-images)
+- [Assets: one module for two folders, and changing a format without breaking old sites](/blog/2026-10-21-assets)

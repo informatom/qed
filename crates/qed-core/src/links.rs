@@ -6,7 +6,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::site::{MEDIA_DIR, PAGES_DIR};
+use crate::site::{ASSETS_DIR, MEDIA_DIR, PAGES_DIR};
 
 /// Where links are resolved from: the page being rendered.
 #[derive(Debug, Clone)]
@@ -54,11 +54,20 @@ impl LinkContext {
         )
     }
 
+    /// A relative link to a file in the site's `assets/` folder.
+    pub fn asset(&self, file_name: &str) -> String {
+        format!(
+            "{}{ASSETS_DIR}/{}",
+            self.to_root(),
+            file_name.trim_start_matches('/')
+        )
+    }
+
     /// Rewrites a link as written in a page:
     ///
     /// - `https://…`, `mailto:…`, `#top`: unchanged
     /// - `/about` or `/about/`: the page at that path
-    /// - `/media/logo.png`: that file
+    /// - `/media/logo.png`, `/assets/menu.pdf`: that file
     /// - `other-post.md`, `../about.md#team`: the page in that file
     /// - anything else: unchanged
     pub fn resolve(&self, url: &str) -> String {
