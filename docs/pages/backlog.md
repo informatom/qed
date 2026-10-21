@@ -1,4 +1,9 @@
-# qed backlog
++++
+title = "Backlog"
+description = "Open work and decisions for qed, numbered #nnn."
+menu = "footer"
+weight = 10
++++
 
 Open work and open decisions. Items keep their number for good; when one is
 done or decided, move it to **Done / decided** with a short note. Items that no
@@ -20,8 +25,8 @@ A complete site builder without podcast features.
 
 - **#062 Release builds.** GitHub Actions builds installers for macOS,
   Windows and Linux on every tag.
-- **#046 Site folder, phase 1.** `site.toml` (title, language, theme, menus,
-  publish targets without secrets), pages and posts as Markdown files with
+- **#046 Site folder, phase 1.** `site.toml` (title, language, theme, menus),
+  `targets.toml` (publish targets without secrets, git-ignored), pages and posts as Markdown files with
   TOML front matter, `media/` for images and downloads, build output in a
   git-ignored folder. Old paths for redirects go into front matter.
   *Reading done 2026-10-21* (`qed_core::site::open`, `examples/demo-site`).
@@ -64,6 +69,11 @@ A complete site builder without podcast features.
   clean names, delete only unused files, image picker, Image block with
   width/height and lazy loading. Still open: resizing to several sizes
   with a build cache (#075), tags.
+- **#076 Generated TypeScript types.** Generate `src/lib/site.ts` types and
+  `invoke` wrappers from the Rust commands with `tauri-specta`, instead of
+  keeping them in sync by hand. A hand-kept mismatch (the UI sent `kind`
+  to commands expecting the bare SFTP struct) slipped through all checks
+  on 2026-10-21; `src-tauri` now has a test for that one shape.
 - **#075 Responsive images.** Resize images at build time to a few widths
   (`srcset`), keep the originals in `media/`, cache the results so builds
   stay fast.
@@ -80,21 +90,9 @@ A complete site builder without podcast features.
   `og:image`, copying only the media files that are used, and links that
   leave the site folder.
 - **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
-- **#063 Secrets.** Store SSH private keys and other secrets in the OS keychain
-  (`keyring`).
-- **#025 Publish targets UI.** Create and edit targets. For SSH and GitHub,
-  show the generated public key ready to copy, plus "regenerate key".
-- **#065 Deploy manifest.** Write `.qed-manifest.json` (path, size, hash) to
-  the target. Each deploy uploads only changed files and deletes only files
-  qed put there.
-- **#027 Publisher: ZIP.** Build the whole site as a ZIP.
-- **#028 Publisher: SSH.** Deploy over SFTP using the manifest (#065).
 - **#029 Publisher: GitHub Pages.** Push the built site to the configured
-  branch with a deploy key.
-- **#030 SSH host key check.** Pin the server's host key on first connect and
-  warn when it changes.
-- **#031 Connection test.** A "test connection" button for SSH and GitHub
-  targets.
+  branch with a deploy key. Needs a second `Target` kind, its own key
+  handling and connection test (#031).
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live.
 - **#037 Backups.** Document that backing up a site means copying its folder.
@@ -146,6 +144,15 @@ A complete site builder without podcast features.
   all 35 themes and the typography plugin (77 KB, 14 KB gzipped), compiled
   by `npm run build:site-css` and built into qed with `include_str!`. The
   theme is the `data-theme` attribute.
+- **SFTP publishing.** Done 2026-10-21 (#025, #028, #030, #031 for SFTP,
+  #063, #065): targets in `targets.toml` (`[[targets]]`, nothing secret,
+  git-ignored because it names servers),
+  passwords and generated Ed25519 keys in the OS keychain, `russh` with the
+  `ring` backend, trust on first connection and a hard stop when the
+  server key changes, `.qed-manifest.json` so only changed files are
+  uploaded and only qed's own files deleted, emptied folders removed, live
+  progress over a Tauri channel. A throwaway server for testing lives in
+  `dev/test-server/` (see the Development page).
 - **#061 Scaffold.** Done 2026-10-21: Cargo workspace (`src-tauri`,
   `crates/qed-core`), SvelteKit SPA with Tailwind + daisyUI, GPL-3.0
   `LICENSE`, `npm run check:all`. Elixir code and its local data removed.
@@ -201,3 +208,5 @@ Not needed in a single-user desktop app:
   #039 AGENTS.md (Phoenix-specific), #052 AGPL license file (#061).
 - #044 Local audio folder and #045 Audio pass-through: the app reads files
   directly.
+- #027 Publisher: ZIP. The built site already is a folder (`_site/`); the app
+  has "Show in file manager" instead.

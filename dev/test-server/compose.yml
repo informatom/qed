@@ -1,0 +1,31 @@
+# A throwaway server to publish to while developing qed.
+#
+#   docker compose -f dev/test-server/compose.yml up -d     # start
+#   docker compose -f dev/test-server/compose.yml down -v   # stop and forget everything
+#
+# SFTP:    host 127.0.0.1, port 2222, user "qed", password "qed", folder "/www"
+# Website: http://localhost:8080 shows whatever was published to /www
+#
+# Never use this setup for anything real: the password is public.
+name: qed-test-server
+
+services:
+  sftp:
+    image: atmoz/sftp:alpine
+    # user:password:uid:gid:folder to create inside the user's home
+    command: qed:qed:1001:1001:www
+    ports:
+      - "127.0.0.1:2222:22"
+    volumes:
+      - site:/home/qed/www
+      - ./fix-permissions.sh:/etc/sftp.d/fix-permissions.sh:ro
+
+  web:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - site:/usr/share/nginx/html:ro
+
+volumes:
+  site:

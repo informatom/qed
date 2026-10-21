@@ -11,13 +11,18 @@ authors.workspace = true
 askama = "0.16.1"
 comrak = { version = "0.57.0", default-features = false }
 deunicode = "1"
+getrandom = "0.3"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+russh = { version = "0.64.1", default-features = false, features = ["ring", "rsa", "flate2"] }
+russh-sftp = "3.0.1"
 serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
 thiserror = "2.0.21"
 tiny_http = "0.12.0"
+tokio = { version = "1.54.0", features = ["rt", "macros", "fs", "io-util", "sync"] }
 toml = "1.1.8"
 toml_edit = { version = "0.25.17", features = ["serde"] }
 
 [dev-dependencies]
-serde_json = "1.0.154"
 tempfile = "3.27.0"

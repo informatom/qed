@@ -26,8 +26,10 @@ export default defineConfig(() => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching `src-tauri`,
+      // and to ignore site folders: the app edits files there, and that's
+      // not a code change.
+      ignored: ["**/src-tauri/**", "**/docs/**", "**/examples/**", "**/dev/**", "**/_site/**", "**/target/**"],
     },
   },
 }));

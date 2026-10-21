@@ -20,6 +20,7 @@ use crate::block::Block;
 use crate::page::{self, FrontMatter, PageContent, PageDate};
 use crate::page_writer;
 use crate::slug::slugify;
+use crate::target::Target;
 
 pub const CONFIG_FILE: &str = "site.toml";
 pub const PAGES_DIR: &str = "pages";
@@ -57,6 +58,8 @@ pub struct Site {
     pub config: SiteConfig,
     /// Sorted by URL path.
     pub pages: Vec<Page>,
+    /// Where the site can be published to, from `targets.toml`.
+    pub targets: Vec<Target>,
 }
 
 /// One page of a site.
@@ -169,6 +172,7 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
         root: root.to_path_buf(),
         config,
         pages: pages.into_values().collect(),
+        targets: crate::target::load(root)?,
     })
 }
 
@@ -335,12 +339,14 @@ fn page_file(root: &Path, file: &Path) -> Result<PathBuf, SiteError> {
 
 /// Writes a file so that it's never half-written: first to a temporary file
 /// next to it, then renamed over the original in one step.
-fn write_atomically(path: &Path, contents: &str) -> Result<(), SiteError> {
+pub(crate) fn write_atomically(path: &Path, contents: &str) -> Result<(), SiteError> {
     let error = |source| SiteError::Write {
         path: path.to_path_buf(),
         source,
     };
-    let temporary = path.with_extension("md.qed-saving");
+    let mut temporary = path.as_os_str().to_owned();
+    temporary.push(".qed-saving");
+    let temporary = PathBuf::from(temporary);
     fs::write(&temporary, contents).map_err(error)?;
     fs::rename(&temporary, path).map_err(error)
 }

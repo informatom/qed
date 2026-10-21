@@ -21,3 +21,6 @@ vite.config.ts.timestamp-*
 
 # Built sites
 _site/
+
+# Publish targets name your servers; keep them out of the repo
+targets.toml

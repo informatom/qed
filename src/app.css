@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* Scan only the app's own code for classes. Without `source`, Tailwind scans
+   the whole project, including the site folders in docs/ and examples/, and
+   every page saved there would reload the app window during development. */
+@import "tailwindcss" source("../src");
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
 }

@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
-  import { openUrl } from "@tauri-apps/plugin-opener";
+  import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
+  import PublishDialog from "$lib/PublishDialog.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
   import { BLOCK_NAMES, buildSite, openSite, previewSite, type BuildReport, type Page, type Site } from "$lib/site";
 
@@ -36,6 +37,7 @@
   }
 
   let creatingPage = $state(false);
+  let publishingOpen = $state(false);
   let view = $state<"pages" | "media">("pages");
 
   async function pageCreated(page: Page) {
@@ -168,6 +170,9 @@
         <button id="preview-site" class="btn btn-secondary" onclick={preview} disabled={loading || building}>
           Preview in browser
         </button>
+        <button id="publish-site" class="btn btn-accent" onclick={() => (publishingOpen = true)} disabled={loading}>
+          Publish…
+        </button>
         <button id="reload-site" class="btn btn-ghost" onclick={() => site && load(site.root)} disabled={loading}>
           Reload
         </button>
@@ -191,6 +196,7 @@
         Built {report.pages} pages{report.drafts_skipped ? ` (${report.drafts_skipped} drafts skipped)` : ""},
         {report.redirects} redirects and {report.media_files} media files into
         <code class="font-mono text-sm">{report.out_dir}</code>.
+        <button class="link" onclick={() => report && revealItemInDir(report.out_dir)}>Show in file manager</button>
         {#if previewUrl}
           Preview: <button class="link" onclick={() => previewUrl && openUrl(previewUrl)}>{previewUrl}</button>
         {/if}
@@ -284,6 +290,14 @@
     </section>
   {/if}
 </main>
+
+{#if site && publishingOpen}
+  <PublishDialog
+    {site}
+    ontargets={(targets) => site && (site.targets = targets)}
+    onclose={() => (publishingOpen = false)}
+  />
+{/if}
 
 {#if site && creatingPage}
   <NewPageDialog {site} oncreated={pageCreated} onclose={() => (creatingPage = false)} />

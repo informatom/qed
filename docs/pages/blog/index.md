@@ -16,3 +16,4 @@ comparisons to Elixir.
 - [New pages: defaults, files that must not exist yet, and a dialog](/blog/2026-10-21-new-pages)
 - [The block editor: closures that run once, and components that talk back](/blog/2026-10-21-the-block-editor)
 - [Media, images, and the compiler as a checklist](/blog/2026-10-21-media-and-the-compiler-as-checklist)
+- [Publishing over SFTP: async Rust, trust on first use, and a server in a box](/blog/2026-10-21-publishing-over-sftp)

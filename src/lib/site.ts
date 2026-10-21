@@ -1,7 +1,7 @@
 // TypeScript mirrors of the Rust types in crates/qed-core, as they arrive
 // from `invoke("open_site")`. Keep them in sync by hand for now.
 
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { Channel, convertFileSrc, invoke } from "@tauri-apps/api/core";
 
 export type Menu = "none" | "main" | "footer";
 
@@ -67,6 +67,8 @@ export interface Site {
   root: string;
   config: SiteConfig;
   pages: Page[];
+  /** Publish targets, from targets.toml. */
+  targets: Target[];
 }
 
 /** Reads a site folder. Rejects with a readable message if it can't. */
@@ -192,4 +194,82 @@ export function formatSize(bytes: number): string {
   if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
   if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} KB`;
   return `${bytes} bytes`;
+}
+
+export type SftpAuth = "password" | "key";
+
+export interface SftpTarget {
+  kind: "sftp";
+  name: string;
+  host: string;
+  port: number;
+  user: string;
+  /** The folder on the server, e.g. /var/www/html. */
+  path: string;
+  auth: SftpAuth;
+  /** The trusted server key fingerprint, set on first connection. */
+  host_key: string | null;
+  delete_stale: boolean;
+}
+
+/** Only SFTP for now; GitHub Pages will join this union. */
+export type Target = SftpTarget;
+
+export function newSftpTarget(): SftpTarget {
+  return { kind: "sftp", name: "", host: "", port: 22, user: "", path: "", auth: "password", host_key: null, delete_stale: false };
+}
+
+export function saveTargets(root: string, targets: Target[]): Promise<void> {
+  return invoke<void>("save_targets", { root, targets });
+}
+
+export function setTargetPassword(target: SftpTarget, password: string): Promise<void> {
+  return invoke<void>("set_target_password", { target, password });
+}
+
+export interface SecretStatus {
+  has_password: boolean;
+  public_key: string | null;
+}
+
+export function targetSecrets(target: SftpTarget): Promise<SecretStatus> {
+  return invoke<SecretStatus>("target_secrets", { target });
+}
+
+/** Generates a key pair; resolves to the public key line for the server. */
+export function generateTargetKey(target: SftpTarget): Promise<string> {
+  return invoke<string>("generate_target_key", { target });
+}
+
+export type TestOutcome =
+  | { outcome: "connected"; message: string }
+  | { outcome: "untrusted"; fingerprint: string };
+
+export function testTarget(target: SftpTarget): Promise<TestOutcome> {
+  return invoke<TestOutcome>("test_target", { target });
+}
+
+export type Stage = "connecting" | "comparing" | "uploading" | "deleting" | "done";
+
+export interface Progress {
+  stage: Stage;
+  done_files: number;
+  total_files: number;
+  done_bytes: number;
+  total_bytes: number;
+  current: string | null;
+}
+
+export interface PublishReport {
+  uploaded: number;
+  deleted: number;
+  unchanged: number;
+  bytes: number;
+}
+
+/** Builds and publishes; `onProgress` is called while it runs. */
+export function publishSite(root: string, targetName: string, onProgress: (p: Progress) => void): Promise<PublishReport> {
+  const channel = new Channel<Progress>();
+  channel.onmessage = onProgress;
+  return invoke<PublishReport>("publish_site", { root, targetName, onProgress: channel });
 }

@@ -5,7 +5,8 @@ publishes it to your own webspace, via SFTP, GitHub Pages or a ZIP download.
 Built for people who want their own site (and later, their own podcast)
 without learning a static site generator.
 
-Status: early development. The plan lives in [backlog.md](backlog.md).
+Status: early development. The plan lives in the
+[backlog](docs/pages/backlog.md).
 
 qed is built in the open with [Claude Code](https://claude.com/claude-code).
 The [docs](docs) folder is a qed site itself: the project home page and a
@@ -27,6 +28,9 @@ npm install
 npm run tauri dev     # run the app
 npm run check:all     # fmt, clippy, Rust tests, svelte-check
 ```
+
+More in [docs/pages/development.md](docs/pages/development.md), including
+a throwaway SFTP server for testing publishing.
 
 Code layout:
 
