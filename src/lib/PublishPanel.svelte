@@ -2,6 +2,11 @@
   import { untrack } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
+  import Pencil from "@lucide/svelte/icons/pencil";
+  import PlugZap from "@lucide/svelte/icons/plug-zap";
+  import Plus from "@lucide/svelte/icons/plus";
+  import Trash from "@lucide/svelte/icons/trash";
+  import Upload from "@lucide/svelte/icons/upload";
   import TargetForm from "$lib/TargetForm.svelte";
   import {
     formatSize,
@@ -123,7 +128,7 @@
       <h2 class="text-lg font-semibold">Publishing</h2>
       {#if editing === null}
         <button type="button" id="add-target" class="btn btn-sm" onclick={() => (editing = -1)} disabled={!!publishing}>
-          Add target
+          <Plus class="size-4" /> Add target
         </button>
       {/if}
     </div>
@@ -148,15 +153,17 @@
                   {target.host_key ? "server trusted" : "not tested yet"}
                 </span>
                 <div class="flex gap-1">
-                  <button type="button" class="btn btn-ghost btn-sm" onclick={() => (editing = index)} disabled={!!publishing}>Edit</button>
-                  <button type="button" class="btn btn-ghost btn-sm text-error" onclick={() => remove(index)} disabled={!!publishing}>Remove</button>
+                  <button type="button" class="btn btn-ghost btn-sm btn-square" title="Edit" aria-label="Edit"
+                    onclick={() => (editing = index)} disabled={!!publishing}><Pencil class="size-4" /></button>
+                  <button type="button" class="btn btn-ghost btn-sm btn-square text-error" title="Remove target" aria-label="Remove target"
+                    onclick={() => remove(index)} disabled={!!publishing}><Trash class="size-4" /></button>
                   <button type="button" class="btn btn-sm" onclick={() => test(target)} disabled={!!publishing || busyTarget === target.name}>
-                    {#if busyTarget === target.name}<span class="loading loading-spinner loading-xs"></span>{/if}
+                    {#if busyTarget === target.name}<span class="loading loading-spinner loading-xs"></span>{:else}<PlugZap class="size-4" />{/if}
                     Test connection
                   </button>
                   <button type="button" class="btn btn-primary btn-sm" onclick={() => publish(target)}
                     disabled={!!publishing || !target.host_key} title={target.host_key ? "" : "Test the connection first"}>
-                    Publish
+                    <Upload class="size-4" /> Publish
                   </button>
                 </div>
               </div>

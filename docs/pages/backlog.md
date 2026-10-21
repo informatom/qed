@@ -70,6 +70,10 @@ A complete site builder without podcast features.
   clean names, delete only unused files, image picker, Image block with
   width/height and lazy loading. Still open: resizing to several sizes
   with a build cache (#075), tags.
+- **#077 Sidebar navigation.** An optional sidebar on generated sites with a
+  navigation menu, e.g. the page tree of a section (docs, blog archive).
+  Open questions: a third menu kind (`menu = "sidebar"`) or the page tree
+  below a section; per site or per page; how it collapses on phones.
 - **#076 Generated TypeScript types.** Generate `src/lib/site.ts` types and
   `invoke` wrappers from the Rust commands with `tauri-specta`, instead of
   keeping them in sync by hand. A hand-kept mismatch (the UI sent `kind`

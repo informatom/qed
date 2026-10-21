@@ -91,6 +91,7 @@ fn block_document(block: &Block) -> DocumentMut {
         Block::Gallery(block) => toml_edit::ser::to_document(block),
         Block::Download(block) => toml_edit::ser::to_document(block),
         Block::Faq(block) => toml_edit::ser::to_document(block),
+        Block::Columns(block) => toml_edit::ser::to_document(block),
         Block::CallToAction(cta) => toml_edit::ser::to_document(cta),
     };
     // Structs of strings always serialize; an empty document is a safe fallback.

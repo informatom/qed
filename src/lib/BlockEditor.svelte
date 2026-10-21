@@ -1,6 +1,14 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
+  import ChevronLeft from "@lucide/svelte/icons/chevron-left";
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import ChevronUp from "@lucide/svelte/icons/chevron-up";
+  import ImagePlus from "@lucide/svelte/icons/image-plus";
+  import Plus from "@lucide/svelte/icons/plus";
+  import Trash from "@lucide/svelte/icons/trash";
   import ImageField from "$lib/ImageField.svelte";
+  import { BLOCK_ICONS } from "$lib/icons";
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
   import MediaPicker from "$lib/MediaPicker.svelte";
   import {
@@ -105,18 +113,18 @@
 
 <div id="block-editor" class="flex flex-col gap-4">
   {#each items as item, index (item.id)}
+    {@const Icon = BLOCK_ICONS[item.block.type]}
     <section id="block-{index}" class="@container card border border-base-300 bg-base-100">
       <div class="card-body gap-3 p-4">
         <header class="flex items-center gap-2">
-          <span class="badge badge-soft">{BLOCK_NAMES[item.block.type]}</span>
+          <span class="badge badge-soft gap-1.5"><Icon class="size-3.5" />{BLOCK_NAMES[item.block.type]}</span>
           <div class="flex-1"></div>
-          <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move up"
-            disabled={index === 0} onclick={() => move(index, -1)}>↑</button>
-          <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move down"
-            disabled={index === items.length - 1} onclick={() => move(index, 1)}>↓</button>
-          <button type="button" class="btn btn-ghost btn-xs text-error" onclick={() => remove(index)}>
-            Remove
-          </button>
+          <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move up" aria-label="Move up"
+            disabled={index === 0} onclick={() => move(index, -1)}><ChevronUp class="size-4" /></button>
+          <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move down" aria-label="Move down"
+            disabled={index === items.length - 1} onclick={() => move(index, 1)}><ChevronDown class="size-4" /></button>
+          <button type="button" class="btn btn-ghost btn-xs btn-square text-error" title="Remove block" aria-label="Remove block"
+            onclick={() => remove(index)}><Trash class="size-4" /></button>
         </header>
 
         {#if item.block.type === "text"}
@@ -185,22 +193,21 @@
                     <input class="input input-sm w-full" placeholder="Alternative text" bind:value={image.alt} />
                     <div class="flex justify-between">
                       <div>
-                        <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move left" disabled={i === 0}
-                          onclick={() => gallery.images.splice(i - 1, 0, ...gallery.images.splice(i, 1))}>←</button>
-                        <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move right"
+                        <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move left" aria-label="Move left" disabled={i === 0}
+                          onclick={() => gallery.images.splice(i - 1, 0, ...gallery.images.splice(i, 1))}><ChevronLeft class="size-4" /></button>
+                        <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move right" aria-label="Move right"
                           disabled={i === gallery.images.length - 1}
-                          onclick={() => gallery.images.splice(i + 1, 0, ...gallery.images.splice(i, 1))}>→</button>
+                          onclick={() => gallery.images.splice(i + 1, 0, ...gallery.images.splice(i, 1))}><ChevronRight class="size-4" /></button>
                       </div>
-                      <button type="button" class="btn btn-ghost btn-xs text-error" onclick={() => gallery.images.splice(i, 1)}>
-                        Remove
-                      </button>
+                      <button type="button" class="btn btn-ghost btn-xs btn-square text-error" title="Remove image" aria-label="Remove image"
+                        onclick={() => gallery.images.splice(i, 1)}><Trash class="size-4" /></button>
                     </div>
                   </li>
                 {/each}
               </ul>
             {/if}
             <div>
-              <button type="button" class="btn btn-sm" onclick={() => (pickingFor = gallery)}>+ Add image…</button>
+              <button type="button" class="btn btn-sm" onclick={() => (pickingFor = gallery)}><ImagePlus class="size-4" /> Add image…</button>
             </div>
           </div>
         {:else if item.block.type === "download"}
@@ -225,22 +232,47 @@
               <div class="flex flex-col gap-2 rounded-box border border-base-300 p-3">
                 <div class="flex items-center gap-2">
                   <input class="input w-full" placeholder="Question" bind:value={entry.question} />
-                  <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move up" disabled={i === 0}
-                    onclick={() => faq.items.splice(i - 1, 0, ...faq.items.splice(i, 1))}>↑</button>
-                  <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move down"
+                  <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move up" aria-label="Move up" disabled={i === 0}
+                    onclick={() => faq.items.splice(i - 1, 0, ...faq.items.splice(i, 1))}><ChevronUp class="size-4" /></button>
+                  <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move down" aria-label="Move down"
                     disabled={i === faq.items.length - 1}
-                    onclick={() => faq.items.splice(i + 1, 0, ...faq.items.splice(i, 1))}>↓</button>
-                  <button type="button" class="btn btn-ghost btn-xs text-error" onclick={() => faq.items.splice(i, 1)}>
-                    Remove
-                  </button>
+                    onclick={() => faq.items.splice(i + 1, 0, ...faq.items.splice(i, 1))}><ChevronDown class="size-4" /></button>
+                  <button type="button" class="btn btn-ghost btn-xs btn-square text-error" title="Remove question" aria-label="Remove question"
+                    onclick={() => faq.items.splice(i, 1)}><Trash class="size-4" /></button>
                 </div>
                 <MarkdownEditor bind:value={entry.answer} placeholder="Answer, in Markdown…" minHeight="60px" />
               </div>
             {/each}
             <div>
               <button type="button" class="btn btn-sm" onclick={() => faq.items.push({ question: "", answer: "" })}>
-                + Question
+                <Plus class="size-4" /> Question
               </button>
+            </div>
+          </div>
+        {:else if item.block.type === "columns"}
+          {@const columns = item.block}
+          <div class="flex flex-col gap-3">
+            <div class="grid gap-3 @2xl:grid-cols-2 @6xl:grid-cols-4">
+              {#each columns.items as column, i (i)}
+                <div class="flex flex-col gap-2 rounded-box border border-base-300 p-3">
+                  <div class="flex items-center gap-1">
+                    <input class="input input-sm w-full" placeholder="Title (optional)" bind:value={column.title} />
+                    <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move left" aria-label="Move left" disabled={i === 0}
+                      onclick={() => columns.items.splice(i - 1, 0, ...columns.items.splice(i, 1))}><ChevronLeft class="size-4" /></button>
+                    <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move right" aria-label="Move right"
+                      disabled={i === columns.items.length - 1}
+                      onclick={() => columns.items.splice(i + 1, 0, ...columns.items.splice(i, 1))}><ChevronRight class="size-4" /></button>
+                    <button type="button" class="btn btn-ghost btn-xs btn-square text-error" title="Remove column" aria-label="Remove column"
+                      onclick={() => columns.items.splice(i, 1)}><Trash class="size-4" /></button>
+                  </div>
+                  <MarkdownEditor bind:value={column.text} placeholder="Text, in Markdown…" minHeight="100px" />
+                </div>
+              {/each}
+            </div>
+            <div class="flex items-center gap-3">
+              <button type="button" class="btn btn-sm" disabled={columns.items.length >= 4}
+                onclick={() => columns.items.push({ title: null, text: "" })}><Plus class="size-4" /> Column</button>
+              <span class="text-xs text-base-content/60">Up to four; on phones they stack.</span>
             </div>
           </div>
         {:else if item.block.type === "hero" || item.block.type === "call-to-action"}
@@ -287,8 +319,10 @@
   <div class="flex flex-wrap items-center gap-2">
     <span class="text-sm text-base-content/60">Add:</span>
     {#each TYPES as type (type)}
+      {@const Icon = BLOCK_ICONS[type]}
       <button type="button" id="add-{type}" class="btn btn-sm" onclick={() => add(type)}>
-        + {BLOCK_NAMES[type]}
+        <Icon class="size-4" />
+        {BLOCK_NAMES[type]}
       </button>
     {/each}
 

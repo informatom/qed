@@ -14,6 +14,20 @@ Every other week, we talk about the projects we're working on, what went
 wrong, and what we learned. No ads, no tracking, just two people and their
 microphones.
 
+::: columns
+[[items]]
+title = "Listen"
+text = "A new episode every other Tuesday, wherever you get your podcasts."
+
+[[items]]
+title = "Read"
+text = "Show notes with links for every episode, right here on the site."
+
+[[items]]
+title = "Join in"
+text = "Suggest a topic or tell us where we got it wrong. We read everything."
+:::
+
 ::: call-to-action
 headline = "Say hello"
 text = "Questions, ideas, or a project we should look at? We'd love to hear from you."

@@ -208,6 +208,9 @@ pub fn references(page: &Page) -> Vec<String> {
             Block::Faq(faq) => {
                 markdown_texts.extend(faq.items.iter().map(|item| item.answer.as_str()))
             }
+            Block::Columns(columns) => {
+                markdown_texts.extend(columns.items.iter().map(|column| column.text.as_str()))
+            }
             Block::CallToAction(cta) => markdown_texts.extend(cta.text.as_deref()),
         }
     }
@@ -408,7 +411,18 @@ answer = "See [the menu](/media/menu.pdf)."
 "#,
         )
         .unwrap();
+        fs::write(
+            dir.path().join("pages/cols.md"),
+            "+++\ntitle = \"Cols\"\n+++\n\n::: columns\n[[items]]\ntitle = \"One\"\ntext = \"![x](/media/team.png)\"\n\n[[items]]\ntext = \"Two\"\n\n[[items]]\ntitle = \"Three\"\n:::\n",
+        )
+        .unwrap();
         let site = site::open(dir.path()).unwrap();
+        let cols = site.pages.iter().find(|p| p.path == "cols").unwrap();
+        assert_eq!(
+            references(cols),
+            ["team.png"],
+            "images in column text count"
+        );
         let more = site.pages.iter().find(|p| p.path == "more").unwrap();
         assert_eq!(references(more), ["logos/a.png", "menu.pdf", "team.png"]);
 
@@ -433,6 +447,16 @@ answer = "See [the menu](/media/menu.pdf)."
             html.contains(
                 "<summary class=\"collapse-title font-medium\">Open on Sundays?</summary>"
             ),
+            "{html}"
+        );
+
+        let html = fs::read_to_string(out.path().join("cols/index.html")).unwrap();
+        assert!(
+            html.contains("grid gap-8 md:grid-cols-3"),
+            "three columns: {html}"
+        );
+        assert!(
+            html.contains(">One</h2>") && html.contains("<p>Two</p>"),
             "{html}"
         );
     }

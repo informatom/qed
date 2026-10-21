@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
+  import Trash from "@lucide/svelte/icons/trash";
+  import Upload from "@lucide/svelte/icons/upload";
   import { deleteMedia, formatSize, importMedia, listMedia, mediaUrl, type MediaFile, type MediaKind } from "$lib/site";
 
   interface Props {
@@ -77,7 +79,7 @@
     <span class="text-sm text-base-content/60">{shown.length} of {files.length} files</span>
     <div class="flex-1"></div>
     <button type="button" id="import-media" class="btn btn-primary" onclick={importFiles} disabled={busy}>
-      {#if busy}<span class="loading loading-spinner loading-sm"></span>{/if}
+      {#if busy}<span class="loading loading-spinner loading-sm"></span>{:else}<Upload class="size-4" />{/if}
       Import files…
     </button>
   </div>
@@ -125,10 +127,10 @@
                 {:else}
                   <span class="text-xs text-warning">Not used</span>
                 {/if}
-                <button type="button" class="btn btn-ghost btn-xs text-error" disabled={file.used_by.length > 0}
+                <button type="button" class="btn btn-ghost btn-xs btn-square text-error" disabled={file.used_by.length > 0}
                   title={file.used_by.length ? "Used on a page; remove it there first" : "Delete"}
-                  onclick={() => remove(file)}>
-                  Delete
+                  aria-label="Delete {file.name}" onclick={() => remove(file)}>
+                  <Trash class="size-4" />
                 </button>
               </div>
             {/if}

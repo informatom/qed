@@ -2,6 +2,15 @@
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
   import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+  import Eye from "@lucide/svelte/icons/eye";
+  import FilePlus from "@lucide/svelte/icons/file-plus";
+  import Files from "@lucide/svelte/icons/files";
+  import FolderOpen from "@lucide/svelte/icons/folder-open";
+  import Globe from "@lucide/svelte/icons/globe";
+  import Hammer from "@lucide/svelte/icons/hammer";
+  import Image from "@lucide/svelte/icons/image";
+  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
+  import Settings from "@lucide/svelte/icons/settings";
   import AppSettings from "$lib/AppSettings.svelte";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
@@ -179,13 +188,7 @@
             {#if building}
               <span class="loading loading-spinner loading-sm"></span>
             {:else}
-              <!-- Heroicons "eye" (MIT). -->
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-                class="size-5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              </svg>
+              <Eye class="size-5" />
             {/if}
           </button>
         </div>
@@ -216,15 +219,15 @@
 
   <div role="tablist" class="tabs tabs-border -mb-4">
     <button type="button" role="tab" id="view-pages" class={["tab", view === "pages" && "tab-active"]}
-      onclick={() => (view = "pages")}>Pages</button>
+      onclick={() => (view = "pages")}><Files class="me-1.5 size-4" />Pages</button>
     {#if site}
       <button type="button" role="tab" id="view-media" class={["tab", view === "media" && "tab-active"]}
-        onclick={() => (view = "media")}>Media</button>
+        onclick={() => (view = "media")}><Image class="me-1.5 size-4" />Media</button>
       <button type="button" role="tab" id="view-site" class={["tab", view === "site" && "tab-active"]}
-        onclick={() => (view = "site")}>Site</button>
+        onclick={() => (view = "site")}><Globe class="me-1.5 size-4" />Site</button>
     {/if}
     <button type="button" role="tab" id="view-app" class={["tab", view === "app" && "tab-active"]}
-      onclick={() => (view = "app")}>App</button>
+      onclick={() => (view = "app")}><Settings class="me-1.5 size-4" />App</button>
   </div>
 
   {#if view === "app"}
@@ -240,10 +243,10 @@
           <span class="text-sm text-base-content/60">Folder</span>
           <code class="min-w-0 flex-1 truncate font-mono text-sm">{site.root}</code>
           <button id="reload-site" class="btn btn-ghost btn-sm" onclick={() => site && load(site.root)} disabled={loading}>
-            Reload
+            <RefreshCw class="size-4" /> Reload
           </button>
           <button id="open-other-site" class="btn btn-sm" onclick={chooseFolder} disabled={loading}>
-            Open another site folder…
+            <FolderOpen class="size-4" /> Open another site folder…
           </button>
         </div>
         <div class="grid items-start gap-8 xl:grid-cols-2">
@@ -256,7 +259,7 @@
               <div class="flex items-center justify-between gap-2">
                 <h2 class="text-lg font-semibold">Build</h2>
                 <button id="build-site" class="btn btn-sm" onclick={build} disabled={loading || building}>
-                  {#if building}<span class="loading loading-spinner loading-sm"></span>{/if}
+                  {#if building}<span class="loading loading-spinner loading-sm"></span>{:else}<Hammer class="size-4" />{/if}
                   Build
                 </button>
               </div>
@@ -278,7 +281,7 @@
 
     <div class={["-mb-3 flex items-center gap-3", view !== "pages" && "hidden"]}>
       <button id="new-page" class="btn btn-sm btn-primary" onclick={() => (creatingPage = true)} disabled={loading}>
-        New page
+        <FilePlus class="size-4" /> New page
       </button>
       <span class="text-sm text-base-content/60">
         {site.pages.length} pages{draftCount ? `, ${draftCount} drafts` : ""}
@@ -352,7 +355,7 @@
     <section id="empty-state" class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
       <p class="text-lg">Open a site folder to see its pages.</p>
       <button id="open-site" class="btn btn-primary" onclick={chooseFolder} disabled={loading}>
-        {#if loading}<span class="loading loading-spinner loading-sm"></span>{/if}
+        {#if loading}<span class="loading loading-spinner loading-sm"></span>{:else}<FolderOpen class="size-4" />{/if}
         Open site folder
       </button>
       <p class="text-sm text-base-content/60">

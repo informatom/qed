@@ -66,6 +66,16 @@ export interface FaqBlock {
   items: FaqItem[];
 }
 
+export interface Column {
+  title: string | null;
+  /** Markdown; images with ![alt](/media/file.jpg). */
+  text: string;
+}
+
+export interface ColumnsBlock {
+  items: Column[];
+}
+
 export interface CallToAction {
   headline: string | null;
   text: string | null;
@@ -83,6 +93,7 @@ export type Block =
   | ({ type: "gallery" } & GalleryBlock)
   | ({ type: "download" } & DownloadBlock)
   | ({ type: "faq" } & FaqBlock)
+  | ({ type: "columns" } & ColumnsBlock)
   | ({ type: "call-to-action" } & CallToAction);
 
 export interface Page {
@@ -173,6 +184,7 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   gallery: "Gallery",
   download: "Download",
   faq: "FAQ",
+  columns: "Columns",
   "call-to-action": "Call to action",
 };
 
@@ -193,13 +205,15 @@ export function newBlock(type: BlockType): Block {
       return { type, file: null, label: null };
     case "faq":
       return { type, heading: null, items: [{ question: "", answer: "" }] };
+    case "columns":
+      return { type, items: [{ title: null, text: "" }, { title: null, text: "" }] };
     case "call-to-action":
       return { type, headline: null, text: null, button_label: null, button_link: null };
   }
 }
 
 /** Fields that may be empty in a file. Everything else is always text. */
-const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading"]);
+const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title"]);
 
 /** Empty optional fields become null, so "" and "nothing" count as the same. */
 export function normalizeBlock(block: Block): Block {
@@ -210,8 +224,8 @@ function normalize(value: unknown, topLevel: boolean): unknown {
   if (Array.isArray(value)) return value.map((item) => normalize(item, false));
   if (value === null || typeof value !== "object") return value;
   const entries = Object.entries(value).map(([key, field]) => {
-    // A gallery image's file is required; only its alt text is optional.
-    const optional = topLevel ? OPTIONAL.has(key) : key === "alt";
+    // Inside lists, only alt texts and column titles are optional.
+    const optional = topLevel ? OPTIONAL.has(key) : key === "alt" || key === "title";
     if (optional && typeof field === "string" && field.trim() === "") return [key, null];
     return [key, normalize(field, false)];
   });

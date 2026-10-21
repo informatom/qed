@@ -2,6 +2,8 @@
    templates: npm run build:site-css */
 @import "tailwindcss" source(none);
 @source "../templates";
+/* The generator picks some classes in Rust (e.g. column grids). */
+@source "../src/generator.rs";
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
   themes: all;

@@ -323,6 +323,11 @@ enum RenderedBlock {
         heading: Option<String>,
         items: Vec<FaqEntry>,
     },
+    Columns {
+        /// Grid classes for the number of columns.
+        grid: &'static str,
+        columns: Vec<ColumnEntry>,
+    },
     CallToAction {
         headline: Option<String>,
         text_html: Option<String>,
@@ -335,6 +340,11 @@ struct Picture {
     alt: String,
     width: Option<u32>,
     height: Option<u32>,
+}
+
+struct ColumnEntry {
+    title: Option<String>,
+    text_html: String,
 }
 
 struct FaqEntry {
@@ -500,6 +510,26 @@ fn render_block(block: &Block, links: &LinkContext, media_dir: &Path) -> Rendere
                 .map(|item| FaqEntry {
                     question: item.question.clone(),
                     answer_html: markdown::render(&item.answer, links),
+                })
+                .collect(),
+        },
+        Block::Columns(columns) => RenderedBlock::Columns {
+            // Whole class names, so Tailwind finds them when it scans the code.
+            grid: match columns.items.len() {
+                0 | 1 => "",
+                2 => "md:grid-cols-2",
+                3 => "md:grid-cols-3",
+                _ => "md:grid-cols-2 lg:grid-cols-4",
+            },
+            columns: columns
+                .items
+                .iter()
+                .map(|column| ColumnEntry {
+                    title: column
+                        .title
+                        .clone()
+                        .filter(|title| !title.trim().is_empty()),
+                    text_html: markdown::render(&column.text, links),
                 })
                 .collect(),
         },

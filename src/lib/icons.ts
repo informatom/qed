@@ -1,0 +1,26 @@
+// Lucide icons (https://lucide.dev, ISC license). Each icon is imported on
+// its own, so only the ones used end up in the app.
+import type { Component } from "svelte";
+import CircleQuestionMark from "@lucide/svelte/icons/circle-question-mark";
+import Columns3 from "@lucide/svelte/icons/columns-3";
+import Download from "@lucide/svelte/icons/download";
+import Image from "@lucide/svelte/icons/image";
+import Images from "@lucide/svelte/icons/images";
+import Megaphone from "@lucide/svelte/icons/megaphone";
+import Newspaper from "@lucide/svelte/icons/newspaper";
+import PanelTop from "@lucide/svelte/icons/panel-top";
+import Type from "@lucide/svelte/icons/type";
+import type { BlockType } from "$lib/site";
+
+/** One icon per block type, for the Add row and the block cards. */
+export const BLOCK_ICONS: Record<BlockType, Component> = {
+  text: Type,
+  hero: PanelTop,
+  image: Image,
+  "text-image": Newspaper,
+  gallery: Images,
+  download: Download,
+  faq: CircleQuestionMark,
+  columns: Columns3,
+  "call-to-action": Megaphone,
+};

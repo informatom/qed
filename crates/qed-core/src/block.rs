@@ -29,6 +29,7 @@ pub enum Block {
     Gallery(Gallery),
     Download(Download),
     Faq(Faq),
+    Columns(Columns),
     CallToAction(CallToAction),
 }
 
@@ -124,6 +125,24 @@ pub struct FaqItem {
     pub answer: String,
 }
 
+/// Two to four columns side by side, each with a title and text. On narrow
+/// screens they stack.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Columns {
+    #[serde(default)]
+    pub items: Vec<Column>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Column {
+    pub title: Option<String>,
+    /// Markdown; images work with `![alt](/media/file.jpg)`.
+    #[serde(default)]
+    pub text: String,
+}
+
 /// A highlighted box that asks the visitor to do something.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -146,19 +165,21 @@ impl Block {
             Block::Gallery(_) => Some("gallery"),
             Block::Download(_) => Some("download"),
             Block::Faq(_) => Some("faq"),
+            Block::Columns(_) => Some("columns"),
             Block::CallToAction(_) => Some("call-to-action"),
         }
     }
 }
 
 /// The container names, as written after `:::` in a page file.
-pub const CONTAINER_TYPES: [&str; 7] = [
+pub const CONTAINER_TYPES: [&str; 8] = [
     "hero",
     "image",
     "text-image",
     "gallery",
     "download",
     "faq",
+    "columns",
     "call-to-action",
 ];
 
@@ -173,6 +194,7 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
         "gallery" => Ok(Block::Gallery(toml::from_str(toml)?)),
         "download" => Ok(Block::Download(toml::from_str(toml)?)),
         "faq" => Ok(Block::Faq(toml::from_str(toml)?)),
+        "columns" => Ok(Block::Columns(toml::from_str(toml)?)),
         "call-to-action" => Ok(Block::CallToAction(toml::from_str(toml)?)),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }
