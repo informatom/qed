@@ -81,9 +81,6 @@ A complete site builder without podcast features.
   description, language, web address, theme); the app has its own theme
   (App settings, per computer, can follow the system). Logo and other
   options are still open.
-- **#029 Publisher: GitHub Pages.** Push the built site to the configured
-  branch with a deploy key. Needs a second `Target` kind, its own key
-  handling and connection test (#031).
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.
@@ -118,6 +115,12 @@ A complete site builder without podcast features.
   notarization, Windows signing (e.g. Azure Trusted Signing).
 - **#034 Feed import.** Import an existing podcast from its RSS feed or from a
   jekyll-octopod site (compare `octopod import`).
+
+### Phase 3: Nice to have
+
+- **#029 Publisher: GitHub Pages.** Push the built site to the configured
+  branch with a deploy key. Needs a second `Target` kind, its own key
+  handling and connection test (#031).
 
 ## Done / decided
 
