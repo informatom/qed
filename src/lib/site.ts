@@ -142,11 +142,28 @@ export function newSftpTarget(): Target {
   return { kind: "sftp", name: "", host: "", port: 22, user: "", path: "", auth: "password", host_key: null, delete_stale: false };
 }
 
-/** Builds and publishes; `onProgress` is called while it runs. */
-export function publishSite(root: string, targetName: string, onProgress: (p: Progress) => void): Promise<PublishReport> {
+/**
+ * Whether publishing needs a note: there's an open version to close or a
+ * change since the last version (the same rule as `HistoryStatus::needs_note`
+ * in Rust).
+ */
+export function needsNote(status: HistoryStatus): boolean {
+  return status.tracked && (status.open || status.changes.length > 0);
+}
+
+/**
+ * Builds and publishes; `onProgress` is called while it runs. `note` says
+ * what's new, required when `needsNote`.
+ */
+export function publishSite(
+  root: string,
+  targetName: string,
+  note: string | null,
+  onProgress: (p: Progress) => void,
+): Promise<PublishReport> {
   const channel = new Channel<Progress>();
   channel.onmessage = onProgress;
-  return commands.publishSite(root, targetName, channel);
+  return commands.publishSite(root, targetName, note, channel);
 }
 
 let iconCache: Promise<Map<string, string>> | null = null;

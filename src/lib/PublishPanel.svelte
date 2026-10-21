@@ -7,6 +7,7 @@
   import Plus from "@lucide/svelte/icons/plus";
   import Trash from "@lucide/svelte/icons/trash";
   import Upload from "@lucide/svelte/icons/upload";
+  import PublishDialog from "$lib/PublishDialog.svelte";
   import TargetForm from "$lib/TargetForm.svelte";
   import {
     commands,
@@ -35,6 +36,8 @@
   let messages = $state<Record<string, { kind: "ok" | "error" | "untrusted"; text: string }>>({});
   let busyTarget = $state<string | null>(null);
 
+  /** The target the publish dialog is open for. */
+  let confirming = $state<Target | null>(null);
   let publishing = $state<string | null>(null);
   let progress = $state<Progress | null>(null);
   let report = $state<PublishReport | null>(null);
@@ -84,22 +87,13 @@
     await test(updated[index]);
   }
 
-  async function publish(target: Target) {
-    // Publishing changes a live website, and the target cards look alike:
-    // say exactly where this goes.
-    const port = target.port !== 22 ? `:${target.port}` : "";
-    const sure = await ask(
-      `Publish ${site.config.title} to ${target.name}?\n\n${target.user}@${target.host}${port}:${target.path}`,
-      { title: "Publish", kind: "info", okLabel: `Publish to ${target.name}`, cancelLabel: "Cancel" },
-    );
-    if (!sure) return;
-
+  async function publish(target: Target, note: string | null) {
     publishing = target.name;
     report = null;
     progress = null;
     delete messages[target.name];
     try {
-      report = await publishSite(site.root, target.name, (p) => (progress = p));
+      report = await publishSite(site.root, target.name, note, (p) => (progress = p));
     } catch (e) {
       messages[target.name] = { kind: "error", text: String(e) };
     } finally {
@@ -160,7 +154,7 @@
                     {#if busyTarget === target.name}<span class="loading loading-spinner loading-xs"></span>{:else}<PlugZap class="size-4" />{/if}
                     Test connection
                   </button>
-                  <button type="button" class="btn btn-primary btn-sm" onclick={() => publish(target)}
+                  <button type="button" class="btn btn-primary btn-sm" onclick={() => (confirming = target)}
                     disabled={!!publishing || !target.host_key} title={target.host_key ? "" : "Test the connection first"}>
                     <Upload class="size-4" /> Publish
                   </button>
@@ -225,3 +219,8 @@
     </div>
 
 </section>
+
+{#if confirming}
+  {@const target = confirming}
+  <PublishDialog {site} {target} onpublish={(note) => publish(target, note)} onclose={() => (confirming = null)} />
+{/if}

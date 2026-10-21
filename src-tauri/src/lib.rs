@@ -326,13 +326,16 @@ async fn test_target(target: Target) -> Result<TestOutcome, String> {
     }
 }
 
-/// Builds the site and publishes it to the named target. Progress arrives
+/// Builds the site and publishes it to the named target. `note` says
+/// what's new; it's required when there's an open version or a change
+/// since the last version (`HistoryStatus::needs_note`). Progress arrives
 /// on `on_progress` while it runs.
 #[tauri::command]
 #[specta::specta]
 async fn publish_site(
     root: PathBuf,
     target_name: String,
+    note: Option<String>,
     on_progress: Channel<Progress>,
 ) -> Result<PublishReport, String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
@@ -342,15 +345,12 @@ async fn publish_site(
         .find(|t| t.name() == target_name)
         .cloned()
         .ok_or_else(|| format!("there is no target called {target_name}"))?;
-    // With a history, what gets published is saved as a version first, and
-    // tagged once publishing worked.
+    // With a history, what gets published is saved as a version with the
+    // note first, and tagged once publishing worked.
     let tracked = history::status(&root)
         .map_err(|error| error.to_string())?
         .tracked;
-    if tracked {
-        history::save_version(&root, &format!("Before publishing to {target_name}"))
-            .map_err(|error| error.to_string())?;
-    }
+    history::close_for_publish(&root, note.as_deref()).map_err(|error| error.to_string())?;
     let report = generator::build(&site).map_err(|error| error.to_string())?;
 
     let published = match target {

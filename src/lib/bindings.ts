@@ -49,10 +49,12 @@ export const commands = {
 	generateTargetKey: (target: Target) => __TAURI_INVOKE<string>("generate_target_key", { target }),
 	testTarget: (target: Target) => __TAURI_INVOKE<TestOutcome>("test_target", { target }),
 	/**
-	 *  Builds the site and publishes it to the named target. Progress arrives
+	 *  Builds the site and publishes it to the named target. `note` says
+	 *  what's new; it's required when there's an open version or a change
+	 *  since the last version (`HistoryStatus::needs_note`). Progress arrives
 	 *  on `on_progress` while it runs.
 	 */
-	publishSite: (root: string, targetName: string, onProgress: Channel<Progress>) => __TAURI_INVOKE<PublishReport>("publish_site", { root, targetName, onProgress }),
+	publishSite: (root: string, targetName: string, note: string | null, onProgress: Channel<Progress>) => __TAURI_INVOKE<PublishReport>("publish_site", { root, targetName, note, onProgress }),
 	/**  Creates an empty page below `parent` (a URL path, `""` for the top level). */
 	createPage: (root: string, parent: string, title: string, date: string | null) => __TAURI_INVOKE<Page>("create_page", { root, parent, title, date }),
 	/**  The pages that link to the page at `path`, for the delete confirmation. */
@@ -272,6 +274,8 @@ export type HistoryStatus = {
 	shared_with: string | null,
 	/**  Files changed since the last version, relative to the site folder. */
 	changes: string[],
+	/**  There's an open version: saves since the last closed one. */
+	open: boolean,
 };
 
 /**  One image, with alternative text and an optional caption. */

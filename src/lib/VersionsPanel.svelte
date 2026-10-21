@@ -132,8 +132,8 @@
         </form>
         {#if message}<p class="text-sm text-success">{message}</p>{/if}
         <p class="text-sm text-base-content/60">
-          Every save in qed goes into the open version, so nothing saved is lost. Publishing closes it by itself and
-          marks it with the target's name.
+          Every save in qed goes into the open version, so nothing saved is lost. Publishing asks what's new, closes it
+          with that note and marks it with the target's name.
         </p>
       </section>
 

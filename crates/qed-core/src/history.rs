@@ -58,6 +58,9 @@ pub enum HistoryError {
     #[error("{0} exists; move it away to bring back the deleted page")]
     Exists(String),
 
+    #[error("publishing needs a note: what's new on the site?")]
+    NoteNeeded,
+
     #[error("{0} isn't in that version")]
     Missing(String),
 
@@ -79,6 +82,17 @@ pub struct HistoryStatus {
     pub shared_with: Option<PathBuf>,
     /// Files changed since the last version, relative to the site folder.
     pub changes: Vec<String>,
+    /// There's an open version: saves since the last closed one.
+    pub open: bool,
+}
+
+impl HistoryStatus {
+    /// Whether publishing would save something new, and so needs a note:
+    /// there's an open version to close, or files changed since the last
+    /// version.
+    pub fn needs_note(&self) -> bool {
+        self.tracked && (self.open || !self.changes.is_empty())
+    }
 }
 
 /// One saved version.
@@ -202,6 +216,7 @@ pub fn status(root: &Path) -> Result<HistoryStatus, HistoryError> {
             tracked: false,
             shared_with: None,
             changes: Vec::new(),
+            open: false,
         });
     };
     let mut options = StatusOptions::new();
@@ -224,10 +239,12 @@ pub fn status(root: &Path) -> Result<HistoryStatus, HistoryError> {
     let shared_with = (!site.prefix.is_empty())
         .then(|| site.repo.workdir().map(Path::to_path_buf))
         .flatten();
+    let open = open_version(&site)?.is_some();
     Ok(HistoryStatus {
         tracked: true,
         shared_with,
         changes,
+        open,
     })
 }
 
@@ -337,6 +354,21 @@ pub fn save_version(root: &Path, note: &str) -> Result<Option<Version>, HistoryE
         }
     };
     Ok(Some(version(repo, id, &BTreeMap::new())?))
+}
+
+/// Gets the history ready for publishing: closes the open version (or
+/// saves the changed files as a new version) with `note`, the note on
+/// what's new on the site. A note is required then; without anything new
+/// the last version is published as it is and `note` isn't used. Does
+/// nothing for a site without history.
+pub fn close_for_publish(root: &Path, note: Option<&str>) -> Result<Option<Version>, HistoryError> {
+    if !status(root)?.needs_note() {
+        return Ok(None);
+    }
+    match note.map(str::trim) {
+        Some(note) if !note.is_empty() => save_version(root, note),
+        _ => Err(HistoryError::NoteNeeded),
+    }
 }
 
 /// The open version, if the latest commit is one and may still change:
@@ -768,6 +800,45 @@ mod tests {
         assert_eq!(utc_stamp(0), "1970-01-01-000000");
         assert_eq!(utc_stamp(1_792_593_005), "2026-10-21-143005");
         assert_eq!(utc_stamp(951_782_400), "2000-02-29-000000");
+    }
+
+    #[test]
+    fn publishing_needs_a_note_only_for_something_new() {
+        let dir = tempfile::tempdir().unwrap();
+        site(dir.path());
+        // Without a history there's nothing to close.
+        assert!(close_for_publish(dir.path(), None).unwrap().is_none());
+
+        start(dir.path()).unwrap();
+        assert!(!status(dir.path()).unwrap().needs_note());
+        assert!(close_for_publish(dir.path(), None).unwrap().is_none());
+
+        // A save in the app opens a version: now a note is required.
+        fs::write(
+            dir.path().join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\nHi.\n",
+        )
+        .unwrap();
+        record_save(dir.path()).unwrap();
+        let open = status(dir.path()).unwrap();
+        assert!(open.open && open.needs_note());
+        assert!(matches!(
+            close_for_publish(dir.path(), Some("  ")),
+            Err(HistoryError::NoteNeeded)
+        ));
+
+        let closed = close_for_publish(dir.path(), Some(" New greeting "))
+            .unwrap()
+            .unwrap();
+        assert_eq!(closed.summary, "New greeting");
+        assert!(!closed.open);
+        assert!(!status(dir.path()).unwrap().needs_note());
+
+        // A hand edit outside the app needs a note too.
+        fs::write(dir.path().join("site.toml"), "title = \"T\"\n").unwrap();
+        let changed = status(dir.path()).unwrap();
+        assert!(!changed.open && changed.needs_note());
+        assert!(close_for_publish(dir.path(), None).is_err());
     }
 
     #[test]
