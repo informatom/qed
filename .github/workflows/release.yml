@@ -21,7 +21,7 @@ jobs:
   version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check the tag against Cargo.toml and package.json
         run: |
           cargo_version=$(grep -m1 '^version = ' Cargo.toml | cut -d '"' -f2)
@@ -51,7 +51,7 @@ jobs:
             rust-targets: ""
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Linux libraries
         if: runner.os == 'Linux'
@@ -59,7 +59,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
