@@ -13,3 +13,4 @@ comparisons to Elixir.
 - [Teaching a date to speak JSON: newtypes and traits](/blog/2026-10-21-teaching-a-date-to-speak-json)
 - [From folder to website: templates, iterators and a server in a thread](/blog/2026-10-21-from-folder-to-website)
 - [Saving without breaking things: format-preserving edits and a first Svelte component](/blog/2026-10-21-saving-without-breaking)
+- [New pages: defaults, files that must not exist yet, and a dialog](/blog/2026-10-21-new-pages)

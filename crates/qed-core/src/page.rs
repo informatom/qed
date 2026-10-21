@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use crate::block::{self, Block, CONTAINER_TYPES, ContainerError};
 
 /// Settings at the top of a page file.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FrontMatter {
     pub title: String,

@@ -16,7 +16,7 @@ use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::page::{self, FrontMatter, PageContent};
+use crate::page::{self, FrontMatter, PageContent, PageDate};
 use crate::page_writer;
 use crate::slug::slugify;
 
@@ -169,6 +169,93 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
         config,
         pages: pages.into_values().collect(),
     })
+}
+
+/// Creates a new, empty page below `parent` and returns it.
+///
+/// `parent` is a URL path (`""` for the top level, `"blog"` for posts). The
+/// file name is the slug of the title; with a `date`, the date comes first,
+/// as blog posts usually do: `pages/blog/2026-10-21-hello.md`.
+pub fn create_page(
+    root: &Path,
+    parent: &str,
+    title: &str,
+    date: Option<PageDate>,
+) -> Result<Page, SiteError> {
+    let title = title.trim();
+    let slug = slugify(title);
+    if slug.is_empty() {
+        return Err(SiteError::Invalid {
+            path: PathBuf::from(PAGES_DIR),
+            message: "the title needs at least one letter or digit".to_string(),
+        });
+    }
+    let name = match &date {
+        Some(date) => format!("{date}-{slug}"),
+        None => slug,
+    };
+
+    let parent = parent.trim_matches('/');
+    let site = open(root)?;
+    if !parent.is_empty() && !site.pages.iter().any(|p| p.path == parent) {
+        return Err(SiteError::Invalid {
+            path: PathBuf::from(PAGES_DIR),
+            message: format!("there is no page /{parent} to put the new page under"),
+        });
+    }
+
+    let path = if parent.is_empty() {
+        name.clone()
+    } else {
+        format!("{parent}/{name}")
+    };
+    if let Some(existing) = site.pages.iter().find(|p| p.path == path) {
+        return Err(SiteError::DuplicatePath {
+            url: path,
+            first: existing.file.clone(),
+            second: PathBuf::from(PAGES_DIR).join(format!("{name}.md")),
+        });
+    }
+
+    // Children of `blog` live in `pages/blog/`, whether the blog page itself
+    // is `pages/blog.md` or `pages/blog/index.md`.
+    let file = PathBuf::from(PAGES_DIR).join(&path).with_extension("md");
+    let content = PageContent {
+        front: FrontMatter {
+            title: title.to_string(),
+            date,
+            ..FrontMatter::default()
+        },
+        blocks: Vec::new(),
+    };
+    write_new(&root.join(&file), &page_writer::write(&content, None))?;
+
+    Ok(Page {
+        path,
+        file,
+        content,
+    })
+}
+
+/// Writes a file that must not exist yet, creating its folder if needed.
+fn write_new(path: &Path, contents: &str) -> Result<(), SiteError> {
+    use std::io::Write;
+
+    let error = |source| SiteError::Write {
+        path: path.to_path_buf(),
+        source,
+    };
+    if let Some(folder) = path.parent() {
+        fs::create_dir_all(folder).map_err(error)?;
+    }
+    // `create_new` fails if the file appeared in the meantime, so nothing is
+    // ever overwritten.
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(error)?;
+    file.write_all(contents.as_bytes()).map_err(error)
 }
 
 /// Saves new settings for a page and returns the page as saved.
@@ -370,6 +457,68 @@ mod tests {
             let result = save_front_matter(dir.path(), Path::new(file), front.clone());
             assert!(matches!(result, Err(SiteError::NotAPage(_))), "{file}");
         }
+    }
+
+    #[test]
+    fn creates_pages_and_posts() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            ("pages/index.md", PAGE),
+            ("pages/blog.md", PAGE),
+        ]);
+
+        let page = create_page(dir.path(), "", "Über uns", None).unwrap();
+        assert_eq!(page.path, "ueber-uns");
+        assert_eq!(page.file, Path::new("pages/ueber-uns.md"));
+        assert_eq!(
+            fs::read_to_string(dir.path().join("pages/ueber-uns.md")).unwrap(),
+            "+++\ntitle = \"Über uns\"\n+++\n"
+        );
+
+        let date: PageDate = serde_json::from_str("\"2026-10-21\"").unwrap();
+        let post = create_page(dir.path(), "/blog/", "Hello, World!", Some(date)).unwrap();
+        assert_eq!(post.path, "blog/2026-10-21-hello-world");
+        assert_eq!(post.file, Path::new("pages/blog/2026-10-21-hello-world.md"));
+
+        // The site opens with both new pages in it.
+        let paths: Vec<String> = open(dir.path())
+            .unwrap()
+            .pages
+            .into_iter()
+            .map(|p| p.path)
+            .collect();
+        assert_eq!(
+            paths,
+            ["", "blog", "blog/2026-10-21-hello-world", "ueber-uns"]
+        );
+    }
+
+    #[test]
+    fn refuses_to_create_a_page_that_exists() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            ("pages/about/index.md", PAGE),
+        ]);
+        let result = create_page(dir.path(), "", "About", None);
+        assert!(matches!(result, Err(SiteError::DuplicatePath { .. })));
+        // The existing file is untouched.
+        assert_eq!(
+            fs::read_to_string(dir.path().join("pages/about/index.md")).unwrap(),
+            PAGE
+        );
+    }
+
+    #[test]
+    fn refuses_unknown_parents_and_titles_without_letters() {
+        let dir = site_with(&[("site.toml", "title = \"S\"")]);
+        assert!(matches!(
+            create_page(dir.path(), "nowhere", "Hi", None),
+            Err(SiteError::Invalid { .. })
+        ));
+        assert!(matches!(
+            create_page(dir.path(), "", "?!", None),
+            Err(SiteError::Invalid { .. })
+        ));
     }
 
     #[test]

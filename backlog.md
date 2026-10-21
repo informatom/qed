@@ -24,8 +24,10 @@ A complete site builder without podcast features.
   publish targets without secrets), pages and posts as Markdown files with
   TOML front matter, `media/` for images and downloads, build output in a
   git-ignored folder. Old paths for redirects go into front matter.
-  *Reading done 2026-10-21* (`qed_core::site::open`, `examples/demo-site`);
-  creating sites and pages from the app is still open.
+  *Reading done 2026-10-21* (`qed_core::site::open`, `examples/demo-site`).
+  *Creating pages done 2026-10-21* (`site::create_page`, "New page" dialog;
+  posts get a date prefix; never overwrites). Creating a new site folder
+  from the app, and renaming, moving and deleting pages, are still open.
 - **#072 Block file format.** Read and write pages as Markdown with block
   containers (`::: hero` … `:::`, block fields as TOML) in qed-core. Writing
   a parsed page gives the same file back, so hand edits survive the block

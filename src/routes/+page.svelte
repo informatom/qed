@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
+  import NewPageDialog from "$lib/NewPageDialog.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import { buildSite, openSite, previewSite, type Block, type BuildReport, type Page, type Site } from "$lib/site";
 
@@ -14,6 +15,15 @@
   // The page whose settings are open, by file (files don't change on save).
   let selectedFile = $state<string | null>(null);
   let selected = $derived(site?.pages.find((p) => p.file === selectedFile) ?? null);
+
+  let creatingPage = $state(false);
+
+  async function pageCreated(page: Page) {
+    if (!site) return;
+    // Reload, so the new page lands in its place in the tree, then open it.
+    await load(site.root);
+    selectedFile = page.file;
+  }
 
   function replacePage(saved: Page) {
     if (!site) return;
@@ -133,6 +143,9 @@
     {/if}
     <div class="flex gap-2">
       {#if site}
+        <button id="new-page" class="btn" onclick={() => (creatingPage = true)} disabled={loading}>
+          New page
+        </button>
         <button id="build-site" class="btn" onclick={build} disabled={loading || building}>
           {#if building}<span class="loading loading-spinner loading-sm"></span>{/if}
           Build
@@ -236,3 +249,7 @@
     </section>
   {/if}
 </main>
+
+{#if site && creatingPage}
+  <NewPageDialog {site} oncreated={pageCreated} onclose={() => (creatingPage = false)} />
+{/if}

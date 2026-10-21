@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use qed_core::generator::{self, BuildReport};
-use qed_core::page::FrontMatter;
+use qed_core::page::{FrontMatter, PageDate};
 use qed_core::preview::Preview;
 use qed_core::site::{self, Page, Site};
 use tauri::State;
@@ -39,6 +39,17 @@ async fn save_page_settings(
     front: FrontMatter,
 ) -> Result<Page, String> {
     site::save_front_matter(&root, &file, front).map_err(|error| error.to_string())
+}
+
+/// Creates an empty page below `parent` (a URL path, `""` for the top level).
+#[tauri::command]
+async fn create_page(
+    root: PathBuf,
+    parent: String,
+    title: String,
+    date: Option<PageDate>,
+) -> Result<Page, String> {
+    site::create_page(&root, &parent, &title, date).map_err(|error| error.to_string())
 }
 
 /// Builds the site at `path` into its `_site` folder.
@@ -88,11 +99,15 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        // Remembers the window's size, position and maximized state between
+        // runs. The very first start uses tauri.conf.json (maximized).
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(PreviewState::default())
         .invoke_handler(tauri::generate_handler![
             slugify,
             open_site,
             save_page_settings,
+            create_page,
             build_site,
             preview_site
         ])

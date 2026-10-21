@@ -94,3 +94,20 @@ export function previewSite(path: string): Promise<PreviewInfo> {
 export function savePageSettings(root: string, file: string, front: FrontMatter): Promise<Page> {
   return invoke<Page>("save_page_settings", { root, file, front });
 }
+
+/** Creates an empty page below `parent` ("" for the top level). */
+export function createPage(root: string, parent: string, title: string, date: string | null): Promise<Page> {
+  return invoke<Page>("create_page", { root, parent, title, date });
+}
+
+/** The URL slug for a title, computed in Rust. */
+export function slugify(title: string): Promise<string> {
+  return invoke<string>("slugify", { title });
+}
+
+/** Today's date as YYYY-MM-DD, in local time. */
+export function today(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
