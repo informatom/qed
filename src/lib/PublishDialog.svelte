@@ -1,7 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Upload from "@lucide/svelte/icons/upload";
-  import { commands, needsNote, type HistoryStatus, type Site, type Target } from "$lib/site";
+  import {
+    commands,
+    formatTime,
+    needsNote,
+    type HistoryStatus,
+    type SincePublish,
+    type Site,
+    type Target,
+  } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -15,6 +23,8 @@
 
   let dialog: HTMLDialogElement;
   let status = $state<HistoryStatus | null>(null);
+  /** What's new on this target: changes since its last publish. */
+  let since = $state<SincePublish | null>(null);
   let note = $state("");
   let error = $state<string | null>(null);
 
@@ -24,7 +34,10 @@
   onMount(async () => {
     dialog.showModal();
     try {
-      status = await commands.historyStatus(site.root);
+      [status, since] = await Promise.all([
+        commands.historyStatus(site.root),
+        commands.sincePublish(site.root, target.name),
+      ]);
     } catch (e) {
       error = String(e);
     }
@@ -60,7 +73,32 @@
         </span>
       </label>
     {:else if status.tracked}
-      <p class="text-sm text-base-content/70">Nothing new since the last version; that version is published as it is.</p>
+      <p class="text-sm text-base-content/70">No unsaved changes: the last version is published as it is.</p>
+    {/if}
+
+    {#if status?.tracked && since}
+      <!-- Versions and publishes are two things: a version saved since the
+           last publish is still news for this target. -->
+      <div id="publish-since" class="text-sm">
+        {#if since.published_at === null}
+          <p>This is the first publish to {target.name} from this history: the whole site goes up.</p>
+        {:else if since.changes.length}
+          <details>
+            <summary class="cursor-pointer">
+              {since.changes.length === 1 ? "1 file" : `${since.changes.length} files`} changed since the last publish to
+              {target.name} ({formatTime(since.published_at)})
+            </summary>
+            <ul class="mt-2 font-mono text-xs text-base-content/70">
+              {#each since.changes as file (file)}<li>{file}</li>{/each}
+            </ul>
+          </details>
+        {:else}
+          <p class="text-base-content/70">
+            Nothing changed since the last publish to {target.name} ({formatTime(since.published_at)}). Publishing again
+            uploads only what differs on the server.
+          </p>
+        {/if}
+      </div>
     {/if}
 
     <div class="modal-action">

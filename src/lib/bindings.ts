@@ -80,6 +80,8 @@ export const commands = {
 	 *  version.
 	 */
 	historyStatus: (root: string) => __TAURI_INVOKE<HistoryStatus>("history_status", { root }),
+	/**  What changed since the site was last published to the named target. */
+	sincePublish: (root: string, targetName: string) => __TAURI_INVOKE<SincePublish>("since_publish", { root, targetName }),
 	/**  Makes the site folder a git repository and saves a first version. */
 	startHistory: (root: string) => __TAURI_INVOKE<{
 	/**  The commit id, in full. */
@@ -409,6 +411,17 @@ export type SftpTarget = {
 
 /**  Which side an image goes on. */
 export type Side = "left" | "right";
+
+/**  What changed in the site since it was last published to a target. */
+export type SincePublish = {
+	/**
+	 *  When it was last published there (seconds since 1970); `None` if
+	 *  it never was, or the site has no history.
+	 */
+	published_at: number | null,
+	/**  Files changed since then, saved or not, relative to the site folder. */
+	changes: string[],
+};
 
 /**  A site folder, read into memory. */
 export type Site = {

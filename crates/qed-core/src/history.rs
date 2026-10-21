@@ -467,13 +467,9 @@ pub fn tag_publish(root: &Path, target: &str) -> Result<Option<String>, HistoryE
     let Ok(head) = site.repo.head().and_then(|head| head.peel_to_commit()) else {
         return Ok(None);
     };
-    let target_slug = match slugify(target) {
-        slug if slug.is_empty() => "target".to_string(),
-        slug => slug,
-    };
     let name = format!(
-        "{}publish/{target_slug}/{}",
-        site.prefix,
+        "{}{}",
+        publish_tags(&site, target),
         utc_stamp(now_seconds())
     );
     let signature = site
@@ -488,6 +484,78 @@ pub fn tag_publish(root: &Path, target: &str) -> Result<Option<String>, HistoryE
         false,
     )?;
     Ok(Some(name))
+}
+
+/// Where the publish tags for `target` start: `publish/alpha/` (with the
+/// site folder in front if the repository is larger).
+fn publish_tags(site: &SiteRepo, target: &str) -> String {
+    let target_slug = match slugify(target) {
+        slug if slug.is_empty() => "target".to_string(),
+        slug => slug,
+    };
+    format!("{}publish/{target_slug}/", site.prefix)
+}
+
+/// What changed in the site since it was last published to a target.
+#[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct SincePublish {
+    /// When it was last published there (seconds since 1970); `None` if
+    /// it never was, or the site has no history.
+    pub published_at: Option<i64>,
+    /// Files changed since then, saved or not, relative to the site folder.
+    pub changes: Vec<String>,
+}
+
+/// What changed in the site folder since its last publish to `target`,
+/// found through the publish tags.
+pub fn since_publish(root: &Path, target: &str) -> Result<SincePublish, HistoryError> {
+    let none = SincePublish {
+        published_at: None,
+        changes: Vec::new(),
+    };
+    let Some(site) = SiteRepo::open(root)? else {
+        return Ok(none);
+    };
+    let repo = &site.repo;
+    let prefix = publish_tags(&site, target);
+    // The time in the name sorts like the time itself.
+    let tags = repo.tag_names(Some(&format!("{prefix}*")))?;
+    // Names that aren't UTF-8 can't be qed's own tags.
+    let Some(latest) = tags.iter().flatten().flatten().max() else {
+        return Ok(none);
+    };
+    let tag = repo.revparse_single(&format!("refs/tags/{latest}"))?;
+    let commit = tag.peel_to_commit()?;
+    let published_at = tag
+        .as_tag()
+        .and_then(|tag| tag.tagger())
+        .map_or(commit.time().seconds(), |tagger| tagger.when().seconds());
+
+    let mut options = DiffOptions::new();
+    options
+        .pathspec(site.spec())
+        .include_untracked(true)
+        .recurse_untracked_dirs(true);
+    let diff = repo.diff_tree_to_workdir_with_index(Some(&commit.tree()?), Some(&mut options))?;
+    let mut changes: Vec<String> = diff
+        .deltas()
+        .filter_map(|delta| {
+            delta
+                .new_file()
+                .path()
+                .or_else(|| delta.old_file().path())
+                .map(|path| path.to_string_lossy().replace('\\', "/"))
+        })
+        .filter(|path| !site.excluded(path))
+        .filter_map(|path| path.strip_prefix(site.prefix.as_str()).map(str::to_string))
+        .collect();
+    changes.sort();
+    changes.dedup();
+    Ok(SincePublish {
+        published_at: Some(published_at),
+        changes,
+    })
 }
 
 /// The versions in which the site folder changed (or `file`, a path inside
@@ -800,6 +868,48 @@ mod tests {
         assert_eq!(utc_stamp(0), "1970-01-01-000000");
         assert_eq!(utc_stamp(1_792_593_005), "2026-10-21-143005");
         assert_eq!(utc_stamp(951_782_400), "2000-02-29-000000");
+    }
+
+    #[test]
+    fn knows_what_changed_since_the_last_publish() {
+        let dir = tempfile::tempdir().unwrap();
+        site(dir.path());
+        assert!(
+            since_publish(dir.path(), "Alpha")
+                .unwrap()
+                .published_at
+                .is_none()
+        );
+        start(dir.path()).unwrap();
+        assert!(
+            since_publish(dir.path(), "Alpha")
+                .unwrap()
+                .published_at
+                .is_none()
+        );
+
+        tag_publish(dir.path(), "Alpha").unwrap();
+        let fresh = since_publish(dir.path(), "Alpha").unwrap();
+        assert!(fresh.published_at.is_some());
+        assert!(fresh.changes.is_empty(), "{:?}", fresh.changes);
+
+        // A version saved outside qed's publish is still news for Alpha.
+        fs::write(
+            dir.path().join("pages/new.md"),
+            "+++\ntitle = \"New\"\n+++\n",
+        )
+        .unwrap();
+        save_version(dir.path(), "New page").unwrap();
+        fs::write(dir.path().join("site.toml"), "title = \"T\"\n").unwrap();
+        let since = since_publish(dir.path(), "Alpha").unwrap();
+        assert_eq!(since.changes, ["pages/new.md", "site.toml"]);
+        // Other targets have their own tags.
+        assert!(
+            since_publish(dir.path(), "Beta")
+                .unwrap()
+                .published_at
+                .is_none()
+        );
     }
 
     #[test]

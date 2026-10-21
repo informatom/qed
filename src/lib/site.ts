@@ -30,6 +30,7 @@ export type BuildReport = Sent<Rust.BuildReport>;
 export type DeletedPage = Sent<Rust.DeletedPage>;
 export type DiffLine = Sent<Rust.DiffLine>;
 export type HistoryStatus = Sent<Rust.HistoryStatus>;
+export type SincePublish = Sent<Rust.SincePublish>;
 export type PageContent = Sent<Rust.PageContent>;
 export type Version = Sent<Rust.Version>;
 export type FrontMatter = Sent<Rust.FrontMatter>;

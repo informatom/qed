@@ -8,7 +8,7 @@ use std::sync::Mutex;
 
 use qed_core::block::Block;
 use qed_core::generator::{self, BuildReport};
-use qed_core::history::{self, DeletedPage, DiffLine, HistoryStatus, Version};
+use qed_core::history::{self, DeletedPage, DiffLine, HistoryStatus, SincePublish, Version};
 use qed_core::media::{self, Library, MediaFile};
 use qed_core::moving;
 use qed_core::page::{FrontMatter, PageContent, PageDate};
@@ -421,6 +421,13 @@ async fn history_status(root: PathBuf) -> Result<HistoryStatus, String> {
     history::status(&root).map_err(|error| error.to_string())
 }
 
+/// What changed since the site was last published to the named target.
+#[tauri::command]
+#[specta::specta]
+async fn since_publish(root: PathBuf, target_name: String) -> Result<SincePublish, String> {
+    history::since_publish(&root, &target_name).map_err(|error| error.to_string())
+}
+
 /// Makes the site folder a git repository and saves a first version.
 #[tauri::command]
 #[specta::specta]
@@ -507,6 +514,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             deleted_pages,
             restore_page,
             history_status,
+            since_publish,
             start_history,
             save_version,
             list_versions,
