@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { savePageSettings, type FrontMatter, type Menu, type Page } from "$lib/site";
+  import { onMount } from "svelte";
+  import { pageIcons, savePageSettings, type FrontMatter, type Menu, type Page } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -21,6 +22,11 @@
   // Lists are edited as comma-separated text.
   let authors = $state(initial.authors.join(", "));
   let tags = $state(initial.tags.join(", "));
+
+  let icons = $state<[string, string][]>([]);
+  onMount(async () => {
+    icons = [...(await pageIcons())];
+  });
 
   let saving = $state(false);
   let error = $state<string | null>(null);
@@ -48,6 +54,7 @@
     ...form,
     title: form.title.trim(),
     description: orNull(form.description),
+    icon: orNull(form.icon),
     summary: orNull(form.summary),
     date: orNull(form.date),
     weight: Number(form.weight) || 0,
@@ -107,6 +114,20 @@
         <input id="setting-weight" class="input w-full" type="number" bind:value={form.weight} />
       </label>
     </div>
+
+    <fieldset class="flex flex-col gap-2 @xl:col-span-2">
+      <legend class="mb-1 text-sm font-medium">Icon <span class="font-normal text-base-content/50">· shown in menus</span></legend>
+      <div class="flex flex-wrap gap-1" role="radiogroup">
+        <button type="button" role="radio" aria-checked={!form.icon} onclick={() => (form.icon = null)}
+          class={["btn btn-sm", !form.icon ? "btn-primary" : "btn-ghost"]}>No icon</button>
+        {#each icons as [name, svg] (name)}
+          <!-- The SVGs are qed's own built-in icons, so inserting them as HTML is safe. -->
+          <button type="button" role="radio" aria-checked={form.icon === name} title={name} aria-label={name}
+            onclick={() => (form.icon = name)}
+            class={["btn btn-sm btn-square", form.icon === name ? "btn-primary" : "btn-ghost"]}>{@html svg}</button>
+        {/each}
+      </div>
+    </fieldset>
 
     <label class="flex items-center gap-3 @xl:self-end @xl:pb-2">
       <input id="setting-draft" type="checkbox" class="toggle" bind:checked={form.draft} />

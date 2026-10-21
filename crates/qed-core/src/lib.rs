@@ -4,6 +4,7 @@
 pub mod block;
 pub mod deploy;
 pub mod generator;
+pub mod icons;
 pub mod links;
 pub mod markdown;
 pub mod media;

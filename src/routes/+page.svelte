@@ -17,7 +17,16 @@
   import NewPageDialog from "$lib/NewPageDialog.svelte";
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
-  import { BLOCK_NAMES, buildSite, openSite, previewSite, type BuildReport, type Page, type Site } from "$lib/site";
+  import {
+    BLOCK_NAMES,
+    buildSite,
+    openSite,
+    pageIcons,
+    previewSite,
+    type BuildReport,
+    type Page,
+    type Site,
+  } from "$lib/site";
 
   const LAST_SITE_KEY = "qed:last-site";
 
@@ -146,6 +155,12 @@
   }
 
   // Reopen the last site once, when the page first appears.
+  // Page icons (SVG by name), for the page list.
+  let icons = $state(new Map<string, string>());
+  onMount(async () => {
+    icons = await pageIcons();
+  });
+
   onMount(() => {
     const path = lastSite();
     if (path) load(path);
@@ -316,6 +331,10 @@
             >
               <div style:padding-left="{depth(page.path) * 1.25}rem" class="flex min-w-0 flex-1 flex-col">
                 <span class="font-medium">
+                  {#if page.front.icon && icons.has(page.front.icon)}
+                    <!-- qed's own built-in SVG, safe to insert. -->
+                    <span class="me-1 inline-flex align-[-2px] text-base-content/70">{@html icons.get(page.front.icon)}</span>
+                  {/if}
                   {page.front.title}
                   {#if page.front.draft}<span class="badge badge-ghost badge-sm">draft</span>{/if}
                   {#if page.front.menu !== "none"}

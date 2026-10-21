@@ -152,6 +152,11 @@ A complete site builder without podcast features.
   on tap, without JavaScript. Menus follow the page tree: an entry goes
   under the nearest menu entry above it (posts under Blog) and is indented
   in the sidebar.
+- **Page icons.** Done 2026-10-21: `icon = "book-open"` on a page shows a
+  Lucide icon in the menus of the generated site (plain SVG, no
+  JavaScript) and in the app's page list. A curated set of 60 icons lives
+  in `crates/qed-core/assets/icons/` and is built into qed; unknown names
+  are an error with the line number. The page settings have a picker.
 - **#064 Site CSS.** Done 2026-10-21: one Tailwind + daisyUI stylesheet with
   all 35 themes and the typography plugin (77 KB, 14 KB gzipped), compiled
   by `npm run build:site-css` and built into qed with `include_str!`. The

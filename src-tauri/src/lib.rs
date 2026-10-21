@@ -150,6 +150,15 @@ async fn save_site_config(root: PathBuf, config: SiteConfig) -> Result<(), Strin
     site::save_config(&root, &config).map_err(|error| error.to_string())
 }
 
+/// The page icons: names and SVG markup, from qed's built-in set.
+#[tauri::command]
+fn list_icons() -> Vec<(&'static str, &'static str)> {
+    qed_core::icons::ICONS
+        .iter()
+        .map(|(name, svg)| (*name, svg.trim_end()))
+        .collect()
+}
+
 /// The daisyUI theme names the app and generated sites can use.
 #[tauri::command]
 fn list_themes() -> Vec<&'static str> {
@@ -278,6 +287,7 @@ pub fn run() {
             save_page_blocks,
             save_site_config,
             list_themes,
+            list_icons,
             save_targets,
             set_target_password,
             target_secrets,

@@ -4,6 +4,8 @@
 @source "../templates";
 /* The generator picks some classes in Rust (e.g. column grids). */
 @source "../src/generator.rs";
+/* Page icons carry their own classes. */
+@source "./icons";
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
   themes: all;

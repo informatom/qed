@@ -1,6 +1,7 @@
 +++
 title = "Blog"
 menu = "main"
+icon = "book-open"
 description = "Notes on building qed: Rust, Tauri, Svelte and TypeScript, explained along the way."
 +++
 
@@ -19,3 +20,4 @@ comparisons to Elixir.
 - [Publishing over SFTP: async Rust, trust on first use, and a server in a box](/blog/2026-10-21-publishing-over-sftp)
 - [Four more blocks: lists in TOML, a template macro, and std::mem::take](/blog/2026-10-21-four-more-blocks)
 - [Two themes: one for the app, one for the website](/blog/2026-10-21-themes)
+- [Page icons: SVG files built into the program, and a first macro_rules! of our own](/blog/2026-10-21-page-icons)

@@ -10,6 +10,8 @@ export interface FrontMatter {
   description: string | null;
   draft: boolean;
   menu: Menu;
+  /** A page icon name from qed's set, shown in menus. */
+  icon: string | null;
   weight: number;
   redirect_from: string[];
   /** ISO date, e.g. "2026-10-21". */
@@ -358,4 +360,12 @@ export function listThemes(): Promise<string[]> {
 /** Saves the site's settings into site.toml. */
 export function saveSiteConfig(root: string, config: SiteConfig): Promise<void> {
   return invoke<void>("save_site_config", { root, config });
+}
+
+let iconCache: Promise<Map<string, string>> | null = null;
+
+/** Page icons by name (SVG markup), loaded once from Rust. */
+export function pageIcons(): Promise<Map<string, string>> {
+  iconCache ??= invoke<[string, string][]>("list_icons").then((list) => new Map(list));
+  return iconCache;
 }

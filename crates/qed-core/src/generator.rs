@@ -200,6 +200,8 @@ struct MenuEntry {
     path: String,
     /// How deep the entry sits below other entries of the same menu.
     level: usize,
+    /// The page's icon as SVG markup.
+    icon: Option<&'static str>,
 }
 
 /// The pages in a menu, ordered by weight, then title.
@@ -240,6 +242,12 @@ fn menu(pages: &[&Page], which: Menu) -> Vec<MenuEntry> {
             title: page.content.front.title.clone(),
             path: page.path.clone(),
             level,
+            icon: page
+                .content
+                .front
+                .icon
+                .as_deref()
+                .and_then(crate::icons::svg),
         });
         stack.extend(
             (0..entries.len())
@@ -314,6 +322,7 @@ struct MenuLink {
     href: String,
     /// Indentation in the sidebar: 0 for top-level entries.
     level: usize,
+    icon: Option<&'static str>,
     /// This page, or a page below it, is the one being shown.
     current: bool,
     /// Exactly this page is being shown.
@@ -410,6 +419,7 @@ fn render_page(
                 title: entry.title.clone(),
                 href: links.page(&entry.path),
                 level: entry.level,
+                icon: entry.icon,
                 current: is_within(&page.path, &entry.path),
                 exact: page.path == entry.path,
             })
@@ -693,7 +703,9 @@ mod tests {
         build_into(&demo_site(), out.path()).unwrap();
         let team = read(out.path().join("about/team/index.html"));
         assert!(
-            team.contains(r#"class="font-semibold text-primary">About</a>"#),
+            team.contains(
+                r#"class="inline-flex items-center gap-1.5 font-semibold text-primary">About</a>"#
+            ),
             "{team}"
         );
     }
@@ -789,6 +801,18 @@ mod tests {
             html.contains(r#"<li class="ms-4 border-s border-base-300">"#),
             "{html}"
         );
+    }
+
+    #[test]
+    fn shows_page_icons_in_menus() {
+        let mut site = demo_site();
+        let about = site.pages.iter_mut().find(|p| p.path == "about").unwrap();
+        about.content.front.icon = Some("users".into());
+        let out = tempfile::tempdir().unwrap();
+        build_into(&site, out.path()).unwrap();
+        let home = read(out.path().join("index.html"));
+        let icon = crate::icons::svg("users").unwrap();
+        assert!(home.contains(&format!("{icon}About</a>")), "{home}");
     }
 
     #[test]

@@ -18,7 +18,8 @@
 <li
   {%- if item.level > 0 %} class="ms-4 border-s border-base-300"
   {%- if item.level > 1 %} style="margin-inline-start: {{ item.level }}rem"{% endif %}{% endif %}><a href="{{ item.href }}"
-  {%- if item.exact %} class="menu-active" aria-current="page"{% else if item.current %} class="font-semibold"{% endif %}>{{ item.title }}</a></li>
+  {%- if item.exact %} class="menu-active" aria-current="page"{% else if item.current %} class="font-semibold"{% endif %}>
+  {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
 {%- endfor %}
 {%- endmacro %}
 {%- macro img(picture, classes) %}
@@ -33,7 +34,8 @@
       {%- if !main_menu.is_empty() && !sidebar %}
       <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {%- for item in main_menu %}
-        <li><a href="{{ item.href }}" class="{% if item.current %}font-semibold text-primary{% else %}link-hover{% endif %}">{{ item.title }}</a></li>
+        <li><a href="{{ item.href }}" class="inline-flex items-center gap-1.5 {% if item.current %}font-semibold text-primary{% else %}link-hover{% endif %}">
+          {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
         {%- endfor %}
       </ul>
       {%- endif %}

@@ -30,6 +30,8 @@ pub struct FrontMatter {
     pub draft: bool,
     #[serde(default)]
     pub menu: Menu,
+    /// A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`.
+    pub icon: Option<String>,
     /// Sort order among sibling pages; lower comes first.
     #[serde(default)]
     pub weight: i32,
@@ -169,6 +171,19 @@ pub(crate) fn parse_parts(source: &str) -> Result<ParsedPage, ParseError> {
     let front_toml = front_lines.join("\n");
     let front: FrontMatter =
         toml::from_str(&front_toml).map_err(|error| toml_error(&error, &front_lines, 2))?;
+    if let Some(icon) = &front.icon
+        && crate::icons::svg(icon).is_none()
+    {
+        // The line the icon is set on, for the error message.
+        let line = front_lines
+            .iter()
+            .position(|line| line.trim_start().starts_with("icon"))
+            .map_or(1, |index| index + 2);
+        return Err(ParseError::new(
+            line,
+            format!("there is no icon called \"{icon}\"; pick one in the page settings"),
+        ));
+    }
 
     let (blocks, block_tomls) = parse_body(lines)?.into_iter().unzip();
     Ok(ParsedPage {
@@ -376,6 +391,16 @@ mod tests {
         let date: PageDate = serde_json::from_str("\"2026-10-21\"").unwrap();
         assert_eq!(date.to_string(), "2026-10-21");
         assert!(serde_json::from_str::<PageDate>("\"21.10.2026\"").is_err());
+    }
+
+    #[test]
+    fn reads_icons_and_rejects_unknown_ones() {
+        let page = parse("+++\ntitle = \"Blog\"\nicon = \"book-open\"\n+++\n").unwrap();
+        assert_eq!(page.front.icon.as_deref(), Some("book-open"));
+
+        let error = parse("+++\ntitle = \"Blog\"\nicon = \"book-closed\"\n+++\n").unwrap_err();
+        assert_eq!(error.line, 3, "{error:?}");
+        assert!(error.message.contains("book-closed"), "{}", error.message);
     }
 
     #[test]
