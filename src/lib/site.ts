@@ -109,6 +109,8 @@ export interface SiteConfig {
   description: string | null;
   theme: string;
   base_url: string | null;
+  /** Where the main menu goes on the generated site. */
+  navigation: "top" | "sidebar";
 }
 
 export interface Site {

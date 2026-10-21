@@ -41,6 +41,18 @@ pub struct SiteConfig {
     /// Where the site is published, e.g. `"https://example.com/"`. Needed
     /// for the sitemap and canonical links; the site works without it.
     pub base_url: Option<String>,
+    /// Where the main menu goes: the top bar, or a sidebar for sites whose
+    /// main menu is too long for the top bar.
+    #[serde(default)]
+    pub navigation: Navigation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Navigation {
+    #[default]
+    Top,
+    Sidebar,
 }
 
 fn default_language() -> String {
@@ -288,6 +300,14 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
     for (key, value, default) in [
         ("language", &config.language, default_language()),
         ("theme", &config.theme, default_theme()),
+        (
+            "navigation",
+            &match config.navigation {
+                Navigation::Top => "top".to_string(),
+                Navigation::Sidebar => "sidebar".to_string(),
+            },
+            "top".to_string(),
+        ),
     ] {
         if *value == default && !page_writer::writes_string(&original, key, &default) {
             document.remove(key);

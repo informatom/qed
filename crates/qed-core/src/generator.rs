@@ -21,7 +21,7 @@ use crate::block::{Block, Side};
 use crate::links::LinkContext;
 use crate::markdown;
 use crate::page::Menu;
-use crate::site::{MEDIA_DIR, Page, Site, SiteConfig};
+use crate::site::{MEDIA_DIR, Navigation, Page, Site, SiteConfig};
 
 pub const OUTPUT_DIR: &str = "_site";
 
@@ -262,6 +262,10 @@ struct PageTemplate<'a> {
     footer_menu: Vec<MenuLink>,
     /// Pages that start with a hero use its headline instead of a title.
     show_title: bool,
+    /// The main menu goes into a sidebar instead of the top bar.
+    sidebar: bool,
+    /// The content width; wider with a sidebar.
+    width: &'static str,
     /// Date and authors, e.g. "2026-10-21 · Claude".
     byline: String,
     blocks: Vec<RenderedBlock>,
@@ -276,7 +280,10 @@ struct RedirectTemplate<'a> {
 struct MenuLink {
     title: String,
     href: String,
+    /// This page, or a page below it, is the one being shown.
     current: bool,
+    /// Exactly this page is being shown.
+    exact: bool,
 }
 
 struct Button {
@@ -369,6 +376,7 @@ fn render_page(
                 title: entry.title.clone(),
                 href: links.page(&entry.path),
                 current: is_within(&page.path, &entry.path),
+                exact: page.path == entry.path,
             })
             .collect()
     };
@@ -390,6 +398,7 @@ fn render_page(
         }
     });
 
+    let sidebar = config.navigation == Navigation::Sidebar && !main_menu.is_empty();
     let template = PageTemplate {
         site: config,
         title: &front.title,
@@ -401,6 +410,8 @@ fn render_page(
         main_menu: menu_links(main_menu),
         footer_menu: menu_links(footer_menu),
         show_title: !matches!(page.content.blocks.first(), Some(Block::Hero(_))),
+        sidebar,
+        width: if sidebar { "max-w-6xl" } else { "max-w-4xl" },
         byline: byline.join(" · "),
         blocks: page
             .content
@@ -680,6 +691,40 @@ mod tests {
         assert!(xml.contains("<loc>https://example.com/podcast/about/team/</loc>"));
         let home = read(out.path().join("index.html"));
         assert!(home.contains(r#"<link rel="canonical" href="https://example.com/podcast/">"#));
+    }
+
+    #[test]
+    fn puts_the_main_menu_into_a_sidebar_when_asked() {
+        let mut site = demo_site();
+        site.config.navigation = Navigation::Sidebar;
+        let out = tempfile::tempdir().unwrap();
+        build_into(&site, out.path()).unwrap();
+
+        let team = read(out.path().join("about/team/index.html"));
+        assert!(
+            team.contains(r#"<nav class="hidden w-56 shrink-0 md:block" aria-label="Main menu">"#),
+            "{team}"
+        );
+        assert!(team.contains(r#"<summary class="collapse-title font-medium">Menu</summary>"#));
+        assert!(
+            team.contains(r#"<a href="../../about/" class="font-semibold">About</a>"#),
+            "parent page in bold: {team}"
+        );
+        let about = read(out.path().join("about/index.html"));
+        assert!(
+            about.contains(
+                r#"<a href="../about/" class="menu-active" aria-current="page">About</a>"#
+            ),
+            "{about}"
+        );
+        assert!(team.contains("max-w-6xl"));
+
+        // The default keeps the menu in the top bar.
+        let out = tempfile::tempdir().unwrap();
+        build_into(&demo_site(), out.path()).unwrap();
+        let team = read(out.path().join("about/team/index.html"));
+        assert!(!team.contains("aria-label=\"Main menu\""));
+        assert!(team.contains("max-w-4xl"));
     }
 
     #[test]

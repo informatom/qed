@@ -13,6 +13,12 @@
   <meta name="generator" content="qed">
   <link rel="stylesheet" href="{{ root }}style.css">
 </head>
+{%- macro menu_items(items) %}
+{%- for item in items %}
+<li><a href="{{ item.href }}"
+  {%- if item.exact %} class="menu-active" aria-current="page"{% else if item.current %} class="font-semibold"{% endif %}>{{ item.title }}</a></li>
+{%- endfor %}
+{%- endmacro %}
 {%- macro img(picture, classes) %}
 <img src="{{ picture.src }}" alt="{{ picture.alt }}"
   {%- if let Some(width) = picture.width %} width="{{ width }}"{% endif %}
@@ -20,9 +26,9 @@
 {%- endmacro %}
 <body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased">
   <header class="border-b border-base-300">
-    <nav class="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
+    <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
       <a href="{{ home_href }}" class="text-lg font-bold tracking-tight">{{ site.title }}</a>
-      {%- if !main_menu.is_empty() %}
+      {%- if !main_menu.is_empty() && !sidebar %}
       <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {%- for item in main_menu %}
         <li><a href="{{ item.href }}" class="{% if item.current %}font-semibold text-primary{% else %}link-hover{% endif %}">{{ item.title }}</a></li>
@@ -32,7 +38,22 @@
     </nav>
   </header>
 
-  <main class="mx-auto w-full max-w-4xl flex-1 px-5 py-10">
+  {%- if sidebar %}
+  <!-- The main menu as a sidebar; on phones, a box that opens on tap. -->
+  <div class="mx-auto flex w-full {{ width }} flex-1 flex-col gap-6 px-5 py-10 md:flex-row md:gap-12">
+    <nav class="hidden w-56 shrink-0 md:block" aria-label="Main menu">
+      <ul class="menu sticky top-6 w-full p-0">{% call menu_items(main_menu) %}{% endcall %}</ul>
+    </nav>
+    <details class="collapse collapse-arrow border border-base-300 md:hidden">
+      <summary class="collapse-title font-medium">Menu</summary>
+      <nav class="collapse-content" aria-label="Main menu">
+        <ul class="menu w-full p-0">{% call menu_items(main_menu) %}{% endcall %}</ul>
+      </nav>
+    </details>
+    <main class="min-w-0 flex-1">
+  {%- else %}
+  <main class="mx-auto w-full {{ width }} flex-1 px-5 py-10">
+  {%- endif %}
     {%- if show_title %}
     <header class="mb-10">
       <h1 class="text-4xl font-bold tracking-tight text-balance">{{ title }}</h1>
@@ -150,9 +171,12 @@
       {%- endfor %}
     </div>
   </main>
+  {%- if sidebar %}
+  </div>
+  {%- endif %}
 
   <footer class="border-t border-base-300">
-    <div class="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-4 px-5 py-6 text-sm text-base-content/60">
+    <div class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-4 px-5 py-6 text-sm text-base-content/60">
       <ul class="flex flex-wrap gap-x-6 gap-y-1">
         {%- for item in footer_menu %}
         <li><a href="{{ item.href }}" class="link-hover">{{ item.title }}</a></li>

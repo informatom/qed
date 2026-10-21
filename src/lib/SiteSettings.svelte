@@ -69,6 +69,17 @@
     </label>
   </div>
 
+  <label class="flex items-start gap-3">
+    <input id="site-sidebar" type="checkbox" class="toggle mt-0.5"
+      bind:checked={() => form.navigation === "sidebar", (on) => (form.navigation = on ? "sidebar" : "top")} />
+    <span class="text-sm">
+      Show the main menu in a sidebar
+      <span class="block text-base-content/60">
+        For sites with more menu pages than fit into the top bar. On phones, it becomes a "Menu" box above the content.
+      </span>
+    </span>
+  </label>
+
   <div class="flex flex-col gap-2">
     <span class="text-sm font-medium">Theme of the website</span>
     <ThemePicker {themes} bind:value={() => form.theme, (theme) => (form.theme = theme ?? "light")} />
