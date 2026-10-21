@@ -1,7 +1,7 @@
 // TypeScript mirrors of the Rust types in crates/qed-core, as they arrive
 // from `invoke("open_site")`. Keep them in sync by hand for now.
 
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 
 export type Menu = "none" | "main" | "footer";
 
@@ -27,6 +27,12 @@ export interface Hero {
   button_link: string | null;
 }
 
+export interface ImageBlock {
+  image: string | null;
+  alt: string | null;
+  caption: string | null;
+}
+
 export interface CallToAction {
   headline: string | null;
   text: string | null;
@@ -39,6 +45,7 @@ export interface CallToAction {
 export type Block =
   | { type: "text"; markdown: string }
   | ({ type: "hero" } & Hero)
+  | ({ type: "image" } & ImageBlock)
   | ({ type: "call-to-action" } & CallToAction);
 
 export interface Page {
@@ -122,6 +129,7 @@ export type BlockType = Block["type"];
 export const BLOCK_NAMES: Record<BlockType, string> = {
   text: "Text",
   hero: "Hero",
+  image: "Image",
   "call-to-action": "Call to action",
 };
 
@@ -132,6 +140,8 @@ export function newBlock(type: BlockType): Block {
       return { type, markdown: "" };
     case "hero":
       return { type, image: null, headline: null, text: null, button_label: null, button_link: null };
+    case "image":
+      return { type, image: null, alt: null, caption: null };
     case "call-to-action":
       return { type, headline: null, text: null, button_label: null, button_link: null };
   }
@@ -144,4 +154,42 @@ export function normalizeBlock(block: Block): Block {
     key !== "type" && key !== "markdown" && typeof value === "string" && value.trim() === "" ? null : value,
   ]);
   return Object.fromEntries(entries) as Block;
+}
+
+export type MediaKind = "image" | "document" | "other";
+
+export interface MediaFile {
+  /** Path inside media/, e.g. "team.jpg" or "logos/a.png". */
+  name: string;
+  size: number;
+  kind: MediaKind;
+  width: number | null;
+  height: number | null;
+  /** URL paths of the pages that use the file. */
+  used_by: string[];
+}
+
+export function listMedia(root: string): Promise<MediaFile[]> {
+  return invoke<MediaFile[]>("list_media", { root });
+}
+
+/** Copies files into the media folder; resolves to their new names. */
+export function importMedia(root: string, paths: string[]): Promise<string[]> {
+  return invoke<string[]>("import_media", { root, paths });
+}
+
+export function deleteMedia(root: string, name: string): Promise<void> {
+  return invoke<void>("delete_media", { root, name });
+}
+
+/** A URL the app window can load a media file from (for thumbnails). */
+export function mediaUrl(root: string, name: string): string {
+  return convertFileSrc(`${root}/media/${name}`);
+}
+
+/** "1.4 MB", "820 KB", "12 bytes". */
+export function formatSize(bytes: number): string {
+  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} KB`;
+  return `${bytes} bytes`;
 }

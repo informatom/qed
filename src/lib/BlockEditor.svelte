@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import ImageField from "$lib/ImageField.svelte";
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
   import {
     BLOCK_NAMES,
@@ -106,13 +107,35 @@
 
         {#if item.block.type === "text"}
           <MarkdownEditor bind:value={item.block.markdown} placeholder="Write in Markdown…" />
+        {:else if item.block.type === "image"}
+          <div class="grid gap-3 @2xl:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              {@render field("Image")}
+              <ImageField {siteRoot} bind:value={item.block.image} />
+            </div>
+            <label class="flex flex-col gap-1">
+              {@render field("Alternative text", "describes the image for people who can't see it")}
+              <input class="input w-full" bind:value={item.block.alt} />
+            </label>
+            <div class="flex flex-col gap-1 @2xl:col-span-2">
+              {@render field("Caption", "Markdown")}
+              <MarkdownEditor
+                bind:value={() => (item.block.type === "image" ? (item.block.caption ?? "") : ""),
+                (text) => {
+                  if (item.block.type === "image") item.block.caption = text;
+                }}
+                minHeight="60px"
+              />
+            </div>
+          </div>
         {:else}
+          <!-- Hero and Call to action share most fields. -->
           <div class="grid gap-3 @2xl:grid-cols-2">
             {#if item.block.type === "hero"}
-              <label class="flex flex-col gap-1">
-                {@render field("Image", "file name in media/")}
-                <input class="input w-full" bind:value={item.block.image} placeholder="team.jpg" />
-              </label>
+              <div class="flex flex-col gap-1">
+                {@render field("Background image")}
+                <ImageField {siteRoot} bind:value={item.block.image} />
+              </div>
             {/if}
             <label class={["flex flex-col gap-1", item.block.type !== "hero" && "@2xl:col-span-2"]}>
               {@render field("Headline")}
@@ -121,8 +144,10 @@
             <div class="flex flex-col gap-1 @2xl:col-span-2">
               {@render field("Text", "Markdown")}
               <MarkdownEditor
-                bind:value={() => item.block.type !== "text" ? (item.block.text ?? "") : "",
-                (text) => { if (item.block.type !== "text") item.block.text = text; }}
+                bind:value={() => ("headline" in item.block ? (item.block.text ?? "") : ""),
+                (text) => {
+                  if ("headline" in item.block) item.block.text = text;
+                }}
                 minHeight="80px"
               />
             </div>

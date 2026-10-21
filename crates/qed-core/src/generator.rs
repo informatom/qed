@@ -76,11 +76,12 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
         .iter()
         .filter(|p| !p.content.front.draft)
         .collect();
+    let media_dir = site.root.join(MEDIA_DIR);
     let main_menu = menu(&published, Menu::Main);
     let footer_menu = menu(&published, Menu::Footer);
 
     for page in &published {
-        let html = render_page(&site.config, page, &main_menu, &footer_menu)?;
+        let html = render_page(&site.config, &media_dir, page, &main_menu, &footer_menu)?;
         write(&page_file(out_dir, &page.path), html)?;
     }
 
@@ -294,6 +295,14 @@ enum RenderedBlock {
         text_html: Option<String>,
         button: Option<Button>,
     },
+    Image {
+        /// `None` while no image is chosen; nothing is shown then.
+        src: Option<String>,
+        alt: String,
+        caption_html: Option<String>,
+        width: Option<u32>,
+        height: Option<u32>,
+    },
     CallToAction {
         headline: Option<String>,
         text_html: Option<String>,
@@ -303,6 +312,7 @@ enum RenderedBlock {
 
 fn render_page(
     config: &SiteConfig,
+    media_dir: &Path,
     page: &Page,
     main_menu: &[MenuEntry],
     footer_menu: &[MenuEntry],
@@ -354,7 +364,7 @@ fn render_page(
             .content
             .blocks
             .iter()
-            .map(|b| render_block(b, &links))
+            .map(|b| render_block(b, &links, media_dir))
             .collect(),
     };
 
@@ -370,7 +380,7 @@ fn is_within(page: &str, entry: &str) -> bool {
     page == entry || (!entry.is_empty() && page.starts_with(&format!("{entry}/")))
 }
 
-fn render_block(block: &Block, links: &LinkContext) -> RenderedBlock {
+fn render_block(block: &Block, links: &LinkContext, media_dir: &Path) -> RenderedBlock {
     let markdown = |text: &Option<String>| text.as_deref().map(|t| markdown::render(t, links));
     let button = |label: &Option<String>, link: &Option<String>| match (label, link) {
         (Some(label), Some(link)) => Some(Button {
@@ -390,6 +400,22 @@ fn render_block(block: &Block, links: &LinkContext) -> RenderedBlock {
             text_html: markdown(&hero.text),
             button: button(&hero.button_label, &hero.button_link),
         },
+        Block::Image(image) => {
+            let file = image
+                .image
+                .as_deref()
+                .filter(|name| !name.trim().is_empty());
+            // Width and height let the browser reserve space before the image
+            // loads, so the page doesn't jump. Only the file header is read.
+            let size = file.and_then(|name| image::image_dimensions(media_dir.join(name)).ok());
+            RenderedBlock::Image {
+                src: file.map(|name| media_link(name, links)),
+                alt: image.alt.clone().unwrap_or_default(),
+                caption_html: markdown(&image.caption),
+                width: size.map(|(width, _)| width),
+                height: size.map(|(_, height)| height),
+            }
+        }
         Block::CallToAction(cta) => RenderedBlock::CallToAction {
             headline: cta.headline.clone(),
             text_html: markdown(&cta.text),

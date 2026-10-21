@@ -59,7 +59,14 @@ A complete site builder without podcast features.
   Text). Phase 2 seeds podcast sites with Latest episodes and Subscribe.
 - **#033 Images and media library.** Import, tag, search and resize images to
   WebP; keep PDFs for downloads. Phase 2 adds Apple's cover art rules
-  (1400–3000 px square).
+  (1400–3000 px square). *Media library done 2026-10-21*
+  (`qed_core::media`): list with size, dimensions and usage, import with
+  clean names, delete only unused files, image picker, Image block with
+  width/height and lazy loading. Still open: resizing to several sizes
+  with a build cache (#075), tags.
+- **#075 Responsive images.** Resize images at build time to a few widths
+  (`srcset`), keep the originals in `media/`, cache the results so builds
+  stay fast.
 - **#040 Blog.** Pages with kind `post` under a `blog` parent, a Post list
   block and `blog/feed.xml`.
 - **#026 Site generator.** Render HTML for published pages, posts, menus,

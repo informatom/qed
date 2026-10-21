@@ -24,6 +24,7 @@ pub enum Block {
         markdown: String,
     },
     Hero(Hero),
+    Image(Image),
     CallToAction(CallToAction),
 }
 
@@ -38,6 +39,18 @@ pub struct Hero {
     pub text: Option<String>,
     pub button_label: Option<String>,
     pub button_link: Option<String>,
+}
+
+/// One image, with alternative text and an optional caption.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Image {
+    /// File name in the site's `media/` folder.
+    pub image: Option<String>,
+    /// Describes the image for people who can't see it.
+    pub alt: Option<String>,
+    /// Markdown.
+    pub caption: Option<String>,
 }
 
 /// A highlighted box that asks the visitor to do something.
@@ -57,13 +70,14 @@ impl Block {
         match self {
             Block::Text { .. } => None,
             Block::Hero(_) => Some("hero"),
+            Block::Image(_) => Some("image"),
             Block::CallToAction(_) => Some("call-to-action"),
         }
     }
 }
 
 /// The container names, as written after `:::` in a page file.
-pub const CONTAINER_TYPES: [&str; 2] = ["hero", "call-to-action"];
+pub const CONTAINER_TYPES: [&str; 3] = ["hero", "image", "call-to-action"];
 
 /// Builds a block from a container's type name and its TOML body.
 ///
@@ -71,6 +85,7 @@ pub const CONTAINER_TYPES: [&str; 2] = ["hero", "call-to-action"];
 pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerError> {
     match kind {
         "hero" => Ok(Block::Hero(toml::from_str(toml)?)),
+        "image" => Ok(Block::Image(toml::from_str(toml)?)),
         "call-to-action" => Ok(Block::CallToAction(toml::from_str(toml)?)),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }

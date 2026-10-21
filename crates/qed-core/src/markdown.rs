@@ -29,6 +29,19 @@ pub fn render(markdown: &str, links: &LinkContext) -> String {
     html
 }
 
+/// Every link and image target in a piece of Markdown, as written.
+pub fn link_targets(markdown: &str) -> Vec<String> {
+    let options = options();
+    let arena = Arena::new();
+    let root = parse_document(&arena, markdown, &options);
+    root.descendants()
+        .filter_map(|node| match &node.data.borrow().value {
+            NodeValue::Link(link) | NodeValue::Image(link) => Some(link.url.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
 fn options() -> Options<'static> {
     let mut options = Options::default();
     options.extension.strikethrough = true;

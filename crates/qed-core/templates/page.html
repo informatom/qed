@@ -60,6 +60,17 @@
           </div>
         </div>
       </section>
+      {%- when RenderedBlock::Image with { src, alt, caption_html, width, height } %}
+      {%- if let Some(src) = src %}
+      <figure class="flex flex-col gap-3">
+        <img src="{{ src }}" alt="{{ alt }}"
+          {%- if let Some(width) = width %} width="{{ width }}"{% endif %}
+          {%- if let Some(height) = height %} height="{{ height }}"{% endif %} loading="lazy" class="h-auto w-full rounded-box">
+        {%- if let Some(caption_html) = caption_html %}
+        <figcaption class="prose prose-sm max-w-none text-base-content/70">{{ caption_html|safe }}</figcaption>
+        {%- endif %}
+      </figure>
+      {%- endif %}
       {%- when RenderedBlock::CallToAction with { headline, text_html, button } %}
       <section class="card bg-primary text-primary-content">
         <div class="card-body items-center gap-4 text-center sm:py-10">

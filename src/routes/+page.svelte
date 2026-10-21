@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
+  import MediaLibrary from "$lib/MediaLibrary.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
   import { BLOCK_NAMES, buildSite, openSite, previewSite, type BuildReport, type Page, type Site } from "$lib/site";
@@ -35,6 +36,7 @@
   }
 
   let creatingPage = $state(false);
+  let view = $state<"pages" | "media">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -197,10 +199,23 @@
   {/if}
 
   {#if site}
+    <div role="tablist" class="tabs tabs-border -mb-4">
+      <button type="button" role="tab" id="view-pages" class={["tab", view === "pages" && "tab-active"]}
+        onclick={() => (view = "pages")}>Pages</button>
+      <button type="button" role="tab" id="view-media" class={["tab", view === "media" && "tab-active"]}
+        onclick={() => (view = "media")}>Media</button>
+    </div>
 
+    {#if view === "media"}
+      <!-- Mounted on demand, so it lists the folder fresh each time. -->
+      <MediaLibrary siteRoot={site.root} />
+    {/if}
+
+    <!-- The pages view stays mounted while hidden, so unsaved edits survive. -->
     <div
       class={[
         "grid items-start gap-6",
+        view !== "pages" && "hidden",
         selected && "lg:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[28rem_minmax(0,1fr)]",
       ]}
     >

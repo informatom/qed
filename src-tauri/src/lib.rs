@@ -6,10 +6,11 @@ use std::sync::Mutex;
 
 use qed_core::block::Block;
 use qed_core::generator::{self, BuildReport};
+use qed_core::media::{self, MediaFile};
 use qed_core::page::{FrontMatter, PageDate};
 use qed_core::preview::Preview;
 use qed_core::site::{self, Page, Site};
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
 /// The running preview server, if any. Tauri keeps one of these for the whole
 /// app ("managed state"); the Mutex lets commands on different threads take
@@ -27,9 +28,39 @@ fn slugify(title: &str) -> String {
 ///
 /// `async` makes Tauri run it off the main thread, so the window stays
 /// responsive while files are read. Errors reach the UI as a message string.
+///
+/// It also lets the window load files from this folder (for media
+/// thumbnails); the asset protocol starts with an empty scope.
 #[tauri::command]
-async fn open_site(path: PathBuf) -> Result<Site, String> {
-    site::open(&path).map_err(|error| error.to_string())
+async fn open_site(app: AppHandle, path: PathBuf) -> Result<Site, String> {
+    let site = site::open(&path).map_err(|error| error.to_string())?;
+    app.asset_protocol_scope()
+        .allow_directory(&path, true)
+        .map_err(|error| error.to_string())?;
+    Ok(site)
+}
+
+/// Lists the site's media files with their size and usage.
+#[tauri::command]
+async fn list_media(root: PathBuf) -> Result<Vec<MediaFile>, String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    media::list(&site).map_err(|error| error.to_string())
+}
+
+/// Copies files into the media folder; returns their new names.
+#[tauri::command]
+async fn import_media(root: PathBuf, paths: Vec<PathBuf>) -> Result<Vec<String>, String> {
+    paths
+        .iter()
+        .map(|path| media::import(&root, path).map_err(|error| error.to_string()))
+        .collect()
+}
+
+/// Deletes a media file that no page uses.
+#[tauri::command]
+async fn delete_media(root: PathBuf, name: String) -> Result<(), String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    media::delete(&site, &name).map_err(|error| error.to_string())
 }
 
 /// Saves a page's settings into its file and returns the saved page.
@@ -117,6 +148,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             slugify,
             open_site,
+            list_media,
+            import_media,
+            delete_media,
             save_page_settings,
             save_page_blocks,
             create_page,

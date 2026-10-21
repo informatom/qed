@@ -83,6 +83,7 @@ fn block_document(block: &Block) -> DocumentMut {
     let document = match block {
         Block::Text { .. } => Ok(DocumentMut::new()),
         Block::Hero(hero) => toml_edit::ser::to_document(hero),
+        Block::Image(image) => toml_edit::ser::to_document(image),
         Block::CallToAction(cta) => toml_edit::ser::to_document(cta),
     };
     // Structs of strings always serialize; an empty document is a safe fallback.
