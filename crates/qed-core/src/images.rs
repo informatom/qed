@@ -271,7 +271,7 @@ fn create_cache(cache_dir: &Path, cache: &Path) -> Result<(), ImageError> {
     fs::create_dir_all(cache).map_err(io(cache))?;
     let ignore = cache_dir.join(".gitignore");
     if !ignore.is_file() {
-        fs::write(&ignore, "# qed's cache; safe to delete.\n*\n").map_err(io(&ignore))?;
+        fs::write(&ignore, "# q.e.d.'s cache; safe to delete.\n*\n").map_err(io(&ignore))?;
     }
     Ok(())
 }

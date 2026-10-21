@@ -80,7 +80,7 @@
     <section class="flex max-w-2xl flex-col items-start gap-3 rounded-box border border-dashed border-base-300 p-6">
       <h2 class="text-lg font-semibold">No version history yet</h2>
       <p class="text-sm text-base-content/70">
-        qed can keep versions of this site, so you can see what changed and bring back an earlier version of any
+        q.e.d. can keep versions of this site, so you can see what changed and bring back an earlier version of any
         page. It uses git, in this folder; the built site and your publish targets are left out.
       </p>
       <button type="button" id="start-history" class="btn btn-primary" disabled={busy}
@@ -132,7 +132,7 @@
         </form>
         {#if message}<p class="text-sm text-success">{message}</p>{/if}
         <p class="text-sm text-base-content/60">
-          Every save in qed goes into the open version, so nothing saved is lost. Publishing asks what's new, closes it
+          Every save in q.e.d. goes into the open version, so nothing saved is lost. Publishing asks what's new, closes it
           with that note and marks it with the target's name.
         </p>
       </section>

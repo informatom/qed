@@ -87,7 +87,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: qed ${{ github.ref_name }}
+          releaseName: q.e.d. ${{ github.ref_name }}
           releaseBody: Installers for macOS, Windows and Linux. Not signed yet, so the system asks before the first start; see the release notes.
           releaseDraft: true
           prerelease: false

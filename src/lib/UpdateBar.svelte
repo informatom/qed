@@ -10,7 +10,7 @@
   <div id="update-bar" role="status" class="alert alert-info alert-soft flex flex-wrap items-center gap-3">
     <Download class="size-5" />
     <span class="flex-1">
-      qed {updates.available.version} is available (you have {updates.available.currentVersion}).
+      q.e.d. {updates.available.version} is available (you have {updates.available.currentVersion}).
       {#if updates.installing}
         Downloading{updates.total ? `: ${formatSize(updates.done)} of ${formatSize(updates.total)}` : "…"}
       {/if}

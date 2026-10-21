@@ -716,7 +716,7 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs");
         let site = open(&root).unwrap_or_else(|error| panic!("{error}"));
 
-        assert_eq!(site.config.title, "qed");
+        assert_eq!(site.config.title, "q.e.d.");
         let posts: Vec<_> = site
             .pages
             .iter()

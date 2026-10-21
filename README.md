@@ -1,4 +1,4 @@
-# qed
+# q.e.d.
 
 A desktop app that turns a folder of pages and posts into a static website and
 publishes it to your own webspace, via SFTP, GitHub Pages or a ZIP download.
@@ -8,8 +8,8 @@ without learning a static site generator.
 Status: early development. The plan lives in the
 [backlog](docs/pages/backlog.md).
 
-qed is built in the open with [Claude Code](https://claude.com/claude-code).
-The [docs](docs) folder is a qed site itself: the project home page and a
+q.e.d. is built in the open with [Claude Code](https://claude.com/claude-code).
+The [docs](docs) folder is a q.e.d. site itself: the project home page and a
 blog with the learning notes written along the way ([docs/pages/blog](docs/pages/blog)).
 
 ## How it works

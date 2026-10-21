@@ -295,7 +295,7 @@ pub async fn test(target: &SftpTarget, credentials: &Credentials) -> Result<Stri
     let report = match (exists, published) {
         (true, true) => format!("Connected. {folder} holds an earlier publish from qed."),
         (true, false) => {
-            format!("Connected. {folder} exists; nothing was published there by qed yet.")
+            format!("Connected. {folder} exists; nothing was published there by q.e.d. yet.")
         }
         (false, _) => {
             // Many servers confine SFTP to one folder, so paths differ from

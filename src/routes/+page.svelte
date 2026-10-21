@@ -210,7 +210,7 @@
     {#if site}
       <div id="site-summary" class="flex min-w-0 flex-col gap-1">
         <div class="flex flex-wrap items-baseline gap-x-3 text-sm text-base-content/60">
-          <span class="text-xs font-semibold tracking-widest text-primary uppercase">qed</span>
+          <span class="text-xs font-semibold tracking-widest text-primary uppercase">q.e.d.</span>
           <span>
             <span id="site-root" class="font-mono">{site.root}</span> · {site.pages.length} pages{draftCount
               ? `, ${draftCount} drafts`
@@ -233,7 +233,7 @@
         </div>
       </div>
     {:else}
-      <h1 class="text-3xl font-bold tracking-tight">qed</h1>
+      <h1 class="text-3xl font-bold tracking-tight">q.e.d.</h1>
     {/if}
     <div class="flex gap-2">
       {#if site}
@@ -440,7 +440,7 @@
       </button>
       <p class="text-sm text-base-content/60">
         A site folder has a <code>site.toml</code> and a <code>pages/</code> folder. Try
-        <code>examples/demo-site</code> in the qed repository.
+        <code>examples/demo-site</code> in the q.e.d. repository.
       </p>
       {#if recent.length}
         <ul id="recent-sites" class="mt-4 flex w-full max-w-2xl flex-col gap-1 text-start">

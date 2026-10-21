@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "qed",
+        "title": "q.e.d.",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
@@ -39,7 +39,12 @@
     ],
     "shortDescription": "Static websites from a folder of pages",
     "license": "GPL-3.0-or-later",
-    "category": "Productivity"
+    "category": "Productivity",
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/qed.desktop"
+      }
+    }
   },
   "plugins": {
     "updater": {

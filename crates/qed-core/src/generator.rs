@@ -57,7 +57,7 @@ pub enum BuildError {
     },
 
     #[error(
-        "{} already exists and wasn't built by qed; move it away so qed doesn't overwrite your files",
+        "{} already exists and wasn't built by q.e.d.; move it away so q.e.d. doesn't overwrite your files",
         .0.display()
     )]
     NotOurs(PathBuf),

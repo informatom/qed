@@ -23,7 +23,7 @@
 </script>
 
 <section id="app-settings" class="flex flex-col gap-2">
-  <h2 class="text-lg font-semibold">Theme of the qed app</h2>
+  <h2 class="text-lg font-semibold">Theme of the q.e.d. app</h2>
   <p class="text-sm text-base-content/60">
     Only for this computer, and applied right away. Each website has its own theme, under Site.
   </p>
@@ -33,7 +33,7 @@
 <section id="app-updates" class="mt-6 flex flex-col items-start gap-2">
   <h2 class="text-lg font-semibold">Updates</h2>
   <p class="text-sm">
-    This is qed <span id="app-version" class="font-mono">{updates.version || "…"}</span>. qed looks for a newer version
+    This is q.e.d. <span id="app-version" class="font-mono">{updates.version || "…"}</span>. q.e.d. looks for a newer version
     on GitHub when it starts and asks before installing one.
   </p>
   <div class="flex flex-wrap items-center gap-3">
@@ -43,13 +43,13 @@
       Check for updates
     </button>
     {#if updates.available}
-      <span class="text-sm">qed {updates.available.version} is available.</span>
+      <span class="text-sm">q.e.d. {updates.available.version} is available.</span>
       <button type="button" class="btn btn-info btn-sm" onclick={installUpdate} disabled={updates.installing}>
         {#if updates.installing}<span class="loading loading-spinner loading-xs"></span>{/if}
         Install and restart
       </button>
     {:else if updates.checkedAt && !updates.error}
-      <span id="up-to-date" class="text-sm text-success">qed is up to date.</span>
+      <span id="up-to-date" class="text-sm text-success">q.e.d. is up to date.</span>
     {/if}
   </div>
   {#if updates.error}

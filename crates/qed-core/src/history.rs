@@ -407,7 +407,7 @@ fn head_commit(repo: &Repository) -> Option<git2::Commit<'_>> {
 fn signature(repo: &Repository) -> Result<Signature<'static>, HistoryError> {
     Ok(repo
         .signature()
-        .or_else(|_| Signature::now("qed", "qed@localhost"))?)
+        .or_else(|_| Signature::now("q.e.d.", "qed@localhost"))?)
 }
 
 /// Stages the site folder and builds the tree for its next commit: the
@@ -475,7 +475,7 @@ pub fn tag_publish(root: &Path, target: &str) -> Result<Option<String>, HistoryE
     let signature = site
         .repo
         .signature()
-        .or_else(|_| Signature::now("qed", "qed@localhost"))?;
+        .or_else(|_| Signature::now("q.e.d.", "qed@localhost"))?;
     site.repo.tag(
         &name,
         head.as_object(),
