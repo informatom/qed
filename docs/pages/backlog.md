@@ -46,18 +46,15 @@ A complete site builder without podcast features.
 - **#055 Sites.** Several sites per installation. Phase 1 sites are pages-only;
   phase 2 adds the podcast switch.
 - **#021 Site UI.** List, create and edit sites.
-- **#043 Block CMS.** *Text with image, Gallery, Download and FAQ done
-  2026-10-21.* *Block editor done 2026-10-21*: Content/Settings tabs
-  per page, OverType for Markdown, Hero and Call-to-action fields, add,
-  remove, move up/down, save with `site::save_blocks`, warning before
-  losing unsaved changes. Still open: the remaining block types, an image
-  picker (#033), drag and drop.
-  Original plan: Rebuild Mercator's block CMS design in Rust
-  (`docs/notes/cms-handover-qed.md` describes it; its Elixir file map no longer
-  applies): pages as ordered lists of typed blocks stored as Markdown
-  files (#072), drafts via `draft = true`, history via git (#073), page tree
-  from the folder structure, menus, blocks (Text, Hero, Text with
-  image, Image, Gallery, Download, Columns, FAQ, Call to action, Shared).
+- **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
+  (`docs/notes/cms-handover-qed.md`; its Elixir file map no longer
+  applies). *Done 2026-10-21*: nine block types (Text, Hero, Image, Text
+  with image, Gallery, Download, FAQ, Columns with nested blocks (#074),
+  Call to action); the block editor with Content/Versions/Settings tabs
+  per page, OverType for Markdown, the image picker (#033), add, remove,
+  move up/down, save with `site::save_blocks`, a warning before losing
+  unsaved changes. Still open: a Shared block (one block used on several
+  pages) and drag and drop.
 - **#056 Start page.** Every site gets a `home` page on creation (Hero and
   Text). Phase 2 seeds podcast sites with Latest episodes and Subscribe.
 - **#033 Images and media library.** Import, tag, search and resize images to
