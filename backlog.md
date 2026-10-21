@@ -29,8 +29,11 @@ A complete site builder without podcast features.
 - **#072 Block file format.** Read and write pages as Markdown with block
   containers (`::: hero` … `:::`, block fields as TOML) in qed-core. Writing
   a parsed page gives the same file back, so hand edits survive the block
-  editor. *Parsing done 2026-10-21* for Text, Hero and Call to action, with
-  file and line in every error; writing is still open.
+  editor. *Done 2026-10-21*: parsing with file and line in every error;
+  writing with `qed_core::page_writer` (unchanged files and blocks stay
+  byte for byte, changed TOML is merged with `toml_edit` so comments
+  survive, defaults are left out, atomic saves). The app edits page
+  settings in a side panel; editing blocks comes with #043.
 - **#074 Nested blocks.** Columns contain blocks, so containers must nest
   (e.g. `::::` for the outer container, as markdown-it-container does).
 - **#073 Git history.** Each site folder is a git repo the app manages

@@ -49,10 +49,27 @@ pub struct FrontMatter {
 /// A TOML date such as `2026-10-21`, written without quotes in the file.
 ///
 /// Reading uses TOML's own date type, which rejects nonsense like
-/// `2026-13-45`. The UI receives it as text, `"2026-10-21"`.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(transparent)]
+/// `2026-13-45`. The UI receives it as text, `"2026-10-21"`, and sends it back
+/// the same way.
+#[derive(Debug, Clone, PartialEq)]
 pub struct PageDate(toml::value::Datetime);
+
+impl<'de> Deserialize<'de> for PageDate {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        /// Either a TOML date (from a page file) or text (from the UI).
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Raw {
+            Date(toml::value::Datetime),
+            Text(String),
+        }
+
+        match Raw::deserialize(deserializer)? {
+            Raw::Date(date) => Ok(PageDate(date)),
+            Raw::Text(text) => text.parse().map(PageDate).map_err(serde::de::Error::custom),
+        }
+    }
+}
 
 impl Serialize for PageDate {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -102,8 +119,23 @@ impl ParseError {
 const FENCE: &str = "+++";
 const CONTAINER: &str = ":::";
 
+/// A parsed page plus the original TOML of its parts, so the writer can keep
+/// what the user wrote (comments, formatting) for everything that didn't
+/// change.
+#[derive(Debug, Clone)]
+pub(crate) struct ParsedPage {
+    pub content: PageContent,
+    pub front_toml: String,
+    /// One entry per block: the container's TOML body, `None` for text.
+    pub block_tomls: Vec<Option<String>>,
+}
+
 /// Parses the text of a page file.
 pub fn parse(source: &str) -> Result<PageContent, ParseError> {
+    parse_parts(source).map(|parsed| parsed.content)
+}
+
+pub(crate) fn parse_parts(source: &str) -> Result<ParsedPage, ParseError> {
     // Pair each line with its 1-based number, for error messages.
     let mut lines = source.lines().enumerate().map(|(i, line)| (i + 1, line));
 
@@ -134,15 +166,25 @@ pub fn parse(source: &str) -> Result<PageContent, ParseError> {
     }
 
     // Front matter TOML starts on line 2.
-    let front: FrontMatter = toml::from_str(&front_lines.join("\n"))
-        .map_err(|error| toml_error(&error, &front_lines, 2))?;
+    let front_toml = front_lines.join("\n");
+    let front: FrontMatter =
+        toml::from_str(&front_toml).map_err(|error| toml_error(&error, &front_lines, 2))?;
 
-    let blocks = parse_body(lines)?;
-    Ok(PageContent { front, blocks })
+    let (blocks, block_tomls) = parse_body(lines)?.into_iter().unzip();
+    Ok(ParsedPage {
+        content: PageContent { front, blocks },
+        front_toml,
+        block_tomls,
+    })
 }
 
+/// A block and, for containers, its TOML body as written.
+type BlockWithSource = (Block, Option<String>);
+
 /// Splits the body into Markdown text and containers.
-fn parse_body<'a>(lines: impl Iterator<Item = (usize, &'a str)>) -> Result<Vec<Block>, ParseError> {
+fn parse_body<'a>(
+    lines: impl Iterator<Item = (usize, &'a str)>,
+) -> Result<Vec<BlockWithSource>, ParseError> {
     let mut blocks = Vec::new();
     let mut text: Vec<&str> = Vec::new();
     // The open container: its type, the line it started on, and its body.
@@ -154,7 +196,8 @@ fn parse_body<'a>(lines: impl Iterator<Item = (usize, &'a str)>) -> Result<Vec<B
         if let Some((kind, start, body)) = container.as_mut() {
             match container_marker(line) {
                 Some("") => {
-                    blocks.push(container_block(kind, *start, body)?);
+                    let block = container_block(kind, *start, body)?;
+                    blocks.push((block, Some(body.join("\n"))));
                     container = None;
                 }
                 Some(_) => {
@@ -206,10 +249,10 @@ fn is_code_fence(line: &str) -> bool {
 }
 
 /// Turns collected Markdown lines into a text block, unless they're blank.
-fn push_text(blocks: &mut Vec<Block>, text: &mut Vec<&str>) {
+fn push_text(blocks: &mut Vec<BlockWithSource>, text: &mut Vec<&str>) {
     let markdown = text.join("\n").trim_matches('\n').to_string();
     if !markdown.trim().is_empty() {
-        blocks.push(Block::Text { markdown });
+        blocks.push((Block::Text { markdown }, None));
     }
     text.clear();
 }
@@ -326,6 +369,13 @@ mod tests {
             .front;
         let json = serde_json::to_value(&front).unwrap();
         assert_eq!(json["date"], "2026-10-21");
+    }
+
+    #[test]
+    fn reads_dates_sent_as_text() {
+        let date: PageDate = serde_json::from_str("\"2026-10-21\"").unwrap();
+        assert_eq!(date.to_string(), "2026-10-21");
+        assert!(serde_json::from_str::<PageDate>("\"21.10.2026\"").is_err());
     }
 
     #[test]

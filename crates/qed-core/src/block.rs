@@ -51,6 +51,17 @@ pub struct CallToAction {
     pub button_link: Option<String>,
 }
 
+impl Block {
+    /// The name after `:::` in a page file; `None` for plain text.
+    pub fn container_type(&self) -> Option<&'static str> {
+        match self {
+            Block::Text { .. } => None,
+            Block::Hero(_) => Some("hero"),
+            Block::CallToAction(_) => Some("call-to-action"),
+        }
+    }
+}
+
 /// The container names, as written after `:::` in a page file.
 pub const CONTAINER_TYPES: [&str; 2] = ["hero", "call-to-action"];
 

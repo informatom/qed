@@ -5,8 +5,9 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use qed_core::generator::{self, BuildReport};
+use qed_core::page::FrontMatter;
 use qed_core::preview::Preview;
-use qed_core::site::{self, Site};
+use qed_core::site::{self, Page, Site};
 use tauri::State;
 
 /// The running preview server, if any. Tauri keeps one of these for the whole
@@ -28,6 +29,16 @@ fn slugify(title: &str) -> String {
 #[tauri::command]
 async fn open_site(path: PathBuf) -> Result<Site, String> {
     site::open(&path).map_err(|error| error.to_string())
+}
+
+/// Saves a page's settings into its file and returns the saved page.
+#[tauri::command]
+async fn save_page_settings(
+    root: PathBuf,
+    file: PathBuf,
+    front: FrontMatter,
+) -> Result<Page, String> {
+    site::save_front_matter(&root, &file, front).map_err(|error| error.to_string())
 }
 
 /// Builds the site at `path` into its `_site` folder.
@@ -81,6 +92,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             slugify,
             open_site,
+            save_page_settings,
             build_site,
             preview_site
         ])

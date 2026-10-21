@@ -6,6 +6,7 @@ pub mod generator;
 pub mod links;
 pub mod markdown;
 pub mod page;
+pub mod page_writer;
 pub mod preview;
 pub mod site;
 pub mod slug;

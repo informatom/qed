@@ -89,3 +89,8 @@ export interface PreviewInfo {
 export function previewSite(path: string): Promise<PreviewInfo> {
   return invoke<PreviewInfo>("preview_site", { path });
 }
+
+/** Saves a page's settings into its file; resolves to the page as saved. */
+export function savePageSettings(root: string, file: string, front: FrontMatter): Promise<Page> {
+  return invoke<Page>("save_page_settings", { root, file, front });
+}

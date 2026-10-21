@@ -12,11 +12,12 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::page::{self, PageContent};
+use crate::page::{self, FrontMatter, PageContent};
+use crate::page_writer;
 use crate::slug::slugify;
 
 pub const CONFIG_FILE: &str = "site.toml";
@@ -105,6 +106,18 @@ pub enum SiteError {
         first: PathBuf,
         second: PathBuf,
     },
+
+    #[error("{} is not a page of this site", .0.display())]
+    NotAPage(PathBuf),
+
+    #[error("{}: {message}", path.display())]
+    Invalid { path: PathBuf, message: String },
+
+    #[error("can't save {}: {source}", path.display())]
+    Write {
+        path: PathBuf,
+        source: std::io::Error,
+    },
 }
 
 /// Reads the site in `root`: its settings and every page.
@@ -156,6 +169,62 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
         config,
         pages: pages.into_values().collect(),
     })
+}
+
+/// Saves new settings for a page and returns the page as saved.
+///
+/// The file is read again just before saving, so blocks someone edited by
+/// hand in the meantime are kept. `file` is relative to the site folder,
+/// e.g. `pages/about.md`.
+pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result<Page, SiteError> {
+    let full = page_file(root, file)?;
+    if front.title.trim().is_empty() {
+        return Err(SiteError::Invalid {
+            path: file.to_path_buf(),
+            message: "a page needs a title".to_string(),
+        });
+    }
+
+    let original = read(&full)?;
+    let mut content = page::parse(&original).map_err(|error| SiteError::Page {
+        path: file.to_path_buf(),
+        error,
+    })?;
+    content.front = front;
+    write_atomically(&full, &page_writer::write(&content, Some(&original)))?;
+
+    Ok(Page {
+        path: url_path(&full, &root.join(PAGES_DIR), file)?,
+        file: file.to_path_buf(),
+        content,
+    })
+}
+
+/// Checks that `file` names a page file inside the site's `pages/` folder,
+/// and returns its full path. Paths from the UI pass through here, so `..`
+/// and absolute paths are refused.
+fn page_file(root: &Path, file: &Path) -> Result<PathBuf, SiteError> {
+    let plain = file.components().all(|c| matches!(c, Component::Normal(_)));
+    let in_pages = file.starts_with(PAGES_DIR);
+    let markdown = file.extension().is_some_and(|ext| ext == "md");
+    let full = root.join(file);
+    if plain && in_pages && markdown && full.is_file() {
+        Ok(full)
+    } else {
+        Err(SiteError::NotAPage(file.to_path_buf()))
+    }
+}
+
+/// Writes a file so that it's never half-written: first to a temporary file
+/// next to it, then renamed over the original in one step.
+fn write_atomically(path: &Path, contents: &str) -> Result<(), SiteError> {
+    let error = |source| SiteError::Write {
+        path: path.to_path_buf(),
+        source,
+    };
+    let temporary = path.with_extension("md.qed-saving");
+    fs::write(&temporary, contents).map_err(error)?;
+    fs::rename(&temporary, path).map_err(error)
 }
 
 fn read(path: &Path) -> Result<String, SiteError> {
@@ -262,6 +331,54 @@ mod tests {
                 post.file.display()
             );
         }
+    }
+
+    #[test]
+    fn saves_new_settings_and_keeps_the_rest() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            (
+                "pages/about.md",
+                "+++\n# A comment\ntitle = \"About\"\n+++\n\nHello.\n",
+            ),
+        ]);
+        let mut front = open(dir.path()).unwrap().pages[0].content.front.clone();
+        front.title = "About us".into();
+        front.menu = Menu::Main;
+
+        let page = save_front_matter(dir.path(), Path::new("pages/about.md"), front).unwrap();
+        assert_eq!(page.path, "about");
+        assert_eq!(page.content.front.title, "About us");
+
+        let text = fs::read_to_string(dir.path().join("pages/about.md")).unwrap();
+        assert_eq!(
+            text,
+            "+++\n# A comment\ntitle = \"About us\"\nmenu = \"main\"\n+++\n\nHello.\n"
+        );
+    }
+
+    #[test]
+    fn refuses_to_save_outside_the_pages_folder() {
+        let dir = site_with(&[("site.toml", "title = \"S\""), ("pages/a.md", PAGE)]);
+        let front = open(dir.path()).unwrap().pages[0].content.front.clone();
+        for file in [
+            "site.toml",
+            "pages/../site.toml",
+            "/etc/passwd",
+            "pages/missing.md",
+        ] {
+            let result = save_front_matter(dir.path(), Path::new(file), front.clone());
+            assert!(matches!(result, Err(SiteError::NotAPage(_))), "{file}");
+        }
+    }
+
+    #[test]
+    fn refuses_an_empty_title() {
+        let dir = site_with(&[("site.toml", "title = \"S\""), ("pages/a.md", PAGE)]);
+        let mut front = open(dir.path()).unwrap().pages[0].content.front.clone();
+        front.title = "  ".into();
+        let result = save_front_matter(dir.path(), Path::new("pages/a.md"), front);
+        assert!(matches!(result, Err(SiteError::Invalid { .. })));
     }
 
     #[test]
