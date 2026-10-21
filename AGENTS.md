@@ -14,6 +14,11 @@ current.
   qed-core.
 - `src`: the UI. It talks to Rust only through `invoke` from
   `@tauri-apps/api/core`.
+- `crates/qed-core/templates`: askama templates for generated sites. After
+  changing CSS classes there, run `npm run build:site-css` and commit
+  `crates/qed-core/assets/site.css`.
+- Build a site without the app: `cargo run -p qed-core --example build -- docs`.
+  Output goes to `<site>/_site/` (git-ignored).
 
 ## Data
 

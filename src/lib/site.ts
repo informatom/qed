@@ -53,6 +53,7 @@ export interface SiteConfig {
   language: string;
   description: string | null;
   theme: string;
+  base_url: string | null;
 }
 
 export interface Site {
@@ -64,4 +65,27 @@ export interface Site {
 /** Reads a site folder. Rejects with a readable message if it can't. */
 export function openSite(path: string): Promise<Site> {
   return invoke<Site>("open_site", { path });
+}
+
+export interface BuildReport {
+  out_dir: string;
+  pages: number;
+  drafts_skipped: number;
+  redirects: number;
+  media_files: number;
+}
+
+/** Builds the site into its `_site` folder. */
+export function buildSite(path: string): Promise<BuildReport> {
+  return invoke<BuildReport>("build_site", { path });
+}
+
+export interface PreviewInfo {
+  url: string;
+  report: BuildReport;
+}
+
+/** Builds the site and serves it locally. */
+export function previewSite(path: string): Promise<PreviewInfo> {
+  return invoke<PreviewInfo>("preview_site", { path });
 }

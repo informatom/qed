@@ -11,3 +11,4 @@ comparisons to Elixir.
 - [One title, three languages: how Svelte, Tauri and Rust talk](/blog/2026-10-21-one-title-three-languages)
 - [Reading a site folder: structs, enums and errors that help](/blog/2026-10-21-reading-a-site-folder)
 - [Teaching a date to speak JSON: newtypes and traits](/blog/2026-10-21-teaching-a-date-to-speak-json)
+- [From folder to website: templates, iterators and a server in a thread](/blog/2026-10-21-from-folder-to-website)

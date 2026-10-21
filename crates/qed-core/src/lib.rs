@@ -2,6 +2,10 @@
 //! be tested with plain `cargo test`.
 
 pub mod block;
+pub mod generator;
+pub mod links;
+pub mod markdown;
 pub mod page;
+pub mod preview;
 pub mod site;
 pub mod slug;

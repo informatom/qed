@@ -1,13 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { open } from "@tauri-apps/plugin-dialog";
-  import { openSite, type Block, type Site } from "$lib/site";
+  import { openUrl } from "@tauri-apps/plugin-opener";
+  import { buildSite, openSite, previewSite, type Block, type BuildReport, type Site } from "$lib/site";
 
   const LAST_SITE_KEY = "qed:last-site";
 
   let site = $state<Site | null>(null);
   let error = $state<string | null>(null);
   let loading = $state(false);
+  let building = $state(false);
+  let report = $state<BuildReport | null>(null);
+  let previewUrl = $state<string | null>(null);
 
   // Derived values update by themselves when `site` changes.
   let draftCount = $derived(site ? site.pages.filter((p) => p.front.draft).length : 0);
@@ -17,12 +21,42 @@
     error = null;
     try {
       site = await openSite(path);
+      report = null;
       remember(path);
     } catch (e) {
       site = null;
       error = String(e);
     } finally {
       loading = false;
+    }
+  }
+
+  async function build() {
+    if (!site) return;
+    building = true;
+    error = null;
+    try {
+      report = await buildSite(site.root);
+    } catch (e) {
+      error = String(e);
+    } finally {
+      building = false;
+    }
+  }
+
+  async function preview() {
+    if (!site) return;
+    building = true;
+    error = null;
+    try {
+      const info = await previewSite(site.root);
+      report = info.report;
+      previewUrl = info.url;
+      await openUrl(info.url);
+    } catch (e) {
+      error = String(e);
+    } finally {
+      building = false;
     }
   }
 
@@ -74,6 +108,13 @@
     </div>
     <div class="flex gap-2">
       {#if site}
+        <button id="build-site" class="btn" onclick={build} disabled={loading || building}>
+          {#if building}<span class="loading loading-spinner loading-sm"></span>{/if}
+          Build
+        </button>
+        <button id="preview-site" class="btn btn-secondary" onclick={preview} disabled={loading || building}>
+          Preview in browser
+        </button>
         <button id="reload-site" class="btn btn-ghost" onclick={() => site && load(site.root)} disabled={loading}>
           Reload
         </button>
@@ -88,6 +129,19 @@
   {#if error}
     <div id="site-error" role="alert" class="alert alert-error alert-soft">
       <span class="font-mono text-sm whitespace-pre-wrap">{error}</span>
+    </div>
+  {/if}
+
+  {#if report}
+    <div id="build-report" role="status" class="alert alert-success alert-soft">
+      <span>
+        Built {report.pages} pages{report.drafts_skipped ? ` (${report.drafts_skipped} drafts skipped)` : ""},
+        {report.redirects} redirects and {report.media_files} media files into
+        <code class="font-mono text-sm">{report.out_dir}</code>.
+        {#if previewUrl}
+          Preview: <button class="link" onclick={() => previewUrl && openUrl(previewUrl)}>{previewUrl}</button>
+        {/if}
+      </span>
     </div>
   {/if}
 

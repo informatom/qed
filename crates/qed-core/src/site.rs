@@ -35,6 +35,9 @@ pub struct SiteConfig {
     /// A daisyUI theme name.
     #[serde(default = "default_theme")]
     pub theme: String,
+    /// Where the site is published, e.g. `"https://example.com/"`. Needed
+    /// for the sitemap and canonical links; the site works without it.
+    pub base_url: Option<String>,
 }
 
 fn default_language() -> String {

@@ -1,0 +1,8 @@
+/* Stylesheet for generated sites. Rebuild after changing classes in the
+   templates: npm run build:site-css */
+@import "tailwindcss" source(none);
+@source "../templates";
+@plugin "@tailwindcss/typography";
+@plugin "daisyui" {
+  themes: all;
+}

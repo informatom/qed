@@ -56,11 +56,12 @@ A complete site builder without podcast features.
   redirects (meta-refresh stubs) and the sitemap with Rust templates. Copy
   the images used. Rewrite relative links to other `.md` pages into page
   URLs; links that leave the site folder (e.g. to source code) need a base
-  URL such as the GitHub repo.
-- **#064 Site CSS.** Templates aren't user-editable, so compile one Tailwind +
-  daisyUI stylesheet with all themes at build time and ship it with every
-  site; the theme is a `data-theme` attribute. Typography plugin for
-  Markdown content.
+  URL such as the GitHub repo. *First version done 2026-10-21*
+  (`qed_core::generator`): pages, menus, relative links, Markdown links,
+  redirects, sitemap and canonical links with `base_url`, media copied,
+  preview server and "Build" / "Preview in browser" in the app. Still open:
+  `og:image`, copying only the media files that are used, and links that
+  leave the site folder.
 - **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
 - **#063 Secrets.** Store SSH private keys and other secrets in the OS keychain
   (`keyring`).
@@ -124,6 +125,10 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#064 Site CSS.** Done 2026-10-21: one Tailwind + daisyUI stylesheet with
+  all 35 themes and the typography plugin (77 KB, 14 KB gzipped), compiled
+  by `npm run build:site-css` and built into qed with `include_str!`. The
+  theme is the `data-theme` attribute.
 - **#061 Scaffold.** Done 2026-10-21: Cargo workspace (`src-tauri`,
   `crates/qed-core`), SvelteKit SPA with Tailwind + daisyUI, GPL-3.0
   `LICENSE`, `npm run check:all`. Elixir code and its local data removed.

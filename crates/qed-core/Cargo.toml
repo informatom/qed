@@ -8,9 +8,12 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+askama = "0.16.1"
+comrak = { version = "0.57.0", default-features = false }
 deunicode = "1"
 serde = { version = "1.0.229", features = ["derive"] }
 thiserror = "2.0.21"
+tiny_http = "0.12.0"
 toml = "1.1.8"
 
 [dev-dependencies]

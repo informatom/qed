@@ -1,0 +1,544 @@
+//! Builds the static website from a [`Site`].
+//!
+//! The output goes to `_site/` in the site folder:
+//!
+//! ```text
+//! _site/
+//!   index.html            the start page
+//!   about/index.html      /about/
+//!   style.css             one stylesheet for every site and theme
+//!   media/…               copied from the site's media folder
+//!   sitemap.xml           only if `base_url` is set
+//! ```
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use askama::Template;
+use serde::Serialize;
+
+use crate::block::Block;
+use crate::links::LinkContext;
+use crate::markdown;
+use crate::page::Menu;
+use crate::site::{MEDIA_DIR, Page, Site, SiteConfig};
+
+pub const OUTPUT_DIR: &str = "_site";
+
+/// Marks a folder as built by qed, so it may be emptied on the next build.
+const MARKER: &str = ".qed-build";
+
+/// The stylesheet, compiled by `npm run build:site-css` and built into qed.
+const STYLESHEET: &str = include_str!("../assets/site.css");
+
+/// What a build produced.
+#[derive(Debug, Clone, Serialize)]
+pub struct BuildReport {
+    pub out_dir: PathBuf,
+    pub pages: usize,
+    pub drafts_skipped: usize,
+    pub redirects: usize,
+    pub media_files: usize,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum BuildError {
+    #[error("can't write {}: {source}", path.display())]
+    Io {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
+    #[error(
+        "{} already exists and wasn't built by qed; move it away so qed doesn't overwrite your files",
+        .0.display()
+    )]
+    NotOurs(PathBuf),
+
+    #[error("rendering /{page}: {source}")]
+    Template { page: String, source: askama::Error },
+
+    #[error("/{page} wants a redirect from /{from}, but a page already lives there")]
+    RedirectOverPage { page: String, from: String },
+}
+
+/// Builds the site into `_site/` inside its folder.
+pub fn build(site: &Site) -> Result<BuildReport, BuildError> {
+    build_into(site, &site.root.join(OUTPUT_DIR))
+}
+
+/// Builds the site into `out_dir`, replacing an earlier build there.
+pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError> {
+    prepare_output(out_dir)?;
+
+    let published: Vec<&Page> = site
+        .pages
+        .iter()
+        .filter(|p| !p.content.front.draft)
+        .collect();
+    let main_menu = menu(&published, Menu::Main);
+    let footer_menu = menu(&published, Menu::Footer);
+
+    for page in &published {
+        let html = render_page(&site.config, page, &main_menu, &footer_menu)?;
+        write(&page_file(out_dir, &page.path), html)?;
+    }
+
+    let mut redirects = 0;
+    for page in &published {
+        for from in &page.content.front.redirect_from {
+            let from = from.trim_matches('/');
+            if published.iter().any(|p| p.path == from) {
+                return Err(BuildError::RedirectOverPage {
+                    page: page.path.clone(),
+                    from: from.to_string(),
+                });
+            }
+            let links = LinkContext::new(from, Path::new(""));
+            let target = links.page(&page.path);
+            let html = RedirectTemplate { target: &target }
+                .render()
+                .map_err(|source| BuildError::Template {
+                    page: page.path.clone(),
+                    source,
+                })?;
+            write(&page_file(out_dir, from), html)?;
+            redirects += 1;
+        }
+    }
+
+    write(&out_dir.join("style.css"), STYLESHEET.to_string())?;
+
+    let media_files = copy_dir(&site.root.join(MEDIA_DIR), &out_dir.join(MEDIA_DIR))?;
+
+    if let Some(base_url) = &site.config.base_url {
+        write(&out_dir.join("sitemap.xml"), sitemap(base_url, &published))?;
+    }
+
+    Ok(BuildReport {
+        out_dir: out_dir.to_path_buf(),
+        pages: published.len(),
+        drafts_skipped: site.pages.len() - published.len(),
+        redirects,
+        media_files,
+    })
+}
+
+/// Empties an earlier build, or refuses if the folder holds something else.
+fn prepare_output(out_dir: &Path) -> Result<(), BuildError> {
+    let io = |source| BuildError::Io {
+        path: out_dir.to_path_buf(),
+        source,
+    };
+    if out_dir.exists() {
+        let is_ours = out_dir.join(MARKER).is_file();
+        let is_empty = fs::read_dir(out_dir).map_err(io)?.next().is_none();
+        if !is_ours && !is_empty {
+            return Err(BuildError::NotOurs(out_dir.to_path_buf()));
+        }
+        fs::remove_dir_all(out_dir).map_err(io)?;
+    }
+    fs::create_dir_all(out_dir).map_err(io)?;
+    write(&out_dir.join(MARKER), String::new())
+}
+
+/// `""` becomes `index.html`, `about/team` becomes `about/team/index.html`.
+fn page_file(out_dir: &Path, path: &str) -> PathBuf {
+    if path.is_empty() {
+        out_dir.join("index.html")
+    } else {
+        out_dir.join(path).join("index.html")
+    }
+}
+
+fn write(path: &Path, contents: String) -> Result<(), BuildError> {
+    let io = |source| BuildError::Io {
+        path: path.to_path_buf(),
+        source,
+    };
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(io)?;
+    }
+    fs::write(path, contents).map_err(io)
+}
+
+/// Copies a folder recursively, skipping hidden files. Returns the number of
+/// files copied. A missing folder copies nothing.
+fn copy_dir(from: &Path, to: &Path) -> Result<usize, BuildError> {
+    if !from.is_dir() {
+        return Ok(0);
+    }
+    let io = |path: &Path| {
+        let path = path.to_path_buf();
+        move |source| BuildError::Io { path, source }
+    };
+    fs::create_dir_all(to).map_err(io(to))?;
+
+    let mut count = 0;
+    for entry in fs::read_dir(from).map_err(io(from))? {
+        let entry = entry.map_err(io(from))?;
+        let name = entry.file_name();
+        if name.to_string_lossy().starts_with('.') {
+            continue;
+        }
+        let (source, target) = (entry.path(), to.join(&name));
+        if source.is_dir() {
+            count += copy_dir(&source, &target)?;
+        } else {
+            fs::copy(&source, &target).map_err(io(&target))?;
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+/// One menu entry, with its link still relative to the site root.
+#[derive(Debug, Clone)]
+struct MenuEntry {
+    title: String,
+    path: String,
+}
+
+/// The pages in a menu, ordered by weight, then title.
+fn menu(pages: &[&Page], which: Menu) -> Vec<MenuEntry> {
+    let mut entries: Vec<&&Page> = pages
+        .iter()
+        .filter(|p| p.content.front.menu == which)
+        .collect();
+    entries.sort_by(|a, b| {
+        let (a, b) = (&a.content.front, &b.content.front);
+        a.weight.cmp(&b.weight).then_with(|| a.title.cmp(&b.title))
+    });
+    entries
+        .into_iter()
+        .map(|p| MenuEntry {
+            title: p.content.front.title.clone(),
+            path: p.path.clone(),
+        })
+        .collect()
+}
+
+fn sitemap(base_url: &str, pages: &[&Page]) -> String {
+    let base = base_url.trim_end_matches('/');
+    let mut xml = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n",
+    );
+    for page in pages {
+        let url = if page.path.is_empty() {
+            format!("{base}/")
+        } else {
+            format!("{base}/{}/", page.path)
+        };
+        xml.push_str(&format!("  <url><loc>{}</loc></url>\n", escape_xml(&url)));
+    }
+    xml.push_str("</urlset>\n");
+    xml
+}
+
+fn escape_xml(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+// ---------------------------------------------------------------------------
+// Templates
+
+/// The data `templates/page.html` renders. Askama checks at compile time that
+/// every field the template uses exists here.
+#[derive(Template)]
+#[template(path = "page.html")]
+struct PageTemplate<'a> {
+    site: &'a SiteConfig,
+    title: &'a str,
+    description: Option<&'a str>,
+    canonical: Option<String>,
+    is_home: bool,
+    /// Relative path to the site root, for the stylesheet.
+    root: String,
+    home_href: String,
+    main_menu: Vec<MenuLink>,
+    footer_menu: Vec<MenuLink>,
+    /// Pages that start with a hero use its headline instead of a title.
+    show_title: bool,
+    /// Date and authors, e.g. "2026-10-21 · Claude".
+    byline: String,
+    blocks: Vec<RenderedBlock>,
+}
+
+#[derive(Template)]
+#[template(path = "redirect.html")]
+struct RedirectTemplate<'a> {
+    target: &'a str,
+}
+
+struct MenuLink {
+    title: String,
+    href: String,
+    current: bool,
+}
+
+struct Button {
+    label: String,
+    href: String,
+}
+
+/// A block, ready for the template: Markdown rendered, links resolved.
+enum RenderedBlock {
+    Text {
+        html: String,
+    },
+    Hero {
+        image: Option<String>,
+        headline: Option<String>,
+        text_html: Option<String>,
+        button: Option<Button>,
+    },
+    CallToAction {
+        headline: Option<String>,
+        text_html: Option<String>,
+        button: Option<Button>,
+    },
+}
+
+fn render_page(
+    config: &SiteConfig,
+    page: &Page,
+    main_menu: &[MenuEntry],
+    footer_menu: &[MenuEntry],
+) -> Result<String, BuildError> {
+    let front = &page.content.front;
+    let links = LinkContext::new(&page.path, &page.file);
+
+    let menu_links = |entries: &[MenuEntry]| -> Vec<MenuLink> {
+        entries
+            .iter()
+            .map(|entry| MenuLink {
+                title: entry.title.clone(),
+                href: links.page(&entry.path),
+                current: is_within(&page.path, &entry.path),
+            })
+            .collect()
+    };
+
+    let mut byline: Vec<String> = Vec::new();
+    if let Some(date) = &front.date {
+        byline.push(date.to_string());
+    }
+    if !front.authors.is_empty() {
+        byline.push(front.authors.join(", "));
+    }
+
+    let canonical = config.base_url.as_ref().map(|base| {
+        let base = base.trim_end_matches('/');
+        if page.path.is_empty() {
+            format!("{base}/")
+        } else {
+            format!("{base}/{}/", page.path)
+        }
+    });
+
+    let template = PageTemplate {
+        site: config,
+        title: &front.title,
+        description: front.description.as_deref(),
+        canonical,
+        is_home: page.path.is_empty(),
+        root: links.to_root(),
+        home_href: links.page(""),
+        main_menu: menu_links(main_menu),
+        footer_menu: menu_links(footer_menu),
+        show_title: !matches!(page.content.blocks.first(), Some(Block::Hero(_))),
+        byline: byline.join(" · "),
+        blocks: page
+            .content
+            .blocks
+            .iter()
+            .map(|b| render_block(b, &links))
+            .collect(),
+    };
+
+    template.render().map_err(|source| BuildError::Template {
+        page: page.path.clone(),
+        source,
+    })
+}
+
+/// A menu entry is current on its own page and on the pages below it, except
+/// for the start page, which would otherwise be current everywhere.
+fn is_within(page: &str, entry: &str) -> bool {
+    page == entry || (!entry.is_empty() && page.starts_with(&format!("{entry}/")))
+}
+
+fn render_block(block: &Block, links: &LinkContext) -> RenderedBlock {
+    let markdown = |text: &Option<String>| text.as_deref().map(|t| markdown::render(t, links));
+    let button = |label: &Option<String>, link: &Option<String>| match (label, link) {
+        (Some(label), Some(link)) => Some(Button {
+            label: label.clone(),
+            href: links.resolve(link),
+        }),
+        _ => None,
+    };
+
+    match block {
+        Block::Text { markdown: text } => RenderedBlock::Text {
+            html: markdown::render(text, links),
+        },
+        Block::Hero(hero) => RenderedBlock::Hero {
+            image: hero.image.as_deref().map(|image| media_link(image, links)),
+            headline: hero.headline.clone(),
+            text_html: markdown(&hero.text),
+            button: button(&hero.button_label, &hero.button_link),
+        },
+        Block::CallToAction(cta) => RenderedBlock::CallToAction {
+            headline: cta.headline.clone(),
+            text_html: markdown(&cta.text),
+            button: button(&cta.button_label, &cta.button_link),
+        },
+    }
+}
+
+/// Block images are file names in `media/`; full URLs and site paths work too.
+fn media_link(image: &str, links: &LinkContext) -> String {
+    if image.contains(':') || image.starts_with('/') {
+        links.resolve(image)
+    } else {
+        links.media(image)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::site;
+
+    fn demo_site() -> Site {
+        site::open(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/demo-site")).unwrap()
+    }
+
+    fn read(path: PathBuf) -> String {
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+    }
+
+    #[test]
+    fn builds_every_page_with_relative_links() {
+        let out = tempfile::tempdir().unwrap();
+        let out = out.path().join("_site");
+        let report = build_into(&demo_site(), &out).unwrap();
+
+        assert_eq!(report.pages, 4);
+        for file in [
+            "index.html",
+            "about/index.html",
+            "about/team/index.html",
+            "imprint/index.html",
+            "style.css",
+        ] {
+            assert!(out.join(file).is_file(), "{file} is missing");
+        }
+
+        let team = read(out.join("about/team/index.html"));
+        assert!(
+            team.contains(r#"href="../../style.css""#),
+            "stylesheet link"
+        );
+        assert!(
+            team.contains(r#"href="../../imprint/""#),
+            "footer menu link"
+        );
+        assert!(team.contains(
+            "<h1 class=\"text-4xl font-bold tracking-tight text-balance\">The team</h1>"
+        ));
+    }
+
+    #[test]
+    fn renders_blocks() {
+        let out = tempfile::tempdir().unwrap();
+        build_into(&demo_site(), out.path()).unwrap();
+        let home = read(out.path().join("index.html"));
+
+        assert!(home.contains("Two Mics and a Plan</h1>"), "hero headline");
+        assert!(
+            home.contains(r#"href="about/team/""#),
+            "hero button resolved"
+        );
+        assert!(home.contains("mailto:hello@example.com"), "call to action");
+        assert!(home.contains("<p>Every other week"), "markdown text");
+        assert!(home.contains(r#"data-theme="light""#));
+    }
+
+    #[test]
+    fn marks_the_current_menu_entry() {
+        let out = tempfile::tempdir().unwrap();
+        build_into(&demo_site(), out.path()).unwrap();
+        let team = read(out.path().join("about/team/index.html"));
+        assert!(
+            team.contains(r#"class="font-semibold text-primary">About</a>"#),
+            "{team}"
+        );
+    }
+
+    #[test]
+    fn skips_drafts_and_writes_redirects() {
+        let mut site = demo_site();
+        site.pages[1].content.front.redirect_from = vec!["old-about".into()];
+        site.pages[3].content.front.draft = true;
+
+        let out = tempfile::tempdir().unwrap();
+        let report = build_into(&site, out.path()).unwrap();
+
+        assert_eq!(report.drafts_skipped, 1);
+        assert!(!out.path().join("imprint").exists());
+        assert_eq!(report.redirects, 1);
+        let redirect = read(out.path().join("old-about/index.html"));
+        assert!(redirect.contains(r#"url=../about/"#), "{redirect}");
+    }
+
+    #[test]
+    fn writes_a_sitemap_when_the_site_has_a_base_url() {
+        let mut site = demo_site();
+        site.config.base_url = Some("https://example.com/podcast/".into());
+        let out = tempfile::tempdir().unwrap();
+        build_into(&site, out.path()).unwrap();
+
+        let xml = read(out.path().join("sitemap.xml"));
+        assert!(xml.contains("<loc>https://example.com/podcast/</loc>"));
+        assert!(xml.contains("<loc>https://example.com/podcast/about/team/</loc>"));
+        let home = read(out.path().join("index.html"));
+        assert!(home.contains(r#"<link rel="canonical" href="https://example.com/podcast/">"#));
+    }
+
+    #[test]
+    fn replaces_an_earlier_build() {
+        let out = tempfile::tempdir().unwrap();
+        build_into(&demo_site(), out.path()).unwrap();
+        fs::write(out.path().join("leftover.html"), "old").unwrap();
+
+        build_into(&demo_site(), out.path()).unwrap();
+        assert!(!out.path().join("leftover.html").exists());
+    }
+
+    #[test]
+    fn refuses_to_overwrite_a_folder_it_did_not_build() {
+        let out = tempfile::tempdir().unwrap();
+        fs::write(out.path().join("precious.txt"), "keep me").unwrap();
+
+        let error = build_into(&demo_site(), out.path()).unwrap_err();
+        assert!(matches!(error, BuildError::NotOurs(_)));
+        assert!(out.path().join("precious.txt").exists());
+    }
+
+    #[test]
+    fn builds_the_docs_site() {
+        let docs = site::open(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs")).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_into(&docs, out.path()).unwrap();
+
+        let post = read(
+            out.path()
+                .join("blog/2026-10-21-reading-a-site-folder/index.html"),
+        );
+        // A link to another post, written as a .md file, now points at its page.
+        assert!(post.contains(r#"href="../../blog/2026-10-21-one-title-three-languages/""#));
+    }
+}
