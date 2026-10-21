@@ -149,8 +149,9 @@ A complete site builder without podcast features.
   attaches them to a draft release. The tag must match the version in
   `Cargo.toml` and `package.json`; the app takes its version from
   `Cargo.toml`. The app identifier is now `io.github.informatom.qed`.
-  Unsigned until #070. Steps in Development → Releasing. The Linux
-  packages were built locally; the first tag will test the rest.
+  Unsigned until #070. Steps in Development → Releasing. First run
+  2026-10-21: tag `v0.1.0` built all four installers in about 23 minutes
+  (draft release, AppImage 84 MB, deb 6 MB, dmg 9 MB, exe 4 MB).
 - **#074 Nested blocks.** Done 2026-10-21: a column holds blocks (Text,
   Image, Text with image, Download, FAQ, Call to action) plus an optional
   title. In the file, `:::: columns` (four colons) wraps the columns and
