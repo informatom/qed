@@ -23,8 +23,6 @@ Nothing open.
 
 A complete site builder without podcast features.
 
-- **#062 Release builds.** GitHub Actions builds installers for macOS,
-  Windows and Linux on every tag.
 - **#046 Site folder, phase 1.** `site.toml` (title, language, theme, menus),
   `targets.toml` (publish targets without secrets, git-ignored), pages and posts as Markdown files with
   TOML front matter, `media/` for images, `assets/` for downloads, build output in a
@@ -144,6 +142,15 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#062 Release builds.** Built 2026-10-21:
+  `.github/workflows/release.yml` on github.com/informatom/qed builds, for
+  a `v*` tag, a universal macOS `.dmg`, a Windows `.exe` (NSIS), and a
+  Linux `.deb` and `.AppImage` (on Ubuntu 22.04 for older systems), and
+  attaches them to a draft release. The tag must match the version in
+  `Cargo.toml` and `package.json`; the app takes its version from
+  `Cargo.toml`. The app identifier is now `io.github.informatom.qed`.
+  Unsigned until #070. Steps in Development → Releasing. The Linux
+  packages were built locally; the first tag will test the rest.
 - **#074 Nested blocks.** Done 2026-10-21: a column holds blocks (Text,
   Image, Text with image, Download, FAQ, Call to action) plus an optional
   title. In the file, `:::: columns` (four colons) wraps the columns and

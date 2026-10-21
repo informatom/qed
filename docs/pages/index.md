@@ -15,7 +15,7 @@ qed is open source and in early development. It's built in the open with
 TypeScript.
 
 This site is a qed site itself: a `site.toml` and a `pages/` folder, in the
-`docs/` folder of the [qed repository](https://github.com/haslinger/qed).
+`docs/` folder of the [qed repository](https://github.com/informatom/qed).
 
 ::: call-to-action
 headline = "Learning along the way"

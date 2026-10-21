@@ -1,0 +1,88 @@
+# Builds the installers when a version tag (v0.2.0) is pushed, and attaches
+# them to a draft GitHub release. Check the files, write the notes, then
+# publish the release by hand. See "Releasing" in docs/pages/development.md.
+#
+# The builds aren't signed yet (#070), so macOS and Windows warn before the
+# first start.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  # Creating the release and uploading the installers.
+  contents: write
+
+jobs:
+  # The tag must name the version the app reports, or the release would
+  # carry one number and the installers another.
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the tag against Cargo.toml and package.json
+        run: |
+          cargo_version=$(grep -m1 '^version = ' Cargo.toml | cut -d '"' -f2)
+          npm_version=$(node -p "require('./package.json').version")
+          echo "tag $GITHUB_REF_NAME, Cargo.toml $cargo_version, package.json $npm_version"
+          test "$GITHUB_REF_NAME" = "v$cargo_version"
+          test "$npm_version" = "$cargo_version"
+
+  build:
+    needs: version
+    strategy:
+      # One failing system shouldn't cancel the others.
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            # One .dmg for Apple Silicon and Intel Macs.
+            args: --target universal-apple-darwin --bundles dmg
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - os: windows-latest
+            args: --bundles nsis
+            rust-targets: ""
+          # The oldest supported Ubuntu, so the .deb and .AppImage also run
+          # on older Linux systems (they use the system's libraries).
+          - os: ubuntu-22.04
+            args: --bundles deb,appimage
+            rust-targets: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      # Keeps compiled dependencies between runs; the first build takes
+      # longest.
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: qed ${{ github.ref_name }}
+          releaseBody: Installers for macOS, Windows and Linux. Not signed yet, so the system asks before the first start; see the release notes.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

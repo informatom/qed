@@ -28,3 +28,4 @@ comparisons to Elixir.
 - [Blocks in columns: a recursive type, a parser that calls itself, and a component that uses itself](/blog/2026-10-21-blocks-in-columns)
 - [Deleting pages: asking two questions at once, ignoring an error on purpose, and finding what's gone](/blog/2026-10-21-deleting-pages)
 - [Open versions: amending commits safely, and errors that mustn't stop a save](/blog/2026-10-21-open-versions)
+- [Release builds: three systems, one tag, and why each installer is made on its own system](/blog/2026-10-21-release-builds)

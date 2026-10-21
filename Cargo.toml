@@ -6,7 +6,7 @@ resolver = "3"
 version = "0.1.0"
 edition = "2024"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/haslinger/qed"
+repository = "https://github.com/informatom/qed"
 authors = ["Stefan Haslinger"]
 
 # Small, fast release builds. See https://tauri.app/concept/size/
