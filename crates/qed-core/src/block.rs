@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Serialized for the UI with a `type` field, e.g.
 /// `{ "type": "hero", "headline": "Welcome", … }`.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Block {
     /// Markdown text between other blocks.

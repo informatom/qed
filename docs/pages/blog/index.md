@@ -14,3 +14,4 @@ comparisons to Elixir.
 - [From folder to website: templates, iterators and a server in a thread](/blog/2026-10-21-from-folder-to-website)
 - [Saving without breaking things: format-preserving edits and a first Svelte component](/blog/2026-10-21-saving-without-breaking)
 - [New pages: defaults, files that must not exist yet, and a dialog](/blog/2026-10-21-new-pages)
+- [The block editor: closures that run once, and components that talk back](/blog/2026-10-21-the-block-editor)

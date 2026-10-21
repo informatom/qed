@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use qed_core::block::Block;
 use qed_core::generator::{self, BuildReport};
 use qed_core::page::{FrontMatter, PageDate};
 use qed_core::preview::Preview;
@@ -39,6 +40,16 @@ async fn save_page_settings(
     front: FrontMatter,
 ) -> Result<Page, String> {
     site::save_front_matter(&root, &file, front).map_err(|error| error.to_string())
+}
+
+/// Saves a page's blocks into its file and returns the page as it reads back.
+#[tauri::command]
+async fn save_page_blocks(
+    root: PathBuf,
+    file: PathBuf,
+    blocks: Vec<Block>,
+) -> Result<Page, String> {
+    site::save_blocks(&root, &file, blocks).map_err(|error| error.to_string())
 }
 
 /// Creates an empty page below `parent` (a URL path, `""` for the top level).
@@ -107,6 +118,7 @@ pub fn run() {
             slugify,
             open_site,
             save_page_settings,
+            save_page_blocks,
             create_page,
             build_site,
             preview_site

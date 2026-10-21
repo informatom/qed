@@ -44,7 +44,12 @@ A complete site builder without podcast features.
 - **#055 Sites.** Several sites per installation. Phase 1 sites are pages-only;
   phase 2 adds the podcast switch.
 - **#021 Site UI.** List, create and edit sites.
-- **#043 Block CMS.** Rebuild Mercator's block CMS design in Rust
+- **#043 Block CMS.** *Block editor done 2026-10-21*: Content/Settings tabs
+  per page, OverType for Markdown, Hero and Call-to-action fields, add,
+  remove, move up/down, save with `site::save_blocks`, warning before
+  losing unsaved changes. Still open: the remaining block types, an image
+  picker (#033), drag and drop.
+  Original plan: Rebuild Mercator's block CMS design in Rust
   (`docs/notes/cms-handover-qed.md` describes it; its Elixir file map no longer
   applies): pages as ordered lists of typed blocks stored as Markdown
   files (#072), drafts via `draft = true`, history via git (#073), page tree

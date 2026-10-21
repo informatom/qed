@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { open } from "@tauri-apps/plugin-dialog";
+  import { ask, open } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
-  import PageSettings from "$lib/PageSettings.svelte";
-  import { buildSite, openSite, previewSite, type Block, type BuildReport, type Page, type Site } from "$lib/site";
+  import PageEditor from "$lib/PageEditor.svelte";
+  import { BLOCK_NAMES, buildSite, openSite, previewSite, type BuildReport, type Page, type Site } from "$lib/site";
 
   const LAST_SITE_KEY = "qed:last-site";
 
@@ -15,6 +15,24 @@
   // The page whose settings are open, by file (files don't change on save).
   let selectedFile = $state<string | null>(null);
   let selected = $derived(site?.pages.find((p) => p.file === selectedFile) ?? null);
+  // True while the open page has unsaved changes.
+  let editorDirty = $state(false);
+
+  /** Opens another page (or none), after asking if edits would be lost. */
+  async function select(file: string | null) {
+    if (file === selectedFile) return;
+    if (editorDirty) {
+      const discard = await ask("The open page has unsaved changes. Discard them?", {
+        title: "Unsaved changes",
+        kind: "warning",
+        okLabel: "Discard",
+        cancelLabel: "Keep editing",
+      });
+      if (!discard) return;
+    }
+    editorDirty = false;
+    selectedFile = file;
+  }
 
   let creatingPage = $state(false);
 
@@ -112,11 +130,6 @@
     return path === "" ? 0 : path.split("/").length;
   }
 
-  const BLOCK_NAMES: Record<Block["type"], string> = {
-    text: "Text",
-    hero: "Hero",
-    "call-to-action": "Call to action",
-  };
 </script>
 
 <main class="flex min-h-screen flex-col gap-8 p-8">
@@ -188,10 +201,17 @@
     <div
       class={[
         "grid items-start gap-6",
-        selected && "lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_38rem] 2xl:grid-cols-[minmax(0,1fr)_46rem]",
+        selected && "lg:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[28rem_minmax(0,1fr)]",
       ]}
     >
-      <ul id="pages" class="flex flex-col gap-1 rounded-box bg-base-100 p-2 shadow-sm">
+      <ul
+        id="pages"
+        class={[
+          "flex flex-col gap-1 rounded-box bg-base-100 p-2 shadow-sm",
+          // While a page is open, the list stays in view and scrolls by itself.
+          selected && "lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto",
+        ]}
+      >
         {#each site.pages as page (page.path)}
           <li id="page-{page.path || 'home'}">
             <button
@@ -200,7 +220,7 @@
                 "flex w-full items-center gap-4 rounded-field px-3 py-3 text-left transition-colors",
                 page.file === selectedFile ? "bg-primary/10" : "hover:bg-base-200",
               ]}
-              onclick={() => (selectedFile = page.file === selectedFile ? null : page.file)}
+              onclick={() => select(page.file)}
             >
               <div style:padding-left="{depth(page.path) * 1.25}rem" class="flex min-w-0 flex-1 flex-col">
                 <span class="font-medium">
@@ -214,28 +234,28 @@
                   /{page.path}{#if page.front.date}<span class="ms-2">· {page.front.date}</span>{/if}
                 </span>
               </div>
-              <div class="flex flex-wrap justify-end gap-1">
-                {#each page.blocks as block, i (i)}
-                  <span class="badge badge-soft badge-sm">{BLOCK_NAMES[block.type]}</span>
-                {/each}
-              </div>
+              {#if !selected}
+                <div class="flex flex-wrap justify-end gap-1">
+                  {#each page.blocks as block, i (i)}
+                    <span class="badge badge-soft badge-sm">{BLOCK_NAMES[block.type]}</span>
+                  {/each}
+                </div>
+              {/if}
             </button>
           </li>
         {/each}
       </ul>
 
       {#if selected}
-        <!-- Re-create the form when another page is picked, so it starts fresh. -->
+        <!-- Re-create the editor when another page is picked, so it starts fresh. -->
         {#key selected.file}
-          <!-- Stays in view while the list scrolls; scrolls itself if taller than the window. -->
-          <div class="lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
-            <PageSettings
-              page={selected}
-              siteRoot={site.root}
-              onsaved={replacePage}
-              onclose={() => (selectedFile = null)}
-            />
-          </div>
+          <PageEditor
+            page={selected}
+            siteRoot={site.root}
+            onsaved={replacePage}
+            onclose={() => select(null)}
+            bind:dirty={editorDirty}
+          />
         {/key}
       {/if}
     </div>

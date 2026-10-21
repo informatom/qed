@@ -6,10 +6,11 @@
     page: Page;
     siteRoot: string;
     onsaved: (page: Page) => void;
-    onclose: () => void;
+    /** Tells the parent whether there are unsaved changes. */
+    dirty?: boolean;
   }
 
-  let { page, siteRoot, onsaved, onclose }: Props = $props();
+  let { page, siteRoot, onsaved, dirty = $bindable(false) }: Props = $props();
 
   // An editable copy of the settings, taken once when the form opens
   // (`untrack` says so on purpose; the parent re-creates the form for another
@@ -54,7 +55,12 @@
     tags: list(tags),
   });
 
-  let dirty = $derived(JSON.stringify(edited) !== JSON.stringify(page.front));
+  let changed = $derived(JSON.stringify(edited) !== JSON.stringify(page.front));
+
+  // Keep the parent informed.
+  $effect(() => {
+    dirty = changed;
+  });
 
   async function save(event: SubmitEvent) {
     event.preventDefault();
@@ -74,18 +80,8 @@
 
 <!-- `@container` lets the fields below arrange themselves by the panel's own
      width (`@xl:`), not the window's. -->
-<form id="page-settings" class="@container card bg-base-100 shadow-sm" onsubmit={save}>
+<form id="page-settings" class="@container card border border-base-300 bg-base-100" onsubmit={save}>
   <div class="card-body grid gap-4 @xl:grid-cols-2">
-    <div class="flex items-start justify-between gap-2 @xl:col-span-2">
-      <div>
-        <h2 class="card-title">Page settings</h2>
-        <p class="font-mono text-xs text-base-content/60">{page.file}</p>
-      </div>
-      <button type="button" id="close-settings" class="btn btn-ghost btn-sm btn-square" onclick={onclose} aria-label="Close">
-        ✕
-      </button>
-    </div>
-
     <label class="flex flex-col gap-1 @xl:col-span-2">
       <span class="text-sm font-medium">Title</span>
       <input id="setting-title" class="input w-full" bind:value={form.title} required />
@@ -142,12 +138,12 @@
     {/if}
 
     <div class="card-actions items-center justify-end @xl:col-span-2">
-      {#if dirty}
+      {#if changed}
         <span class="text-sm text-warning">Unsaved changes</span>
       {:else if savedAt}
         <span class="text-sm text-success">Saved</span>
       {/if}
-      <button id="save-settings" class="btn btn-primary" disabled={!dirty || saving}>
+      <button id="save-settings" class="btn btn-primary" disabled={!changed || saving}>
         {#if saving}<span class="loading loading-spinner loading-sm"></span>{/if}
         Save
       </button>

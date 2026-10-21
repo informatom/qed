@@ -16,6 +16,7 @@ use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::block::Block;
 use crate::page::{self, FrontMatter, PageContent, PageDate};
 use crate::page_writer;
 use crate::slug::slugify;
@@ -264,26 +265,56 @@ fn write_new(path: &Path, contents: &str) -> Result<(), SiteError> {
 /// hand in the meantime are kept. `file` is relative to the site folder,
 /// e.g. `pages/about.md`.
 pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result<Page, SiteError> {
-    let full = page_file(root, file)?;
     if front.title.trim().is_empty() {
         return Err(SiteError::Invalid {
             path: file.to_path_buf(),
             message: "a page needs a title".to_string(),
         });
     }
+    update_page(root, file, |content| content.front = front)
+}
+
+/// Saves a page's blocks and returns the page as saved.
+///
+/// Empty text blocks are dropped, and text blocks that follow each other are
+/// joined, because that's how the file will read back. The returned page is
+/// what the file now contains.
+pub fn save_blocks(root: &Path, file: &Path, blocks: Vec<Block>) -> Result<Page, SiteError> {
+    let blocks = blocks
+        .into_iter()
+        .filter(|block| !matches!(block, Block::Text { markdown } if markdown.trim().is_empty()))
+        .collect();
+    update_page(root, file, |content| content.blocks = blocks)
+}
+
+/// Reads a page file, lets `change` modify its content, and saves it.
+///
+/// The file is read again right before saving, so whatever someone edited
+/// by hand in the meantime, outside of what `change` touches, is kept.
+/// Returns the page as it reads back from the saved file.
+fn update_page(
+    root: &Path,
+    file: &Path,
+    change: impl FnOnce(&mut PageContent),
+) -> Result<Page, SiteError> {
+    let full = page_file(root, file)?;
+    let parse = |text: &str| {
+        page::parse(text).map_err(|error| SiteError::Page {
+            path: file.to_path_buf(),
+            error,
+        })
+    };
 
     let original = read(&full)?;
-    let mut content = page::parse(&original).map_err(|error| SiteError::Page {
-        path: file.to_path_buf(),
-        error,
-    })?;
-    content.front = front;
-    write_atomically(&full, &page_writer::write(&content, Some(&original)))?;
+    let mut content = parse(&original)?;
+    change(&mut content);
+    let written = page_writer::write(&content, Some(&original));
+    write_atomically(&full, &written)?;
 
     Ok(Page {
         path: url_path(&full, &root.join(PAGES_DIR), file)?,
         file: file.to_path_buf(),
-        content,
+        content: parse(&written)?,
     })
 }
 
@@ -442,6 +473,54 @@ mod tests {
             text,
             "+++\n# A comment\ntitle = \"About us\"\nmenu = \"main\"\n+++\n\nHello.\n"
         );
+    }
+
+    #[test]
+    fn saves_blocks_and_returns_them_as_the_file_reads_back() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            (
+                "pages/a.md",
+                "+++\ntitle = \"A\" # kept\n+++\n\nOld text.\n",
+            ),
+        ]);
+        let blocks = vec![
+            Block::Hero(crate::block::Hero {
+                headline: Some("Hi".into()),
+                ..Default::default()
+            }),
+            Block::Text {
+                markdown: "One.".into(),
+            },
+            Block::Text {
+                markdown: "  ".into(),
+            },
+            Block::Text {
+                markdown: "Two.".into(),
+            },
+        ];
+
+        let page = save_blocks(dir.path(), Path::new("pages/a.md"), blocks).unwrap();
+        assert_eq!(page.content.blocks.len(), 2, "{:?}", page.content.blocks);
+        assert_eq!(
+            page.content.blocks[1],
+            Block::Text {
+                markdown: "One.\n\nTwo.".into()
+            }
+        );
+        let text = fs::read_to_string(dir.path().join("pages/a.md")).unwrap();
+        assert_eq!(
+            text,
+            "+++\ntitle = \"A\" # kept\n+++\n\n::: hero\nheadline = \"Hi\"\n:::\n\nOne.\n\nTwo.\n"
+        );
+    }
+
+    #[test]
+    fn reads_blocks_sent_by_the_ui() {
+        let json = r#"[{"type":"text","markdown":"Hi"},{"type":"call-to-action","headline":"Go","text":null,"button_label":null,"button_link":null}]"#;
+        let blocks: Vec<Block> = serde_json::from_str(json).unwrap();
+        assert_eq!(blocks.len(), 2);
+        assert!(serde_json::from_str::<Vec<Block>>(r#"[{"type":"hero","colour":"red"}]"#).is_err());
     }
 
     #[test]

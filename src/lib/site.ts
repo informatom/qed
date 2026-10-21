@@ -111,3 +111,37 @@ export function today(): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
+
+/** Saves a page's blocks; resolves to the page as its file now reads. */
+export function savePageBlocks(root: string, file: string, blocks: Block[]): Promise<Page> {
+  return invoke<Page>("save_page_blocks", { root, file, blocks });
+}
+
+export type BlockType = Block["type"];
+
+export const BLOCK_NAMES: Record<BlockType, string> = {
+  text: "Text",
+  hero: "Hero",
+  "call-to-action": "Call to action",
+};
+
+/** A new, empty block of the given type. */
+export function newBlock(type: BlockType): Block {
+  switch (type) {
+    case "text":
+      return { type, markdown: "" };
+    case "hero":
+      return { type, image: null, headline: null, text: null, button_label: null, button_link: null };
+    case "call-to-action":
+      return { type, headline: null, text: null, button_label: null, button_link: null };
+  }
+}
+
+/** Empty text fields become null, so "" and "nothing" count as the same. */
+export function normalizeBlock(block: Block): Block {
+  const entries = Object.entries(block).map(([key, value]) => [
+    key,
+    key !== "type" && key !== "markdown" && typeof value === "string" && value.trim() === "" ? null : value,
+  ]);
+  return Object.fromEntries(entries) as Block;
+}
