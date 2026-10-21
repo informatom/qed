@@ -89,6 +89,13 @@ A complete site builder without podcast features.
 - **#029 Publisher: GitHub Pages.** Push the built site to the configured
   branch with a deploy key. Needs a second `Target` kind, its own key
   handling and connection test (#031).
+- **#079 A note before publishing.** Publishing closes the open version;
+  instead of the automatic note "Before publishing to X", the Publish
+  button asks for a note (what's new on the site), and publishing can't
+  start without one. It becomes the version's note; the publish tag stays
+  as it is. Only needed when there's an open version or unsaved changes;
+  otherwise the last closed version is published as it is. Asked for
+  2026-10-21.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.
