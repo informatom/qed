@@ -262,6 +262,80 @@ pub fn create_page(
     })
 }
 
+/// Makes `root` a new site: `site.toml` with the title and language, a
+/// start page with a Hero and a short text, and empty `media/` and
+/// `assets/` folders. `root` may not exist yet; if it does, it must be
+/// empty (hidden files such as `.git` are fine). Returns the new site.
+pub fn create_site(root: &Path, title: &str, language: &str) -> Result<Site, SiteError> {
+    let invalid = |message: String| SiteError::Invalid {
+        path: root.to_path_buf(),
+        message,
+    };
+    let title = title.trim();
+    if title.is_empty() {
+        return Err(invalid("a site needs a title".to_string()));
+    }
+    let language = match language.trim() {
+        "" => default_language(),
+        language => language.to_string(),
+    };
+    if root.join(CONFIG_FILE).exists() {
+        return Err(invalid(
+            "this folder is a qed site already; open it instead".to_string(),
+        ));
+    }
+    if root.is_dir() {
+        let visible: Vec<String> = fs::read_dir(root)
+            .map_err(|source| SiteError::Io {
+                path: root.to_path_buf(),
+                source,
+            })?
+            .filter_map(Result::ok)
+            .map(|entry| entry.file_name().to_string_lossy().to_string())
+            .filter(|name| !name.starts_with('.'))
+            .collect();
+        if !visible.is_empty() {
+            return Err(invalid(format!(
+                "the folder isn't empty ({}); pick an empty one or make a new one",
+                visible.join(", ")
+            )));
+        }
+    }
+
+    let mut config = toml_edit::DocumentMut::new();
+    config["title"] = toml_edit::value(title);
+    config["language"] = toml_edit::value(language.as_str());
+    write_new(&root.join(CONFIG_FILE), &config.to_string())?;
+
+    let start = PageContent {
+        front: FrontMatter {
+            title: "Home".to_string(),
+            ..FrontMatter::default()
+        },
+        blocks: vec![
+            Block::Hero(crate::block::Hero {
+                headline: Some(title.to_string()),
+                text: Some("Welcome to the new site.".to_string()),
+                ..Default::default()
+            }),
+            Block::Text {
+                markdown: "This is the start page. Change this text, add blocks, and \
+                           make new pages in qed."
+                    .to_string(),
+            },
+        ],
+    };
+    write_new(
+        &root.join(PAGES_DIR).join("index.md"),
+        &page_writer::write(&start, None),
+    )?;
+    for folder in [MEDIA_DIR, ASSETS_DIR] {
+        let path = root.join(folder);
+        fs::create_dir_all(&path).map_err(|source| SiteError::Write { path, source })?;
+    }
+    open(root)
+}
+
 /// Writes a file that must not exist yet, creating its folder if needed.
 fn write_new(path: &Path, contents: &str) -> Result<(), SiteError> {
     use std::io::Write;
@@ -569,6 +643,44 @@ fn url_path(file: &Path, pages_dir: &Path, relative: &Path) -> Result<String, Si
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn creates_a_site_in_an_empty_or_new_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join(".git")).unwrap();
+        let site = create_site(dir.path(), "  My Podcast ", "de").unwrap();
+        assert_eq!(site.config.title, "My Podcast");
+        assert_eq!(site.config.language, "de");
+        assert_eq!(site.pages.len(), 1);
+        let home = &site.pages[0];
+        assert_eq!(home.path, "");
+        assert!(matches!(&home.content.blocks[0], Block::Hero(hero)
+            if hero.headline.as_deref() == Some("My Podcast")));
+        assert!(dir.path().join(MEDIA_DIR).is_dir());
+        assert!(dir.path().join(ASSETS_DIR).is_dir());
+
+        let new = dir.path().join("sites/second");
+        let second = create_site(&new, "Second", "").unwrap();
+        assert_eq!(second.config.language, "en");
+    }
+
+    #[test]
+    fn creates_sites_only_in_empty_folders() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(create_site(dir.path(), " ", "en").is_err());
+        fs::write(dir.path().join("notes.txt"), "mine").unwrap();
+        let error = create_site(dir.path(), "Site", "en").unwrap_err();
+        assert!(error.to_string().contains("notes.txt"), "{error}");
+        assert_eq!(
+            fs::read_to_string(dir.path().join("notes.txt")).unwrap(),
+            "mine"
+        );
+
+        let site = tempfile::tempdir().unwrap();
+        create_site(site.path(), "Site", "en").unwrap();
+        let again = create_site(site.path(), "Site", "en").unwrap_err();
+        assert!(again.to_string().contains("already"), "{again}");
+    }
     use crate::page::Menu;
 
     /// Creates a site folder with the given files in a temporary directory.

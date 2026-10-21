@@ -33,8 +33,15 @@ A complete site builder without podcast features.
   2026-10-21* (`site::delete_page`): the confirmation names the pages that
   link to it; the start page and pages with pages below them can't be
   deleted; the Versions tab lists deleted pages and restores them
-  (`history::deleted_pages`, `restore_page`). Creating a new site folder
-  from the app, and renaming and moving pages, are still open.
+  (`history::deleted_pages`, `restore_page`). *New site done 2026-10-21*
+  (`site::create_site`, "New site…" dialog on the empty start screen and
+  in the Site tab): title, language, location (Documents by default) and
+  folder name (from the title); the folder must be new or empty (hidden
+  files are fine); writes `site.toml`, the start page (#056), empty
+  `media/` and `assets/`, and starts the version history. Still open:
+  renaming and moving pages, decided 2026-10-21: the old address goes into
+  `redirect_from`, links in other pages (and relative links in the moved
+  pages) are updated, and pages below move along.
 - **#072 Block file format.** Read and write pages as Markdown with block
   containers (`::: hero` … `:::`, block fields as TOML) in qed-core. Writing
   a parsed page gives the same file back, so hand edits survive the block
@@ -56,7 +63,9 @@ A complete site builder without podcast features.
   unsaved changes. Still open: a Shared block (one block used on several
   pages) and drag and drop.
 - **#056 Start page.** Every site gets a `home` page on creation (Hero and
-  Text). Phase 2 seeds podcast sites with Latest episodes and Subscribe.
+  Text). *Done 2026-10-21* with "New site" (#046): `pages/index.md` with a
+  Hero (the site title) and a short Text. Phase 2 seeds podcast sites with
+  Latest episodes and Subscribe.
 - **#033 Images and media library.** Import, tag, search and resize images to
   WebP; keep PDFs for downloads. Phase 2 adds Apple's cover art rules
   (1400–3000 px square). *Media library done 2026-10-21*
@@ -98,8 +107,8 @@ A complete site builder without podcast features.
 - **#023 Audio file.** One per episode: pick a local file or enter an external
   URL. Read size, MIME type and duration in Rust (`symphonia` or `lofty`).
 - **#068 Podcast feed.** One feed per podcast with iTunes, Podcasting 2.0 and
-  Podlove Simple Chapters tags, plus paged feeds. Publishers copy the audio;
-  GitHub Pages warns when an episode lacks an external audio URL.
+  Podlove Simple Chapters tags, plus paged feeds. Publishers copy the audio
+  (GitHub Pages: see #029).
 - **#069 Podcast blocks.** Latest episodes and Subscribe blocks; seed them on
   the `home` page of new podcast sites.
 - **#047 Contributors.** Contributors per site (name, photo, Markdown bio,
@@ -120,7 +129,10 @@ A complete site builder without podcast features.
 
 - **#029 Publisher: GitHub Pages.** Push the built site to the configured
   branch with a deploy key. Needs a second `Target` kind, its own key
-  handling and connection test (#031).
+  handling and connection test (#031). For podcasts, GitHub Pages warns
+  when an episode lacks an external audio URL (#068).
+- **#011 GitHub Pages.** Decided: deploy key using qed's generated key
+  pair. Audio must be external for GitHub targets.
 
 ## Done / decided
 
@@ -260,8 +272,6 @@ A complete site builder without podcast features.
 - **#009 Audio formats.** One format per podcast, provided by the user; one
   feed. No transcoding.
 - **#010 Duration and size.** Read from the local file (#023).
-- **#011 GitHub Pages.** Deploy key using qed's generated key pair. Audio must
-  be external for GitHub targets.
 - **#012 SSH transfer.** SFTP with a deploy manifest (#028, #065).
 - **#016 License.** Changed from AGPL-3.0 to GPL-3.0 with the move to desktop.
 - **#019 Comments and sharing.** Share links, no comments (#053).

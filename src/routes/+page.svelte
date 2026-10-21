@@ -6,6 +6,7 @@
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import Files from "@lucide/svelte/icons/files";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
+  import FolderPlus from "@lucide/svelte/icons/folder-plus";
   import Globe from "@lucide/svelte/icons/globe";
   import Hammer from "@lucide/svelte/icons/hammer";
   import History from "@lucide/svelte/icons/history";
@@ -18,6 +19,7 @@
   import SiteSettings from "$lib/SiteSettings.svelte";
   import VersionsPanel from "$lib/VersionsPanel.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
+  import NewSiteDialog from "$lib/NewSiteDialog.svelte";
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
   import {
@@ -65,6 +67,7 @@
   }
 
   let creatingPage = $state(false);
+  let creatingSite = $state(false);
   let view = $state<"pages" | "media" | "assets" | "site" | "versions" | "app">("pages");
 
   async function pageCreated(page: Page) {
@@ -275,6 +278,9 @@
           <button id="open-other-site" class="btn btn-sm" onclick={chooseFolder} disabled={loading}>
             <FolderOpen class="size-4" /> Open another site folder…
           </button>
+          <button id="new-site-other" class="btn btn-sm" onclick={() => (creatingSite = true)} disabled={loading}>
+            <FolderPlus class="size-4" /> New site…
+          </button>
         </div>
         <div class="grid items-start gap-8 xl:grid-cols-2">
           <section class="flex flex-col gap-3">
@@ -389,10 +395,13 @@
     </div>
   {:else if !loading && view === "pages"}
     <section id="empty-state" class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-      <p class="text-lg">Open a site folder to see its pages.</p>
+      <p class="text-lg">Open a site folder to see its pages, or make a new site.</p>
       <button id="open-site" class="btn btn-primary" onclick={chooseFolder} disabled={loading}>
         {#if loading}<span class="loading loading-spinner loading-sm"></span>{:else}<FolderOpen class="size-4" />{/if}
         Open site folder
+      </button>
+      <button id="new-site" class="btn" onclick={() => (creatingSite = true)} disabled={loading}>
+        <FolderPlus class="size-4" /> New site…
       </button>
       <p class="text-sm text-base-content/60">
         A site folder has a <code>site.toml</code> and a <code>pages/</code> folder. Try
@@ -404,4 +413,14 @@
 
 {#if site && creatingPage}
   <NewPageDialog {site} oncreated={pageCreated} onclose={() => (creatingPage = false)} />
+{/if}
+
+{#if creatingSite}
+  <NewSiteDialog
+    oncreated={(path) => {
+      view = "pages";
+      load(path);
+    }}
+    onclose={() => (creatingSite = false)}
+  />
 {/if}

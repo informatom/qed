@@ -48,6 +48,20 @@ async fn open_site(app: AppHandle, path: PathBuf) -> Result<Site, String> {
     Ok(site)
 }
 
+/// Makes `path` a new site (see `site::create_site`) and starts its version
+/// history. The UI opens it afterwards with `open_site`.
+#[tauri::command]
+#[specta::specta]
+async fn create_site(path: PathBuf, title: String, language: String) -> Result<(), String> {
+    site::create_site(&path, &title, &language).map_err(|error| error.to_string())?;
+    // The site is there either way; without history the Versions tab
+    // offers to start it.
+    if let Err(error) = history::start(&path) {
+        eprintln!("qed: couldn't start the version history: {error}");
+    }
+    Ok(())
+}
+
 /// Lists the files in `media/` or `assets/` with their size and usage.
 #[tauri::command]
 #[specta::specta]
@@ -441,6 +455,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
         .commands(tauri_specta::collect_commands![
             slugify,
             open_site,
+            create_site,
             list_media,
             import_media,
             delete_media,

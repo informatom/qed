@@ -16,6 +16,11 @@ export const commands = {
 	 *  thumbnails); the asset protocol starts with an empty scope.
 	 */
 	openSite: (path: string) => __TAURI_INVOKE<Site>("open_site", { path }),
+	/**
+	 *  Makes `path` a new site (see `site::create_site`) and starts its version
+	 *  history. The UI opens it afterwards with `open_site`.
+	 */
+	createSite: (path: string, title: string, language: string) => __TAURI_INVOKE<null>("create_site", { path, title, language }),
 	/**  Lists the files in `media/` or `assets/` with their size and usage. */
 	listMedia: (root: string, library: Library) => __TAURI_INVOKE<MediaFile[]>("list_media", { root, library }),
 	/**  Copies files into `media/` or `assets/`; returns their new names. */
