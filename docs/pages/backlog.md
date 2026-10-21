@@ -31,8 +31,12 @@ A complete site builder without podcast features.
   git-ignored folder. Old paths for redirects go into front matter.
   *Reading done 2026-10-21* (`qed_core::site::open`, `examples/demo-site`).
   *Creating pages done 2026-10-21* (`site::create_page`, "New page" dialog;
-  posts get a date prefix; never overwrites). Creating a new site folder
-  from the app, and renaming, moving and deleting pages, are still open.
+  posts get a date prefix; never overwrites). *Deleting pages done
+  2026-10-21* (`site::delete_page`): the confirmation names the pages that
+  link to it; the start page and pages with pages below them can't be
+  deleted; the Versions tab lists deleted pages and restores them
+  (`history::deleted_pages`, `restore_page`). Creating a new site folder
+  from the app, and renaming and moving pages, are still open.
 - **#072 Block file format.** Read and write pages as Markdown with block
   containers (`::: hero` … `:::`, block fields as TOML) in qed-core. Writing
   a parsed page gives the same file back, so hand edits survive the block
