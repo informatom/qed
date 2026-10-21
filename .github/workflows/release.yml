@@ -3,7 +3,9 @@
 # publish the release by hand. See "Releasing" in docs/pages/development.md.
 #
 # The builds aren't signed yet (#070), so macOS and Windows warn before the
-# first start.
+# first start. The updates are signed, though: the app only installs an
+# update signed with the key in the TAURI_SIGNING_PRIVATE_KEY secret, and
+# finds them through the latest.json this workflow attaches.
 
 name: Release
 
@@ -38,8 +40,9 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            # One .dmg for Apple Silicon and Intel Macs.
-            args: --target universal-apple-darwin --bundles dmg
+            # One .dmg for Apple Silicon and Intel Macs; the .app is what
+            # the updater swaps in.
+            args: --target universal-apple-darwin --bundles app,dmg
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           - os: windows-latest
             args: --bundles nsis
@@ -79,10 +82,17 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the updates (see "Releasing" in docs/pages/development.md).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: qed ${{ github.ref_name }}
           releaseBody: Installers for macOS, Windows and Linux. Not signed yet, so the system asks before the first start; see the release notes.
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
+          # The release config turns on the update files, which need the
+          # signing key; local builds go without them.
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
+          # latest.json: the newest version and a download per system.
+          includeUpdaterJson: true

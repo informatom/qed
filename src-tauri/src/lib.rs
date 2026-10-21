@@ -528,6 +528,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // Restarts the app after an update.
+        .plugin(tauri_plugin_process::init())
         // Remembers the window's size, position and maximized state between
         // runs. The very first start uses tauri.conf.json (maximized).
         .plugin(tauri_plugin_window_state::Builder::default().build())

@@ -259,7 +259,14 @@ A complete site builder without podcast features.
 - **#059 Signing and updates.** Phase 1 ships unsigned installers (Linux
   AppImage/deb, Windows, macOS with "open anyway" instructions) plus Tauri's
   updater, whose signing key is free. Revisit Apple notarization ($99/year)
-  and Windows signing before a public 1.0 (#070).
+  and Windows signing before a public 1.0 (#070). *Updater built
+  2026-10-21* (tauri-plugin-updater and -process, `src/lib/updates.svelte.ts`):
+  qed checks `latest.json` of the latest published GitHub release at start,
+  a bar offers "Install and restart", the App tab shows the version and
+  "Check for updates". The release workflow signs the updates with the
+  `TAURI_SIGNING_PRIVATE_KEY` secret (`tauri.release.conf.json`); steps in
+  Development → Updates. The first version with the updater has to be
+  installed by hand; from then on updates come by themselves.
 - **#060 Markdown editor.** Keep OverType.
 - **Learning blog.** Explanations of Rust, Svelte and TypeScript go into blog
   posts in `docs/pages/blog/` (Markdown with front matter), not into chat.

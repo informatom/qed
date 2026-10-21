@@ -99,7 +99,45 @@ To make a release:
 
 4. After about 20 minutes, a draft release with the installers is on the
    repository's Releases page. Try them, write the notes, and publish the
-   release.
+   release. Check that it has a `latest.json` with entries for each
+   system: `darwin-aarch64` and `darwin-x86_64` (both pointing to the
+   universal `.app.tar.gz`), `windows-x86_64`, and on Linux one for the
+   AppImage and one for the `.deb` (`linux-x86_64-deb`). Each installed
+   copy looks for its own kind first (`linux-x86_64-deb`), then for the
+   system (`linux-x86_64`).
+5. Once it's published, installed copies of qed offer the update at
+   their next start. Drafts stay invisible to them.
+
+### Updates
+
+qed updates itself with Tauri's
+[updater plugin](https://v2.tauri.app/plugin/updater/). At start (not in
+`npm run tauri dev`) it fetches `latest.json` from the latest published
+release, and if the version there is newer, a bar offers "Install and
+restart"; the App tab has "Check for updates". The download is checked
+against the public key in `src-tauri/tauri.conf.json`
+(`plugins.updater.pubkey`) before it's installed. On Windows the installer
+runs by itself, on macOS the `.app` is replaced, on Linux the `.AppImage`.
+A `.deb` install asks for the administrator password and installs the new
+`.deb` (with `pkexec dpkg -i`).
+
+The update files and `latest.json` are only made in the release workflow,
+which adds `src-tauri/tauri.release.conf.json` to the build. Local builds
+don't need the signing key.
+
+The signing key is made once, and its private half never goes into the
+repository:
+
+1. `npx tauri signer generate -w ~/.tauri/qed.key` asks for a password and
+   writes `~/.tauri/qed.key` (private) and `~/.tauri/qed.key.pub` (public).
+   Keep both, and the password, somewhere safe: without them, installed
+   copies can't take updates any more.
+2. Put the contents of `qed.key.pub` into `plugins.updater.pubkey` in
+   `src-tauri/tauri.conf.json` and commit it.
+3. In the GitHub repository, under Settings → Secrets and variables →
+   Actions, add two repository secrets: `TAURI_SIGNING_PRIVATE_KEY` with
+   the contents of `qed.key`, and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+   with the password.
 
 The installers aren't signed yet (#070 in the [backlog](backlog.md)), so
 the systems warn before the first start. On macOS, right-click the app,

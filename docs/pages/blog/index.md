@@ -31,3 +31,4 @@ comparisons to Elixir.
 - [Release builds: three systems, one tag, and why each installer is made on its own system](/blog/2026-10-21-release-builds)
 - [Moving pages: a plan before touching files, rewriting links byte by byte, and why UTF-8 makes that safe](/blog/2026-10-21-moving-pages)
 - [Recent sites: trusting nothing from storage, unknown instead of any, and a type guard](/blog/2026-10-21-recent-sites)
+- [Updates: how an app replaces itself, why the download is signed, and state shared outside components](/blog/2026-10-21-updates)

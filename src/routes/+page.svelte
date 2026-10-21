@@ -24,6 +24,8 @@
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
   import SiteSwitcher from "$lib/SiteSwitcher.svelte";
+  import UpdateBar from "$lib/UpdateBar.svelte";
+  import { checkForUpdate } from "$lib/updates.svelte";
   import X from "@lucide/svelte/icons/x";
   import { forgetSite, recentSites, rememberSite } from "$lib/recentSites";
   import {
@@ -185,6 +187,12 @@
     icons = await pageIcons();
   });
 
+  // Look for a newer qed once at start; not while developing, where the
+  // version in Cargo.toml says little about what's running.
+  onMount(() => {
+    if (!import.meta.env.DEV) checkForUpdate(true);
+  });
+
   onMount(() => {
     const path = recent[0]?.path;
     if (path) load(path);
@@ -197,6 +205,7 @@
 </script>
 
 <main class="flex min-h-screen flex-col gap-8 p-8">
+  <UpdateBar />
   <header class="flex flex-wrap items-start justify-between gap-4">
     {#if site}
       <div id="site-summary" class="flex min-w-0 flex-col gap-1">

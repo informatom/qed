@@ -40,5 +40,16 @@
     "shortDescription": "Static websites from a folder of pages",
     "license": "GPL-3.0-or-later",
     "category": "Productivity"
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIwNkI3RjZCQzlEMTNCOTgKUldTWU85SEphMzlySUptVFZqNUxOMEJ2N2QzcG1oWmVjc0lvNGJMc0g2K3c1cDRYeXZCNGVYaloK",
+      "endpoints": [
+        "https://github.com/informatom/qed/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
