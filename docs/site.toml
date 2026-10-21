@@ -1,0 +1,4 @@
+title = "qed"
+language = "en"
+description = "A desktop app that turns a folder of pages into a website. This site is built with qed itself."
+theme = "light"

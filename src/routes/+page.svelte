@@ -114,7 +114,9 @@
                 <span class="badge badge-outline badge-sm">{page.front.menu} menu</span>
               {/if}
             </span>
-            <span class="font-mono text-xs text-base-content/60">/{page.path}</span>
+            <span class="font-mono text-xs text-base-content/60">
+              /{page.path}{#if page.front.date}<span class="ms-2">· {page.front.date}</span>{/if}
+            </span>
           </div>
           <div class="list-col-grow"></div>
           <div class="flex flex-wrap justify-end gap-1">

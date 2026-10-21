@@ -12,6 +12,11 @@ export interface FrontMatter {
   menu: Menu;
   weight: number;
   redirect_from: string[];
+  /** ISO date, e.g. "2026-10-21". */
+  date: string | null;
+  authors: string[];
+  tags: string[];
+  summary: string | null;
 }
 
 export interface Hero {

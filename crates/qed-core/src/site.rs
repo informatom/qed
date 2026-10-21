@@ -239,6 +239,28 @@ mod tests {
         assert_eq!(imprint.content.front.menu, Menu::Footer);
     }
 
+    /// The project's own docs folder is a qed site. This keeps it valid.
+    #[test]
+    fn opens_the_docs_site() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs");
+        let site = open(&root).unwrap_or_else(|error| panic!("{error}"));
+
+        assert_eq!(site.config.title, "qed");
+        let posts: Vec<_> = site
+            .pages
+            .iter()
+            .filter(|p| p.path.starts_with("blog/"))
+            .collect();
+        assert!(!posts.is_empty());
+        for post in posts {
+            assert!(
+                post.content.front.date.is_some(),
+                "{} has no date",
+                post.file.display()
+            );
+        }
+    }
+
     #[test]
     fn maps_files_to_url_paths() {
         let dir = site_with(&[

@@ -40,7 +40,7 @@ A complete site builder without podcast features.
   phase 2 adds the podcast switch.
 - **#021 Site UI.** List, create and edit sites.
 - **#043 Block CMS.** Rebuild Mercator's block CMS design in Rust
-  (`docs/cms-handover-qed.md` describes it; its Elixir file map no longer
+  (`docs/notes/cms-handover-qed.md` describes it; its Elixir file map no longer
   applies): pages as ordered lists of typed blocks stored as Markdown
   files (#072), drafts via `draft = true`, history via git (#073), page tree
   from the folder structure, menus, blocks (Text, Hero, Text with
@@ -54,7 +54,9 @@ A complete site builder without podcast features.
   block and `blog/feed.xml`.
 - **#026 Site generator.** Render HTML for published pages, posts, menus,
   redirects (meta-refresh stubs) and the sitemap with Rust templates. Copy
-  the images used.
+  the images used. Rewrite relative links to other `.md` pages into page
+  URLs; links that leave the site folder (e.g. to source code) need a base
+  URL such as the GitHub repo.
 - **#064 Site CSS.** Templates aren't user-editable, so compile one Tailwind +
   daisyUI stylesheet with all themes at build time and ship it with every
   site; the theme is a `data-theme` attribute. Typography plugin for
@@ -78,8 +80,6 @@ A complete site builder without podcast features.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live.
 - **#037 Backups.** Document that backing up a site means copying its folder.
-- **#071 Demo site.** Import the learning blog posts from `docs/blog/` into a
-  demo site built with qed itself.
 
 ### Phase 2: Podcasting
 
@@ -134,8 +134,10 @@ A complete site builder without podcast features.
   and Windows signing before a public 1.0 (#070).
 - **#060 Markdown editor.** Keep OverType.
 - **Learning blog.** Explanations of Rust, Svelte and TypeScript go into blog
-  posts in `docs/blog/` (Markdown with front matter), not into chat. They can
-  become a demo site later (#071).
+  posts in `docs/pages/blog/` (Markdown with front matter), not into chat.
+- **#071 Demo site.** Done 2026-10-21: `docs/` is a qed site (home page,
+  blog with the learning posts). A test keeps it valid. Pages gained
+  `date`, `authors`, `tags` and `summary`.
 - **Repo.** Same repo; the Elixir code is deleted (it stays in git history).
 - **Site pages** follow the design of Mercator's block CMS; Mercator stays a
   read-only reference.

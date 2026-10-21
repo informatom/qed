@@ -42,7 +42,7 @@ button_link = "/about/team"
 Every other week, we talk about the projects we're working on…
 ```
 
-The code is in [`crates/qed-core/src`](../../crates/qed-core/src):
+The code is in [`crates/qed-core/src`](../../../crates/qed-core/src):
 `site.rs` reads the folder, `page.rs` parses one file, `block.rs` defines the
 blocks.
 
@@ -128,7 +128,7 @@ pub enum Menu { #[default] None, Main, Footer }
 
 TypeScript has a matching concept, the
 [discriminated union](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions),
-in [`src/lib/site.ts`](../../src/lib/site.ts):
+in [`src/lib/site.ts`](../../../src/lib/site.ts):
 
 ```ts
 export type Block =
@@ -296,7 +296,7 @@ async fn open_site(path: PathBuf) -> Result<Site, String> {
   The error is turned into its message string because that's all the UI
   needs.
 
-In [`+page.svelte`](../../src/routes/+page.svelte), the call looks like this:
+In [`+page.svelte`](../../../src/routes/+page.svelte), the call looks like this:
 
 ```ts
 async function load(path: string) {

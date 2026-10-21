@@ -8,7 +8,8 @@ without learning a static site generator.
 Status: early development. The plan lives in [backlog.md](backlog.md).
 
 qed is built in the open with [Claude Code](https://claude.com/claude-code).
-The learning notes written along the way are in [docs/blog](docs/blog).
+The [docs](docs) folder is a qed site itself: the project home page and a
+blog with the learning notes written along the way ([docs/pages/blog](docs/pages/blog)).
 
 ## How it works
 

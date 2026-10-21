@@ -36,6 +36,34 @@ pub struct FrontMatter {
     /// Earlier URLs of this page. The site gets redirects from these.
     #[serde(default)]
     pub redirect_from: Vec<String>,
+    /// Publication date, mainly for blog posts: `date = 2026-10-21`.
+    pub date: Option<PageDate>,
+    #[serde(default)]
+    pub authors: Vec<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// A short teaser for post lists and feeds. Markdown.
+    pub summary: Option<String>,
+}
+
+/// A TOML date such as `2026-10-21`, written without quotes in the file.
+///
+/// Reading uses TOML's own date type, which rejects nonsense like
+/// `2026-13-45`. The UI receives it as text, `"2026-10-21"`.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct PageDate(toml::value::Datetime);
+
+impl Serialize for PageDate {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(&self.0)
+    }
+}
+
+impl std::fmt::Display for PageDate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
 }
 
 /// Which menu a page appears in.
@@ -279,6 +307,31 @@ mod tests {
         let content = parse(source).unwrap();
         assert_eq!(content.front.title, "Win");
         assert_eq!(content.blocks.len(), 1);
+    }
+
+    #[test]
+    fn reads_post_fields() {
+        let source = "+++\ntitle = \"Post\"\ndate = 2026-10-21\nauthors = [\"Claude\"]\ntags = [\"rust\"]\nsummary = \"Short.\"\n+++\n";
+        let front = parse(source).unwrap().front;
+        assert_eq!(front.date.unwrap().to_string(), "2026-10-21");
+        assert_eq!(front.authors, ["Claude"]);
+        assert_eq!(front.tags, ["rust"]);
+        assert_eq!(front.summary.as_deref(), Some("Short."));
+    }
+
+    #[test]
+    fn sends_dates_to_the_ui_as_text() {
+        let front = parse("+++\ntitle = \"P\"\ndate = 2026-10-21\n+++\n")
+            .unwrap()
+            .front;
+        let json = serde_json::to_value(&front).unwrap();
+        assert_eq!(json["date"], "2026-10-21");
+    }
+
+    #[test]
+    fn rejects_impossible_dates() {
+        let error = parse("+++\ntitle = \"P\"\ndate = 2026-13-45\n+++\n").unwrap_err();
+        assert_eq!(error.line, 3, "{error:?}");
     }
 
     #[test]
