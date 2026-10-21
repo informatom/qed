@@ -27,11 +27,13 @@
     page: Page;
     siteRoot: string;
     onsaved: (page: Page) => void;
+    /** Blocks to start with instead of the saved ones (an earlier version). */
+    start?: Block[];
     /** Tells the parent whether there are unsaved changes. */
     dirty?: boolean;
   }
 
-  let { page, siteRoot, onsaved, dirty = $bindable(false) }: Props = $props();
+  let { page, siteRoot, onsaved, start, dirty = $bindable(false) }: Props = $props();
 
   // Each block gets an id that lives only in the UI, so Svelte can tell blocks
   // apart while they move around (the Markdown editors keep their state).
@@ -44,7 +46,7 @@
     return $state.snapshot(blocks).map((block) => ({ id: crypto.randomUUID(), block }));
   }
 
-  let items = $state<Item[]>(untrack(() => wrap(page.blocks)));
+  let items = $state<Item[]>(untrack(() => wrap(start ?? page.blocks)));
   let saving = $state(false);
   /** The gallery an image is being picked for, if any. */
   let pickingFor = $state<Gallery | null>(null);

@@ -8,6 +8,7 @@
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import Globe from "@lucide/svelte/icons/globe";
   import Hammer from "@lucide/svelte/icons/hammer";
+  import History from "@lucide/svelte/icons/history";
   import FileDown from "@lucide/svelte/icons/file-down";
   import Image from "@lucide/svelte/icons/image";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
@@ -15,6 +16,7 @@
   import AppSettings from "$lib/AppSettings.svelte";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
+  import VersionsPanel from "$lib/VersionsPanel.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
@@ -56,7 +58,7 @@
   }
 
   let creatingPage = $state(false);
-  let view = $state<"pages" | "media" | "assets" | "site" | "app">("pages");
+  let view = $state<"pages" | "media" | "assets" | "site" | "versions" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -96,7 +98,7 @@
     } catch (e) {
       site = null;
       error = String(e);
-      // Media, Assets and Site need a site; show the error on Pages instead.
+      // Every tab but App needs a site; show the error on Pages instead.
       if (view !== "pages" && view !== "app") view = "pages";
     } finally {
       loading = false;
@@ -241,6 +243,8 @@
         onclick={() => (view = "assets")}><FileDown class="me-1.5 size-4" />Assets</button>
       <button type="button" role="tab" id="view-site" class={["tab", view === "site" && "tab-active"]}
         onclick={() => (view = "site")}><Globe class="me-1.5 size-4" />Site</button>
+      <button type="button" role="tab" id="view-versions" class={["tab", view === "versions" && "tab-active"]}
+        onclick={() => (view = "versions")}><History class="me-1.5 size-4" />Versions</button>
     {/if}
     <button type="button" role="tab" id="view-app" class={["tab", view === "app" && "tab-active"]}
       onclick={() => (view = "app")}><Settings class="me-1.5 size-4" />App</button>
@@ -295,6 +299,8 @@
       <MediaLibrary siteRoot={site.root} editing={editorDirty} onmoved={() => site && load(site.root)} />
     {:else if view === "assets"}
       <MediaLibrary siteRoot={site.root} library="assets" />
+    {:else if view === "versions"}
+      <VersionsPanel siteRoot={site.root} editing={editorDirty} />
     {/if}
 
     <div class={["-mb-3 flex items-center gap-3", view !== "pages" && "hidden"]}>

@@ -7,17 +7,19 @@
     page: Page;
     siteRoot: string;
     onsaved: (page: Page) => void;
+    /** Settings to start with instead of the saved ones (an earlier version). */
+    start?: FrontMatter;
     /** Tells the parent whether there are unsaved changes. */
     dirty?: boolean;
   }
 
-  let { page, siteRoot, onsaved, dirty = $bindable(false) }: Props = $props();
+  let { page, siteRoot, onsaved, start, dirty = $bindable(false) }: Props = $props();
 
   // An editable copy of the settings, taken once when the form opens
   // (`untrack` says so on purpose; the parent re-creates the form for another
   // page). `$state.snapshot` makes a plain copy, so typing here doesn't change
   // the page list until we save.
-  const initial = untrack(() => $state.snapshot(page.front));
+  const initial = untrack(() => $state.snapshot(start ?? page.front));
   let form = $state(initial);
   // Lists are edited as comma-separated text.
   let authors = $state(initial.authors.join(", "));

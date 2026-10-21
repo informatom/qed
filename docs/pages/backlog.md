@@ -43,9 +43,6 @@ A complete site builder without podcast features.
   settings in a side panel; editing blocks comes with #043.
 - **#074 Nested blocks.** Columns contain blocks, so containers must nest
   (e.g. `::::` for the outer container, as markdown-it-container does).
-- **#073 Git history.** Each site folder is a git repo the app manages
-  (`git2` or `gix`): "save version" commits, publishing tags the commit,
-  and any page can be restored from an earlier version.
 - **#055 Sites.** Several sites per installation. Phase 1 sites are pages-only;
   phase 2 adds the podcast switch.
 - **#021 Site UI.** List, create and edit sites.
@@ -91,7 +88,8 @@ A complete site builder without podcast features.
   branch with a deploy key. Needs a second `Target` kind, its own key
   handling and connection test (#031).
 - **#032 Publish history.** Record each publish run per target as a git tag
-  (#073) plus a log; show progress live.
+  (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
+  #073); the log and a list of publishes per target are still open.
 - **#037 Backups.** Document that backing up a site means copying its folder.
 
 ### Phase 2: Podcasting
@@ -137,6 +135,17 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#073 Git history.** Done 2026-10-21 (`qed_core::history`, git2 with
+  bundled libgit2): a top-level Versions tab starts the history (git init
+  plus `.gitignore` for `_site/` and `targets.toml`), shows changed files,
+  saves versions with a note and lists them. Publishing saves a version
+  first and tags it (`publish/<target>/<UTC time>`). Each page has a
+  Versions tab (Content / Versions / Settings) with what each version
+  changed and "Restore", which puts it into the editor as unsaved changes.
+  A site folder inside a larger repository (like `docs/`) works too: qed
+  commits only that folder, never other staged changes, and prefixes its
+  tags (`docs/publish/…`). Still open: restoring the whole site, signed
+  commits (libgit2 doesn't sign).
 - **#078 Assets for downloads.** Done 2026-10-21: `assets/` holds files
   to download (PDFs, but any type); `media/` takes only images. An Assets
   tab lists, imports (clean names) and deletes them like Media

@@ -8,8 +8,9 @@ use std::sync::Mutex;
 
 use qed_core::block::Block;
 use qed_core::generator::{self, BuildReport};
+use qed_core::history::{self, DiffLine, HistoryStatus, Version};
 use qed_core::media::{self, Library, MediaFile};
-use qed_core::page::{FrontMatter, PageDate};
+use qed_core::page::{FrontMatter, PageContent, PageDate};
 use qed_core::preview::Preview;
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
 use qed_core::site::{self, Page, Site, SiteConfig};
@@ -280,9 +281,18 @@ async fn publish_site(
         .find(|t| t.name() == target_name)
         .cloned()
         .ok_or_else(|| format!("there is no target called {target_name}"))?;
+    // With a history, what gets published is saved as a version first, and
+    // tagged once publishing worked.
+    let tracked = history::status(&root)
+        .map_err(|error| error.to_string())?
+        .tracked;
+    if tracked {
+        history::save_version(&root, &format!("Before publishing to {target_name}"))
+            .map_err(|error| error.to_string())?;
+    }
     let report = generator::build(&site).map_err(|error| error.to_string())?;
 
-    match target {
+    let published = match target {
         Target::Sftp(sftp_target) => {
             let credentials = secrets::credentials(&sftp_target)?;
             sftp::publish(&sftp_target, &credentials, &report.out_dir, |progress| {
@@ -292,7 +302,58 @@ async fn publish_site(
             .await
             .map_err(|error| error.to_string())
         }
+    }?;
+    if tracked {
+        history::tag_publish(&root, &target_name).map_err(|error| error.to_string())?;
     }
+    Ok(published)
+}
+
+/// Whether the site has a version history, and what changed since the last
+/// version.
+#[tauri::command]
+#[specta::specta]
+async fn history_status(root: PathBuf) -> Result<HistoryStatus, String> {
+    history::status(&root).map_err(|error| error.to_string())
+}
+
+/// Makes the site folder a git repository and saves a first version.
+#[tauri::command]
+#[specta::specta]
+async fn start_history(root: PathBuf) -> Result<Option<Version>, String> {
+    history::start(&root).map_err(|error| error.to_string())
+}
+
+/// Saves the site folder as a new version; `None` if nothing changed.
+#[tauri::command]
+#[specta::specta]
+async fn save_version(root: PathBuf, note: String) -> Result<Option<Version>, String> {
+    history::save_version(&root, &note).map_err(|error| error.to_string())
+}
+
+/// The versions of the site, or of one file in it, newest first.
+#[tauri::command]
+#[specta::specta]
+async fn list_versions(root: PathBuf, file: Option<String>) -> Result<Vec<Version>, String> {
+    history::versions(&root, file.as_deref()).map_err(|error| error.to_string())
+}
+
+/// A page as it was in an earlier version.
+#[tauri::command]
+#[specta::specta]
+async fn page_version(root: PathBuf, file: String, version: String) -> Result<PageContent, String> {
+    history::page_at(&root, &file, &version).map_err(|error| error.to_string())
+}
+
+/// The lines a version changed in a file.
+#[tauri::command]
+#[specta::specta]
+async fn version_changes(
+    root: PathBuf,
+    file: String,
+    version: String,
+) -> Result<Vec<DiffLine>, String> {
+    history::changes_in(&root, &file, &version).map_err(|error| error.to_string())
 }
 
 fn build(path: &std::path::Path) -> Result<BuildReport, String> {
@@ -324,6 +385,12 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             test_target,
             publish_site,
             create_page,
+            history_status,
+            start_history,
+            save_version,
+            list_versions,
+            page_version,
+            version_changes,
             build_site,
             preview_site,
         ])

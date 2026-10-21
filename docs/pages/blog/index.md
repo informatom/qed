@@ -24,3 +24,4 @@ comparisons to Elixir.
 - [Types from Rust: generating the UI's TypeScript from the commands](/blog/2026-10-21-types-from-rust)
 - [Responsive images: srcset, a cache, RefCell and scoped threads](/blog/2026-10-21-responsive-images)
 - [Assets: one module for two folders, and changing a format without breaking old sites](/blog/2026-10-21-assets)
+- [Versions with git: commits from Rust, a tree that changes one folder, and restoring into the editor](/blog/2026-10-21-versions)

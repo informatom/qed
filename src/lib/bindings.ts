@@ -55,6 +55,41 @@ export const commands = {
 	publishSite: (root: string, targetName: string, onProgress: Channel<Progress>) => __TAURI_INVOKE<PublishReport>("publish_site", { root, targetName, onProgress }),
 	/**  Creates an empty page below `parent` (a URL path, `""` for the top level). */
 	createPage: (root: string, parent: string, title: string, date: string | null) => __TAURI_INVOKE<Page>("create_page", { root, parent, title, date }),
+	/**
+	 *  Whether the site has a version history, and what changed since the last
+	 *  version.
+	 */
+	historyStatus: (root: string) => __TAURI_INVOKE<HistoryStatus>("history_status", { root }),
+	/**  Makes the site folder a git repository and saves a first version. */
+	startHistory: (root: string) => __TAURI_INVOKE<{
+	/**  The commit id, in full. */
+	id: string,
+	/**  The first line of the note. */
+	summary: string,
+	author: string,
+	/**  Seconds since 1970 (UTC). */
+	time: number,
+	/**  Tags on this version, such as the publishes. */
+	tags: string[],
+} | null>("start_history", { root }),
+	/**  Saves the site folder as a new version; `None` if nothing changed. */
+	saveVersion: (root: string, note: string) => __TAURI_INVOKE<{
+	/**  The commit id, in full. */
+	id: string,
+	/**  The first line of the note. */
+	summary: string,
+	author: string,
+	/**  Seconds since 1970 (UTC). */
+	time: number,
+	/**  Tags on this version, such as the publishes. */
+	tags: string[],
+} | null>("save_version", { root, note }),
+	/**  The versions of the site, or of one file in it, newest first. */
+	listVersions: (root: string, file: string | null) => __TAURI_INVOKE<Version[]>("list_versions", { root, file }),
+	/**  A page as it was in an earlier version. */
+	pageVersion: (root: string, file: string, version: string) => __TAURI_INVOKE<PageContent>("page_version", { root, file, version }),
+	/**  The lines a version changed in a file. */
+	versionChanges: (root: string, file: string, version: string) => __TAURI_INVOKE<DiffLine[]>("version_changes", { root, file, version }),
 	/**  Builds the site at `path` into its `_site` folder. */
 	buildSite: (path: string) => __TAURI_INVOKE<BuildReport>("build_site", { path }),
 	/**  Builds the site and serves it locally. */
@@ -123,6 +158,18 @@ export type Columns = {
 	items?: Column[],
 };
 
+export type DiffKind = "added" | "removed" | 
+/**  Unchanged, shown around the changes. */
+"same" | 
+/**  Unchanged lines left out between two changes. */
+"gap";
+
+/**  One line of a comparison between two versions of a file. */
+export type DiffLine = {
+	kind: DiffKind,
+	text: string,
+};
+
 /**  A file to download, such as a PDF. */
 export type Download = {
 	/**  File name in `media/`. */
@@ -185,6 +232,16 @@ export type Hero = {
 	text: string | null,
 	button_label: string | null,
 	button_link: string | null,
+};
+
+/**  What the Site tab shows about the history. */
+export type HistoryStatus = {
+	/**  Whether the site folder is in a git repository at all. */
+	tracked: boolean,
+	/**  The repository's folder, if it's larger than the site folder. */
+	shared_with: string | null,
+	/**  Files changed since the last version, relative to the site folder. */
+	changes: string[],
 };
 
 /**  One image, with alternative text and an optional caption. */
@@ -364,5 +421,18 @@ export type TextImage = {
 	image: string | null,
 	alt: string | null,
 	image_side?: Side,
+};
+
+/**  One saved version. */
+export type Version = {
+	/**  The commit id, in full. */
+	id: string,
+	/**  The first line of the note. */
+	summary: string,
+	author: string,
+	/**  Seconds since 1970 (UTC). */
+	time: number,
+	/**  Tags on this version, such as the publishes. */
+	tags: string[],
 };
 

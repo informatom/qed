@@ -27,6 +27,10 @@ export const commands = rustCommands as {
 export type { Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage } from "./bindings";
 export type Block = Sent<Rust.Block>;
 export type BuildReport = Sent<Rust.BuildReport>;
+export type DiffLine = Sent<Rust.DiffLine>;
+export type HistoryStatus = Sent<Rust.HistoryStatus>;
+export type PageContent = Sent<Rust.PageContent>;
+export type Version = Sent<Rust.Version>;
 export type FrontMatter = Sent<Rust.FrontMatter>;
 export type Gallery = Sent<Rust.Gallery>;
 export type MediaFile = Sent<Rust.MediaFile>;
@@ -108,6 +112,11 @@ function normalize(value: unknown, topLevel: boolean): unknown {
 /** A URL the app window can load a media file from (for thumbnails). */
 export function mediaUrl(root: string, name: string): string {
   return convertFileSrc(`${root}/media/${name}`);
+}
+
+/** A version's time (seconds since 1970) in the computer's own format. */
+export function formatTime(seconds: number): string {
+  return new Date(seconds * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 /** "1.4 MB", "820 KB", "12 bytes". */
