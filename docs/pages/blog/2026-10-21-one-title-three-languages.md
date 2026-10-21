@@ -1,5 +1,8 @@
 +++
-title = "One title, three languages: how Svelte, Tauri and Rust talk"
+title = "Svelte, Tauri and Rust"
+description = "One title, three languages: how Svelte, Tauri and Rust talk"
+menu = "main"
+weight = 1
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "svelte", "typescript", "tauri", "borrowing"]

@@ -1,5 +1,8 @@
 +++
-title = "Saving without breaking things: format-preserving edits and a first Svelte component"
+title = "Saving without breaking"
+description = "Saving without breaking things: format-preserving edits and a first Svelte component"
+menu = "main"
+weight = 5
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "toml", "pattern-matching", "svelte", "typescript", "components"]

@@ -1,5 +1,8 @@
 +++
-title = "Teaching a date to speak JSON: newtypes and traits"
+title = "Newtypes and traits"
+description = "Teaching a date to speak JSON: newtypes and traits"
+menu = "main"
+weight = 3
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "traits", "serde"]

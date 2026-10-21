@@ -15,7 +15,9 @@
 </head>
 {%- macro menu_items(items) %}
 {%- for item in items %}
-<li><a href="{{ item.href }}"
+<li
+  {%- if item.level > 0 %} class="ms-4 border-s border-base-300"
+  {%- if item.level > 1 %} style="margin-inline-start: {{ item.level }}rem"{% endif %}{% endif %}><a href="{{ item.href }}"
   {%- if item.exact %} class="menu-active" aria-current="page"{% else if item.current %} class="font-semibold"{% endif %}>{{ item.title }}</a></li>
 {%- endfor %}
 {%- endmacro %}

@@ -45,6 +45,9 @@ The owner is learning Rust, Svelte and TypeScript through this project. When a
 change introduces a concept new to the project, explain it in a post in
 `docs/pages/blog/` (`YYYY-MM-DD-slug.md`, TOML front matter), tied to the concrete
 code, comparing with Elixir where it helps, with links to the official docs.
-Give each post `title`, `date`, `authors`, `tags` and `summary`, and add it
-to `docs/pages/blog/index.md`. `docs/` is a qed site; `cargo test` fails if
+Give each post a short `title` that fits the docs site's sidebar (about 25
+characters), the full headline as `description`, `menu = "main"`, the next
+`weight` (posts are numbered in the order written), `date`, `authors`,
+`tags` and `summary`, and add it to `docs/pages/blog/index.md` with its full
+headline. `docs/` is a qed site; `cargo test` fails if
 it stops being valid. Don't explain in chat what belongs in a post.

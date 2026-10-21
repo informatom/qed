@@ -1,5 +1,8 @@
 +++
-title = "The block editor: closures that run once, and components that talk back"
+title = "The block editor"
+description = "The block editor: closures that run once, and components that talk back"
+menu = "main"
+weight = 7
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "closures", "svelte", "components", "overtype"]

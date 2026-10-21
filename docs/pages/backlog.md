@@ -149,7 +149,9 @@ A complete site builder without podcast features.
   `site.toml` (switch in the Site tab) moves the main menu from the top bar
   into a sidebar, for sites with many menu pages. The current page is
   highlighted, its parent in bold; on phones it's a "Menu" box that opens
-  on tap, without JavaScript.
+  on tap, without JavaScript. Menus follow the page tree: an entry goes
+  under the nearest menu entry above it (posts under Blog) and is indented
+  in the sidebar.
 - **#064 Site CSS.** Done 2026-10-21: one Tailwind + daisyUI stylesheet with
   all 35 themes and the typography plugin (77 KB, 14 KB gzipped), compiled
   by `npm run build:site-css` and built into qed with `include_str!`. The

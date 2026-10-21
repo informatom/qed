@@ -1,5 +1,8 @@
 +++
-title = "From folder to website: templates, iterators and a server in a thread"
+title = "From folder to website"
+description = "From folder to website: templates, iterators and a server in a thread"
+menu = "main"
+weight = 4
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "askama", "iterators", "closures", "threads", "tauri"]

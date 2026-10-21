@@ -1,5 +1,8 @@
 +++
-title = "Four more blocks: lists in TOML, a template macro, and std::mem::take"
+title = "Four more blocks"
+description = "Four more blocks: lists in TOML, a template macro, and std::mem::take"
+menu = "main"
+weight = 10
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "toml", "askama", "svelte"]

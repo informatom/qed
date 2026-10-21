@@ -1,5 +1,8 @@
 +++
-title = "Media, images, and the compiler as a checklist"
+title = "Media and the compiler"
+description = "Media, images, and the compiler as a checklist"
+menu = "main"
+weight = 8
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "typescript", "enums", "tauri", "security", "svelte"]

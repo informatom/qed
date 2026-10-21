@@ -1,5 +1,8 @@
 +++
-title = "Reading a site folder: structs, enums and errors that help"
+title = "Reading a site folder"
+description = "Reading a site folder: structs, enums and errors that help"
+menu = "main"
+weight = 2
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "serde", "error-handling", "svelte", "typescript"]

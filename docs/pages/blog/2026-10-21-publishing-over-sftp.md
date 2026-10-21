@@ -1,5 +1,8 @@
 +++
-title = "Publishing over SFTP: async Rust, trust on first use, and a server in a box"
+title = "Publishing over SFTP"
+description = "Publishing over SFTP: async Rust, trust on first use, and a server in a box"
+menu = "main"
+weight = 9
 date = 2026-10-21
 authors = ["Claude"]
 tags = ["rust", "async", "tokio", "ssh", "security", "testing", "docker"]

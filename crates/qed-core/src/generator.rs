@@ -198,25 +198,57 @@ fn copy_dir(from: &Path, to: &Path) -> Result<usize, BuildError> {
 struct MenuEntry {
     title: String,
     path: String,
+    /// How deep the entry sits below other entries of the same menu.
+    level: usize,
 }
 
 /// The pages in a menu, ordered by weight, then title.
 fn menu(pages: &[&Page], which: Menu) -> Vec<MenuEntry> {
-    let mut entries: Vec<&&Page> = pages
+    let mut entries: Vec<&Page> = pages
         .iter()
+        .copied()
         .filter(|p| p.content.front.menu == which)
         .collect();
     entries.sort_by(|a, b| {
         let (a, b) = (&a.content.front, &b.content.front);
         a.weight.cmp(&b.weight).then_with(|| a.title.cmp(&b.title))
     });
-    entries
-        .into_iter()
-        .map(|p| MenuEntry {
-            title: p.content.front.title.clone(),
-            path: p.path.clone(),
-        })
-        .collect()
+
+    // An entry's parent is the nearest entry above it in the page tree:
+    // `blog/first-post` goes under `blog`, if `blog` is in the menu too.
+    let parent = |page: &Page| -> Option<usize> {
+        entries
+            .iter()
+            .enumerate()
+            .filter(|(_, other)| other.path != page.path && is_within(&page.path, &other.path))
+            .max_by_key(|(_, other)| other.path.len())
+            .map(|(index, _)| index)
+    };
+    let parents: Vec<Option<usize>> = entries.iter().map(|page| parent(page)).collect();
+
+    // Walk the tree depth first, so children follow their parent. Siblings
+    // keep the order sorted above.
+    let mut ordered = Vec::with_capacity(entries.len());
+    let mut stack: Vec<(usize, usize)> = (0..entries.len())
+        .rev()
+        .filter(|&index| parents[index].is_none())
+        .map(|index| (index, 0))
+        .collect();
+    while let Some((index, level)) = stack.pop() {
+        let page = entries[index];
+        ordered.push(MenuEntry {
+            title: page.content.front.title.clone(),
+            path: page.path.clone(),
+            level,
+        });
+        stack.extend(
+            (0..entries.len())
+                .rev()
+                .filter(|&child| parents[child] == Some(index))
+                .map(|child| (child, level + 1)),
+        );
+    }
+    ordered
 }
 
 fn sitemap(base_url: &str, pages: &[&Page]) -> String {
@@ -280,6 +312,8 @@ struct RedirectTemplate<'a> {
 struct MenuLink {
     title: String,
     href: String,
+    /// Indentation in the sidebar: 0 for top-level entries.
+    level: usize,
     /// This page, or a page below it, is the one being shown.
     current: bool,
     /// Exactly this page is being shown.
@@ -375,6 +409,7 @@ fn render_page(
             .map(|entry| MenuLink {
                 title: entry.title.clone(),
                 href: links.page(&entry.path),
+                level: entry.level,
                 current: is_within(&page.path, &entry.path),
                 exact: page.path == entry.path,
             })
@@ -725,6 +760,35 @@ mod tests {
         let team = read(out.path().join("about/team/index.html"));
         assert!(!team.contains("aria-label=\"Main menu\""));
         assert!(team.contains("max-w-4xl"));
+    }
+
+    #[test]
+    fn orders_menus_as_a_tree() {
+        let mut site = demo_site();
+        // "The team" (below About) joins the main menu, sorted first by
+        // weight, but it still follows its parent.
+        let team = site
+            .pages
+            .iter_mut()
+            .find(|p| p.path == "about/team")
+            .unwrap();
+        team.content.front.menu = Menu::Main;
+        team.content.front.weight = -5;
+        let published: Vec<&Page> = site.pages.iter().collect();
+
+        let entries = menu(&published, Menu::Main);
+        let order: Vec<(&str, usize)> =
+            entries.iter().map(|e| (e.path.as_str(), e.level)).collect();
+        assert_eq!(order, [("about", 0), ("about/team", 1)]);
+
+        site.config.navigation = Navigation::Sidebar;
+        let out = tempfile::tempdir().unwrap();
+        build_into(&site, out.path()).unwrap();
+        let html = read(out.path().join("index.html"));
+        assert!(
+            html.contains(r#"<li class="ms-4 border-s border-base-300">"#),
+            "{html}"
+        );
     }
 
     #[test]
