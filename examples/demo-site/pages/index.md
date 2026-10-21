@@ -1,0 +1,22 @@
++++
+title = "Home"
+description = "Two friends, two microphones, and a plan to build things in the open."
++++
+
+::: hero
+headline = "Two Mics and a Plan"
+text = "A podcast about building things in the open."
+button_label = "Meet the team"
+button_link = "/about/team"
+:::
+
+Every other week, we talk about the projects we're working on, what went
+wrong, and what we learned. No ads, no tracking, just two people and their
+microphones.
+
+::: call-to-action
+headline = "Say hello"
+text = "Questions, ideas, or a project we should look at? We'd love to hear from you."
+button_label = "Write to us"
+button_link = "mailto:hello@example.com"
+:::

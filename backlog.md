@@ -24,10 +24,15 @@ A complete site builder without podcast features.
   publish targets without secrets), pages and posts as Markdown files with
   TOML front matter, `media/` for images and downloads, build output in a
   git-ignored folder. Old paths for redirects go into front matter.
+  *Reading done 2026-10-21* (`qed_core::site::open`, `examples/demo-site`);
+  creating sites and pages from the app is still open.
 - **#072 Block file format.** Read and write pages as Markdown with block
   containers (`::: hero` … `:::`, block fields as TOML) in qed-core. Writing
   a parsed page gives the same file back, so hand edits survive the block
-  editor.
+  editor. *Parsing done 2026-10-21* for Text, Hero and Call to action, with
+  file and line in every error; writing is still open.
+- **#074 Nested blocks.** Columns contain blocks, so containers must nest
+  (e.g. `::::` for the outer container, as markdown-it-container does).
 - **#073 Git history.** Each site folder is a git repo the app manages
   (`git2` or `gix`): "save version" commits, publishing tags the commit,
   and any page can be restored from an earlier version.
