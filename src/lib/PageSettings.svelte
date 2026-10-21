@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { onMount } from "svelte";
-  import { pageIcons, savePageSettings, type FrontMatter, type Menu, type Page } from "$lib/site";
+  import { commands, pageIcons, type FrontMatter, type Menu, type Page } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -74,7 +74,7 @@
     saving = true;
     error = null;
     try {
-      const saved = await savePageSettings(siteRoot, page.file, edited);
+      const saved = await commands.savePageSettings(siteRoot, page.file, edited);
       savedAt = new Date();
       onsaved(saved);
     } catch (e) {

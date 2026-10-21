@@ -3,7 +3,7 @@
   import { ask, open } from "@tauri-apps/plugin-dialog";
   import Trash from "@lucide/svelte/icons/trash";
   import Upload from "@lucide/svelte/icons/upload";
-  import { deleteMedia, formatSize, importMedia, listMedia, mediaUrl, type MediaFile, type MediaKind } from "$lib/site";
+  import { commands, formatSize, mediaUrl, type MediaFile, type MediaKind } from "$lib/site";
 
   interface Props {
     siteRoot: string;
@@ -29,7 +29,7 @@
 
   async function refresh() {
     try {
-      files = await listMedia(siteRoot);
+      files = await commands.listMedia(siteRoot);
       error = null;
     } catch (e) {
       error = String(e);
@@ -45,7 +45,7 @@
     if (!picked || picked.length === 0) return;
     busy = true;
     try {
-      const names = await importMedia(siteRoot, picked);
+      const names = await commands.importMedia(siteRoot, picked);
       await refresh();
       // In the picker, importing one file usually means "use this one".
       if (onpick && names.length === 1) onpick(names[0]);
@@ -65,7 +65,7 @@
     });
     if (!sure) return;
     try {
-      await deleteMedia(siteRoot, file.name);
+      await commands.deleteMedia(siteRoot, file.name);
       await refresh();
     } catch (e) {
       error = String(e);

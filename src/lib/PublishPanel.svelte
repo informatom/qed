@@ -9,11 +9,10 @@
   import Upload from "@lucide/svelte/icons/upload";
   import TargetForm from "$lib/TargetForm.svelte";
   import {
+    commands,
     formatSize,
     newSftpTarget,
     publishSite,
-    saveTargets,
-    testTarget,
     type Progress,
     type PublishReport,
     type Site,
@@ -57,7 +56,7 @@
     });
     if (!sure) return;
     const updated = $state.snapshot(targets).filter((_, i) => i !== index);
-    await saveTargets(site.root, updated);
+    await commands.saveTargets(site.root, updated);
     changed(updated);
   }
 
@@ -65,7 +64,7 @@
     busyTarget = target.name;
     delete messages[target.name];
     try {
-      const result = await testTarget(target);
+      const result = await commands.testTarget(target);
       messages[target.name] =
         result.outcome === "connected"
           ? { kind: "ok", text: result.message }
@@ -80,7 +79,7 @@
   async function trust(index: number, fingerprint: string) {
     const updated = $state.snapshot(targets);
     updated[index].host_key = fingerprint;
-    await saveTargets(site.root, updated);
+    await commands.saveTargets(site.root, updated);
     changed(updated);
     await test(updated[index]);
   }

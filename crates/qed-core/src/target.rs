@@ -60,6 +60,7 @@ pub fn load(root: &Path) -> Result<Vec<Target>, SiteError> {
 /// One place to publish to. Tagged by `kind`, so more kinds (GitHub Pages)
 /// can be added later.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum Target {
     Sftp(SftpTarget),
@@ -75,6 +76,7 @@ impl Target {
 
 /// A server reached over SFTP, such as a webspace or a virtual machine.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct SftpTarget {
     pub name: String,
@@ -96,6 +98,7 @@ pub struct SftpTarget {
 
 /// How qed logs in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum SftpAuth {
     Password,

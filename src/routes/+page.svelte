@@ -18,11 +18,9 @@
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
   import {
+    commands,
     BLOCK_NAMES,
-    buildSite,
-    openSite,
     pageIcons,
-    previewSite,
     type BuildReport,
     type Page,
     type Site,
@@ -90,7 +88,7 @@
     loading = true;
     error = null;
     try {
-      site = await openSite(path);
+      site = await commands.openSite(path);
       report = null;
       if (!site.pages.some((p) => p.file === selectedFile)) selectedFile = null;
       remember(path);
@@ -109,7 +107,7 @@
     building = true;
     error = null;
     try {
-      report = await buildSite(site.root);
+      report = await commands.buildSite(site.root);
     } catch (e) {
       error = String(e);
     } finally {
@@ -122,7 +120,7 @@
     building = true;
     error = null;
     try {
-      const info = await previewSite(site.root);
+      const info = await commands.previewSite(site.root);
       report = info.report;
       previewUrl = info.url;
       await openUrl(info.url);

@@ -1,11 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import {
-    generateTargetKey,
-    saveTargets,
-    setTargetPassword,
-    targetSecrets,
-    type SftpTarget,
+    commands,
     type Target,
   } from "$lib/site";
 
@@ -14,7 +10,7 @@
     /** All targets of the site; the edited one is at `index` (or new if -1). */
     targets: Target[];
     index: number;
-    initial: SftpTarget;
+    initial: Target;
     onsaved: (targets: Target[]) => void;
     oncancel: () => void;
   }
@@ -35,7 +31,7 @@
   onMount(async () => {
     if (!form.host || !form.user) return;
     try {
-      const status = await targetSecrets(form);
+      const status = await commands.targetSecrets(form);
       hasPassword = status.has_password;
       publicKey = status.public_key;
     } catch (e) {
@@ -49,7 +45,7 @@
     busy = true;
     error = null;
     try {
-      publicKey = await generateTargetKey(form);
+      publicKey = await commands.generateTargetKey(form);
     } catch (e) {
       error = String(e);
     } finally {
@@ -65,7 +61,7 @@
 
   async function save(event: SubmitEvent) {
     event.preventDefault();
-    const target: SftpTarget = {
+    const target: Target = {
       ...form,
       name: form.name.trim(),
       host: form.host.trim(),
@@ -87,8 +83,8 @@
     busy = true;
     error = null;
     try {
-      await saveTargets(siteRoot, updated);
-      if (target.auth === "password" && password !== "") await setTargetPassword(target, password);
+      await commands.saveTargets(siteRoot, updated);
+      if (target.auth === "password" && password !== "") await commands.setTargetPassword(target, password);
       onsaved(updated);
     } catch (e) {
       error = String(e);

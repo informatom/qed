@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 /// Serialized for the UI with a `type` field, e.g.
 /// `{ "type": "hero", "headline": "Welcome", … }`.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Block {
     /// Markdown text between other blocks.
@@ -35,6 +36,7 @@ pub enum Block {
 
 /// A large header: optional background image, headline, text and a button.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Hero {
     /// File name in the site's `media/` folder.
@@ -48,6 +50,7 @@ pub struct Hero {
 
 /// One image, with alternative text and an optional caption.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Image {
     /// File name in the site's `media/` folder.
@@ -60,6 +63,7 @@ pub struct Image {
 
 /// Text next to an image.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct TextImage {
     /// Markdown.
@@ -73,6 +77,7 @@ pub struct TextImage {
 
 /// Which side an image goes on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum Side {
     Left,
@@ -82,6 +87,7 @@ pub enum Side {
 
 /// Several images in a grid; each links to its full size.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Gallery {
     #[serde(default)]
@@ -89,6 +95,7 @@ pub struct Gallery {
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct GalleryImage {
     /// File name in `media/`.
@@ -98,6 +105,7 @@ pub struct GalleryImage {
 
 /// A file to download, such as a PDF.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Download {
     /// File name in `media/`.
@@ -108,6 +116,7 @@ pub struct Download {
 
 /// Questions and answers that open on click.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Faq {
     pub heading: Option<String>,
@@ -116,6 +125,7 @@ pub struct Faq {
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct FaqItem {
     #[serde(default)]
@@ -128,6 +138,7 @@ pub struct FaqItem {
 /// Two to four columns side by side, each with a title and text. On narrow
 /// screens they stack.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Columns {
     #[serde(default)]
@@ -135,6 +146,7 @@ pub struct Columns {
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Column {
     pub title: Option<String>,
@@ -145,6 +157,7 @@ pub struct Column {
 
 /// A highlighted box that asks the visitor to do something.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct CallToAction {
     pub headline: Option<String>,

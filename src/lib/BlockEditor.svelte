@@ -12,14 +12,14 @@
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
   import MediaPicker from "$lib/MediaPicker.svelte";
   import {
+    commands,
     BLOCK_NAMES,
     mediaUrl,
     newBlock,
     normalizeBlock,
-    savePageBlocks,
     type Block,
     type BlockType,
-    type GalleryBlock,
+    type Gallery,
     type Page,
   } from "$lib/site";
 
@@ -47,7 +47,7 @@
   let items = $state<Item[]>(untrack(() => wrap(page.blocks)));
   let saving = $state(false);
   /** The gallery an image is being picked for, if any. */
-  let pickingFor = $state<GalleryBlock | null>(null);
+  let pickingFor = $state<Gallery | null>(null);
   let error = $state<string | null>(null);
 
   let edited = $derived(items.map((item) => normalizeBlock(item.block)));
@@ -82,7 +82,7 @@
     saving = true;
     error = null;
     try {
-      const saved = await savePageBlocks(siteRoot, page.file, edited);
+      const saved = await commands.savePageBlocks(siteRoot, page.file, edited);
       // The file may read back slightly differently (empty text dropped,
       // neighbouring text joined), so show what was actually saved.
       items = wrap(saved.blocks);

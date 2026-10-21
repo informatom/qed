@@ -33,6 +33,7 @@ const STYLESHEET: &str = include_str!("../assets/site.css");
 
 /// What a build produced.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct BuildReport {
     pub out_dir: PathBuf,
     pub pages: usize,

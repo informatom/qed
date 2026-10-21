@@ -17,6 +17,7 @@ use crate::slug::slugify;
 
 /// What kind of file a media file is, judged by its extension.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum MediaKind {
     Image,
@@ -26,6 +27,7 @@ pub enum MediaKind {
 
 /// One file in the media folder.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct MediaFile {
     /// Path inside `media/`, with `/` between folders: `team.jpg`, `logos/a.png`.
     pub name: String,

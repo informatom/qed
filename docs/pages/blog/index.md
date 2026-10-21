@@ -21,3 +21,4 @@ comparisons to Elixir.
 - [Four more blocks: lists in TOML, a template macro, and std::mem::take](/blog/2026-10-21-four-more-blocks)
 - [Two themes: one for the app, one for the website](/blog/2026-10-21-themes)
 - [Page icons: SVG files built into the program, and a first macro_rules! of our own](/blog/2026-10-21-page-icons)
+- [Types from Rust: generating the UI's TypeScript from the commands](/blog/2026-10-21-types-from-rust)

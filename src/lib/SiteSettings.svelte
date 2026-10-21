@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
-  import { listThemes, saveSiteConfig, type Site, type SiteConfig } from "$lib/site";
+  import { commands, type Site, type SiteConfig } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -16,7 +16,7 @@
   let savedAt = $state<Date | null>(null);
 
   onMount(async () => {
-    themes = await listThemes();
+    themes = await commands.listThemes();
   });
 
   function orNull(text: string | null): string | null {
@@ -38,7 +38,7 @@
     saving = true;
     error = null;
     try {
-      await saveSiteConfig(site.root, edited);
+      await commands.saveSiteConfig(site.root, edited);
       onsaved(edited);
       savedAt = new Date();
     } catch (e) {

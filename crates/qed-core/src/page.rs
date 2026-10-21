@@ -20,6 +20,7 @@ use crate::block::{self, Block, CONTAINER_TYPES, ContainerError};
 
 /// Settings at the top of a page file.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct FrontMatter {
     pub title: String,
@@ -54,6 +55,7 @@ pub struct FrontMatter {
 /// `2026-13-45`. The UI receives it as text, `"2026-10-21"`, and sends it back
 /// the same way.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "specta", derive(specta::Type), specta(type = String))]
 pub struct PageDate(toml::value::Datetime);
 
 impl<'de> Deserialize<'de> for PageDate {
@@ -87,6 +89,7 @@ impl std::fmt::Display for PageDate {
 
 /// Which menu a page appears in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum Menu {
     #[default]
@@ -97,6 +100,7 @@ pub enum Menu {
 
 /// The contents of one page file.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct PageContent {
     pub front: FrontMatter,
     pub blocks: Vec<Block>,

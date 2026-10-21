@@ -323,6 +323,7 @@ pub async fn test(target: &SftpTarget, credentials: &Credentials) -> Result<Stri
 
 /// How far a publish has got, for a progress bar.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Progress {
     pub stage: Stage,
     pub done_files: usize,
@@ -334,6 +335,7 @@ pub struct Progress {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum Stage {
     Connecting,
@@ -345,6 +347,7 @@ pub enum Stage {
 
 /// What a publish did.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct PublishReport {
     pub uploaded: usize,
     pub deleted: usize,

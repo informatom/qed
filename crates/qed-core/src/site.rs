@@ -28,6 +28,7 @@ pub const MEDIA_DIR: &str = "media";
 
 /// Settings from `site.toml`.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct SiteConfig {
     pub title: String,
@@ -48,6 +49,7 @@ pub struct SiteConfig {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum Navigation {
     #[default]
@@ -65,6 +67,7 @@ fn default_theme() -> String {
 
 /// A site folder, read into memory.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Site {
     pub root: PathBuf,
     pub config: SiteConfig,
@@ -76,6 +79,7 @@ pub struct Site {
 
 /// One page of a site.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Page {
     /// URL path without slashes at either end; `""` is the start page.
     pub path: String,

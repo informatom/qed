@@ -70,11 +70,6 @@ A complete site builder without podcast features.
   clean names, delete only unused files, image picker, Image block with
   width/height and lazy loading. Still open: resizing to several sizes
   with a build cache (#075), tags.
-- **#076 Generated TypeScript types.** Generate `src/lib/site.ts` types and
-  `invoke` wrappers from the Rust commands with `tauri-specta`, instead of
-  keeping them in sync by hand. A hand-kept mismatch (the UI sent `kind`
-  to commands expecting the bare SFTP struct) slipped through all checks
-  on 2026-10-21; `src-tauri` now has a test for that one shape.
 - **#075 Responsive images.** Resize images at build time to a few widths
   (`srcset`), keep the originals in `media/`, cache the results so builds
   stay fast.
@@ -145,6 +140,13 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#076 Generated TypeScript types.** Done 2026-10-21: tauri-specta
+  writes `src/lib/bindings.ts` (types and one function per command) from
+  `commands()` in `src-tauri`; the `bindings_are_current` test rewrites it
+  when it falls behind. qed-core derives `specta::Type` behind its `specta`
+  feature. specta marks `#[serde(default)]` fields optional in both
+  directions, so `site.ts` re-exports the commands and types through
+  `Sent<T>`, which makes them required in what Rust sends.
 - **#077 Sidebar navigation.** Done 2026-10-21: `navigation = "sidebar"` in
   `site.toml` (switch in the Site tab) moves the main menu from the top bar
   into a sidebar, for sites with many menu pages. The current page is

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { createPage, slugify, today, type Page, type Site } from "$lib/site";
+  import { commands, today, type Page, type Site } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -26,7 +26,7 @@
   // Ask Rust for the slug whenever the title changes.
   $effect(() => {
     const current = title;
-    slugify(current).then((result) => {
+    commands.slugify(current).then((result) => {
       if (current === title) slug = result;
     });
   });
@@ -46,7 +46,7 @@
     creating = true;
     error = null;
     try {
-      const page = await createPage(site.root, parent, title, isPost ? date : null);
+      const page = await commands.createPage(site.root, parent, title, isPost ? date : null);
       dialog.close();
       oncreated(page);
     } catch (e) {

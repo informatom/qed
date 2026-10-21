@@ -2,13 +2,13 @@
   import { onMount } from "svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
   import { applyAppTheme, loadAppTheme, saveAppTheme } from "$lib/appTheme";
-  import { listThemes } from "$lib/site";
+  import { commands } from "$lib/site";
 
   let themes = $state<string[]>([]);
   let theme = $state(loadAppTheme());
 
   onMount(async () => {
-    themes = await listThemes();
+    themes = await commands.listThemes();
   });
 
   // Apply and remember right away, so the choice is visible as you click.
