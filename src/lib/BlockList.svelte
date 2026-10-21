@@ -225,6 +225,21 @@
               <span class="text-xs text-base-content/60">Up to four; on phones they stack.</span>
             </div>
           </div>
+        {:else if block.type === "post-list"}
+          <div class="grid gap-3 @2xl:grid-cols-[1fr_12rem]">
+            <label class="flex flex-col gap-1">
+              {@render field("From page", "this page if empty, or e.g. /blog")}
+              <input class="input w-full font-mono" bind:value={block.from} placeholder="this page" />
+            </label>
+            <label class="flex flex-col gap-1">
+              {@render field("How many", "all if empty")}
+              <input class="input w-full" type="number" min="1" bind:value={block.limit} placeholder="all" />
+            </label>
+            <p class="text-sm text-base-content/60 @2xl:col-span-2">
+              Lists the pages below that page that have a date, newest first, with date and summary. Posts dated in
+              the future appear once the site is built on or after their date.
+            </p>
+          </div>
         {:else if block.type === "hero" || block.type === "call-to-action"}
           <!-- Hero and Call to action share most fields. -->
           <div class="grid gap-3 @2xl:grid-cols-2">

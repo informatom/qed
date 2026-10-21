@@ -10,6 +10,9 @@
   {%- if let Some(canonical) = canonical %}
   <link rel="canonical" href="{{ canonical }}">
   {%- endif %}
+  {%- for feed in feeds %}
+  <link rel="alternate" type="application/rss+xml" title="{{ feed.title }}" href="{{ feed.href }}">
+  {%- endfor %}
   <meta name="generator" content="q.e.d.">
   <link rel="stylesheet" href="{{ root }}style.css">
 </head>
@@ -77,6 +80,9 @@
       <ul class="flex flex-wrap gap-x-6 gap-y-1">
         {%- for item in footer_menu %}
         <li><a href="{{ item.href }}" class="link-hover">{{ item.title }}</a></li>
+        {%- endfor %}
+        {%- for feed in feeds %}
+        <li><a href="{{ feed.href }}" class="link-hover inline-flex items-center gap-1.5" title="{{ feed.title }}">{{ rss_icon|safe }}{{ feed.label }}</a></li>
         {%- endfor %}
       </ul>
       <p>Built with <a href="https://github.com/informatom/qed" class="link">q.e.d.</a></p>

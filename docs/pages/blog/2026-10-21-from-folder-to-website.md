@@ -250,7 +250,7 @@ Generated sites are styled with [Tailwind CSS](https://tailwindcss.com/) and
 for Markdown text (`prose`). Since users pick a theme but don't edit
 templates, the set of CSS classes is fixed. So the stylesheet is compiled
 once, with all 35 daisyUI themes (77 KB, 14 KB compressed), by
-`npm run build:site-css`, and built into qed:
+`npm run build:site-css`, and built into q.e.d.:
 
 ```rust
 const STYLESHEET: &str = include_str!("../assets/site.css");

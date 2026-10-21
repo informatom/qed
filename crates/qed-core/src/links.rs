@@ -25,6 +25,11 @@ impl LinkContext {
         }
     }
 
+    /// The URL path of the page links are resolved from.
+    pub fn page_path(&self) -> &str {
+        &self.page_path
+    }
+
     /// The way from this page's folder up to the site root: `""` on the start
     /// page, `"../"` on `/about/`, `"../../"` on `/about/team/`.
     pub fn to_root(&self) -> String {

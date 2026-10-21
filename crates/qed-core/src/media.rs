@@ -252,6 +252,7 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             // Their blocks come next in `all_blocks`.
             Block::Columns(_) => {}
             Block::CallToAction(cta) => markdown_texts.extend(cta.text.as_deref()),
+            Block::PostList(_) => {}
         }
     }
 

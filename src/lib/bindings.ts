@@ -150,7 +150,9 @@ export type Block =
 	type: "columns",
 } & Columns | {
 	type: "call-to-action",
-} & CallToAction;
+} & CallToAction | {
+	type: "post-list",
+} & PostList;
 
 /**  What a build produced. */
 export type BuildReport = {
@@ -162,6 +164,13 @@ export type BuildReport = {
 	media_files: number,
 	/**  Smaller copies of photos, for phones and narrow columns. */
 	resized_images: number,
+	/**  RSS feeds written, one per page with posts below it. */
+	feeds: number,
+	/**
+	 *  Things worth knowing that didn't stop the build, such as a feed
+	 *  left out.
+	 */
+	notes: string[],
 };
 
 /**  A highlighted box that asks the visitor to do something. */
@@ -350,6 +359,20 @@ export type PageContent = {
  *  the same way.
  */
 export type PageDate = string;
+
+/**
+ *  The posts below a page, newest first, each with its date and summary.
+ *  A post is a page with a `date` that isn't in the future.
+ */
+export type PostList = {
+	/**
+	 *  The page whose posts are listed, as its address (`blog` or
+	 *  `/blog`); empty for the page the list is on.
+	 */
+	from: string | null,
+	/**  At most this many posts; all of them if empty. */
+	limit: number | null,
+};
 
 /**  What `preview_site` returns: where to look, and what was built. */
 export type PreviewInfo = {

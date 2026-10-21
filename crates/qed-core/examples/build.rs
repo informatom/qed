@@ -20,13 +20,17 @@ fn main() -> ExitCode {
     match result {
         Ok(report) => {
             println!(
-                "Built {} pages, {} redirects, {} media files and {} resized images into {}",
+                "Built {} pages, {} redirects, {} media files, {} resized images and {} feed(s) into {}",
                 report.pages,
                 report.redirects,
                 report.media_files,
                 report.resized_images,
+                report.feeds,
                 report.out_dir.display()
             );
+            for note in &report.notes {
+                println!("{note}");
+            }
             ExitCode::SUCCESS
         }
         Err(message) => {

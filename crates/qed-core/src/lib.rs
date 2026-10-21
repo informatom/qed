@@ -2,6 +2,7 @@
 //! be tested with plain `cargo test`.
 
 pub mod block;
+pub mod calendar;
 pub mod deploy;
 pub mod generator;
 pub mod history;

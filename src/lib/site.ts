@@ -65,10 +65,19 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   faq: "FAQ",
   columns: "Columns",
   "call-to-action": "Call to action",
+  "post-list": "Post list",
 };
 
 /** The blocks a column can hold (see COLUMN_TYPES in block.rs). */
-export const COLUMN_BLOCK_TYPES: BlockType[] = ["text", "image", "text-image", "download", "faq", "call-to-action"];
+export const COLUMN_BLOCK_TYPES: BlockType[] = [
+  "text",
+  "image",
+  "text-image",
+  "download",
+  "faq",
+  "call-to-action",
+  "post-list",
+];
 
 /** A new, empty block of the given type. */
 export function newBlock(type: BlockType): Block {
@@ -97,11 +106,13 @@ export function newBlock(type: BlockType): Block {
       };
     case "call-to-action":
       return { type, headline: null, text: null, button_label: null, button_link: null };
+    case "post-list":
+      return { type, from: null, limit: null };
   }
 }
 
 /** Fields that may be empty in a file. Everything else is always text. */
-const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title"]);
+const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from"]);
 
 /** Empty optional fields become null, so "" and "nothing" count as the same. */
 export function normalizeBlock(block: Block): Block {

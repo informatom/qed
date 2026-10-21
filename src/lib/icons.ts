@@ -6,6 +6,7 @@ import Columns3 from "@lucide/svelte/icons/columns-3";
 import Download from "@lucide/svelte/icons/download";
 import Image from "@lucide/svelte/icons/image";
 import Images from "@lucide/svelte/icons/images";
+import List from "@lucide/svelte/icons/list";
 import Megaphone from "@lucide/svelte/icons/megaphone";
 import Newspaper from "@lucide/svelte/icons/newspaper";
 import PanelTop from "@lucide/svelte/icons/panel-top";
@@ -23,4 +24,5 @@ export const BLOCK_ICONS: Record<BlockType, Component> = {
   faq: CircleQuestionMark,
   columns: Columns3,
   "call-to-action": Megaphone,
+  "post-list": List,
 };

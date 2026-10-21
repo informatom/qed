@@ -64,7 +64,7 @@
       <input id="site-description" class="input w-full" bind:value={form.description} placeholder="Shown by search engines" />
     </label>
     <label class="flex flex-col gap-1">
-      <span class="text-sm font-medium">Web address <span class="font-normal text-base-content/50">· for the sitemap</span></span>
+      <span class="text-sm font-medium">Web address <span class="font-normal text-base-content/50">· for the sitemap and feeds</span></span>
       <input id="site-base-url" class="input w-full" bind:value={form.base_url} placeholder="https://example.com/" />
     </label>
   </div>

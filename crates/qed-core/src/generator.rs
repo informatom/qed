@@ -11,6 +11,8 @@
 //!                         copies of photos (`team.480w.jpg`, see images.rs)
 //!   assets/…              copied from the site's assets folder (downloads)
 //!   sitemap.xml           only if `base_url` is set
+//!   blog/feed.xml         an RSS feed for each page with posts below it,
+//!                         also only with `base_url`
 //! ```
 
 use std::fs;
@@ -20,6 +22,7 @@ use askama::Template;
 use serde::Serialize;
 
 use crate::block::{Block, Side};
+use crate::calendar::{self, Date};
 use crate::images::{self, ImageError, Images};
 use crate::links::LinkContext;
 use crate::markdown;
@@ -46,6 +49,11 @@ pub struct BuildReport {
     pub media_files: usize,
     /// Smaller copies of photos, for phones and narrow columns.
     pub resized_images: usize,
+    /// RSS feeds written, one per page with posts below it.
+    pub feeds: usize,
+    /// Things worth knowing that didn't stop the build, such as a feed
+    /// left out.
+    pub notes: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -79,6 +87,12 @@ pub fn build(site: &Site) -> Result<BuildReport, BuildError> {
 
 /// Builds the site into `out_dir`, replacing an earlier build there.
 pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError> {
+    build_on(site, out_dir, calendar::today())
+}
+
+/// Builds as if it were `today`: posts dated later are left out of lists
+/// and feeds.
+fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, BuildError> {
     prepare_output(out_dir)?;
 
     let published: Vec<&Page> = site
@@ -90,9 +104,38 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
     let images = Images::new(&media_dir);
     let main_menu = menu(&published, Menu::Main);
     let footer_menu = menu(&published, Menu::Footer);
+    // Feeds need full addresses, so only a site with a web address gets them.
+    let mut notes = Vec::new();
+    let sources = feed_sources(&published, today);
+    let feeds: Vec<Feed> = match &site.config.base_url {
+        Some(_) => sources
+            .iter()
+            .map(|page| Feed {
+                page,
+                file: feed_file(&page.path),
+                title: feed_title(&site.config, page),
+            })
+            .collect(),
+        None => {
+            if !sources.is_empty() {
+                notes.push(
+                    "No RSS feed: feeds need the site's web address, under Site → Settings."
+                        .to_string(),
+                );
+            }
+            Vec::new()
+        }
+    };
+    let context = Context {
+        root: &site.root,
+        images: &images,
+        pages: &published,
+        feeds: &feeds,
+        today,
+    };
 
     for page in &published {
-        let html = render_page(site, &images, page, &main_menu, &footer_menu)?;
+        let html = render_page(site, &context, page, &main_menu, &footer_menu, &feeds)?;
         write(&page_file(out_dir, &page.path), html)?;
     }
 
@@ -128,6 +171,13 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
 
     if let Some(base_url) = &site.config.base_url {
         write(&out_dir.join("sitemap.xml"), sitemap(base_url, &published))?;
+        for feed in &feeds {
+            let posts = posts(&published, &feed.page.path, today);
+            write(
+                &out_dir.join(&feed.file),
+                rss(&site.config, base_url, feed, &posts),
+            )?;
+        }
     }
 
     Ok(BuildReport {
@@ -137,7 +187,171 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
         redirects,
         media_files,
         resized_images,
+        feeds: feeds.len(),
+        notes,
     })
+}
+
+/// Lucide's RSS icon, for feed links.
+const RSS_ICON: &str = include_str!("../assets/icons/rss.svg");
+
+/// What blocks need besides themselves.
+struct Context<'a> {
+    /// The site folder.
+    root: &'a Path,
+    images: &'a Images,
+    /// The pages being built, for Post lists.
+    pages: &'a [&'a Page],
+    /// The feeds being written, so a Post list can link its own.
+    feeds: &'a [Feed<'a>],
+    today: Date,
+}
+
+/// The posts below the page at `parent`, newest first: pages with a date
+/// that isn't after `today`. Posts of the same day go by `weight`, the
+/// higher first: the sidebar shows lower weights first, so the list is the
+/// other way round, like the dates.
+fn posts<'a>(pages: &[&'a Page], parent: &str, today: Date) -> Vec<&'a Page> {
+    let below = format!("{parent}/");
+    let mut posts: Vec<(Date, &Page)> = pages
+        .iter()
+        .copied()
+        .filter(|page| {
+            if parent.is_empty() {
+                !page.path.is_empty()
+            } else {
+                page.path.starts_with(&below)
+            }
+        })
+        .filter_map(|page| {
+            let date = page.content.front.date.as_ref()?.date()?;
+            (date <= today).then_some((date, page))
+        })
+        .collect();
+    posts.sort_by(|(a, page_a), (b, page_b)| {
+        b.cmp(a)
+            .then_with(|| {
+                let weight = |page: &Page| page.content.front.weight;
+                weight(page_b).cmp(&weight(page_a))
+            })
+            .then_with(|| page_a.path.cmp(&page_b.path))
+    });
+    posts.into_iter().map(|(_, page)| page).collect()
+}
+
+/// One RSS feed: the posts below `page`.
+struct Feed<'a> {
+    page: &'a Page,
+    /// In the built site: `blog/feed.xml`.
+    file: String,
+    title: String,
+}
+
+/// The pages that get a feed: those with at least one post right below
+/// them, so `/blog` does for `/blog/2026-10-21-hello`.
+fn feed_sources<'a>(pages: &[&'a Page], today: Date) -> Vec<&'a Page> {
+    pages
+        .iter()
+        .copied()
+        .filter(|parent| {
+            pages.iter().any(|page| {
+                !page.path.is_empty()
+                    && page.path.rsplit_once('/').map_or("", |(up, _)| up) == parent.path
+                    && page
+                        .content
+                        .front
+                        .date
+                        .as_ref()
+                        .and_then(|date| date.date())
+                        .is_some_and(|date| date <= today)
+            })
+        })
+        .collect()
+}
+
+fn feed_file(path: &str) -> String {
+    if path.is_empty() {
+        "feed.xml".to_string()
+    } else {
+        format!("{path}/feed.xml")
+    }
+}
+
+/// "Blog · My Site", or just the site's title for posts on the start page.
+fn feed_title(config: &SiteConfig, page: &Page) -> String {
+    if page.path.is_empty() {
+        config.title.clone()
+    } else {
+        format!("{} · {}", page.content.front.title, config.title)
+    }
+}
+
+/// The full address of a page: `https://example.com/blog/`.
+fn absolute(base_url: &str, path: &str) -> String {
+    let base = base_url.trim_end_matches('/');
+    if path.is_empty() {
+        format!("{base}/")
+    } else {
+        format!("{base}/{path}/")
+    }
+}
+
+/// An RSS 2.0 feed. The summary goes in as the description, as written.
+fn rss(config: &SiteConfig, base_url: &str, feed: &Feed, posts: &[&Page]) -> String {
+    let page = feed.page;
+    let description = page
+        .content
+        .front
+        .description
+        .as_deref()
+        .or(config.description.as_deref())
+        .unwrap_or(&feed.title);
+    let self_link = format!("{}/{}", base_url.trim_end_matches('/'), feed.file);
+    let mut xml = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+         <rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\" \
+         xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<channel>\n",
+    );
+    xml.push_str(&format!(
+        "  <title>{}</title>\n  <link>{}</link>\n  <description>{}</description>\n  \
+         <language>{}</language>\n  \
+         <atom:link href=\"{}\" rel=\"self\" type=\"application/rss+xml\"/>\n",
+        escape_xml(&feed.title),
+        escape_xml(&absolute(base_url, &page.path)),
+        escape_xml(description),
+        escape_xml(&config.language),
+        escape_xml(&self_link),
+    ));
+    for post in posts {
+        let front = &post.content.front;
+        let url = escape_xml(&absolute(base_url, &post.path));
+        xml.push_str(&format!(
+            "  <item>\n    <title>{}</title>\n    <link>{url}</link>\n    \
+             <guid isPermaLink=\"true\">{url}</guid>\n",
+            escape_xml(&front.title)
+        ));
+        if let Some(date) = front.date.as_ref().and_then(|date| date.date()) {
+            xml.push_str(&format!(
+                "    <pubDate>{}</pubDate>\n",
+                calendar::rfc822(date)
+            ));
+        }
+        if let Some(text) = front.summary.as_deref().or(front.description.as_deref()) {
+            xml.push_str(&format!(
+                "    <description>{}</description>\n",
+                escape_xml(text)
+            ));
+        }
+        for author in &front.authors {
+            xml.push_str(&format!(
+                "    <dc:creator>{}</dc:creator>\n",
+                escape_xml(author)
+            ));
+        }
+        xml.push_str("  </item>\n");
+    }
+    xml.push_str("</channel>\n</rss>\n");
+    xml
 }
 
 /// Empties an earlier build, or refuses if the folder holds something else.
@@ -295,6 +509,7 @@ fn escape_xml(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 // ---------------------------------------------------------------------------
@@ -309,6 +524,9 @@ struct PageTemplate<'a> {
     title: &'a str,
     description: Option<&'a str>,
     canonical: Option<String>,
+    /// The site's RSS feeds, for `<link rel="alternate">` and the footer.
+    feeds: Vec<FeedLink>,
+    rss_icon: &'static str,
     is_home: bool,
     /// Relative path to the site root, for the stylesheet.
     root: String,
@@ -336,6 +554,7 @@ struct BlockTemplate<'a> {
     /// (Text with image).
     full_sizes: &'static str,
     half_sizes: &'static str,
+    rss_icon: &'static str,
 }
 
 #[derive(Template)]
@@ -359,6 +578,20 @@ struct MenuLink {
 struct Button {
     label: String,
     href: String,
+}
+
+struct FeedLink {
+    title: String,
+    href: String,
+    /// For the footer: "RSS feed", or "Blog RSS feed" when there are several.
+    label: String,
+}
+
+struct PostEntry {
+    title: String,
+    href: String,
+    date: String,
+    summary_html: Option<String>,
 }
 
 /// A block, ready for the template: Markdown rendered, links resolved.
@@ -408,6 +641,11 @@ enum RenderedBlock {
         text_html: Option<String>,
         button: Option<Button>,
     },
+    PostList {
+        posts: Vec<PostEntry>,
+        /// The feed of the listed page, if it has one.
+        feed_href: Option<String>,
+    },
 }
 
 struct Picture {
@@ -433,10 +671,11 @@ struct FaqEntry {
 
 fn render_page(
     site: &Site,
-    images: &Images,
+    context: &Context,
     page: &Page,
     main_menu: &[MenuEntry],
     footer_menu: &[MenuEntry],
+    feeds: &[Feed],
 ) -> Result<String, BuildError> {
     let config = &site.config;
     let front = &page.content.front;
@@ -464,14 +703,10 @@ fn render_page(
         byline.push(front.authors.join(", "));
     }
 
-    let canonical = config.base_url.as_ref().map(|base| {
-        let base = base.trim_end_matches('/');
-        if page.path.is_empty() {
-            format!("{base}/")
-        } else {
-            format!("{base}/{}/", page.path)
-        }
-    });
+    let canonical = config
+        .base_url
+        .as_ref()
+        .map(|base| absolute(base, &page.path));
 
     let sidebar = config.navigation == Navigation::Sidebar && !main_menu.is_empty();
     let template = PageTemplate {
@@ -479,6 +714,19 @@ fn render_page(
         title: &front.title,
         description: front.description.as_deref(),
         canonical,
+        feeds: feeds
+            .iter()
+            .map(|feed| FeedLink {
+                title: feed.title.clone(),
+                href: format!("{}{}", links.to_root(), feed.file),
+                label: if feeds.len() == 1 {
+                    "RSS feed".to_string()
+                } else {
+                    format!("{} RSS feed", feed.page.content.front.title)
+                },
+            })
+            .collect(),
+        rss_icon: RSS_ICON,
         is_home: page.path.is_empty(),
         root: links.to_root(),
         home_href: links.page(""),
@@ -492,7 +740,7 @@ fn render_page(
             .content
             .blocks
             .iter()
-            .map(|block| render_html(block, &links, &site.root, images, false))
+            .map(|block| render_html(block, &links, context, false))
             .collect::<Result<_, _>>()
             .map_err(|source| BuildError::Template {
                 page: page.path.clone(),
@@ -510,11 +758,10 @@ fn render_page(
 fn render_html(
     block: &Block,
     links: &LinkContext,
-    root: &Path,
-    images: &Images,
+    context: &Context,
     in_column: bool,
 ) -> Result<String, askama::Error> {
-    let rendered = render_block(block, links, root, images)?;
+    let rendered = render_block(block, links, context)?;
     let (full_sizes, half_sizes) = if in_column {
         (
             "(min-width: 48rem) 28rem, 100vw",
@@ -530,6 +777,7 @@ fn render_html(
         block: &rendered,
         full_sizes,
         half_sizes,
+        rss_icon: RSS_ICON,
     }
     .render()
 }
@@ -543,9 +791,9 @@ fn is_within(page: &str, entry: &str) -> bool {
 fn render_block(
     block: &Block,
     links: &LinkContext,
-    root: &Path,
-    images: &Images,
+    context: &Context,
 ) -> Result<RenderedBlock, askama::Error> {
+    let (root, images) = (context.root, context.images);
     let markdown = |text: &Option<String>| text.as_deref().map(|t| markdown::render(t, links));
     let button = |label: &Option<String>, link: &Option<String>| match (label, link) {
         (Some(label), Some(link)) => Some(Button {
@@ -659,7 +907,7 @@ fn render_block(
                         blocks: column
                             .blocks
                             .iter()
-                            .map(|inner| render_html(inner, links, root, images, true))
+                            .map(|inner| render_html(inner, links, context, true))
                             .collect::<Result<_, _>>()?,
                     })
                 })
@@ -670,6 +918,41 @@ fn render_block(
             text_html: markdown(&cta.text),
             button: button(&cta.button_label, &cta.button_link),
         },
+        Block::PostList(list) => {
+            // Empty means the page the list is on.
+            let from = list
+                .from
+                .as_deref()
+                .map(|from| from.trim().trim_matches('/'))
+                .filter(|from| !from.is_empty())
+                .unwrap_or(links.page_path());
+            let mut posts = posts(context.pages, from, context.today);
+            if let Some(limit) = list.limit.and_then(|limit| usize::try_from(limit).ok()) {
+                posts.truncate(limit);
+            }
+            RenderedBlock::PostList {
+                feed_href: context
+                    .feeds
+                    .iter()
+                    .find(|feed| feed.page.path == from)
+                    .map(|feed| format!("{}{}", links.to_root(), feed.file)),
+                posts: posts
+                    .iter()
+                    .map(|post| PostEntry {
+                        title: post.content.front.title.clone(),
+                        href: links.page(&post.path),
+                        date: post
+                            .content
+                            .front
+                            .date
+                            .as_ref()
+                            .map(ToString::to_string)
+                            .unwrap_or_default(),
+                        summary_html: markdown(&post.content.front.summary),
+                    })
+                    .collect(),
+            }
+        }
     })
 }
 
@@ -760,6 +1043,126 @@ mod tests {
 
     fn read(path: PathBuf) -> String {
         fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+    }
+
+    /// A blog with three posts: one in the past, one today, one next year,
+    /// plus a draft and a page without a date.
+    fn blog(dir: &Path) -> Site {
+        let write = |file: &str, text: &str| {
+            let path = dir.join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"Pod & Co\"\n");
+        write(
+            "pages/index.md",
+            "+++\ntitle = \"Home\"\n+++\n\n::: post-list\nfrom = \"/blog\"\nlimit = 1\n:::\n",
+        );
+        write(
+            "pages/blog.md",
+            "+++\ntitle = \"Blog\"\ndescription = \"News\"\n+++\n\n::: post-list\n:::\n",
+        );
+        write(
+            "pages/blog/2026-01-05-old.md",
+            "+++\ntitle = \"Old <news>\"\ndate = 2026-01-05\nsummary = \"The *first* one.\"\nauthors = [\"Ann\"]\n+++\n",
+        );
+        write(
+            "pages/blog/2026-10-21-today.md",
+            "+++\ntitle = \"Today\"\ndate = 2026-10-21\n+++\n",
+        );
+        write(
+            "pages/blog/2027-01-01-later.md",
+            "+++\ntitle = \"Later\"\ndate = 2027-01-01\n+++\n",
+        );
+        write(
+            "pages/blog/2026-02-02-draft.md",
+            "+++\ntitle = \"Draft\"\ndate = 2026-02-02\ndraft = true\n+++\n",
+        );
+        write(
+            "pages/blog/about.md",
+            "+++\ntitle = \"About the blog\"\n+++\n",
+        );
+        site::open(dir).unwrap()
+    }
+
+    const TODAY: Date = Date {
+        year: 2026,
+        month: 10,
+        day: 21,
+    };
+
+    #[test]
+    fn lists_posts_newest_first_without_future_ones() {
+        let dir = tempfile::tempdir().unwrap();
+        let site = blog(dir.path());
+        let out = dir.path().join("_site");
+        build_on(&site, &out, TODAY).unwrap();
+
+        let blog = read(out.join("blog/index.html"));
+        let today = blog.find(">Today</a>").expect("today's post");
+        let old = blog
+            .find(">Old &#60;news&#62;</a>")
+            .expect("older post, escaped");
+        assert!(today < old, "newest first");
+        assert!(blog.contains(r#"href="../blog/2026-01-05-old/""#), "{blog}");
+        assert!(blog.contains("<em>first</em>"), "summary as Markdown");
+        assert!(!blog.contains("Later"), "future post left out");
+        assert!(!blog.contains(">Draft</a>"), "draft left out");
+        assert!(
+            !blog.contains("About the blog"),
+            "page without a date left out"
+        );
+
+        let home = read(out.join("index.html"));
+        assert!(home.contains(r#"href="blog/2026-10-21-today/""#), "{home}");
+        assert!(!home.contains("Old"), "limit = 1");
+    }
+
+    #[test]
+    fn writes_a_feed_with_a_base_url_and_says_why_not_without() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        let out = dir.path().join("_site");
+
+        let report = build_on(&site, &out, TODAY).unwrap();
+        assert_eq!(report.feeds, 0);
+        assert!(
+            report.notes[0].contains("web address"),
+            "{:?}",
+            report.notes
+        );
+        assert!(!out.join("blog/feed.xml").exists());
+
+        site.config.base_url = Some("https://example.com/".into());
+        let report = build_on(&site, &out, TODAY).unwrap();
+        assert_eq!(report.feeds, 1);
+        assert!(report.notes.is_empty());
+        let feed = read(out.join("blog/feed.xml"));
+        assert!(
+            feed.contains("<title>Blog · Pod &amp; Co</title>"),
+            "{feed}"
+        );
+        assert!(feed.contains("<description>News</description>"), "{feed}");
+        assert!(feed.contains(
+            "<guid isPermaLink=\"true\">https://example.com/blog/2026-10-21-today/</guid>"
+        ));
+        assert!(
+            feed.contains("<pubDate>Mon, 05 Jan 2026 00:00:00 +0000</pubDate>"),
+            "{feed}"
+        );
+        assert!(feed.contains("<title>Old &lt;news&gt;</title>"), "{feed}");
+        assert!(feed.contains("<dc:creator>Ann</dc:creator>"), "{feed}");
+        assert!(!feed.contains("Later") && !feed.contains("Draft"), "{feed}");
+
+        let blog_page = read(out.join("blog/index.html"));
+        assert!(blog_page.contains(r#"href="../blog/feed.xml" class="link link-hover inline-flex items-center gap-1.5"><svg"#), "{blog_page}");
+        assert!(blog_page.contains("Subscribe with RSS"), "{blog_page}");
+        assert!(blog_page.contains("RSS feed</a></li>"), "footer link");
+        let post = read(out.join("blog/2026-01-05-old/index.html"));
+        assert!(
+            post.contains(r#"<link rel="alternate" type="application/rss+xml" title="Blog · Pod &#38; Co" href="../../blog/feed.xml">"#),
+            "{post}"
+        );
     }
 
     #[test]

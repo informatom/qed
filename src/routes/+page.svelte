@@ -104,7 +104,8 @@
   // itself after 10 seconds. Each new report starts its own timer; the
   // function returned here cancels the old one.
   $effect(() => {
-    if (!report) return;
+    // One with notes stays until it's closed, so the notes can be read.
+    if (!report || report.notes.length) return;
     const timer = setTimeout(() => (report = null), 10_000);
     return () => clearTimeout(timer);
   });
@@ -262,12 +263,17 @@
     <div id="build-report" role="status" class="alert alert-success alert-soft">
       <span class="flex-1">
         Built {report.pages} pages{report.drafts_skipped ? ` (${report.drafts_skipped} drafts skipped)` : ""},
-        {report.redirects} redirects, {report.media_files} media files and {report.resized_images} resized images into
+        {report.redirects} redirects, {report.media_files} media files, {report.resized_images} resized images{report.feeds
+          ? ` and ${report.feeds === 1 ? "1 feed" : `${report.feeds} feeds`}`
+          : ""} into
         <code class="font-mono text-sm">{report.out_dir}</code>.
         <button class="link" onclick={() => report && revealItemInDir(report.out_dir)}>Show in file manager</button>
         {#if previewUrl}
           Preview: <button class="link" onclick={() => previewUrl && openUrl(previewUrl)}>{previewUrl}</button>
         {/if}
+        {#each report.notes as note (note)}
+          <span class="mt-1 block text-warning">{note}</span>
+        {/each}
       </span>
       <button type="button" class="btn btn-ghost btn-xs btn-square" aria-label="Close" onclick={() => (report = null)}>✕</button>
     </div>

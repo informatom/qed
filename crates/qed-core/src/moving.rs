@@ -246,6 +246,16 @@ fn rewrite_links(content: &mut PageContent, links: &BTreeMap<String, String>) {
         for_each_markdown(block, &mut |text| {
             *text = markdown::replace_link_targets(text, links);
         });
+        if let Block::PostList(list) = block {
+            if let Some(new) = list
+                .from
+                .as_deref()
+                .and_then(|from| links.get(&site::post_list_link(from)))
+            {
+                list.from = Some(new.trim_start_matches('/').to_string());
+            }
+            return;
+        }
         let button = match block {
             Block::Hero(hero) => &mut hero.button_link,
             Block::CallToAction(cta) => &mut cta.button_link,
@@ -314,7 +324,8 @@ mod tests {
             "+++\ntitle = \"Home\"\n+++\n\n\
              Meet [us](/about), the [team](about/team.md#people) and [a\n\
              friend](/elsewhere). Also [contact](contact.md).\n\n\
-             ::: hero\nbutton_label = \"Team\"\nbutton_link = \"/about/team/\"\n:::\n",
+             ::: hero\nbutton_label = \"Team\"\nbutton_link = \"/about/team/\"\n:::\n\n\
+             ::: post-list\nfrom = \"about\"\n:::\n",
         );
         write(
             root,
@@ -363,6 +374,7 @@ mod tests {
         assert!(home.contains("[team](company/team.md#people)"), "{home}");
         assert!(home.contains("friend](/elsewhere)"), "{home}");
         assert!(home.contains("button_link = \"/company/team/\""), "{home}");
+        assert!(home.contains("from = \"company\""), "{home}");
         assert!(!home.contains("redirect_from"), "{home}");
 
         // The address /company was a redirect to Contact; the page took it over.

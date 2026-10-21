@@ -83,6 +83,17 @@ impl Serialize for PageDate {
     }
 }
 
+impl PageDate {
+    /// The calendar date, without a time of day; `None` for a bare time.
+    pub fn date(&self) -> Option<crate::calendar::Date> {
+        self.0.date.map(|date| crate::calendar::Date {
+            year: i64::from(date.year),
+            month: u32::from(date.month),
+            day: u32::from(date.day),
+        })
+    }
+}
+
 impl std::fmt::Display for PageDate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)

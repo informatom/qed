@@ -51,8 +51,6 @@ A complete site builder without podcast features.
   clean names, delete only unused files, image picker, Image block with
   width/height and lazy loading. Still open: resizing to several sizes
   with a build cache (#075, done), tags.
-- **#040 Blog.** Pages with kind `post` under a `blog` parent, a Post list
-  block and `blog/feed.xml`.
 - **#026 Site generator.** Render HTML for published pages, posts, menus,
   redirects (meta-refresh stubs) and the sitemap with Rust templates. Copy
   the images used. Rewrite relative links to other `.md` pages into page
@@ -298,7 +296,18 @@ A complete site builder without podcast features.
 - **#016 License.** Changed from AGPL-3.0 to GPL-3.0 with the move to desktop.
 - **#019 Comments and sharing.** Share links, no comments (#053).
 - **#040 Blog.** Pages with kind `post` under a `blog` parent, with a Post
-  list block and `blog/feed.xml`.
+  list block and `blog/feed.xml`. *Done 2026-10-21*: a post is a page
+  with a `date` that isn't in the future (later ones show up once the site
+  is built on or after their date; their own pages are built anyway). The
+  Post list block (`::: post-list`, `from` and `limit`, also in columns)
+  shows the posts below a page newest first, same-day posts by `weight`
+  (higher first), with date and summary. Each page with posts right below
+  it gets an RSS 2.0 feed (`blog/feed.xml`, summary as description,
+  authors as `dc:creator`), linked from every page's `<head>` and, with
+  the RSS icon, from the footer and below Post lists; feeds need
+  `base_url`, and the build report says so when it's missing. Moving a
+  page updates Post lists that list it. Dates without a library:
+  `qed_core::calendar`.
 - **#041 Contributors.** Their own records, linked to episodes (#047).
 - **#042 Redirects.** Keep page redirects; write meta-refresh stubs at old
   paths.

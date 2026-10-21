@@ -478,6 +478,9 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             Block::Image(image) => texts.extend(image.caption.as_deref()),
             Block::TextImage(block) => texts.extend(block.text.as_deref()),
             Block::Faq(faq) => texts.extend(faq.items.iter().map(|item| item.answer.as_str())),
+            // The page it lists counts as a link, so moving or deleting
+            // that page knows about the list.
+            Block::PostList(list) => targets.extend(list.from.as_deref().map(post_list_link)),
             Block::Gallery(_) | Block::Download(_) | Block::Columns(_) => {}
         }
     }
@@ -485,6 +488,11 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
         targets.extend(markdown::link_targets(text));
     }
     targets
+}
+
+/// A Post list's `from` as a link: `/blog`.
+pub(crate) fn post_list_link(from: &str) -> String {
+    format!("/{}", from.trim().trim_matches('/'))
 }
 
 /// Deletes a page's file. The start page and pages with pages below them

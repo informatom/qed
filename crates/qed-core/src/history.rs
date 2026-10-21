@@ -17,7 +17,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use git2::build::TreeUpdateBuilder;
 use git2::{
@@ -26,6 +25,7 @@ use git2::{
 };
 use serde::Serialize;
 
+use crate::calendar::{self, now_seconds};
 use crate::generator::OUTPUT_DIR;
 use crate::page::{self, PageContent};
 use crate::slug::slugify;
@@ -811,35 +811,16 @@ fn file_mode(mode: u32) -> FileMode {
     }
 }
 
-fn now_seconds() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |time| i64::try_from(time.as_secs()).unwrap_or(0))
-}
-
 /// `2026-10-21-143005` for a time in seconds since 1970, in UTC. Tag names
 /// can't contain `:`.
 fn utc_stamp(seconds: i64) -> String {
-    let days = seconds.div_euclid(86_400);
+    let date = calendar::from_days(seconds.div_euclid(86_400));
     let rest = seconds.rem_euclid(86_400);
-    // Converts days since 1970 into a calendar date; see
-    // https://howardhinnant.github.io/date_algorithms.html#civil_from_days
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let day_of_era = z.rem_euclid(146_097);
-    let year_of_era =
-        (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
-    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-    let month_index = (5 * day_of_year + 2) / 153;
-    let day = day_of_year - (153 * month_index + 2) / 5 + 1;
-    let month = if month_index < 10 {
-        month_index + 3
-    } else {
-        month_index - 9
-    };
-    let year = year_of_era + era * 400 + i64::from(month <= 2);
     format!(
-        "{year:04}-{month:02}-{day:02}-{:02}{:02}{:02}",
+        "{:04}-{:02}-{:02}-{:02}{:02}{:02}",
+        date.year,
+        date.month,
+        date.day,
         rest / 3600,
         rest % 3600 / 60,
         rest % 60

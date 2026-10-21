@@ -53,6 +53,7 @@ pub enum Block {
     Faq(Faq),
     Columns(Columns),
     CallToAction(CallToAction),
+    PostList(PostList),
 }
 
 /// A large header: optional background image, headline, text and a button.
@@ -196,6 +197,19 @@ pub struct CallToAction {
     pub button_link: Option<String>,
 }
 
+/// The posts below a page, newest first, each with its date and summary.
+/// A post is a page with a `date` that isn't in the future.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct PostList {
+    /// The page whose posts are listed, as its address (`blog` or
+    /// `/blog`); empty for the page the list is on.
+    pub from: Option<String>,
+    /// At most this many posts; all of them if empty.
+    pub limit: Option<u32>,
+}
+
 impl Block {
     /// The name after `:::` in a page file; `None` for plain text.
     pub fn container_type(&self) -> Option<&'static str> {
@@ -209,6 +223,7 @@ impl Block {
             Block::Faq(_) => Some("faq"),
             Block::Columns(_) => Some("columns"),
             Block::CallToAction(_) => Some("call-to-action"),
+            Block::PostList(_) => Some("post-list"),
         }
     }
 }
@@ -255,15 +270,22 @@ pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)
             .iter_mut()
             .for_each(|item| change(&mut item.answer)),
         Block::CallToAction(cta) => cta.text.iter_mut().for_each(change),
-        Block::Gallery(_) | Block::Download(_) | Block::Columns(_) => {}
+        Block::Gallery(_) | Block::Download(_) | Block::Columns(_) | Block::PostList(_) => {}
     }
 }
 
 /// The blocks a column can hold, besides text. Hero, Gallery and Columns
 /// need the full width.
-pub const COLUMN_TYPES: [&str; 5] = ["image", "text-image", "download", "faq", "call-to-action"];
+pub const COLUMN_TYPES: [&str; 6] = [
+    "image",
+    "text-image",
+    "download",
+    "faq",
+    "call-to-action",
+    "post-list",
+];
 
-pub const CONTAINER_TYPES: [&str; 8] = [
+pub const CONTAINER_TYPES: [&str; 9] = [
     "hero",
     "image",
     "text-image",
@@ -272,6 +294,7 @@ pub const CONTAINER_TYPES: [&str; 8] = [
     "faq",
     "columns",
     "call-to-action",
+    "post-list",
 ];
 
 /// Builds a block from a container's type name and its TOML body.
@@ -286,6 +309,7 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
         "download" => Ok(Block::Download(toml::from_str(toml)?)),
         "faq" => Ok(Block::Faq(toml::from_str(toml)?)),
         "call-to-action" => Ok(Block::CallToAction(toml::from_str(toml)?)),
+        "post-list" => Ok(Block::PostList(toml::from_str(toml)?)),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }
 }
