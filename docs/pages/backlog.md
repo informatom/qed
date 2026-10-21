@@ -84,13 +84,6 @@ A complete site builder without podcast features.
 - **#029 Publisher: GitHub Pages.** Push the built site to the configured
   branch with a deploy key. Needs a second `Target` kind, its own key
   handling and connection test (#031).
-- **#079 A note before publishing.** Publishing closes the open version;
-  instead of the automatic note "Before publishing to X", the Publish
-  button asks for a note (what's new on the site), and publishing can't
-  start without one. It becomes the version's note; the publish tag stays
-  as it is. Only needed when there's an open version or unsaved changes;
-  otherwise the last closed version is published as it is. Asked for
-  2026-10-21.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.
@@ -139,6 +132,14 @@ A complete site builder without podcast features.
   front matter (#046); blocks are containers inside the Markdown (#072);
   drafts and history via git (#073). The app remembers recently opened site
   folders. Publish secrets stay in the OS keychain (#063).
+- **#079 A note before publishing.** Done 2026-10-21: the Publish button
+  opens a dialog that names the destination and, when there's an open
+  version or a change since the last version (`HistoryStatus::needs_note`),
+  asks what's new on the site; publishing can't start without it
+  (`history::close_for_publish`, `HistoryError::NoteNeeded`). The note
+  closes the version; the publish tag stays as it was. Without anything
+  new, the last version is published as it is. Replaces the automatic
+  note "Before publishing to X".
 - **#062 Release builds.** Built 2026-10-21:
   `.github/workflows/release.yml` on github.com/informatom/qed builds, for
   a `v*` tag, a universal macOS `.dmg`, a Windows `.exe` (NSIS), and a
