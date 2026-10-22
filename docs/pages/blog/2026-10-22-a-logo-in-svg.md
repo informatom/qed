@@ -137,6 +137,26 @@ next to the image, so a screen reader would only read it twice. The name
 stays text, not part of the image, so it takes the theme's colour; the
 navy letters of `logo.svg` would almost disappear in the dark theme.
 
+## On this site
+
+Sites made with q.e.d. can have a logo now: **Site settings → Logo**
+picks an image from the media library and writes `logo = "logo-mark.svg"`
+into `site.toml`. The generator puts it before the site's name in every
+page's header, and into the `<head>` as the icon of the browser tab:
+
+```html
+<link rel="icon" href="../media/logo-mark.svg">
+```
+
+Every current browser takes an SVG there, so one small file serves both
+places. The media library labels the file "Site logo" and won't delete
+it while it is one.
+
+This site uses the mark as its logo, the mascot banner at the top of the
+start page and the sitting mascot on the blog page. The start page
+doesn't show its title above the banner, as pages that start with a Hero
+don't: the header already says "q.e.d.", and so does the banner.
+
 ## Links
 
 - [MDN: SVG tutorial](https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial)

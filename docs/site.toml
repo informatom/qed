@@ -1,6 +1,7 @@
 title = "q.e.d."
 language = "en"
 description = "A desktop app that turns a folder of pages into a website. This site is built with q.e.d. itself."
-theme = "dim"
+logo = "logo-mark.svg"
+theme = "nord"
 base_url = "https://qed.informatom.com/"
 navigation = "sidebar"

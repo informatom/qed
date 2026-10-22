@@ -3,6 +3,11 @@ title = "q.e.d."
 description = "A desktop app that turns a folder of pages into a website, and publishes it to your own webspace."
 +++
 
+::: image
+image = "mascot-banner.jpeg"
+alt = "The q.e.d. robot at a desk, holding a microphone and a tablet with a website on it. Above it: q.e.d., desktop app, static site generator, podcast publishing."
+:::
+
 ::: hero
 headline = "Your website, from a folder of pages"
 text = "q.e.d. is a desktop app that turns Markdown pages into a static website and publishes it to your own webspace. No server, no subscription, no static site generator to learn."

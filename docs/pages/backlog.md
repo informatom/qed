@@ -66,8 +66,11 @@ A complete site builder without podcast features.
 - **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
   *Themes done 2026-10-21*: Site settings dialog edits `site.toml` (title,
   description, language, web address, theme); the app has its own theme
-  (App settings, per computer, can follow the system). Logo and other
-  options are still open.
+  (App settings, per computer, can follow the system). *Logo done
+  2026-10-22*: `logo` in `site.toml` (Site settings, image picker) shows
+  before the title in every page's header and is the browser-tab icon
+  (`<link rel="icon">`); the media library marks it "Site logo" and won't
+  delete it. Other options are still open.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.
