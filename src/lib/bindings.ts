@@ -248,6 +248,12 @@ export type FrontMatter = {
 	title: string,
 	/**  Meta description for search engines. */
 	description: string | null,
+	/**
+	 *  The image link previews show (`og:image`), e.g. on social media or in
+	 *  chat apps: a file in `media/`. Without one, the page's first image is
+	 *  used.
+	 */
+	image: string | null,
 	/**  Drafts are left out of the built site. */
 	draft?: boolean,
 	menu?: Menu,

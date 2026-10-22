@@ -3,6 +3,7 @@
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
+  import FolderX from "@lucide/svelte/icons/folder-x";
   import X from "@lucide/svelte/icons/x";
   import type { RecentSite } from "$lib/recentSites";
 
@@ -15,9 +16,10 @@
     onchoose: () => void;
     onnew: () => void;
     onforget: (path: string) => void;
+    onclose: () => void;
   }
 
-  let { title, root, recent, onopen, onchoose, onnew, onforget }: Props = $props();
+  let { title, root, recent, onopen, onchoose, onnew, onforget, onclose }: Props = $props();
 
   let menu: HTMLDetailsElement;
 
@@ -66,6 +68,11 @@
     <li>
       <button type="button" id="switcher-new" onclick={() => pick(onnew)}>
         <FolderPlus class="size-4" /> New site…
+      </button>
+    </li>
+    <li>
+      <button type="button" id="switcher-close" onclick={() => pick(onclose)}>
+        <FolderX class="size-4" /> Close site
       </button>
     </li>
   </ul>

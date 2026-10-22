@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { onMount } from "svelte";
+  import ImageField from "$lib/ImageField.svelte";
   import { commands, pageIcons, type FrontMatter, type Menu, type Page } from "$lib/site";
 
   interface Props {
@@ -56,6 +57,7 @@
     ...form,
     title: form.title.trim(),
     description: orNull(form.description),
+    image: orNull(form.image),
     icon: orNull(form.icon),
     summary: orNull(form.summary),
     date: orNull(form.date),
@@ -101,6 +103,11 @@
       <textarea id="setting-description" class="textarea w-full" rows="2" bind:value={form.description}
         placeholder="Shown by search engines"></textarea>
     </label>
+
+    <div id="setting-image" class="flex flex-col gap-1 @xl:col-span-2">
+      <span class="text-sm font-medium">Share image <span class="font-normal text-base-content/50">· shown when someone shares a link to the page; without one, the page's first image. Needs the site's web address.</span></span>
+      <ImageField {siteRoot} bind:value={form.image} />
+    </div>
 
     <div class="grid grid-cols-[1fr_6rem] gap-3">
       <label class="flex flex-col gap-1">

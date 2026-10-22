@@ -63,11 +63,28 @@ Site settings (`base_url` in `site.toml`). Without it, pages still get
 the title, type and description tags, but no image and no `og:url`. The
 sitemap and the RSS feeds have the same rule, for the same reason.
 
-For a large photo the preview uses the 1600 px copy that the responsive
-images already make (see [Responsive images](2026-10-21-responsive-images.md)),
-not the original from the camera. Its height comes from the same
-function the resizer uses, `scaled_height`, so the number in the tag
-matches the file.
+Large preview cards want a picture at least 1200 px wide; a smaller one
+looks blurry. The responsive images already come in 480, 960 and 1600 px
+copies (see [Responsive images](2026-10-21-responsive-images.md)), so the
+preview takes the smallest copy that is wide enough: the 1600 px one for
+a large photo from a camera. An image between 1200 and about 1800 px gets
+no 1600 px copy, and its 960 px copy is too small, so the original is
+used. In code:
+
+```rust
+const SHARE_IMAGE_WIDTH: u32 = 1200;
+
+match info.widths.iter().find(|&&width| width >= SHARE_IMAGE_WIDTH) {
+    Some(&width) => /* that copy */,
+    None => /* the original */,
+}
+```
+
+`find` returns a reference to the first element that passes the test, so
+`|&&width|` unpacks two layers: the iterator gives `&u32`, and `find`
+hands the test a reference to that, `&&u32`. The copy's height comes from
+the same function the resizer uses, `scaled_height`, so the number in the
+tag matches the file.
 
 ## The first image, with `find_map`
 

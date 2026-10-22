@@ -28,6 +28,10 @@ pub struct FrontMatter {
     pub title: String,
     /// Meta description for search engines.
     pub description: Option<String>,
+    /// The image link previews show (`og:image`), e.g. on social media or in
+    /// chat apps: a file in `media/`. Without one, the page's first image is
+    /// used.
+    pub image: Option<String>,
     /// Drafts are left out of the built site.
     #[serde(default)]
     pub draft: bool,

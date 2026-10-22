@@ -15,6 +15,8 @@ const KEY = "qed:recent-sites";
 /** Before the list, only the last site was kept. */
 const OLD_KEY = "qed:last-site";
 const MAX = 10;
+/** Set while the user has closed the site, so the next start doesn't reopen it. */
+const CLOSED_KEY = "qed:site-closed";
 
 export function recentSites(): RecentSite[] {
   try {
@@ -43,6 +45,25 @@ export function forgetSite(path: string): RecentSite[] {
   const list = recentSites().filter((s) => s.path !== path);
   save(list);
   return list;
+}
+
+/** Whether the app should open the latest site when it starts. */
+export function reopenOnStart(): boolean {
+  try {
+    return localStorage.getItem(CLOSED_KEY) === null;
+  } catch {
+    return true;
+  }
+}
+
+/** Remembers that the user closed the site (or opened one again). */
+export function setSiteClosed(closed: boolean) {
+  try {
+    if (closed) localStorage.setItem(CLOSED_KEY, "1");
+    else localStorage.removeItem(CLOSED_KEY);
+  } catch {
+    // Without storage the app simply reopens the latest site.
+  }
 }
 
 /** The last part of a folder path, as a title for sites not opened yet. */

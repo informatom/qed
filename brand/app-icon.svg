@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>q.e.d.</title>
+  <!-- A light tile, so the icon shows on dark docks and taskbars too. -->
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="#EEF4FB" stroke="#C9D8EA" stroke-width="4"/>
+  <g transform="translate(36 30) scale(0.86)">
+  <defs>
+    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#36A3DC"/>
+      <stop offset="1" stop-color="#8ACB7A"/>
+    </linearGradient>
+    <!-- The Q stands on the ground: nothing of it below the line. -->
+    <clipPath id="above-ground">
+      <rect x="0" y="0" width="512" height="378"/>
+    </clipPath>
+  </defs>
+  <g transform="translate(0 40)">
+  <g stroke-linecap="round" stroke-linejoin="round" fill="none" clip-path="url(#above-ground)">
+    <!-- The Q: navy rim, blue ring, a light stripe inside -->
+    <circle cx="256" cy="214" r="146" stroke="#14366B" stroke-width="72"/>
+    <circle cx="256" cy="214" r="146" stroke="#1F6FD8" stroke-width="52"/>
+    <circle cx="256" cy="214" r="146" stroke="#6FD0F7" stroke-width="10"/>
+    <!-- Its tail -->
+    <path d="M352 318 L396 368" stroke="#14366B" stroke-width="52"/>
+    <path d="M352 318 L396 368" stroke="#1F6FD8" stroke-width="32"/>
+  </g>
+  <g stroke="#14366B" stroke-width="10" stroke-linejoin="round">
+    <!-- Towers, back to front -->
+    <path d="M232 152 L300 124 L300 378 L232 378 Z" fill="#2B7FD9"/>
+    <path d="M296 214 L346 214 L346 378 L296 378 Z" fill="url(#green)"/>
+    <path d="M196 214 Q196 196 214 196 L250 196 L250 378 L196 378 Z" fill="#2AA0B8"/>
+    <!-- House: side wing, then the gabled front -->
+    <path d="M168 252 L222 252 L262 298 L262 378 L168 378 Z" fill="#B7A48D"/>
+    <path d="M108 300 L168 248 L226 300 L226 378 L114 378 L114 300 Z" fill="#DFE6EE"/>
+    <path d="M152 378 L152 326 L182 326 L182 378" fill="#B7A48D"/>
+  </g>
+  <g fill="#14366B">
+    <!-- Windows -->
+    <rect x="252" y="160" width="12" height="12"/>
+    <rect x="272" y="160" width="12" height="12"/>
+    <rect x="315" y="238" width="12" height="12"/>
+    <rect x="315" y="266" width="12" height="12"/>
+    <rect x="315" y="294" width="12" height="12"/>
+    <!-- Ground -->
+    <rect x="92" y="374" width="328" height="14" rx="7"/>
+  </g>
+  </g>
+  </g>
+</svg>

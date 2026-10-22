@@ -24,10 +24,12 @@
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
   import SiteSwitcher from "$lib/SiteSwitcher.svelte";
+  // Vite turns an imported file into its URL.
+  import logoMark from "$lib/assets/logo-mark.svg";
   import UpdateBar from "$lib/UpdateBar.svelte";
   import { checkForUpdate } from "$lib/updates.svelte";
   import X from "@lucide/svelte/icons/x";
-  import { forgetSite, recentSites, rememberSite } from "$lib/recentSites";
+  import { forgetSite, recentSites, rememberSite, reopenOnStart, setSiteClosed } from "$lib/recentSites";
   import {
     commands,
     BLOCK_NAMES,
@@ -121,6 +123,7 @@
       report = null;
       if (!site.pages.some((p) => p.file === selectedFile)) selectedFile = null;
       recent = rememberSite(path, site.config.title);
+      setSiteClosed(false);
     } catch (e) {
       site = null;
       error = String(e);
@@ -167,18 +170,34 @@
 
   /** Opens another site, after asking if edits in the open page would be lost. */
   async function switchTo(path: string) {
-    if (editorDirty) {
-      const discard = await ask("The open page has unsaved changes. Discard them?", {
-        title: "Unsaved changes",
-        kind: "warning",
-        okLabel: "Discard",
-        cancelLabel: "Keep editing",
-      });
-      if (!discard) return;
-      editorDirty = false;
-    }
+    if (!(await mayLeavePage())) return;
     if (site && site.root !== path) selectedFile = null;
     await load(path);
+  }
+
+  /** Asks before unsaved edits in the open page would be lost. */
+  async function mayLeavePage(): Promise<boolean> {
+    if (!editorDirty) return true;
+    const discard = await ask("The open page has unsaved changes. Discard them?", {
+      title: "Unsaved changes",
+      kind: "warning",
+      okLabel: "Discard",
+      cancelLabel: "Keep editing",
+    });
+    if (discard) editorDirty = false;
+    return discard;
+  }
+
+  /** Back to the start screen. The site stays in the recent list, and the
+      next start shows the start screen too, until a site is opened. */
+  async function closeSite() {
+    if (!(await mayLeavePage())) return;
+    site = null;
+    selectedFile = null;
+    report = null;
+    error = null;
+    if (view !== "app") view = "pages";
+    setSiteClosed(true);
   }
 
   // Reopen the last site once, when the page first appears.
@@ -196,7 +215,7 @@
 
   onMount(() => {
     const path = recent[0]?.path;
-    if (path) load(path);
+    if (path && reopenOnStart()) load(path);
   });
 
   function depth(path: string): number {
@@ -209,32 +228,38 @@
   <UpdateBar />
   <header class="flex flex-wrap items-start justify-between gap-4">
     {#if site}
-      <div id="site-summary" class="flex min-w-0 flex-col gap-1">
-        <div class="flex flex-wrap items-baseline gap-x-3 text-sm text-base-content/60">
-          <span class="text-xs font-semibold tracking-widest text-primary uppercase">q.e.d.</span>
-          <span>
-            <span id="site-root" class="font-mono">{site.root}</span> · {site.pages.length} pages{draftCount
-              ? `, ${draftCount} drafts`
-              : ""} · language {site.config.language} · theme {site.config.theme}
-          </span>
-        </div>
-        <div class="flex flex-wrap items-baseline gap-x-4">
-          <SiteSwitcher
-              title={site.config.title}
-              root={site.root}
-              {recent}
-              onopen={switchTo}
-              onchoose={chooseFolder}
-              onnew={() => (creatingSite = true)}
-              onforget={(path) => (recent = forgetSite(path))}
-            />
-          {#if site.config.description}
-            <p class="text-base-content/70">{site.config.description}</p>
-          {/if}
+      <div class="flex min-w-0 items-center gap-4">
+        <img id="app-logo" src={logoMark} alt="" class="size-14 shrink-0" />
+        <div id="site-summary" class="flex min-w-0 flex-col gap-1">
+          <div class="flex flex-wrap items-baseline gap-x-3 text-sm text-base-content/60">
+            <span class="text-xs font-semibold tracking-widest text-primary uppercase">q.e.d.</span>
+            <span>
+              <span id="site-root" class="font-mono">{site.root}</span> · {site.pages.length} pages{draftCount
+                ? `, ${draftCount} drafts`
+                : ""} · language {site.config.language} · theme {site.config.theme}
+            </span>
+          </div>
+          <div class="flex flex-wrap items-baseline gap-x-4">
+            <SiteSwitcher
+                title={site.config.title}
+                root={site.root}
+                {recent}
+                onopen={switchTo}
+                onchoose={chooseFolder}
+                onnew={() => (creatingSite = true)}
+                onforget={(path) => (recent = forgetSite(path))}
+              onclose={closeSite}
+              />
+            {#if site.config.description}
+              <p class="text-base-content/70">{site.config.description}</p>
+            {/if}
+          </div>
         </div>
       </div>
     {:else}
-      <h1 class="text-3xl font-bold tracking-tight">q.e.d.</h1>
+      <h1 class="flex items-center gap-3 text-3xl font-bold tracking-tight">
+        <img id="app-logo" src={logoMark} alt="" class="size-12" /> q.e.d.
+      </h1>
     {/if}
     <div class="flex gap-2">
       {#if site}
@@ -436,6 +461,7 @@
     </div>
   {:else if !loading && view === "pages"}
     <section id="empty-state" class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+      <img id="empty-state-logo" src={logoMark} alt="" class="mb-2 size-40" />
       <p class="text-lg">Open a site folder to see its pages, or make a new site.</p>
       <button id="open-site" class="btn btn-primary" onclick={chooseFolder} disabled={loading}>
         {#if loading}<span class="loading loading-spinner loading-sm"></span>{:else}<FolderOpen class="size-4" />{/if}

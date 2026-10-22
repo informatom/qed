@@ -219,6 +219,7 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
     let mut images = Vec::new();
     let mut downloads = Vec::new();
     let mut markdown_texts: Vec<&str> = Vec::new();
+    images.extend(page.content.front.image.as_deref().and_then(media_name));
 
     for block in block::all_blocks(&page.content.blocks) {
         match block {
@@ -476,6 +477,18 @@ mod tests {
             "linked from Markdown, with a #fragment"
         );
         assert!(files[3].used_by.is_empty());
+    }
+
+    #[test]
+    fn counts_the_share_image_as_used() {
+        let dir = site_dir();
+        fs::write(
+            dir.path().join("pages/news.md"),
+            "+++\ntitle = \"News\"\nimage = \"logos/a.png\"\n+++\n",
+        )
+        .unwrap();
+        let files = list(&site::open(dir.path()).unwrap(), Library::Media).unwrap();
+        assert_eq!(files[0].used_by, ["", "news"]);
     }
 
     #[test]

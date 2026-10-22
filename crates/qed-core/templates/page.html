@@ -10,6 +10,28 @@
   {%- if let Some(canonical) = canonical %}
   <link rel="canonical" href="{{ canonical }}">
   {%- endif %}
+  <meta property="og:title" content="{% if is_home %}{{ site.title }}{% else %}{{ title }}{% endif %}">
+  <meta property="og:site_name" content="{{ site.title }}">
+  <meta property="og:type" content="{{ og_type }}">
+  {%- if let Some(description) = description %}
+  <meta property="og:description" content="{{ description }}">
+  {%- endif %}
+  {%- if let Some(canonical) = canonical %}
+  <meta property="og:url" content="{{ canonical }}">
+  {%- endif %}
+  {%- if let Some(image) = share_image %}
+  <meta property="og:image" content="{{ image.url }}">
+  {%- if let Some(width) = image.width %}
+  <meta property="og:image:width" content="{{ width }}">
+  {%- endif %}
+  {%- if let Some(height) = image.height %}
+  <meta property="og:image:height" content="{{ height }}">
+  {%- endif %}
+  {%- if let Some(alt) = image.alt %}
+  <meta property="og:image:alt" content="{{ alt }}">
+  {%- endif %}
+  <meta name="twitter:card" content="summary_large_image">
+  {%- endif %}
   {%- for feed in feeds %}
   <link rel="alternate" type="application/rss+xml" title="{{ feed.title }}" href="{{ feed.href }}">
   {%- endfor %}

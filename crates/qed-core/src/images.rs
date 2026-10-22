@@ -320,7 +320,7 @@ fn resize(source: &Path, copies: &[Resized]) -> Result<(), ImageError> {
 }
 
 /// The height that keeps the aspect ratio at `new_width`, at least 1 pixel.
-fn scaled_height(width: u32, height: u32, new_width: u32) -> u32 {
+pub(crate) fn scaled_height(width: u32, height: u32, new_width: u32) -> u32 {
     let scaled =
         (u64::from(height) * u64::from(new_width) + u64::from(width) / 2) / u64::from(width);
     u32::try_from(scaled).unwrap_or(u32::MAX).max(1)

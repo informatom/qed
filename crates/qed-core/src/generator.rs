@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use askama::Template;
 use serde::Serialize;
 
-use crate::block::{Block, Side};
+use crate::block::{self, Block, Side};
 use crate::calendar::{self, Date};
 use crate::images::{self, ImageError, Images};
 use crate::links::LinkContext;
@@ -524,6 +524,10 @@ struct PageTemplate<'a> {
     title: &'a str,
     description: Option<&'a str>,
     canonical: Option<String>,
+    /// `og:type`: "article" for posts (pages with a date), else "website".
+    og_type: &'static str,
+    /// The image for link previews; only with `base_url`.
+    share_image: Option<ShareImage>,
     /// The site's RSS feeds, for `<link rel="alternate">` and the footer.
     feeds: Vec<FeedLink>,
     rss_icon: &'static str,
@@ -648,6 +652,14 @@ enum RenderedBlock {
     },
 }
 
+/// The image link previews show, with its full address.
+struct ShareImage {
+    url: String,
+    width: Option<u32>,
+    height: Option<u32>,
+    alt: Option<String>,
+}
+
 struct Picture {
     src: String,
     /// The smaller copies and the original, with their widths, for the
@@ -708,12 +720,23 @@ fn render_page(
         .as_ref()
         .map(|base| absolute(base, &page.path));
 
+    let share_image = config
+        .base_url
+        .as_ref()
+        .and_then(|base| share_image(page, base, context.images));
+
     let sidebar = config.navigation == Navigation::Sidebar && !main_menu.is_empty();
     let template = PageTemplate {
         site: config,
         title: &front.title,
         description: front.description.as_deref(),
         canonical,
+        og_type: if front.date.is_some() {
+            "article"
+        } else {
+            "website"
+        },
+        share_image,
         feeds: feeds
             .iter()
             .map(|feed| FeedLink {
@@ -985,6 +1008,86 @@ fn picture(name: &str, alt: Option<&str>, links: &LinkContext, images: &Images) 
         width: info.as_ref().map(|(_, info)| info.width),
         height: info.as_ref().map(|(_, info)| info.height),
     })
+}
+
+/// The width that large preview cards need for a sharp image, as Facebook
+/// and LinkedIn recommend.
+const SHARE_IMAGE_WIDTH: u32 = 1200;
+
+/// The image link previews show (`og:image`): the one chosen in the page
+/// settings, or else the first image on the page. Previews need a full
+/// address, hence `base_url`. It is the smallest copy at least
+/// [`SHARE_IMAGE_WIDTH`] wide, or else the original: a smaller copy would
+/// look blurry on a large preview card.
+fn share_image(page: &Page, base_url: &str, images: &Images) -> Option<ShareImage> {
+    let (name, alt) = match page.content.front.image.as_deref() {
+        Some(name) => (name, None),
+        None => first_image(&page.content.blocks)?,
+    };
+    let name = name.trim();
+    if name.is_empty() {
+        return None;
+    }
+    let base = base_url.trim_end_matches('/');
+    let alt = alt.map(str::to_string).filter(|alt| !alt.trim().is_empty());
+
+    let Some(file) = media_name(name) else {
+        let url = if name.contains(':') {
+            name.to_string()
+        } else {
+            format!("{base}{name}")
+        };
+        return Some(ShareImage {
+            url,
+            width: None,
+            height: None,
+            alt,
+        });
+    };
+    let (file, width, height) = match images.info(file) {
+        Some(info) => match info
+            .widths
+            .iter()
+            .find(|&&width| width >= SHARE_IMAGE_WIDTH)
+        {
+            Some(&width) => (
+                images::copy_name(file, width),
+                Some(width),
+                Some(images::scaled_height(info.width, info.height, width)),
+            ),
+            None => (file.to_string(), Some(info.width), Some(info.height)),
+        },
+        None => (file.to_string(), None, None),
+    };
+    Some(ShareImage {
+        url: format!("{base}/{MEDIA_DIR}/{file}"),
+        width,
+        height,
+        alt,
+    })
+}
+
+/// The first image on a page, columns included, with its alt text.
+fn first_image(blocks: &[Block]) -> Option<(&str, Option<&str>)> {
+    block::all_blocks(blocks)
+        .into_iter()
+        .find_map(|block| match block {
+            Block::Hero(hero) => hero.image.as_deref().map(|image| (image, None)),
+            Block::Image(image) => image
+                .image
+                .as_deref()
+                .map(|name| (name, image.alt.as_deref())),
+            Block::TextImage(block) => block
+                .image
+                .as_deref()
+                .map(|name| (name, block.alt.as_deref())),
+            Block::Gallery(gallery) => gallery
+                .images
+                .first()
+                .map(|image| (image.image.as_str(), image.alt.as_deref())),
+            _ => None,
+        })
+        .filter(|(name, _)| !name.trim().is_empty())
 }
 
 /// The link to a download block's file and where it is on disk. Downloads
@@ -1373,6 +1476,98 @@ mod tests {
             ),
             "{home}"
         );
+    }
+
+    #[test]
+    fn describes_pages_for_link_previews() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |name: &str, text: &str| {
+            let path = dir.path().join(name);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"Pod & Co\"\n");
+        write(
+            "pages/index.md",
+            "+++\ntitle = \"Home\"\n+++\n\n::: hero\nimage = \"wide.jpg\"\n:::\n",
+        );
+        write(
+            "pages/news.md",
+            "+++\ntitle = \"News\"\ndescription = \"What's new\"\ndate = 2026-10-22\nimage = \"small.png\"\n+++\n\n::: hero\nimage = \"wide.jpg\"\n:::\n",
+        );
+        write(
+            "pages/cats.md",
+            "+++\ntitle = \"Cats\"\n+++\n\nNo picture yet.\n\n:::: columns\n::: column\n:::\n::: image\nimage = \"small.png\"\nalt = \"A cat\"\n:::\n::::\n",
+        );
+        write("pages/plain.md", "+++\ntitle = \"Plain\"\n+++\n\nText.\n");
+        write(
+            "pages/logo.md",
+            "+++\ntitle = \"Logo\"\nimage = \"medium.jpg\"\n+++\n",
+        );
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        image::RgbImage::new(2000, 1000)
+            .save(dir.path().join("media/wide.jpg"))
+            .unwrap();
+        image::RgbImage::new(300, 200)
+            .save(dir.path().join("media/small.png"))
+            .unwrap();
+        image::RgbImage::new(1376, 768)
+            .save(dir.path().join("media/medium.jpg"))
+            .unwrap();
+
+        // Without a web address there are no full URLs for previews.
+        let mut site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        build_into(&site, &out).unwrap();
+        let home = read(out.join("index.html"));
+        assert!(
+            home.contains(r#"<meta property="og:title" content="Pod &#38; Co">"#),
+            "{home}"
+        );
+        assert!(!home.contains("og:image"));
+
+        site.config.base_url = Some("https://example.com".into());
+        build_into(&site, &out).unwrap();
+
+        // The first image, as its 1600 px copy.
+        let home = read(out.join("index.html"));
+        assert!(home.contains(r#"<meta property="og:type" content="website">"#));
+        assert!(home.contains(r#"<meta property="og:url" content="https://example.com/">"#));
+        assert!(home.contains(
+            r#"<meta property="og:image" content="https://example.com/media/wide.1600w.jpg">"#
+        ));
+        assert!(home.contains(r#"<meta property="og:image:height" content="800">"#));
+        assert!(home.contains(r#"<meta name="twitter:card" content="summary_large_image">"#));
+
+        // The image from the settings wins; a post is an article.
+        let news = read(out.join("news/index.html"));
+        assert!(news.contains(r#"<meta property="og:type" content="article">"#));
+        assert!(news.contains(r#"<meta property="og:title" content="News">"#));
+        assert!(
+            news.contains(r#"<meta property="og:description" content="What&#39;s new">"#),
+            "{news}"
+        );
+        assert!(news.contains(
+            r#"<meta property="og:image" content="https://example.com/media/small.png">"#
+        ));
+        assert!(news.contains(r#"<meta property="og:image:width" content="300">"#));
+
+        // Found inside columns, with its alt text.
+        let cats = read(out.join("cats/index.html"));
+        assert!(
+            cats.contains(r#"<meta property="og:image:alt" content="A cat">"#),
+            "{cats}"
+        );
+
+        // Its 960 px copy would be too small for a large card: the original.
+        let logo = read(out.join("logo/index.html"));
+        assert!(logo.contains(
+            r#"<meta property="og:image" content="https://example.com/media/medium.jpg">"#
+        ));
+        assert!(logo.contains(r#"<meta property="og:image:width" content="1376">"#));
+
+        let plain = read(out.join("plain/index.html"));
+        assert!(!plain.contains("og:image") && !plain.contains("twitter:card"));
     }
 
     #[test]

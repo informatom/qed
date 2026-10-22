@@ -61,7 +61,7 @@ A complete site builder without podcast features.
   preview server and "Build" / "Preview in browser" in the app. *Link
   previews done 2026-10-22*: Open Graph tags on every page; `og:image`
   from the new `image` page setting ("Share image") or the page's first
-  image (1600 px copy), only with `base_url`. Still open: copying only the
+  image (smallest copy at least 1200 px wide, else the original), only with `base_url`. Still open: copying only the
   media files that are used, and links that leave the site folder.
 - **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
   *Themes done 2026-10-21*: Site settings dialog edits `site.toml` (title,
@@ -131,6 +131,8 @@ A complete site builder without podcast features.
   `qed:last-site` moves into it), "Open site folder…" and "New site…";
   the start screen lists the recent sites too; × takes a site off the
   list. Switching asks first if the open page has unsaved changes.
+  "Close site" (2026-10-22) goes back to the start screen, and the next
+  start stays there until a site is opened (`qed:site-closed`).
   Creating is #046, editing is the Site tab.
 - **#055 Sites.** Several sites per installation: done with #021 and
   #046. Phase 1 sites are pages-only; phase 2 adds the podcast switch
@@ -313,6 +315,16 @@ A complete site builder without podcast features.
 - **#041 Contributors.** Their own records, linked to episodes (#047).
 - **#042 Redirects.** Keep page redirects; write meta-refresh stubs at old
   paths.
+- **#080 Logo and app icon.** *Done 2026-10-22*: `brand/` holds the
+  artwork: `logo-mark.svg` (the Q with the houses, drawn by hand, about
+  2 KB), `logo.svg` (mark and wordmark, text as paths), `app-icon.svg`
+  (the mark on a light tile) and its 1024 px PNG, from which
+  `npx tauri icon brand/app-icon.png` makes `src-tauri/icons/` (delete the
+  `android/` and `ios/` folders it adds). The JPEGs are illustrations;
+  `logo-traced.svg` is the first automatic trace, kept for reference.
+  The app shows the mark in its header and on the start screen, from a
+  copy in `src/lib/assets/logo-mark.svg` (copy it again after changing
+  the mark).
 
 ## Dropped
 
