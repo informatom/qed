@@ -58,9 +58,11 @@ A complete site builder without podcast features.
   URL such as the GitHub repo. *First version done 2026-10-21*
   (`qed_core::generator`): pages, menus, relative links, Markdown links,
   redirects, sitemap and canonical links with `base_url`, media copied,
-  preview server and "Build" / "Preview in browser" in the app. Still open:
-  `og:image`, copying only the media files that are used, and links that
-  leave the site folder.
+  preview server and "Build" / "Preview in browser" in the app. *Link
+  previews done 2026-10-22*: Open Graph tags on every page; `og:image`
+  from the new `image` page setting ("Share image") or the page's first
+  image (1600 px copy), only with `base_url`. Still open: copying only the
+  media files that are used, and links that leave the site folder.
 - **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
   *Themes done 2026-10-21*: Site settings dialog edits `site.toml` (title,
   description, language, web address, theme); the app has its own theme
