@@ -333,6 +333,8 @@ export type MediaFile = {
 	height: number | null,
 	/**  URL paths of the pages that use this file. */
 	used_by: string[],
+	/**  The site's logo (Site settings). */
+	site_logo: boolean,
 };
 
 /**  What kind of file a media file is, judged by its extension. */
@@ -468,6 +470,12 @@ export type SiteConfig = {
 	/**  Language code for the `lang` attribute, e.g. `"de"` or `"en"`. */
 	language?: string,
 	description: string | null,
+	/**
+	 *  An image in `media/`, shown before the title in every page's header
+	 *  and as the icon in the browser tab. A small square one (an SVG at
+	 *  best) works best.
+	 */
+	logo: string | null,
 	/**  A daisyUI theme name. */
 	theme?: string,
 	/**

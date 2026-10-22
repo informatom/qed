@@ -40,6 +40,10 @@ pub struct SiteConfig {
     #[serde(default = "default_language")]
     pub language: String,
     pub description: Option<String>,
+    /// An image in `media/`, shown before the title in every page's header
+    /// and as the icon in the browser tab. A small square one (an SVG at
+    /// best) works best.
+    pub logo: Option<String>,
     /// A daisyUI theme name.
     #[serde(default = "default_theme")]
     pub theme: String,

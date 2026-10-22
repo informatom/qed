@@ -35,6 +35,9 @@
   {%- for feed in feeds %}
   <link rel="alternate" type="application/rss+xml" title="{{ feed.title }}" href="{{ feed.href }}">
   {%- endfor %}
+  {%- if let Some(logo) = logo %}
+  <link rel="icon" href="{{ logo.src }}">
+  {%- endif %}
   <meta name="generator" content="q.e.d.">
   <link rel="stylesheet" href="{{ root }}style.css">
 </head>
@@ -50,7 +53,10 @@
 <body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased">
   <header class="border-b border-base-300">
     <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
-      <a href="{{ home_href }}" class="text-lg font-bold tracking-tight">{{ site.title }}</a>
+      <a href="{{ home_href }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
+        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="" class="size-9 object-contain"
+        {%- if let Some(width) = logo.width %} width="{{ width }}"{% endif %}
+        {%- if let Some(height) = logo.height %} height="{{ height }}"{% endif %}>{% endif %}{{ site.title }}</a>
       {%- if !main_menu.is_empty() && !sidebar %}
       <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {%- for item in main_menu %}

@@ -60,6 +60,8 @@ pub struct MediaFile {
     pub height: Option<u32>,
     /// URL paths of the pages that use this file.
     pub used_by: Vec<String>,
+    /// The site's logo (Site settings).
+    pub site_logo: bool,
 }
 
 /// Lists every file in one of the folders, sorted by name.
@@ -99,8 +101,10 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
                 .filter(|(_, names)| names.contains(&name))
                 .map(|(page, _)| page.to_string())
                 .collect();
+            let site_logo = library == Library::Media && is_site_logo(site, &name);
             Ok(MediaFile {
                 name,
+                site_logo,
                 size,
                 kind,
                 width,
@@ -201,6 +205,12 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
         .filter(|page| references(page, library).iter().any(|n| n == name))
         .map(|page| format!("/{}", page.path))
         .collect();
+    if library == Library::Media && is_site_logo(site, name) {
+        return Err(SiteError::Invalid {
+            path: PathBuf::from(library.dir()).join(name),
+            message: "it's the site's logo; choose another one in Site settings first".to_string(),
+        });
+    }
     if !used_by.is_empty() {
         return Err(SiteError::Invalid {
             path: PathBuf::from(library.dir()).join(name),
@@ -208,6 +218,15 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
         });
     }
     fs::remove_file(&path).map_err(|source| SiteError::Write { path, source })
+}
+
+/// Whether `name` in `media/` is the logo set in Site settings.
+fn is_site_logo(site: &Site, name: &str) -> bool {
+    site.config
+        .logo
+        .as_deref()
+        .and_then(media_name)
+        .is_some_and(|logo| logo == name)
 }
 
 /// The files in `library` a page uses, by name.
@@ -477,6 +496,22 @@ mod tests {
             "linked from Markdown, with a #fragment"
         );
         assert!(files[3].used_by.is_empty());
+    }
+
+    #[test]
+    fn keeps_the_site_logo() {
+        let dir = site_dir();
+        fs::write(
+            dir.path().join("site.toml"),
+            "title = \"S\"\nlogo = \"unused.txt\"\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+
+        let files = list(&site, Library::Media).unwrap();
+        assert!(files[3].site_logo && !files[2].site_logo);
+        let error = delete(&site, Library::Media, "unused.txt").unwrap_err();
+        assert!(error.to_string().contains("site's logo"), "{error}");
     }
 
     #[test]

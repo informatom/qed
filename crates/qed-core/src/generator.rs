@@ -528,6 +528,8 @@ struct PageTemplate<'a> {
     og_type: &'static str,
     /// The image for link previews; only with `base_url`.
     share_image: Option<ShareImage>,
+    /// The site's logo, for the header and the browser tab.
+    logo: Option<Picture>,
     /// The site's RSS feeds, for `<link rel="alternate">` and the footer.
     feeds: Vec<FeedLink>,
     rss_icon: &'static str,
@@ -537,7 +539,8 @@ struct PageTemplate<'a> {
     home_href: String,
     main_menu: Vec<MenuLink>,
     footer_menu: Vec<MenuLink>,
-    /// Pages that start with a hero use its headline instead of a title.
+    /// No title above a starting Hero or the start page's banner; see
+    /// [`show_title`].
     show_title: bool,
     /// The main menu goes into a sidebar instead of the top bar.
     sidebar: bool,
@@ -737,6 +740,10 @@ fn render_page(
             "website"
         },
         share_image,
+        logo: config
+            .logo
+            .as_deref()
+            .and_then(|name| picture(name, None, &links, context.images)),
         feeds: feeds
             .iter()
             .map(|feed| FeedLink {
@@ -755,7 +762,7 @@ fn render_page(
         home_href: links.page(""),
         main_menu: menu_links(main_menu),
         footer_menu: menu_links(footer_menu),
-        show_title: !matches!(page.content.blocks.first(), Some(Block::Hero(_))),
+        show_title: show_title(page),
         sidebar,
         width: if sidebar { "max-w-6xl" } else { "max-w-4xl" },
         byline: byline.join(" · "),
@@ -775,6 +782,17 @@ fn render_page(
         page: page.path.clone(),
         source,
     })
+}
+
+/// Whether the page shows its title above the blocks. A page that starts
+/// with a Hero has its headline instead; the start page that opens with an
+/// image (a banner) doesn't repeat the site's name, which the header shows.
+fn show_title(page: &Page) -> bool {
+    match page.content.blocks.first() {
+        Some(Block::Hero(_)) => false,
+        Some(Block::Image(_)) => !page.path.is_empty(),
+        _ => true,
+    }
 }
 
 /// A block's HTML. `in_column` makes images expect less room.
@@ -1568,6 +1586,48 @@ mod tests {
 
         let plain = read(out.join("plain/index.html"));
         assert!(!plain.contains("og:image") && !plain.contains("twitter:card"));
+    }
+
+    #[test]
+    fn shows_the_site_logo_in_the_header_and_the_browser_tab() {
+        let mut site = demo_site();
+        site.config.logo = Some("mark.svg".into());
+        let out = tempfile::tempdir().unwrap();
+        build_into(&site, out.path()).unwrap();
+
+        let team = read(out.path().join("about/team/index.html"));
+        assert!(
+            team.contains(r#"<link rel="icon" href="../../media/mark.svg">"#),
+            "{team}"
+        );
+        assert!(
+            team.contains(
+                r#"<img src="../../media/mark.svg" alt="" class="size-9 object-contain">"#
+            )
+        );
+
+        site.config.logo = None;
+        build_into(&site, out.path()).unwrap();
+        assert!(!read(out.path().join("index.html")).contains("rel=\"icon\""));
+    }
+
+    #[test]
+    fn leaves_out_the_title_above_a_hero_or_the_start_banner() {
+        let page = |path: &str, block: &str| {
+            let text = format!("+++\ntitle = \"T\"\n+++\n\n::: {block}\n:::\n");
+            Page {
+                path: path.to_string(),
+                file: PathBuf::from("pages/x.md"),
+                content: crate::page::parse(&text).unwrap(),
+            }
+        };
+        assert!(!show_title(&page("about", "hero")));
+        assert!(!show_title(&page("", "image")));
+        assert!(
+            show_title(&page("about", "image")),
+            "a post may open with a photo"
+        );
+        assert!(show_title(&page("", "faq")));
     }
 
     #[test]

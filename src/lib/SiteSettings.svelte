@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
+  import ImageField from "$lib/ImageField.svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
   import { commands, type Site, type SiteConfig } from "$lib/site";
 
@@ -29,6 +30,7 @@
     title: form.title.trim(),
     language: form.language.trim() || "en",
     description: orNull(form.description),
+    logo: orNull(form.logo),
     base_url: orNull(form.base_url),
   });
   let changed = $derived(JSON.stringify(edited) !== JSON.stringify(site.config));
@@ -67,6 +69,11 @@
       <span class="text-sm font-medium">Web address <span class="font-normal text-base-content/50">· for the sitemap and feeds</span></span>
       <input id="site-base-url" class="input w-full" bind:value={form.base_url} placeholder="https://example.com/" />
     </label>
+  </div>
+
+  <div id="site-logo" class="flex flex-col gap-1">
+    <span class="text-sm font-medium">Logo <span class="font-normal text-base-content/50">· before the title on every page, and the icon in the browser tab; a small square image, SVG at best</span></span>
+    <ImageField siteRoot={site.root} bind:value={form.logo} />
   </div>
 
   <label class="flex items-start gap-3">
