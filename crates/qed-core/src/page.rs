@@ -440,8 +440,12 @@ fn container_block(kind: &str, start: usize, body: &[&str]) -> Result<Block, Par
     block::from_container(kind, &body.join("\n")).map_err(|error| match error {
         ContainerError::UnknownType(kind) => ParseError::new(
             start,
+            // Most often the site was edited with a newer q.e.d. that has
+            // more block types, so say how to get it.
             format!(
-                "unknown block type \"{kind}\"; known types are: {}",
+                "this version of q.e.d. doesn't know the block type \"{kind}\". \
+                 If the site was edited with a newer q.e.d., update this one \
+                 (App → Check for updates). Known types: {}",
                 CONTAINER_TYPES.join(", ")
             ),
         ),
@@ -607,6 +611,11 @@ mod tests {
         assert!(error.message.contains("herro"), "{}", error.message);
         assert!(
             error.message.contains("call-to-action"),
+            "{}",
+            error.message
+        );
+        assert!(
+            error.message.contains("Check for updates"),
             "{}",
             error.message
         );
