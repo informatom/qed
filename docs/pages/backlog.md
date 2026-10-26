@@ -35,6 +35,26 @@ over by hand.
 - **#093 404 page.** The generator writes `404.html` in the site's look.
 - **#094 Code highlighting.** Colors for fenced code blocks at build time,
   with CSS classes and no JavaScript.
+- **#095 Wide logos.** A logo that's wider than tall (e.g. 249×83) is
+  squeezed into a 36 px square today. Give wide logos their own height in
+  the header, optionally in place of the site title. Found moving
+  informatom.com.
+- **#096 Hide page title.** A page setting "Show title", for start pages
+  that open with their own heading. Today only a start page opening with
+  an Image block hides it.
+- **#097 Column widths.** A width choice per Columns block (equal, wide
+  left, wide right), e.g. text in two thirds and a photo in one.
+- **#098 Dates in the site's language.** Post dates show as `2014-03-03`;
+  format them by the site's language (`3. März 2014`, `March 3, 2014`).
+- **#099 Page list block.** Lists the pages below a page (title and
+  summary, by weight then title), like Post list does for dated posts;
+  e.g. a directory of people with one page each (podcasterei.at's
+  Podcaster:innen). Phase 2's Contributors (#047) may build on it.
+- **#100 Video block.** A video from YouTube, Vimeo or PeerTube shown as
+  its thumbnail with a play mark, linking to the video: no iframe, no
+  JavaScript, no tracking until the visitor clicks. The thumbnail is
+  fetched once and kept in `media/`. Found in podcasterei.at's meetup
+  notes (an embedded YouTube playlist).
 - **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
   (`docs/notes/cms-handover-qed.md`; its Elixir file map no longer
   applies). *Done 2026-10-21*: nine block types (Text, Hero, Image, Text
