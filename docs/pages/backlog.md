@@ -22,15 +22,19 @@ Nothing open.
 ### Phase 1: CMS and site generator
 
 A complete site builder without podcast features. Decided 2026-10-26: finish
-phase 1 before podcasting, testing it by migrating the owner's Jekyll sites
-(#081).
+phase 1 before podcasting, testing it by moving the owner's Jekyll sites
+over by hand.
 
-- **#081 Jekyll import.** Import a Jekyll site into a new q.e.d. site:
-  `_config.yml` (title, description, url), pages, `_posts` as posts under
-  `blog`, images into `media/`, other files into `assets/`; Liquid tags
-  and unknown front matter are reported, not silently dropped. Later the
-  base for importing jekyll-octopod podcasts (#034).
-
+- **#088 Static files.** A `static/` folder in the site, copied into the
+  built site as it is, at the same paths (`static/pdf/a.pdf` becomes
+  `/pdf/a.pdf`). For files q.e.d. doesn't manage itself, such as slide
+  shows or verification files (`keybase.txt`). A built page at the same
+  path is an error.
+- **#092 Footer blocks.** A site-wide footer made of blocks (Columns,
+  Text, Post list), edited with the block editor, above the footer menu.
+- **#093 404 page.** The generator writes `404.html` in the site's look.
+- **#094 Code highlighting.** Colors for fenced code blocks at build time,
+  with CSS classes and no JavaScript.
 - **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
   (`docs/notes/cms-handover-qed.md`; its Elixir file map no longer
   applies). *Done 2026-10-21*: nine block types (Text, Hero, Image, Text

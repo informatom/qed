@@ -250,5 +250,9 @@ Not needed in a single-user desktop app:
   #039 AGENTS.md (Phoenix-specific), #052 AGPL license file (#061).
 - #044 Local audio folder and #045 Audio pass-through: the app reads files
   directly.
+- #081 Jekyll import, #089 raw HTML in Markdown, #090 redirects from
+  `.html` addresses, #091 link pages and dropdown menus (2026-10-26): they
+  would pull q.e.d. towards Jekyll; the owner's Jekyll sites move over by
+  hand instead.
 - #027 Publisher: ZIP. The built site already is a folder (`_site/`); the app
   has "Show in file manager" instead.
