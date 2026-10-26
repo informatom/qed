@@ -2,8 +2,8 @@
 
 qed is a single-user desktop app: Rust + Tauri 2, with a SvelteKit (Svelte 5,
 TypeScript) single-page UI styled with Tailwind v4 + daisyUI 5. Open work and
-decisions live in `docs/pages/backlog.md` (items `#nnn`); read it first and keep it
-current.
+decisions live in `docs/pages/backlog.md` (items `#nnn`; finished ones move
+to `docs/pages/done.md`); read the backlog first and keep both current.
 
 ## Layout
 
