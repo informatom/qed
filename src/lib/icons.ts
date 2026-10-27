@@ -7,6 +7,7 @@ import Download from "@lucide/svelte/icons/download";
 import Image from "@lucide/svelte/icons/image";
 import Images from "@lucide/svelte/icons/images";
 import List from "@lucide/svelte/icons/list";
+import ListTree from "@lucide/svelte/icons/list-tree";
 import Megaphone from "@lucide/svelte/icons/megaphone";
 import Newspaper from "@lucide/svelte/icons/newspaper";
 import PanelTop from "@lucide/svelte/icons/panel-top";
@@ -25,4 +26,5 @@ export const BLOCK_ICONS: Record<BlockType, Component> = {
   columns: Columns3,
   "call-to-action": Megaphone,
   "post-list": List,
+  "page-list": ListTree,
 };

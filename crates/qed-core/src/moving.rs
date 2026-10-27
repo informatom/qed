@@ -246,13 +246,17 @@ fn rewrite_links(content: &mut PageContent, links: &BTreeMap<String, String>) {
         for_each_markdown(block, &mut |text| {
             *text = markdown::replace_link_targets(text, links);
         });
-        if let Block::PostList(list) = block {
-            if let Some(new) = list
-                .from
+        let from = match block {
+            Block::PostList(list) => Some(&mut list.from),
+            Block::PageList(list) => Some(&mut list.from),
+            _ => None,
+        };
+        if let Some(from) = from {
+            if let Some(new) = from
                 .as_deref()
                 .and_then(|from| links.get(&site::post_list_link(from)))
             {
-                list.from = Some(new.trim_start_matches('/').to_string());
+                *from = Some(new.trim_start_matches('/').to_string());
             }
             return;
         }

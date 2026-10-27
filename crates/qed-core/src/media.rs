@@ -433,7 +433,7 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
                 markdown_texts.extend(cta.text.as_deref());
                 buttons.extend(cta.button_link.as_deref());
             }
-            Block::PostList(_) => {}
+            Block::PostList(_) | Block::PageList(_) => {}
         }
     }
 

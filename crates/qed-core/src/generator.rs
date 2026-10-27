@@ -31,6 +31,7 @@ use crate::markdown;
 use crate::media::CLUTTER;
 use crate::page::Menu;
 use crate::site::{ASSETS_DIR, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig};
+use crate::slug::slugify;
 
 pub const OUTPUT_DIR: &str = "_site";
 
@@ -172,7 +173,12 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
     }
 
-    write(&out_dir.join("style.css"), STYLESHEET.to_string())?;
+    // A custom theme adds its colors to the one stylesheet.
+    let custom_css = site.config.custom().map(|c| c.css()).unwrap_or_default();
+    write(
+        &out_dir.join("style.css"),
+        format!("{STYLESHEET}{custom_css}"),
+    )?;
 
     let media_files = copy_dir(&media_dir, &out_dir.join(MEDIA_DIR))?
         + copy_dir(&site.root.join(ASSETS_DIR), &out_dir.join(ASSETS_DIR))?;
@@ -667,6 +673,13 @@ struct PostEntry {
     summary_html: Option<String>,
 }
 
+/// One page in a Page list.
+struct PageEntry {
+    title: String,
+    href: String,
+    summary_html: Option<String>,
+}
+
 /// A block, ready for the template: Markdown rendered, links resolved.
 enum RenderedBlock {
     Text {
@@ -718,6 +731,9 @@ enum RenderedBlock {
         posts: Vec<PostEntry>,
         /// The feed of the listed page, if it has one.
         feed_href: Option<String>,
+    },
+    PageList {
+        pages: Vec<PageEntry>,
     },
 }
 
@@ -1026,13 +1042,7 @@ fn render_block(
             button: button(&cta.button_label, &cta.button_link),
         },
         Block::PostList(list) => {
-            // Empty means the page the list is on.
-            let from = list
-                .from
-                .as_deref()
-                .map(|from| from.trim().trim_matches('/'))
-                .filter(|from| !from.is_empty())
-                .unwrap_or(links.page_path());
+            let from = list_source(&list.from, links);
             let mut posts = posts(context.pages, from, context.today);
             if let Some(limit) = list.limit.and_then(|limit| usize::try_from(limit).ok()) {
                 posts.truncate(limit);
@@ -1060,7 +1070,54 @@ fn render_block(
                     .collect(),
             }
         }
+        Block::PageList(list) => RenderedBlock::PageList {
+            pages: children(context.pages, list_source(&list.from, links))
+                .iter()
+                .map(|page| PageEntry {
+                    title: page.content.front.title.clone(),
+                    href: links.page(&page.path),
+                    summary_html: markdown(&page.content.front.summary),
+                })
+                .collect(),
+        },
     })
+}
+
+/// A list's `from` as a page path; empty means the page the list is on.
+fn list_source<'a>(from: &'a Option<String>, links: &'a LinkContext) -> &'a str {
+    from.as_deref()
+        .map(|from| from.trim().trim_matches('/'))
+        .filter(|from| !from.is_empty())
+        .unwrap_or(links.page_path())
+}
+
+/// The pages one level below the page at `parent` that aren't posts, by
+/// weight, then title. Titles compare by their slug, so `André` sorts next
+/// to `Andreas` and not after `Z`.
+fn children<'a>(pages: &[&'a Page], parent: &str) -> Vec<&'a Page> {
+    let mut children: Vec<(String, &Page)> = pages
+        .iter()
+        .copied()
+        .filter(|page| page.content.front.date.is_none())
+        .filter(|page| {
+            let rest = match parent {
+                "" => Some(page.path.as_str()).filter(|path| !path.is_empty()),
+                _ => page.path.strip_prefix(&format!("{parent}/")),
+            };
+            rest.is_some_and(|rest| !rest.contains('/'))
+        })
+        .map(|page| (slugify(&page.content.front.title), page))
+        .collect();
+    children.sort_by(|(a, page_a), (b, page_b)| {
+        page_a
+            .content
+            .front
+            .weight
+            .cmp(&page_b.content.front.weight)
+            .then_with(|| a.cmp(b))
+            .then_with(|| page_a.path.cmp(&page_b.path))
+    });
+    children.into_iter().map(|(_, page)| page).collect()
 }
 
 /// An image ready for the page. Width and height let the browser reserve
@@ -1751,6 +1808,95 @@ mod tests {
                 "{clash}: {error}"
             );
         }
+    }
+
+    #[test]
+    fn lists_the_pages_below_a_page() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"People\"\n");
+        write("pages/index.md", "+++\ntitle = \"Home\"\n+++\n");
+        write(
+            "pages/people/index.md",
+            "+++\ntitle = \"People\"\n+++\n\n::: page-list\n:::\n",
+        );
+        write(
+            "pages/about.md",
+            "+++\ntitle = \"About\"\n+++\n\n::: page-list\nfrom = \"/people\"\n:::\n",
+        );
+        write(
+            "pages/people/zoe.md",
+            "+++\ntitle = \"Zoë\"\nsummary = \"Hosts *Night Talk*\"\n+++\n",
+        );
+        write("pages/people/andreas.md", "+++\ntitle = \"Andreas\"\n+++\n");
+        write("pages/people/andre.md", "+++\ntitle = \"André\"\n+++\n");
+        write(
+            "pages/people/first.md",
+            "+++\ntitle = \"Team lead\"\nweight = -1\n+++\n",
+        );
+        write(
+            "pages/people/news.md",
+            "+++\ntitle = \"News\"\ndate = 2026-01-01\n+++\n",
+        );
+        write(
+            "pages/people/gone.md",
+            "+++\ntitle = \"Gone\"\ndraft = true\n+++\n",
+        );
+        write(
+            "pages/people/zoe/photos.md",
+            "+++\ntitle = \"Photos\"\n+++\n",
+        );
+        let site = site::open(dir.path()).unwrap();
+
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let people = read(out.path().join("people/index.html"));
+        let order: Vec<usize> = ["Team lead", "André", "Andreas", "Zoë"]
+            .iter()
+            .map(|title| {
+                people
+                    .find(&format!(">{title}</a>"))
+                    .unwrap_or_else(|| panic!("{title} missing:\n{people}"))
+            })
+            .collect();
+        assert!(order.is_sorted(), "by weight, then title: {order:?}");
+        for left_out in ["News", "Gone", "Photos"] {
+            assert!(!people.contains(&format!(">{left_out}</a>")), "{left_out}");
+        }
+        assert!(people.contains(r#"href="../people/zoe/""#), "{people}");
+        assert!(people.contains("Hosts <em>Night Talk</em>"), "{people}");
+
+        let about = read(out.path().join("about/index.html"));
+        assert!(about.contains(r#"href="../people/zoe/""#), "{about}");
+    }
+
+    #[test]
+    fn adds_a_custom_theme_to_the_stylesheet() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.theme = "custom".into();
+        site.config.custom_theme = Some(crate::theme::CustomTheme {
+            from: "nord".into(),
+            background: None,
+            primary: Some("#ff6600".into()),
+            secondary: None,
+            accent: None,
+            neutral: None,
+            corners: None,
+        });
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        assert!(read(out.path().join("index.html")).contains(r#"data-theme="nord""#));
+        let css = read(out.path().join("style.css"));
+        assert!(
+            css.ends_with("--color-primary-content: #1d232a;\n}\n"),
+            "{}",
+            &css[css.len() - 200..]
+        );
     }
 
     #[test]

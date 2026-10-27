@@ -10,3 +10,15 @@
 @plugin "daisyui" {
   themes: all;
 }
+
+/* Theme colors beyond buttons: links in text get a primary underline, quotes
+   an accent bar. Text itself keeps the base color, so it stays readable in
+   every theme. */
+.prose a {
+  text-decoration-color: var(--color-primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.prose blockquote {
+  border-inline-start-color: var(--color-accent);
+}

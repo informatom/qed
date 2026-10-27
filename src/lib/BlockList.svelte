@@ -240,6 +240,17 @@
               the future appear once the site is built on or after their date.
             </p>
           </div>
+        {:else if block.type === "page-list"}
+          <div class="flex flex-col gap-3">
+            <label class="flex flex-col gap-1">
+              {@render field("From page", "this page if empty, or e.g. /team")}
+              <input class="input w-full font-mono" bind:value={block.from} placeholder="this page" />
+            </label>
+            <p class="text-sm text-base-content/60">
+              Lists the pages one level below that page, by weight, then title, each with its summary (Settings of
+              that page). Pages with a date are posts and left out; a Post list shows those.
+            </p>
+          </div>
         {:else if block.type === "hero" || block.type === "call-to-action"}
           <!-- Hero and Call to action share most fields. -->
           <div class="grid gap-3 @2xl:grid-cols-2">

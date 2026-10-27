@@ -41,10 +41,6 @@ over by hand.
   left, wide right), e.g. text in two thirds and a photo in one.
 - **#098 Dates in the site's language.** Post dates show as `2014-03-03`;
   format them by the site's language (`3. März 2014`, `March 3, 2014`).
-- **#099 Page list block.** Lists the pages below a page (title and
-  summary, by weight then title), like Post list does for dated posts;
-  e.g. a directory of people with one page each (podcasterei.at's
-  Podcaster:innen). Phase 2's Contributors (#047) may build on it.
 - **#100 Video block.** A video from YouTube, Vimeo or PeerTube shown as
   its thumbnail with a play mark, linking to the video: no iframe, no
   JavaScript, no tracking until the visitor clicks. The thumbnail is
@@ -85,7 +81,12 @@ over by hand.
   2026-10-22*: `logo` in `site.toml` (Site settings, image picker) shows
   before the title in every page's header and is the browser-tab icon
   (`<link rel="icon">`); the media library marks it "Site logo" and won't
-  delete it. Other options are still open.
+  delete it. *Theme colors done 2026-10-27*: sites use all four theme
+  colors (primary: buttons, Call to action, current menu page, link
+  underlines; secondary: Hero without image, post dates; accent: stripe at
+  the top, quote bars; neutral: footer, sidebar's current page, file
+  types), and Site settings explains them in a legend beside the theme
+  switcher; a picked theme saves at once. Other options are still open.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.

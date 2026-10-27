@@ -16,6 +16,7 @@ use qed_core::preview::Preview;
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
 use qed_core::site::{self, Page, Site, SiteConfig};
 use qed_core::target::{self, SftpAuth, SftpTarget, Target};
+use qed_core::theme::{CustomTheme, ThemeVariable};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
@@ -317,6 +318,13 @@ fn list_icons() -> Vec<(&'static str, &'static str)> {
         .collect()
 }
 
+/// The CSS variables a custom theme sets, for previews in the app.
+#[tauri::command]
+#[specta::specta]
+fn custom_theme_variables(custom: CustomTheme) -> Vec<ThemeVariable> {
+    custom.variables()
+}
+
 /// The daisyUI theme names the app and generated sites can use.
 #[tauri::command]
 #[specta::specta]
@@ -530,6 +538,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             save_page_blocks,
             save_site_config,
             list_themes,
+            custom_theme_variables,
             list_icons,
             save_targets,
             set_target_password,

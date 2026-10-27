@@ -23,6 +23,7 @@ use crate::page::{self, FrontMatter, PageContent, PageDate};
 use crate::page_writer;
 use crate::slug::slugify;
 use crate::target::Target;
+use crate::theme::CustomTheme;
 
 pub const CONFIG_FILE: &str = "site.toml";
 pub const PAGES_DIR: &str = "pages";
@@ -47,9 +48,12 @@ pub struct SiteConfig {
     /// and as the icon in the browser tab. A small square one (an SVG at
     /// best) works best.
     pub logo: Option<String>,
-    /// A daisyUI theme name.
+    /// A daisyUI theme name, or `custom` for `custom_theme`.
     #[serde(default = "default_theme")]
     pub theme: String,
+    /// Own colors on top of a theme, used when `theme` is `custom`. Kept
+    /// when another theme is picked, so it can be picked again.
+    pub custom_theme: Option<CustomTheme>,
     /// Where the site is published, e.g. `"https://example.com/"`. Needed
     /// for the sitemap and canonical links; the site works without it.
     pub base_url: Option<String>,
@@ -66,6 +70,21 @@ pub enum Navigation {
     #[default]
     Top,
     Sidebar,
+}
+
+impl SiteConfig {
+    /// The custom theme, if the site uses one.
+    pub fn custom(&self) -> Option<&CustomTheme> {
+        self.custom_theme
+            .as_ref()
+            .filter(|_| self.theme == crate::theme::CUSTOM)
+    }
+
+    /// The daisyUI theme the pages name in `data-theme`: for a custom
+    /// theme, the one it starts from.
+    pub fn page_theme(&self) -> &str {
+        self.custom().map_or(&self.theme, |custom| &custom.from)
+    }
 }
 
 fn default_language() -> String {
@@ -376,7 +395,13 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
     if config.title.trim().is_empty() {
         return Err(invalid("a site needs a title".to_string()));
     }
-    if !crate::theme::is_theme(&config.theme) {
+    if config.theme == crate::theme::CUSTOM {
+        let custom = config
+            .custom_theme
+            .as_ref()
+            .ok_or_else(|| invalid("the custom theme has no colors yet".to_string()))?;
+        custom.check().map_err(|e| invalid(e.to_string()))?;
+    } else if !crate::theme::is_theme(&config.theme) {
         return Err(invalid(format!(
             "there is no theme called \"{}\"",
             config.theme
@@ -385,6 +410,14 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
 
     let original = read(&path)?;
     let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
+    // `[custom_theme]` as its own section, easier to read than one long line.
+    if let Some(inline) = document
+        .get_mut("custom_theme")
+        .and_then(|item| item.as_inline_table_mut())
+    {
+        let table = std::mem::take(inline).into_table();
+        document["custom_theme"] = toml_edit::Item::Table(table);
+    }
     // Defaults stay out of the file, unless the file already names them.
     for (key, value, default) in [
         ("language", &config.language, default_language()),
@@ -488,6 +521,7 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             // The page it lists counts as a link, so moving or deleting
             // that page knows about the list.
             Block::PostList(list) => targets.extend(list.from.as_deref().map(post_list_link)),
+            Block::PageList(list) => targets.extend(list.from.as_deref().map(post_list_link)),
             Block::Gallery(_) | Block::Download(_) | Block::Columns(_) => {}
         }
     }
@@ -497,7 +531,7 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
     targets
 }
 
-/// A Post list's `from` as a link: `/blog`.
+/// A Post list's or Page list's `from` as a link: `/blog`.
 pub(crate) fn post_list_link(from: &str) -> String {
     format!("/{}", from.trim().trim_matches('/'))
 }
@@ -942,6 +976,51 @@ mod tests {
             save_config(dir.path(), &config),
             Err(SiteError::Invalid { .. })
         ));
+    }
+
+    #[test]
+    fn saves_a_custom_theme_as_a_table() {
+        let dir = site_with(&[("site.toml", "title = \"S\"\n")]);
+        let mut config = open(dir.path()).unwrap().config;
+        config.theme = "custom".into();
+        assert!(save_config(dir.path(), &config).is_err(), "no colors yet");
+
+        config.custom_theme = Some(CustomTheme {
+            from: "nord".into(),
+            background: None,
+            primary: Some("#ff6600".into()),
+            secondary: None,
+            accent: None,
+            neutral: None,
+            corners: Some(crate::theme::Corners::Round),
+        });
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(text.contains("theme = \"custom\""), "{text}");
+        assert!(
+            text.contains(
+                "[custom_theme]\nfrom = \"nord\"\nprimary = \"#ff6600\"\ncorners = \"round\""
+            ),
+            "{text}"
+        );
+        let reopened = open(dir.path()).unwrap().config;
+        assert_eq!(reopened, config);
+        assert_eq!(reopened.page_theme(), "nord");
+
+        // Changing a color in the existing table, and another theme keeps
+        // the colors for later.
+        if let Some(custom) = config.custom_theme.as_mut() {
+            custom.primary = Some("#00aa00".into());
+            custom.corners = None;
+        }
+        config.theme = "cupcake".into();
+        save_config(dir.path(), &config).unwrap();
+        let reopened = open(dir.path()).unwrap().config;
+        assert_eq!(reopened.page_theme(), "cupcake");
+        assert_eq!(reopened.custom_theme, config.custom_theme);
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert_eq!(text.matches("primary").count(), 1, "{text}");
+        assert!(!text.contains("corners"), "{text}");
     }
 
     #[test]

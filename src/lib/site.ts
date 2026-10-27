@@ -24,8 +24,10 @@ export const commands = rustCommands as {
   ) => Promise<Sent<Awaited<ReturnType<RustCommands[K]>>>>;
 };
 
-export type { Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage } from "./bindings";
+export type { Corners, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage } from "./bindings";
 export type Block = Sent<Rust.Block>;
+export type CustomTheme = Sent<Rust.CustomTheme>;
+export type ThemeVariable = Sent<Rust.ThemeVariable>;
 export type BuildReport = Sent<Rust.BuildReport>;
 export type DeletedPage = Sent<Rust.DeletedPage>;
 export type DiffLine = Sent<Rust.DiffLine>;
@@ -66,6 +68,7 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   columns: "Columns",
   "call-to-action": "Call to action",
   "post-list": "Post list",
+  "page-list": "Page list",
 };
 
 /** The blocks a column can hold (see COLUMN_TYPES in block.rs). */
@@ -77,6 +80,7 @@ export const COLUMN_BLOCK_TYPES: BlockType[] = [
   "faq",
   "call-to-action",
   "post-list",
+  "page-list",
 ];
 
 /** A new, empty block of the given type. */
@@ -108,6 +112,8 @@ export function newBlock(type: BlockType): Block {
       return { type, headline: null, text: null, button_label: null, button_link: null };
     case "post-list":
       return { type, from: null, limit: null };
+    case "page-list":
+      return { type, from: null };
   }
 }
 

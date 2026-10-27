@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { onMount, untrack } from "svelte";
+  import { untrack } from "svelte";
   import ImageField from "$lib/ImageField.svelte";
-  import ThemePicker from "$lib/ThemePicker.svelte";
   import { commands, type Site, type SiteConfig } from "$lib/site";
 
   interface Props {
@@ -10,23 +9,22 @@
   }
 
   let { site, onsaved }: Props = $props();
-  let themes = $state<string[]>([]);
   let form = $state(untrack(() => $state.snapshot(site.config)));
   let saving = $state(false);
+
   let error = $state<string | null>(null);
   let savedAt = $state<Date | null>(null);
-
-  onMount(async () => {
-    themes = await commands.listThemes();
-  });
 
   function orNull(text: string | null): string | null {
     return text && text.trim() !== "" ? text.trim() : null;
   }
 
-  // What would be saved, and whether it differs from the file.
+  // What would be saved, and whether it differs from the file. The theme
+  // has its own section (SiteTheme), which saves it by itself.
   let edited: SiteConfig = $derived({
     ...form,
+    theme: site.config.theme,
+    custom_theme: site.config.custom_theme,
     title: form.title.trim(),
     language: form.language.trim() || "en",
     description: orNull(form.description),
@@ -86,11 +84,6 @@
       </span>
     </span>
   </label>
-
-  <div class="flex flex-col gap-2">
-    <span class="text-sm font-medium">Theme of the website</span>
-    <ThemePicker {themes} bind:value={() => form.theme, (theme) => (form.theme = theme ?? "light")} />
-  </div>
 
   {#if error}
     <div role="alert" class="alert alert-error alert-soft text-sm">{error}</div>

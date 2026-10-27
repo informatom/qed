@@ -252,6 +252,23 @@ rest is done.
   the pages linking to it (Markdown links and button links), delete files
   or folders no page links to. Text files (HTML, CSS, `.txt`, …, the new
   `MediaKind::Text`) open read only in a viewer, in all three libraries.
+- **#099 Page list block.** *Done 2026-10-27*: `::: page-list` with
+  `from` (empty for the page it's on) lists the pages one level below,
+  by weight, then title (compared by slug, so `André` comes before
+  `Andreas`), each with its summary. Pages with a date are posts and left
+  out; drafts too. Its `from` counts as a link, so moving the listed page
+  updates it, like Post list's. podcasterei.at's Podcaster:innen uses it
+  instead of the hand-written list of 83 people; their podcasts moved
+  into each person page's summary.
+- **#101 Custom theme.** *Done 2026-10-27*: `theme = "custom"` with a
+  `[custom_theme]` table in `site.toml`: `from` (a theme), five colors
+  (background, primary, secondary, accent, neutral) and `corners` (sharp,
+  soft, round). The page keeps `from` as `data-theme`; a `:root[data-theme]`
+  rule appended to `style.css` sets the changed variables, text colors
+  picked for WCAG contrast, base-200/300 mixed from the background
+  (`qed_core::theme`). Site → Theme has a Custom colors card that starts
+  from a theme's colors (read via canvas) and saves on each change; the
+  legend previews it live. Picking another theme keeps the custom colors.
 
 ## Dropped
 

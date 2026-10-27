@@ -12,7 +12,7 @@
 {%- when RenderedBlock::Text with { html } %}
 <div class="prose max-w-none">{{ html|safe }}</div>
 {%- when RenderedBlock::Hero with { image, headline, text_html, button } %}
-<section class="hero relative min-h-80 overflow-hidden rounded-box {% if image.is_some() %}text-neutral-content{% else %}bg-base-200{% endif %}">
+<section class="hero relative min-h-80 overflow-hidden rounded-box {% if image.is_some() %}text-neutral-content{% else %}bg-secondary text-secondary-content{% endif %}">
   {%- if let Some(image) = image %}
   {%- call img(image, "absolute inset-0 h-full w-full object-cover", full_sizes, "eager") %}{% endcall %}
   <div class="hero-overlay absolute inset-0"></div>
@@ -23,7 +23,7 @@
       <h1 class="text-4xl font-bold tracking-tight text-balance sm:text-5xl">{{ headline }}</h1>
       {%- endif %}
       {%- if let Some(text_html) = text_html %}
-      <div class="prose mt-5 max-w-none text-lg {% if image.is_some() %}text-neutral-content{% endif %}">{{ text_html|safe }}</div>
+      <div class="prose mt-5 max-w-none text-lg {% if image.is_some() %}text-neutral-content{% else %}text-secondary-content{% endif %}">{{ text_html|safe }}</div>
       {%- endif %}
       {%- if let Some(button) = button %}
       <a href="{{ button.href }}" class="btn btn-primary mt-8">{{ button.label }}</a>
@@ -118,7 +118,7 @@
   {%- for post in posts %}
   <li class="flex flex-col gap-1">
     <a href="{{ post.href }}" class="link link-hover text-xl font-semibold">{{ post.title }}</a>
-    <time datetime="{{ post.date }}" class="text-sm text-base-content/60">{{ post.date }}</time>
+    <time datetime="{{ post.date }}" class="badge badge-secondary badge-sm self-start">{{ post.date }}</time>
     {%- if let Some(summary_html) = post.summary_html %}
     <div class="prose max-w-none">{{ summary_html|safe }}</div>
     {%- endif %}
@@ -128,5 +128,18 @@
 {%- endif %}
 {%- if let Some(feed_href) = feed_href %}
 <p class="mt-6 text-sm"><a href="{{ feed_href }}" class="link link-hover inline-flex items-center gap-1.5">{{ rss_icon|safe }}Subscribe with RSS</a></p>
+{%- endif %}
+{%- when RenderedBlock::PageList with { pages } %}
+{%- if !pages.is_empty() %}
+<ul class="flex flex-col gap-3">
+  {%- for page in pages %}
+  <li>
+    <a href="{{ page.href }}" class="link link-hover font-semibold">{{ page.title }}</a>
+    {%- if let Some(summary_html) = page.summary_html %}
+    <div class="text-base-content/70 [&_a]:underline">{{ summary_html|safe }}</div>
+    {%- endif %}
+  </li>
+  {%- endfor %}
+</ul>
 {%- endif %}
 {%- endmatch %}

@@ -47,6 +47,8 @@ export const commands = {
 	saveSiteConfig: (root: string, config: SiteConfig) => __TAURI_INVOKE<null>("save_site_config", { root, config }),
 	/**  The daisyUI theme names the app and generated sites can use. */
 	listThemes: () => __TAURI_INVOKE<string[]>("list_themes"),
+	/**  The CSS variables a custom theme sets, for previews in the app. */
+	customThemeVariables: (custom: CustomTheme) => __TAURI_INVOKE<ThemeVariable[]>("custom_theme_variables", { custom }),
 	/**  The page icons: names and SVG markup, from qed's built-in set. */
 	listIcons: () => __TAURI_INVOKE<([string, string])[]>("list_icons"),
 	/**  Replaces the site's publish targets in targets.toml. */
@@ -159,7 +161,9 @@ export type Block =
 	type: "call-to-action",
 } & CallToAction | {
 	type: "post-list",
-} & PostList;
+} & PostList | {
+	type: "page-list",
+} & PageList;
 
 /**  What a build produced. */
 export type BuildReport = {
@@ -204,6 +208,26 @@ export type Column = {
  */
 export type Columns = {
 	items?: Column[],
+};
+
+/**  How round boxes, fields and buttons are. */
+export type Corners = "sharp" | "soft" | "round";
+
+/**
+ *  Colors and corners on top of a theme, from `[custom_theme]` in
+ *  `site.toml`. Colors are `#rrggbb` (or `#rgb`); empty ones keep the
+ *  starting theme's color.
+ */
+export type CustomTheme = {
+	/**  The theme it starts from; everything not set here comes from it. */
+	from: string,
+	/**  The page background (daisyUI's `base-100`). */
+	background: string | null,
+	primary: string | null,
+	secondary: string | null,
+	accent: string | null,
+	neutral: string | null,
+	corners: Corners | null,
 };
 
 /**  A page that a version had and the site folder doesn't any more. */
@@ -382,6 +406,19 @@ export type PageContent = {
 export type PageDate = string;
 
 /**
+ *  The pages one level below a page, by weight, then title, each with its
+ *  summary: a directory, such as one page per person. Pages with a date
+ *  are posts and left out; a Post list shows those.
+ */
+export type PageList = {
+	/**
+	 *  The page whose pages are listed, as its address (`team` or
+	 *  `/team`); empty for the page the list is on.
+	 */
+	from: string | null,
+};
+
+/**
  *  The posts below a page, newest first, each with its date and summary.
  *  A post is a page with a `date` that isn't in the future.
  */
@@ -489,8 +526,13 @@ export type SiteConfig = {
 	 *  best) works best.
 	 */
 	logo: string | null,
-	/**  A daisyUI theme name. */
+	/**  A daisyUI theme name, or `custom` for `custom_theme`. */
 	theme?: string,
+	/**
+	 *  Own colors on top of a theme, used when `theme` is `custom`. Kept
+	 *  when another theme is picked, so it can be picked again.
+	 */
+	custom_theme: CustomTheme | null,
 	/**
 	 *  Where the site is published, e.g. `"https://example.com/"`. Needed
 	 *  for the sitemap and canonical links; the site works without it.
@@ -528,6 +570,13 @@ export type TextImage = {
 	image: string | null,
 	alt: string | null,
 	image_side?: Side,
+};
+
+/**  One CSS variable a custom theme sets. */
+export type ThemeVariable = {
+	/**  With the dashes: `--color-primary`. */
+	name: string,
+	value: string,
 };
 
 /**  One saved version. */
