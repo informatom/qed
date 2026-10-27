@@ -25,6 +25,7 @@ use serde::Serialize;
 use crate::block::{self, Block, Side};
 use crate::calendar::{self, Date};
 use crate::deploy::MANIFEST_FILE;
+use crate::fonts;
 use crate::images::{self, ImageError, Images};
 use crate::links::LinkContext;
 use crate::markdown;
@@ -176,12 +177,30 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
     }
 
-    // A custom theme adds its colors to the one stylesheet.
+    // A custom theme and the site's fonts add to the one stylesheet; the
+    // fonts in use are copied next to it.
     let custom_css = site.config.custom().map(|c| c.css()).unwrap_or_default();
+    let fonts_css = fonts::css(&site.root, &site.config.fonts);
     write(
         &out_dir.join("style.css"),
-        format!("{STYLESHEET}{custom_css}"),
+        format!("{STYLESHEET}{custom_css}{fonts_css}"),
     )?;
+    for font in fonts::used(&site.root, &site.config.fonts) {
+        copy_dir(
+            &site.root.join(fonts::FONTS_DIR).join(&font.id),
+            &out_dir.join(fonts::FONTS_DIR).join(&font.id),
+        )?;
+    }
+    for family in [&site.config.fonts.text, &site.config.fonts.headings]
+        .into_iter()
+        .flatten()
+    {
+        if fonts::installed(&site.root, family).is_none() {
+            notes.push(format!(
+                "The font \"{family}\" isn't downloaded; the site uses the system font. Download it under Site → Theme → Fonts."
+            ));
+        }
+    }
 
     let media_files = copy_dir(&media_dir, &out_dir.join(MEDIA_DIR))?
         + copy_dir(&site.root.join(ASSETS_DIR), &out_dir.join(ASSETS_DIR))?;

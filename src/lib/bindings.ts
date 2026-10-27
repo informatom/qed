@@ -54,6 +54,10 @@ export const commands = {
 	 *  keeps the thumbnail in `media/`.
 	 */
 	fetchVideo: (root: string, url: string) => __TAURI_INVOKE<VideoInfo>("fetch_video", { root, url }),
+	/**  Every font Fontsource offers (the Google Fonts and more). */
+	listFonts: () => __TAURI_INVOKE<FontListing[]>("list_fonts"),
+	/**  Downloads a font into the site's `fonts/` folder. */
+	downloadFont: (root: string, family: string) => __TAURI_INVOKE<FontInfo>("download_font", { root, family }),
 	/**  The page icons: names and SVG markup, from qed's built-in set. */
 	listIcons: () => __TAURI_INVOKE<([string, string])[]>("list_icons"),
 	/**  Replaces the site's publish targets in targets.toml. */
@@ -286,6 +290,37 @@ export type FaqItem = {
 	question?: string,
 	/**  Markdown. */
 	answer?: string,
+};
+
+/**  What `fonts/<id>/font.toml` keeps about a downloaded font. */
+export type FontInfo = {
+	id: string,
+	family: string,
+	category: string,
+	license: string,
+	/**  Subset name to its unicode range, for `@font-face`. */
+	ranges: { [key in string]: string },
+};
+
+/**  One font in Fontsource's list. */
+export type FontListing = {
+	id: string,
+	family: string,
+	/**  `sans-serif`, `serif`, `display`, `handwriting` or `monospace`. */
+	category: string,
+	/**  `google` for Google Fonts, `other` for the rest. */
+	type: string,
+};
+
+/**
+ *  The fonts a site uses, from `[fonts]` in `site.toml`, by family name.
+ *  Empty ones keep the theme's own (the system's sans-serif).
+ */
+export type Fonts = {
+	/**  For text, menus and everything else. */
+	text: string | null,
+	/**  For headings; the text font if empty. */
+	headings: string | null,
 };
 
 /**  Settings at the top of a page file. */
@@ -560,6 +595,8 @@ export type SiteConfig_Deserialize = {
 	navigation?: Navigation,
 	/**  The header: plain, or a full-width bar in one of the theme's colors. */
 	header?: HeaderStyle,
+	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
+	fonts?: Fonts,
 };
 
 /**  Settings from `site.toml`. */
@@ -595,6 +632,8 @@ export type SiteConfig_Serialize = {
 	navigation: Navigation,
 	/**  The header: plain, or a full-width bar in one of the theme's colors. */
 	header: HeaderStyle,
+	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
+	fonts?: Fonts,
 };
 
 /**  A site folder, read into memory. */

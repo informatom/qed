@@ -27,6 +27,7 @@
     custom_theme: site.config.custom_theme,
     saved_themes: site.config.saved_themes,
     header: site.config.header,
+    fonts: site.config.fonts,
     title: form.title.trim(),
     language: form.language.trim() || "en",
     description: orNull(form.description),

@@ -39,10 +39,6 @@ over by hand.
   an Image block hides it.
 - **#097 Column widths.** A width choice per Columns block (equal, wide
   left, wide right), e.g. text in two thirds and a photo in one.
-- **#102 Fonts.** A font choice per site (text and headings), e.g.
-  podcasterei.at's Ubuntu. Self-hosted: the font files are copied into the
-  built site, no Google Fonts or other third-party requests. Could sit with
-  the custom theme (#101).
 - **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
   (`docs/notes/cms-handover-qed.md`; its Elixir file map no longer
   applies). *Done 2026-10-21*: nine block types (Text, Hero, Image, Text
@@ -85,8 +81,8 @@ over by hand.
   types), and Site settings explains them in a legend beside the theme
   switcher; a picked theme saves at once. *Header bar done 2026-10-27*:
   `header` in `site.toml` (plain, primary, secondary, accent, neutral); a colored bar
-  underlines the current page and gives the logo a light backing. Other
-  options are still open (fonts: #102).
+  underlines the current page and gives the logo a light backing. Fonts:
+  #102 (done). Other options are still open.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.

@@ -17,6 +17,7 @@ use std::path::{Component, Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::block::Block;
+use crate::fonts::Fonts;
 use crate::links::LinkContext;
 use crate::markdown;
 use crate::page::{self, FrontMatter, PageContent, PageDate};
@@ -67,6 +68,13 @@ pub struct SiteConfig {
     /// The header: plain, or a full-width bar in one of the theme's colors.
     #[serde(default)]
     pub header: HeaderStyle,
+    /// Self-hosted fonts in `fonts/`; empty keeps the system's.
+    #[serde(default, skip_serializing_if = "is_default_fonts")]
+    pub fonts: Fonts,
+}
+
+fn is_default_fonts(fonts: &Fonts) -> bool {
+    *fonts == Fonts::default()
 }
 
 /// How the page header looks.
@@ -456,13 +464,16 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
 
     let original = read(&path)?;
     let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
-    // `[custom_theme]` as its own section, easier to read than one long line.
-    if let Some(inline) = document
-        .get_mut("custom_theme")
-        .and_then(|item| item.as_inline_table_mut())
-    {
-        let table = std::mem::take(inline).into_table();
-        document["custom_theme"] = toml_edit::Item::Table(table);
+    // `[custom_theme]` and `[fonts]` as their own sections, easier to read
+    // than one long line.
+    for key in ["custom_theme", "fonts"] {
+        if let Some(inline) = document
+            .get_mut(key)
+            .and_then(|item| item.as_inline_table_mut())
+        {
+            let table = std::mem::take(inline).into_table();
+            document[key] = toml_edit::Item::Table(table);
+        }
     }
     // And each saved set as a `[[saved_themes]]` section.
     if let Some(array) = document

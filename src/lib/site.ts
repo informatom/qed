@@ -27,6 +27,9 @@ export const commands = rustCommands as {
 export type { Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage } from "./bindings";
 export type Block = Sent<Rust.Block>;
 export type CustomTheme = Sent<Rust.CustomTheme>;
+export type FontInfo = Sent<Rust.FontInfo>;
+export type FontListing = Sent<Rust.FontListing>;
+export type Fonts = Sent<Rust.Fonts>;
 export type ThemeVariable = Sent<Rust.ThemeVariable>;
 export type BuildReport = Sent<Rust.BuildReport>;
 export type DeletedPage = Sent<Rust.DeletedPage>;

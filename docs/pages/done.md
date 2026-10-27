@@ -287,6 +287,14 @@ rest is done.
   YouTube, Vimeo or a PeerTube instance once over oEmbed
   (`qed_core::video`, reqwest with rustls on ring) and keeps the thumbnail
   in `media/` (YouTube: the 16:9 `maxresdefault.jpg` when there is one).
+- **#102 Fonts.** *Done 2026-10-27*: `[fonts]` in `site.toml` (`text`,
+  `headings`; headings follow text if empty). Fonts come from Fontsource
+  (the Google Fonts and more), downloaded once into `fonts/<id>/` with a
+  `font.toml` (`qed_core::fonts`): 400, 600 if there, 700 and italic, for
+  latin and latin-ext. The build copies the fonts in use and appends
+  `@font-face` rules with `unicode-range` to `style.css`; no third-party
+  requests. Site → Theme → Fonts has a searchable picker and a live
+  sample (FontFace API).
 
 ## Dropped
 

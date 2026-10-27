@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use qed_core::block::Block;
+use qed_core::fonts::{self, FontInfo, FontListing};
 use qed_core::generator::{self, BuildReport};
 use qed_core::history::{self, DeletedPage, DiffLine, HistoryStatus, SincePublish, Version};
 use qed_core::media::{self, Library, MediaFile};
@@ -319,6 +320,24 @@ fn list_icons() -> Vec<(&'static str, &'static str)> {
         .collect()
 }
 
+/// Every font Fontsource offers (the Google Fonts and more).
+#[tauri::command]
+#[specta::specta]
+async fn list_fonts() -> Result<Vec<FontListing>, String> {
+    fonts::list().await.map_err(|error| error.to_string())
+}
+
+/// Downloads a font into the site's `fonts/` folder.
+#[tauri::command]
+#[specta::specta]
+async fn download_font(root: PathBuf, family: String) -> Result<FontInfo, String> {
+    let info = fonts::download(&root, &family)
+        .await
+        .map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(info)
+}
+
 /// Fetches a video's title and thumbnail (YouTube, Vimeo, PeerTube) and
 /// keeps the thumbnail in `media/`.
 #[tauri::command]
@@ -553,6 +572,8 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             list_themes,
             custom_theme_variables,
             fetch_video,
+            list_fonts,
+            download_font,
             list_icons,
             save_targets,
             set_target_password,

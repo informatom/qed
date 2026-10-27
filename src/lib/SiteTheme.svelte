@@ -5,6 +5,8 @@
   import X from "@lucide/svelte/icons/x";
   import Palette from "@lucide/svelte/icons/palette";
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
+  import { convertFileSrc } from "@tauri-apps/api/core";
+  import FontPicker from "$lib/FontPicker.svelte";
   import ThemeLegend from "$lib/ThemeLegend.svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
   import { commands, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type ThemeVariable } from "$lib/site";
@@ -78,6 +80,62 @@
       return;
     }
     commands.customThemeVariables(current).then((vars) => (variables = vars));
+  });
+
+  // Fonts: downloaded once into the site's fonts/ folder, then saved.
+  let fontBusy = $state<"text" | "headings" | null>(null);
+  let fonts = $derived(site.config.fonts ?? { text: null, headings: null });
+
+  async function pickFont(role: "text" | "headings", family: string | null) {
+    error = null;
+    fontBusy = role;
+    try {
+      const chosen = family ? (await commands.downloadFont(site.root, family)).family : null;
+      await save({ ...$state.snapshot(site.config), fonts: { ...$state.snapshot(fonts), [role]: chosen } });
+    } catch (e) {
+      error = String(e);
+    } finally {
+      fontBusy = null;
+    }
+  }
+
+  /** The folder name of a font, as Fontsource (and qed_core::fonts) make it. */
+  function fontId(family: string): string {
+    return family
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  // Loads a downloaded font into the app under its own name, for the sample.
+  const loaded = new Map<string, string>();
+  async function previewFamily(family: string | null): Promise<string | null> {
+    if (!family) return null;
+    const id = fontId(family);
+    const name = `qed-preview-${id}`;
+    if (!loaded.has(id)) {
+      loaded.set(id, name);
+      for (const [weight, file] of [["400", "latin-400-normal"], ["700", "latin-700-normal"]]) {
+        const face = new FontFace(name, `url(${convertFileSrc(`${site.root}/fonts/${id}/${file}.woff2`)})`, { weight });
+        try {
+          document.fonts.add(await face.load());
+        } catch {
+          // A font without that weight: the browser makes do with the other.
+        }
+      }
+    }
+    return name;
+  }
+
+  let textFace = $state<string | null>(null);
+  let headingFace = $state<string | null>(null);
+  $effect(() => {
+    const text = fonts.text;
+    const headings = fonts.headings ?? fonts.text;
+    previewFamily(text).then((name) => (textFace = name));
+    previewFamily(headings).then((name) => (headingFace = name));
   });
 
   async function save(config: SiteConfig) {
@@ -202,6 +260,25 @@
       </div>
       <span class="text-xs text-base-content/60">Plain, or a full-width bar in one of the theme's colors.</span>
     </div>
+
+    <section id="site-fonts" class="flex flex-col gap-3 rounded-box border border-base-300 p-3">
+      <span class="font-medium">Fonts</span>
+      <FontPicker id="font-text" label="Text" value={fonts.text} emptyLabel="System font"
+        busy={fontBusy === "text"} onpick={(family) => pickFont("text", family)} />
+      <FontPicker id="font-headings" label="Headings" value={fonts.headings} emptyLabel="Text font"
+        busy={fontBusy === "headings"} onpick={(family) => pickFont("headings", family)} />
+      <div id="font-sample" class="rounded-field bg-base-200 p-3">
+        <p class="text-xl font-bold" style:font-family={headingFace ? `"${headingFace}"` : null}>Das Podcasting Meetup Österreich</p>
+        <p class="text-sm" style:font-family={textFace ? `"${textFace}"` : null}>
+          Wir sind eine Gruppe von netten Leuten, die begeistert eine Podcastepisode nach der anderen veröffentlichen. <b>Fett</b>, <i>kursiv</i>.
+        </p>
+      </div>
+      <p class="text-xs text-base-content/60">
+        From the Google Fonts and other open fonts (via Fontsource), downloaded once into the site's <code>fonts/</code>
+        folder and served by the website itself: no requests to Google. One font for both is fine; headings use the text
+        font unless you pick another.
+      </p>
+    </section>
 
     <section id="custom-theme"
       class={["flex flex-col gap-3 rounded-box border p-3", isCustom ? "border-primary ring-2 ring-primary" : "border-base-300"]}>
