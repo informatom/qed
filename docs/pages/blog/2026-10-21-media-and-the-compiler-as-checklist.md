@@ -18,7 +18,7 @@ the library as a picker.
 ## The compiler as a checklist
 
 The Image block started with three lines in
-[`block.rs`](../../../crates/qed-core/src/block.rs): a struct, and a new
+`crates/qed-core/src/block.rs`: a struct, and a new
 variant in the `Block` enum:
 
 ```rust
@@ -51,7 +51,7 @@ someone uses the new block on a page. Dialyzer can catch some of it, if you
 run it.
 
 The surprise came from the other side. Adding `image` to the TypeScript
-block union in [`site.ts`](../../../src/lib/site.ts):
+block union in `src/lib/site.ts`:
 
 ```ts
 export type Block =
@@ -78,7 +78,7 @@ language.
 
 Importing `Team Photo.JPG` copies it as `team-photo.jpg`. If that name is
 taken, it tries `team-photo-2.jpg`, then `-3`, and so on. In
-[`media.rs`](../../../crates/qed-core/src/media.rs):
+`crates/qed-core/src/media.rs`:
 
 ```rust
 for number in 1.. {
@@ -153,7 +153,7 @@ Tauri offers the
 [asset protocol](https://v2.tauri.app/reference/javascript/api/namespacecore/#convertfilesrc):
 `convertFileSrc(path)` turns a file path into a special URL the window can
 load. But only for paths inside the protocol's *scope*, which starts empty
-in q.e.d.'s [`tauri.conf.json`](../../../src-tauri/tauri.conf.json):
+in q.e.d.'s `src-tauri/tauri.conf.json`:
 
 ```json
 "assetProtocol": { "enable": true, "scope": [] }
@@ -169,7 +169,7 @@ app.asset_protocol_scope()
 
 The window can show your site's images, and nothing else on your disk. It's
 the same idea as the permissions in
-[`capabilities/default.json`](../../../src-tauri/capabilities/default.json),
+`src-tauri/capabilities/default.json`,
 which list the few things the UI may do besides calling q.e.d.'s own commands:
 open a folder or file dialog, ask a yes/no question, open a URL. The UI gets
 only what it needs.

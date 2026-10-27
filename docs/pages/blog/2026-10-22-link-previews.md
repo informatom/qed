@@ -38,9 +38,9 @@ reads it. A post on this site now starts like this:
 ```
 
 The tags are written by
-[`templates/page.html`](../../../crates/qed-core/templates/page.html),
+`crates/qed-core/templates/page.html`,
 from fields that `render_page` in
-[`generator.rs`](../../../crates/qed-core/src/generator.rs) fills in.
+`crates/qed-core/src/generator.rs` fills in.
 Some details:
 
 - `og:type` is `article` for posts (pages with a date) and `website` for
@@ -144,7 +144,7 @@ let (name, alt) = match page.content.front.image.as_deref() {
 ## `pub(crate)`
 
 The preview needs `scaled_height` from
-[`images.rs`](../../../crates/qed-core/src/images.rs), which was private
+`crates/qed-core/src/images.rs`, which was private
 to that file (Rust calls a file a *module*). Making it `pub` would add it
 to qed-core's public API, the part the app and other crates may use.
 `pub(crate)` is the step in between: visible everywhere inside qed-core,

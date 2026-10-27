@@ -58,6 +58,8 @@ code, comparing with Elixir where it helps, with links to the official docs.
 Give each post a short `title` that fits the docs site's sidebar (about 25
 characters), the full headline as `description`, `menu = "main"`, the next
 `weight` (posts are numbered in the order written), `date`, `authors`,
-`tags` and `summary`. The blog's front page lists posts by itself (a Post
+`tags` and `summary`. Name source files as code (`` `src/lib/site.ts` ``),
+don't link them: links may not leave the site folder, and the build stops
+on one that does. The blog's front page lists posts by itself (a Post
 list block). `docs/` is a qed site; `cargo test` fails if
 it stops being valid. Don't explain in chat what belongs in a post.

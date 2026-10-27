@@ -15,7 +15,7 @@ they like, and later change the title in q.e.d. If saving from the app wiped
 out their comment, they'd stop trusting either the app or their editor.
 
 So q.e.d.'s writer, in
-[`page_writer.rs`](../../../crates/qed-core/src/page_writer.rs), follows one
+`crates/qed-core/src/page_writer.rs`, follows one
 rule: change only what changed.
 
 ```toml
@@ -167,14 +167,14 @@ writing, the original file is untouched; the worst case is a leftover
 
 Also, the file path comes from the UI, and the UI shouldn't be able to make
 q.e.d. write anywhere it likes. `page_file` in
-[`site.rs`](../../../crates/qed-core/src/site.rs) accepts only plain relative
+`crates/qed-core/src/site.rs` accepts only plain relative
 paths inside `pages/` that end in `.md` and already exist. `../site.toml` or
 `/etc/passwd` gets an error, and a test checks exactly that.
 
 ## A first Svelte component
 
 On the UI side, page settings got their own component,
-[`src/lib/PageSettings.svelte`](../../../src/lib/PageSettings.svelte). A
+`src/lib/PageSettings.svelte`. A
 component is one `.svelte` file: script, markup, and optionally styles, like
 a Phoenix function component with its template.
 

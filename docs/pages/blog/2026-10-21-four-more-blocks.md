@@ -57,7 +57,7 @@ pub struct Faq {
 When q.e.d. writes a block, `toml_edit` produces a list of tables as one long
 inline line: `items = [{ question = "…", answer = "…" }, …]`. Valid, but
 not what anyone wants to edit by hand. So the writer, in
-[`page_writer.rs`](../../../crates/qed-core/src/page_writer.rs), walks the
+`crates/qed-core/src/page_writer.rs`, walks the
 document and turns such lists into `[[items]]` sections:
 
 ```rust
@@ -114,7 +114,7 @@ allows them too.
 
 Three block types now show images with width and height, so the `<img>` tag
 became an [askama macro](https://askama.readthedocs.io/en/stable/template_syntax.html#macros)
-in [`page.html`](../../../crates/qed-core/templates/page.html):
+in `crates/qed-core/templates/page.html`:
 
 ```html
 {%- macro img(picture, classes) %}

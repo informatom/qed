@@ -52,7 +52,7 @@ and the choice happens inside the browser.
 
 ## Asking during rendering, resizing afterwards
 
-[`images.rs`](../../../crates/qed-core/src/images.rs) splits the work in
+`crates/qed-core/src/images.rs` splits the work in
 two. While a page renders, the generator asks `images.info("team.jpg")`.
 That reads only the file header (a few hundred bytes) for the size and
 decides which copies the image gets: only JPEG and PNG, and only widths

@@ -163,6 +163,19 @@ impl LinkContext {
         url.to_string()
     }
 
+    /// Whether a link written in this page leads out of the site folder: a
+    /// relative path that climbs higher than the folder, such as
+    /// `../../../src/lib.rs` in `pages/blog/post.md`. The website holds
+    /// only what's inside the folder, so such a link can't work there.
+    pub fn leaves_site(&self, url: &str) -> bool {
+        if is_external(url) || url.starts_with(['#', '/']) || url.is_empty() {
+            return false;
+        }
+        let target = url.split(['#', '?']).next().unwrap_or_default();
+        let folder = self.page_file.parent().unwrap_or(Path::new(""));
+        normalize(&folder.join(target)).is_none()
+    }
+
     /// The URL path of the page a link points to (`/about`, `about.md`,
     /// `../index.md#top`), or `None` for links to files and other sites.
     pub fn page_path_of(&self, url: &str) -> Option<String> {
@@ -291,6 +304,24 @@ mod tests {
         let team = context("about/team", "pages/about/team.md");
         assert_eq!(team.page(""), "../../");
         assert_eq!(team.page("blog/first"), "../../blog/first/");
+    }
+
+    #[test]
+    fn finds_links_that_leave_the_site_folder() {
+        let post = context("blog/post", "pages/blog/post.md");
+        assert!(post.leaves_site("../../../src/lib/site.ts"));
+        assert!(post.leaves_site("../../../README.md#top"));
+        assert!(
+            !post.leaves_site("../../media/logo.png"),
+            "media/ is inside"
+        );
+        assert!(!post.leaves_site("../about.md"));
+        assert!(!post.leaves_site("/about"));
+        assert!(!post.leaves_site("https://example.com/../x"));
+        assert!(!post.leaves_site("mailto:a@b.at"));
+        let footer = context("(footer)", "footer.md");
+        assert!(footer.leaves_site("../other/file.pdf"));
+        assert!(!footer.leaves_site("pages/about.md"));
     }
 
     #[test]

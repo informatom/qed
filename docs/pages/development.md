@@ -74,7 +74,7 @@ cargo test -p qed-core --test test_server -- --ignored --test-threads=1
 ## Releasing
 
 Installers are built by GitHub Actions
-([`.github/workflows/release.yml`](../../.github/workflows/release.yml))
+(`.github/workflows/release.yml`)
 whenever a version tag is pushed to the GitHub repository:
 
 | System  | File                                                          |

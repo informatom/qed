@@ -12,7 +12,7 @@ summary = "q.e.d. can publish to a real server now. That brings async Rust, impl
 This is the step where q.e.d. becomes useful: click "Publish…", pick a server,
 and the website goes online. The first publish uploads everything; later
 ones upload only what changed, thanks to the checksum list described in
-[`deploy.rs`](../../../crates/qed-core/src/deploy.rs). Logging in works with
+`crates/qed-core/src/deploy.rs`. Logging in works with
 a password or with a key q.e.d. generates, and both live in the operating
 system's keychain, never in the site folder.
 
@@ -60,7 +60,7 @@ types keep the two apart, and `?` unwraps one layer each.
 
 The SSH library, [russh](https://docs.rs/russh), asks *you* whether to trust
 the server. During the handshake it calls a method of a trait you implement,
-in [`sftp.rs`](../../../crates/qed-core/src/sftp.rs):
+in `crates/qed-core/src/sftp.rs`:
 
 ```rust
 impl client::Handler for HostKeyCheck {
@@ -109,7 +109,7 @@ UnknownHostKey { fingerprint: String },
 ```
 
 and the app turns that one variant into a question instead of an error
-message, in [`src-tauri/src/lib.rs`](../../../src-tauri/src/lib.rs):
+message, in `src-tauri/src/lib.rs`:
 
 ```rust
 match sftp::test(&target, &credentials).await {
@@ -141,7 +141,7 @@ sftp::publish(&sftp_target, &credentials, &report.out_dir, |progress| {
 })
 ```
 
-On the TypeScript side, in [`site.ts`](../../../src/lib/site.ts):
+On the TypeScript side, in `src/lib/site.ts`:
 
 ```ts
 const channel = new Channel<Progress>();
@@ -162,7 +162,7 @@ one, and server names don't belong in a public repository either; q.e.d.'s
 `.gitignore` leaves `targets.toml` out. Passwords and private keys go to the
 system keychain
 through the [keyring](https://docs.rs/keyring) crate, in
-[`secrets.rs`](../../../src-tauri/src/secrets.rs): the macOS Keychain, the
+`src-tauri/src/secrets.rs`: the macOS Keychain, the
 Windows Credential Manager, or the Secret Service on Linux.
 
 Generated keys are Ed25519, made from 32 random bytes from the operating

@@ -22,7 +22,7 @@ Saving settings and saving blocks do almost the same thing: read the file
 again, change one part, write it safely, read back what was written. The
 only difference is *which* part changes. So the shared work is one function
 that takes the change as an argument, in
-[`site.rs`](../../../crates/qed-core/src/site.rs):
+`crates/qed-core/src/site.rs`:
 
 ```rust
 fn update_page(
@@ -83,10 +83,10 @@ Two details:
 
 The editor is built from four Svelte components:
 
-- [`PageEditor.svelte`](../../../src/lib/PageEditor.svelte): the frame with
+- `src/lib/PageEditor.svelte`: the frame with
   the "Content" and "Settings" tabs.
-- [`BlockEditor.svelte`](../../../src/lib/BlockEditor.svelte): the block cards.
-- [`MarkdownEditor.svelte`](../../../src/lib/MarkdownEditor.svelte): a
+- `src/lib/BlockEditor.svelte`: the block cards.
+- `src/lib/MarkdownEditor.svelte`: a
   Markdown editor for any text field.
 - `PageSettings.svelte`, from before.
 

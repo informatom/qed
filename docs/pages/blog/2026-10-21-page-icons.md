@@ -24,7 +24,7 @@ written by Rust, which can't use a Svelte package.
 So q.e.d. carries its own copies: 60 Lucide icons chosen for typical pages
 (house, book, newspaper, people, mail, calendar, microphone, scales for an
 imprint, a shield for privacy, …), as SVG files in
-[`crates/qed-core/assets/icons/`](../../../crates/qed-core/assets/icons),
+`crates/qed-core/assets/icons/`,
 with Lucide's license. Each file was simplified to one line with the
 classes the generated site needs.
 
@@ -38,7 +38,7 @@ Sixty icons would mean sixty nearly identical lines like this one:
 ("book-open", include_str!("../assets/icons/book-open.svg")),
 ```
 
-Instead, [`icons.rs`](../../../crates/qed-core/src/icons.rs) defines a
+Instead, `crates/qed-core/src/icons.rs` defines a
 small macro with
 [`macro_rules!`](https://doc.rust-lang.org/book/ch20-05-macros.html):
 

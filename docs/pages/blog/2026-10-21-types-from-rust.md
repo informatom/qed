@@ -47,7 +47,7 @@ editor.
 
 Each command gets one more attribute, and the list of commands moves from
 `tauri::generate_handler!` into a function in
-[`src-tauri/src/lib.rs`](../../../src-tauri/src/lib.rs):
+`src-tauri/src/lib.rs`:
 
 ```rust
 #[tauri::command]
@@ -168,7 +168,7 @@ specta can produce separate "send" and "receive" types, but it doesn't
 count `default` as a reason to split them. So the TypeScript was too
 cautious, and the UI would have needed `?? []` all over.
 
-The fix is one type in [`site.ts`](../../../src/lib/site.ts):
+The fix is one type in `src/lib/site.ts`:
 
 ```ts
 export type Sent<T> = T extends object ? { [K in keyof T]-?: Sent<T[K]> } : T;

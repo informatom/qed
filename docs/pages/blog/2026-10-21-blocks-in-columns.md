@@ -75,7 +75,7 @@ type that refers back to `Block`.
 
 ## A parser that calls itself
 
-The parser in [`page.rs`](../../../crates/qed-core/src/page.rs) used to
+The parser in `crates/qed-core/src/page.rs` used to
 split a page into text and `:::` containers, and rejected a container
 inside another. Now `parse_body` does one more thing: when it meets
 `:::: columns`, it collects the lines up to the matching `::::` (skipping
@@ -169,7 +169,7 @@ images](2026-10-21-responsive-images.md)) asks for a smaller copy.
 
 The editor works the same way. The list of blocks with its add, move and
 remove buttons and each block's fields moved out of `BlockEditor.svelte`
-into [`BlockList.svelte`](../../../src/lib/BlockList.svelte). Inside a
+into `src/lib/BlockList.svelte`. Inside a
 Columns block, each column shows a `BlockList` of its own:
 
 ```svelte

@@ -14,14 +14,14 @@ looking at the result: this blog is a q.e.d. site, and the page you're reading
 was rendered by the code this post describes.
 
 The generator lives in
-[`crates/qed-core/src/generator.rs`](../../../crates/qed-core/src/generator.rs).
+`crates/qed-core/src/generator.rs`.
 For every page that isn't a draft, it renders HTML into `_site/`, then adds
 the stylesheet, the media files, redirect pages for old URLs, and a sitemap.
 
 ## Templates the compiler checks
 
 The HTML comes from templates in
-[`crates/qed-core/templates`](../../../crates/qed-core/templates), rendered
+`crates/qed-core/templates/`, rendered
 with [askama](https://askama.readthedocs.io/). The syntax looks like Jinja or
 Liquid:
 
@@ -130,7 +130,7 @@ stylesheet is `../../style.css`, not `/style.css`. That way a site works at
 the root of a domain, in a subfolder (as GitHub Pages serves project sites),
 and in the preview.
 
-[`links.rs`](../../../crates/qed-core/src/links.rs) rewrites what people
+`crates/qed-core/src/links.rs` rewrites what people
 write:
 
 | Written in a page    | On the built page `/blog/post/` |
@@ -165,7 +165,7 @@ need it, but it's how linked structures like trees are built.
 ## A web server in a background thread
 
 "Preview in browser" needs a web server. q.e.d. brings a tiny one,
-[`preview.rs`](../../../crates/qed-core/src/preview.rs), built on
+`crates/qed-core/src/preview.rs`, built on
 [tiny_http](https://docs.rs/tiny_http). It listens only on `127.0.0.1`, on a
 free port the system picks, and runs in its own
 [thread](https://doc.rust-lang.org/book/ch16-01-threads.html):
@@ -218,7 +218,7 @@ remember to stop it. That's the closest Rust gets to a linked process.
 
 The app keeps one preview server running across button clicks. Tauri holds it
 as *managed state*, in
-[`src-tauri/src/lib.rs`](../../../src-tauri/src/lib.rs):
+`src-tauri/src/lib.rs`:
 
 ```rust
 #[derive(Default)]

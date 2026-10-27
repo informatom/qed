@@ -529,6 +529,31 @@ rest is done.
   *Closed 2026-10-27*: no item of its own; testing on macOS and Windows
   goes on with every release, and problems come back as new items.
 
+- **#026 Site generator.** Render HTML for published pages, posts, menus,
+  redirects (meta-refresh stubs) and the sitemap with Rust templates. Copy
+  the images used. Rewrite relative links to other `.md` pages into page
+  URLs; links that leave the site folder (e.g. to source code) need a base
+  URL such as the GitHub repo. *First version done 2026-10-21*
+  (`qed_core::generator`): pages, menus, relative links, Markdown links,
+  redirects, sitemap and canonical links with `base_url`, media copied,
+  preview server and "Build" / "Preview in browser" in the app. *Link
+  previews done 2026-10-22*: Open Graph tags on every page; `og:image`
+  from the new `image` page setting ("Share image") or the page's first
+  image (smallest copy at least 1200 px wide, else the original), only with `base_url`. Still open: copying only the
+  media files that are used, and links that leave the site folder.
+  *Closed 2026-10-27*: copying only used media dropped (static/ pages
+  point at media files, publishing uploads only changes, and the Media
+  tab shows unused files). Links that leave the site folder are refused:
+  the build stops and names the file and the link
+  (`LinkContext::leaves_site`). The docs blog names source files as code
+  instead of linking them.
+
+- **Phase 1: CMS and site generator.** A complete site builder without
+  podcast features. Decided 2026-10-26: finish phase 1 before podcasting,
+  testing it by moving the owner's Jekyll sites over by hand. *All done
+  2026-10-27* (the last items: #043, #054, #026; #032, #033 and #086
+  closed).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

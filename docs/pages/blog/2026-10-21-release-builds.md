@@ -20,7 +20,7 @@ release. How to make one is under "Releasing" on the
 [GitHub Actions](https://docs.github.com/en/actions) runs *workflows*: YAML
 files in `.github/workflows/` that say when to run (`on:`) and what to do
 (`jobs:`). Each job runs on a fresh virtual machine, a *runner*.
-q.e.d.'s [`release.yml`](../../../.github/workflows/release.yml) has two jobs.
+q.e.d.'s `.github/workflows/release.yml` has two jobs.
 The first checks the version, and the second does the build, once per
 system:
 

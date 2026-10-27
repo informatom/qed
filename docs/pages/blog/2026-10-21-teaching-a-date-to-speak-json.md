@@ -38,7 +38,7 @@ field is its trick for doing so. The UI should just get `"2026-10-21"`.
 ## A newtype
 
 The fix starts with a wrapper, in
-[`crates/qed-core/src/page.rs`](../../../crates/qed-core/src/page.rs):
+`crates/qed-core/src/page.rs`:
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Deserialize)]

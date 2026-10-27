@@ -94,8 +94,33 @@ pub enum BuildError {
     )]
     StaticOverBuilt { path: String },
 
+    #[error(
+        "{}: the link \"{link}\" leads outside the site folder, where the website can't follow it; link to a page or file inside the site, or to a full web address",
+        file.display()
+    )]
+    LinkOutside { file: PathBuf, link: String },
+
     #[error(transparent)]
     Image(#[from] ImageError),
+}
+
+/// Refuses links that leave the site folder (`../../src/lib.rs`): they'd
+/// be broken on the website. Drafts aren't built, so they may still have
+/// them.
+fn check_links(site: &Site) -> Result<(), BuildError> {
+    for page in site.with_blocks().filter(|page| !page.content.front.draft) {
+        let links = LinkContext::new(&page.path, &page.file);
+        if let Some(link) = crate::site::link_targets(&page.content.blocks)
+            .into_iter()
+            .find(|link| links.leaves_site(link))
+        {
+            return Err(BuildError::LinkOutside {
+                file: page.file.clone(),
+                link,
+            });
+        }
+    }
+    Ok(())
 }
 
 /// Builds the site into `_site/` inside its folder.
@@ -111,6 +136,7 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
 /// Builds as if it were `today`: posts dated later are left out of lists
 /// and feeds.
 fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, BuildError> {
+    check_links(site)?;
     prepare_output(out_dir)?;
 
     // Shared blocks become their pieces' blocks; the rest of the build
@@ -2753,6 +2779,22 @@ mod tests {
         assert!(
             home[home.find("<footer").unwrap()..].contains(r#"href="blog/about/""#),
             "{home}"
+        );
+    }
+
+    #[test]
+    fn refuses_links_that_leave_the_site_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        let about = site.pages.iter_mut().find(|p| p.path == "blog").unwrap();
+        about.content.blocks.push(Block::Text {
+            markdown: "See [the code](../../src/lib.rs).".into(),
+        });
+        let out = tempfile::tempdir().unwrap();
+        let error = build_on(&site, out.path(), TODAY).unwrap_err().to_string();
+        assert!(
+            error.contains("pages/blog.md: the link \"../../src/lib.rs\" leads outside"),
+            "{error}"
         );
     }
 

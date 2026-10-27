@@ -100,7 +100,7 @@ npx tauri icon brand/app-icon.png
 ```
 
 It writes into `src-tauri/icons/`, and
-[`tauri.conf.json`](../../../src-tauri/tauri.conf.json) lists which of
+`src-tauri/tauri.conf.json` lists which of
 those files the installers use. It also makes icons for Android and iOS,
 which q.e.d. doesn't need, so those folders are deleted again. See
 [Tauri's icon guide](https://v2.tauri.app/develop/icons/).

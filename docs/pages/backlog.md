@@ -19,24 +19,6 @@ Nothing open.
 
 ## To build
 
-### Phase 1: CMS and site generator
-
-A complete site builder without podcast features. Decided 2026-10-26: finish
-phase 1 before podcasting, testing it by moving the owner's Jekyll sites
-over by hand.
-
-- **#026 Site generator.** Render HTML for published pages, posts, menus,
-  redirects (meta-refresh stubs) and the sitemap with Rust templates. Copy
-  the images used. Rewrite relative links to other `.md` pages into page
-  URLs; links that leave the site folder (e.g. to source code) need a base
-  URL such as the GitHub repo. *First version done 2026-10-21*
-  (`qed_core::generator`): pages, menus, relative links, Markdown links,
-  redirects, sitemap and canonical links with `base_url`, media copied,
-  preview server and "Build" / "Preview in browser" in the app. *Link
-  previews done 2026-10-22*: Open Graph tags on every page; `og:image`
-  from the new `image` page setting ("Share image") or the page's first
-  image (smallest copy at least 1200 px wide, else the original), only with `base_url`. Still open: copying only the
-  media files that are used, and links that leave the site folder.
 ### Phase 2: Podcasting
 
 - **#066 Podcast switch.** Per site; turns on episodes, feed, contributors and
