@@ -1,10 +1,12 @@
-//! The site's two folders of files that pages use: `media/` for images and
-//! `assets/` for files to download, such as PDFs.
+//! The site's folders of files: `media/` for images, `assets/` for files to
+//! download, such as PDFs, and `static/` for files copied into the built
+//! site as they are (slide shows, `keybase.txt`).
 //!
-//! Pages refer to these files by name: `image = "team.jpg"` and
+//! Pages refer to media and assets by name: `image = "team.jpg"` and
 //! `file = "menu.pdf"` in blocks, or `![Team](/media/team.jpg)` and
-//! `[Menu](/assets/menu.pdf)` in Markdown. The files stay as they are; the
-//! site generator copies them into the built site.
+//! `[Menu](/assets/menu.pdf)` in Markdown. Static files keep their own
+//! address: `static/pdf/a.pdf` is linked as `/pdf/a.pdf`. The files stay as
+//! they are; the site generator copies them into the built site.
 
 use std::fs;
 use std::io;
@@ -14,10 +16,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::block::{self, Block};
 use crate::markdown;
-use crate::site::{self, ASSETS_DIR, MEDIA_DIR, Page, Site, SiteError};
+use crate::site::{self, ASSETS_DIR, MEDIA_DIR, Page, STATIC_DIR, Site, SiteError};
 use crate::slug::slugify;
 
-/// Which of the two folders.
+/// System clutter that `static/` doesn't list or copy.
+pub(crate) const CLUTTER: [&str; 3] = [".DS_Store", "Thumbs.db", "desktop.ini"];
+
+/// Which of the folders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
@@ -26,6 +31,8 @@ pub enum Library {
     Media,
     /// `assets/`: files to download, of any type.
     Assets,
+    /// `static/`: copied into the built site at the same paths.
+    Static,
 }
 
 impl Library {
@@ -33,6 +40,7 @@ impl Library {
         match self {
             Library::Media => MEDIA_DIR,
             Library::Assets => ASSETS_DIR,
+            Library::Static => STATIC_DIR,
         }
     }
 }
@@ -44,10 +52,12 @@ impl Library {
 pub enum MediaKind {
     Image,
     Document,
+    /// Plain text the app can show: HTML, CSS, JavaScript, `.txt`, …
+    Text,
     Other,
 }
 
-/// One file in `media/` or `assets/`.
+/// One file in `media/`, `assets/` or `static/`.
 #[derive(Debug, Clone, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct MediaFile {
@@ -69,7 +79,7 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
     let folder = site.root.join(library.dir());
     let mut names = Vec::new();
     if folder.is_dir() {
-        collect(&folder, &folder, &mut names)?;
+        collect(&folder, &folder, library == Library::Static, &mut names)?;
     }
     names.sort();
 
@@ -115,13 +125,51 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
         .collect()
 }
 
+/// The largest file [`read_text`] shows, in bytes.
+const MAX_TEXT: u64 = 2 * 1024 * 1024;
+
+/// Reads a text file from one of the folders, to show it in the app.
+/// Refuses files that aren't UTF-8 text or are larger than 2 MB.
+pub fn read_text(root: &Path, library: Library, name: &str) -> Result<String, SiteError> {
+    let path = file_path(root, library, name)?;
+    let invalid = |message: String| SiteError::Invalid {
+        path: PathBuf::from(library.dir()).join(name),
+        message,
+    };
+    let read_error = |source| SiteError::Io {
+        path: path.clone(),
+        source,
+    };
+    if !path.is_file() {
+        return Err(invalid("is a folder".to_string()));
+    }
+    let size = fs::metadata(&path).map_err(read_error)?.len();
+    if size > MAX_TEXT {
+        return Err(invalid(format!(
+            "is too large to show here ({} MB)",
+            size / (1024 * 1024)
+        )));
+    }
+    let bytes = fs::read(&path).map_err(read_error)?;
+    match String::from_utf8(bytes) {
+        Ok(text) if !text.contains('\0') => Ok(text),
+        _ => Err(invalid("isn't a text file".to_string())),
+    }
+}
+
 /// Copies a file into one of the folders and returns its new name. `media/`
 /// takes only images.
 ///
 /// The name is made URL-friendly (`Team Photo.JPG` becomes `team-photo.jpg`),
 /// and gets a number if it's taken (`team-photo-2.jpg`). Existing files are
 /// never overwritten.
+///
+/// `static/` keeps the name as it is, since it's the file's address, and
+/// also takes whole folders; a name that's taken is an error there.
 pub fn import(root: &Path, library: Library, source: &Path) -> Result<String, SiteError> {
+    if library == Library::Static {
+        return import_static(root, "", source);
+    }
     let read_error = |source_error| SiteError::Io {
         path: source.to_path_buf(),
         source: source_error,
@@ -196,13 +244,103 @@ pub fn import(root: &Path, library: Library, source: &Path) -> Result<String, Si
     unreachable!("the loop above runs until it returns")
 }
 
-/// Deletes a file from one of the folders, unless a page still uses it.
+/// Copies a file or folder into `folder` in `static/` (`""` for the top,
+/// `talks/2019`) under its own name. Returns its path inside `static/`.
+pub fn import_static(root: &Path, folder: &str, source: &Path) -> Result<String, SiteError> {
+    let folder = folder.trim_matches('/');
+    let plain = Path::new(folder)
+        .components()
+        .all(|c| matches!(c, Component::Normal(_)));
+    if !plain {
+        return Err(SiteError::Invalid {
+            path: PathBuf::from(STATIC_DIR).join(folder),
+            message: "not a folder inside static".to_string(),
+        });
+    }
+    let file_name = source
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let name = match folder {
+        "" => file_name.clone(),
+        _ => format!("{folder}/{file_name}"),
+    };
+    let target = root.join(STATIC_DIR).join(&name);
+    if file_name.is_empty() || target.exists() {
+        return Err(SiteError::Invalid {
+            path: PathBuf::from(STATIC_DIR).join(&name),
+            message: "already exists; delete or rename it first".to_string(),
+        });
+    }
+    if source.is_dir() {
+        copy_tree(source, &target)?;
+    } else {
+        copy_new(source, &target)?;
+    }
+    Ok(name)
+}
+
+/// Copies a folder with everything in it but clutter.
+fn copy_tree(from: &Path, to: &Path) -> Result<(), SiteError> {
+    let read_error = |source| SiteError::Io {
+        path: from.to_path_buf(),
+        source,
+    };
+    fs::create_dir_all(to).map_err(|source| SiteError::Write {
+        path: to.to_path_buf(),
+        source,
+    })?;
+    for entry in fs::read_dir(from).map_err(read_error)? {
+        let entry = entry.map_err(read_error)?;
+        let name = entry.file_name();
+        if CLUTTER.contains(&name.to_string_lossy().as_ref()) {
+            continue;
+        }
+        let (source, target) = (entry.path(), to.join(&name));
+        if source.is_dir() {
+            copy_tree(&source, &target)?;
+        } else {
+            copy_new(&source, &target)?;
+        }
+    }
+    Ok(())
+}
+
+/// Copies a file to a path that must not exist yet.
+fn copy_new(from: &Path, to: &Path) -> Result<(), SiteError> {
+    let write_error = |source| SiteError::Write {
+        path: to.to_path_buf(),
+        source,
+    };
+    if let Some(parent) = to.parent() {
+        fs::create_dir_all(parent).map_err(write_error)?;
+    }
+    let mut input = fs::File::open(from).map_err(|source| SiteError::Io {
+        path: from.to_path_buf(),
+        source,
+    })?;
+    let mut output = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(to)
+        .map_err(write_error)?;
+    io::copy(&mut input, &mut output).map_err(write_error)?;
+    Ok(())
+}
+
+/// Deletes a file from one of the folders, unless a page still uses it. In
+/// `static/`, `name` may also be a folder, deleted with everything in it.
 pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError> {
     let path = file_path(&site.root, library, name)?;
+    let inside = format!("{name}/");
     let used_by: Vec<String> = site
         .pages
         .iter()
-        .filter(|page| references(page, library).iter().any(|n| n == name))
+        .filter(|page| {
+            references(page, library)
+                .iter()
+                .any(|n| n == name || n.starts_with(&inside))
+        })
         .map(|page| format!("/{}", page.path))
         .collect();
     if library == Library::Media && is_site_logo(site, name) {
@@ -217,7 +355,25 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
             message: format!("still used by {}", used_by.join(", ")),
         });
     }
-    fs::remove_file(&path).map_err(|source| SiteError::Write { path, source })
+    let removed = if path.is_dir() {
+        fs::remove_dir_all(&path)
+    } else {
+        fs::remove_file(&path)
+    };
+    removed.map_err(|source| SiteError::Write {
+        path: path.clone(),
+        source,
+    })?;
+    // Folders the file leaves empty go too, up to the library folder.
+    let top = site.root.join(library.dir());
+    let mut dir = path.parent();
+    while let Some(folder) = dir.filter(|folder| *folder != top) {
+        if fs::remove_dir(folder).is_err() {
+            break;
+        }
+        dir = folder.parent();
+    }
+    Ok(())
 }
 
 /// Whether `name` in `media/` is the logo set in Site settings.
@@ -238,6 +394,7 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
     let mut images = Vec::new();
     let mut downloads = Vec::new();
     let mut markdown_texts: Vec<&str> = Vec::new();
+    let mut buttons: Vec<&str> = Vec::new();
     images.extend(page.content.front.image.as_deref().and_then(media_name));
 
     for block in block::all_blocks(&page.content.blocks) {
@@ -246,6 +403,7 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             Block::Hero(hero) => {
                 images.extend(hero.image.as_deref().and_then(media_name));
                 markdown_texts.extend(hero.text.as_deref());
+                buttons.extend(hero.button_link.as_deref());
             }
             Block::Image(image) => {
                 images.extend(image.image.as_deref().and_then(media_name));
@@ -271,9 +429,24 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             }
             // Their blocks come next in `all_blocks`.
             Block::Columns(_) => {}
-            Block::CallToAction(cta) => markdown_texts.extend(cta.text.as_deref()),
+            Block::CallToAction(cta) => {
+                markdown_texts.extend(cta.text.as_deref());
+                buttons.extend(cta.button_link.as_deref());
+            }
             Block::PostList(_) => {}
         }
+    }
+
+    if library == Library::Static {
+        let mut names: Vec<String> = markdown_texts
+            .iter()
+            .flat_map(|text| markdown::link_targets(text))
+            .chain(buttons.iter().map(|link| link.to_string()))
+            .flat_map(|target| static_names(&target))
+            .collect();
+        names.sort();
+        names.dedup();
+        return names;
     }
 
     let mut names = downloads;
@@ -295,6 +468,26 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
     names
 }
 
+/// The names in `static/` a site link may mean: `/pdf/a.pdf` is
+/// `pdf/a.pdf`, `/slides/talk/` is `slides/talk/index.html`, and
+/// `/slides/talk` could be either.
+fn static_names(target: &str) -> Vec<String> {
+    let path = target.split(['?', '#']).next().unwrap_or_default();
+    let Some(path) = path.strip_prefix('/').filter(|p| !p.starts_with('/')) else {
+        return Vec::new();
+    };
+    let trimmed = path.trim_end_matches('/');
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+    let index = format!("{trimmed}/index.html");
+    if path.ends_with('/') {
+        vec![index]
+    } else {
+        vec![trimmed.to_string(), index]
+    }
+}
+
 /// A block's image field holds a media name, unless it's a URL or site path.
 fn media_name(value: &str) -> Option<String> {
     let value = value.trim();
@@ -309,7 +502,7 @@ fn file_path(root: &Path, library: Library, name: &str) -> Result<PathBuf, SiteE
         .components()
         .all(|c| matches!(c, Component::Normal(_)));
     let path = root.join(library.dir()).join(relative);
-    if plain && path.is_file() {
+    if plain && (path.is_file() || (library == Library::Static && path.is_dir())) {
         Ok(path)
     } else {
         Err(SiteError::Invalid {
@@ -328,7 +521,7 @@ pub fn move_documents_to_assets(site: &Site) -> Result<usize, SiteError> {
     let media = site.root.join(MEDIA_DIR);
     let mut names = Vec::new();
     if media.is_dir() {
-        collect(&media, &media, &mut names)?;
+        collect(&media, &media, false, &mut names)?;
     }
 
     // Old name in media/ → new name in assets/.
@@ -406,21 +599,29 @@ fn replace_link(text: &str, from: &str, to: &str) -> String {
     result
 }
 
-fn collect(folder: &Path, dir: &Path, names: &mut Vec<String>) -> Result<(), SiteError> {
+/// Lists the files below `dir`; hidden ones only with `hidden` (for
+/// `static/`, where `.well-known/` matters), clutter never.
+fn collect(
+    folder: &Path,
+    dir: &Path,
+    hidden: bool,
+    names: &mut Vec<String>,
+) -> Result<(), SiteError> {
     let error = |source| SiteError::Io {
         path: dir.to_path_buf(),
         source,
     };
     for entry in fs::read_dir(dir).map_err(error)? {
         let path = entry.map_err(error)?.path();
-        let hidden = path
+        let file_name = path
             .file_name()
-            .is_some_and(|n| n.to_string_lossy().starts_with('.'));
-        if hidden {
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        if (!hidden && file_name.starts_with('.')) || CLUTTER.contains(&file_name.as_str()) {
             continue;
         }
         if path.is_dir() {
-            collect(folder, &path, names)?;
+            collect(folder, &path, hidden, names)?;
         } else if let Ok(relative) = path.strip_prefix(folder) {
             let parts: Vec<_> = relative
                 .components()
@@ -439,9 +640,13 @@ fn kind_of(name: &str) -> MediaKind {
         .unwrap_or_default();
     match extension.as_str() {
         "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" | "avif" => MediaKind::Image,
-        "pdf" | "txt" | "zip" | "doc" | "docx" | "odt" | "xls" | "xlsx" | "ods" | "epub" => {
+        "pdf" | "zip" | "doc" | "docx" | "odt" | "xls" | "xlsx" | "ods" | "epub" => {
             MediaKind::Document
         }
+        // No extension (`CNAME`) or a dotfile (`.htaccess`) is usually text, too.
+        "" | "txt" | "md" | "html" | "htm" | "css" | "js" | "mjs" | "json" | "xml" | "rss"
+        | "atom" | "csv" | "tsv" | "yml" | "yaml" | "toml" | "ini" | "conf" | "log" | "ics"
+        | "vtt" | "srt" | "map" | "webmanifest" | "htaccess" => MediaKind::Text,
         _ => MediaKind::Other,
     }
 }
@@ -766,5 +971,101 @@ answer = "See [the menu](/media/menu.pdf)."
             ),
             "[a](/assets/a.pdf) [b](/media/a.pdf.old)"
         );
+    }
+
+    #[test]
+    fn keeps_static_files_under_their_own_names() {
+        let dir = site_dir();
+        let outside = tempfile::tempdir().unwrap();
+        let talk = outside.path().join("Talk 2019");
+        fs::create_dir_all(talk.join("css")).unwrap();
+        fs::write(talk.join("index.html"), "<h1>Talk</h1>").unwrap();
+        fs::write(talk.join("css/a.css"), "").unwrap();
+        fs::write(talk.join(".DS_Store"), "").unwrap();
+        let proof = outside.path().join("keybase.txt");
+        fs::write(&proof, "proof").unwrap();
+
+        assert_eq!(
+            import(dir.path(), Library::Static, &proof).unwrap(),
+            "keybase.txt"
+        );
+        assert_eq!(
+            import(dir.path(), Library::Static, &talk).unwrap(),
+            "Talk 2019"
+        );
+        assert!(
+            import(dir.path(), Library::Static, &proof).is_err(),
+            "taken"
+        );
+        assert_eq!(
+            import_static(dir.path(), "Talk 2019/css", &proof).unwrap(),
+            "Talk 2019/css/keybase.txt"
+        );
+        assert!(import_static(dir.path(), "../pages", &proof).is_err());
+        fs::remove_file(dir.path().join("static/Talk 2019/css/keybase.txt")).unwrap();
+        fs::create_dir_all(dir.path().join("static/.well-known")).unwrap();
+        fs::write(dir.path().join("static/.well-known/security.txt"), "").unwrap();
+        fs::write(
+            dir.path().join("pages/about.md"),
+            "+++\ntitle = \"About\"\n+++\n\nSee [my talk](/Talk%202019/) and [proof](/keybase.txt).\n\n::: call-to-action\nbutton_label = \"Slides\"\nbutton_link = \"/Talk 2019/\"\n:::\n",
+        )
+        .unwrap();
+
+        let site = site::open(dir.path()).unwrap();
+        let files = list(&site, Library::Static).unwrap();
+        let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                ".well-known/security.txt",
+                "Talk 2019/css/a.css",
+                "Talk 2019/index.html",
+                "keybase.txt"
+            ]
+        );
+        let used = |name: &str| {
+            files
+                .iter()
+                .find(|f| f.name == name)
+                .map(|f| f.used_by.clone())
+                .unwrap()
+        };
+        assert_eq!(used("keybase.txt"), ["about"]);
+        assert_eq!(used("Talk 2019/index.html"), ["about"]);
+        assert!(used("Talk 2019/css/a.css").is_empty());
+
+        let error = delete(&site, Library::Static, "Talk 2019").unwrap_err();
+        assert!(error.to_string().contains("/about"), "{error}");
+        delete(&site, Library::Static, ".well-known/security.txt").unwrap();
+        assert!(
+            !dir.path().join("static/.well-known").exists(),
+            "empty folder gone"
+        );
+        assert!(dir.path().join("static").is_dir());
+
+        fs::write(
+            dir.path().join("pages/about.md"),
+            "+++\ntitle = \"About\"\n+++\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+        delete(&site, Library::Static, "Talk 2019").unwrap();
+        assert!(!dir.path().join("static/Talk 2019").exists());
+        assert!(delete(&site, Library::Static, "../pages").is_err());
+    }
+
+    #[test]
+    fn reads_text_files_only() {
+        let dir = site_dir();
+        assert_eq!(kind_of("talk/index.html"), MediaKind::Text);
+        assert_eq!(kind_of(".htaccess"), MediaKind::Text);
+        assert_eq!(
+            read_text(dir.path(), Library::Media, "unused.txt").unwrap(),
+            "hi"
+        );
+        let error = read_text(dir.path(), Library::Media, "team.png").unwrap_err();
+        assert!(error.to_string().contains("isn't a text file"), "{error}");
+        assert!(read_text(dir.path(), Library::Media, "logos").is_err());
+        assert!(read_text(dir.path(), Library::Media, "../site.toml").is_err());
     }
 }

@@ -25,11 +25,6 @@ A complete site builder without podcast features. Decided 2026-10-26: finish
 phase 1 before podcasting, testing it by moving the owner's Jekyll sites
 over by hand.
 
-- **#088 Static files.** A `static/` folder in the site, copied into the
-  built site as it is, at the same paths (`static/pdf/a.pdf` becomes
-  `/pdf/a.pdf`). For files q.e.d. doesn't manage itself, such as slide
-  shows or verification files (`keybase.txt`). A built page at the same
-  path is an error.
 - **#092 Footer blocks.** A site-wide footer made of blocks (Columns,
   Text, Post list), edited with the block editor, above the footer menu.
 - **#093 404 page.** The generator writes `404.html` in the site's look.

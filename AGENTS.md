@@ -30,7 +30,8 @@ to `docs/pages/done.md`); read the backlog first and keep both current.
 There is no database. A site is a folder: `site.toml`, Markdown pages and
 posts with TOML front matter (`+++`), block containers (`::: type` … `:::`;
 Columns use `:::: columns` with `::: column` lines inside) inside the
-Markdown, `media/` (images) and `assets/` (files to download). History is git.
+Markdown, `media/` (images), `assets/` (files to download) and `static/` (copied into
+the built site as it is). History is git.
 Secrets (SSH keys, tokens) live in the OS keychain, never in the site folder.
 
 ## Rules

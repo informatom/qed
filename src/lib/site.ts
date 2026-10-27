@@ -135,7 +135,12 @@ function normalize(value: unknown, topLevel: boolean): unknown {
 
 /** A URL the app window can load a media file from (for thumbnails). */
 export function mediaUrl(root: string, name: string): string {
-  return convertFileSrc(`${root}/media/${name}`);
+  return libraryUrl(root, "media", name);
+}
+
+/** A file in one of the site's folders (`media/`, `assets/`, `static/`), for the webview. */
+export function libraryUrl(root: string, library: Rust.Library, name: string): string {
+  return convertFileSrc(`${root}/${library}/${name}`);
 }
 
 /** A version's time (seconds since 1970) in the computer's own format. */

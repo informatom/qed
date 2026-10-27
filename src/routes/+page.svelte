@@ -11,6 +11,7 @@
   import Hammer from "@lucide/svelte/icons/hammer";
   import History from "@lucide/svelte/icons/history";
   import FileDown from "@lucide/svelte/icons/file-down";
+  import FolderTree from "@lucide/svelte/icons/folder-tree";
   import Image from "@lucide/svelte/icons/image";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Settings from "@lucide/svelte/icons/settings";
@@ -78,7 +79,7 @@
   let creatingPage = $state(false);
   let creatingSite = $state(false);
   let movingPage = $state(false);
-  let view = $state<"pages" | "media" | "assets" | "site" | "versions" | "app">("pages");
+  let view = $state<"pages" | "media" | "assets" | "static" | "site" | "versions" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -288,7 +289,9 @@
     <div id="build-report" role="status" class="alert alert-success alert-soft">
       <span class="flex-1">
         Built {report.pages} pages{report.drafts_skipped ? ` (${report.drafts_skipped} drafts skipped)` : ""},
-        {report.redirects} redirects, {report.media_files} media files, {report.resized_images} resized images{report.feeds
+        {report.redirects} redirects, {report.media_files} media files, {report.resized_images} resized images{report.static_files
+          ? `, ${report.static_files} static files`
+          : ""}{report.feeds
           ? ` and ${report.feeds === 1 ? "1 feed" : `${report.feeds} feeds`}`
           : ""} into
         <code class="font-mono text-sm">{report.out_dir}</code>.
@@ -312,6 +315,8 @@
         onclick={() => (view = "media")}><Image class="me-1.5 size-4" />Media</button>
       <button type="button" role="tab" id="view-assets" class={["tab", view === "assets" && "tab-active"]}
         onclick={() => (view = "assets")}><FileDown class="me-1.5 size-4" />Assets</button>
+      <button type="button" role="tab" id="view-static" class={["tab", view === "static" && "tab-active"]}
+        onclick={() => (view = "static")}><FolderTree class="me-1.5 size-4" />Static</button>
       <button type="button" role="tab" id="view-site" class={["tab", view === "site" && "tab-active"]}
         onclick={() => (view = "site")}><Globe class="me-1.5 size-4" />Site</button>
       <button type="button" role="tab" id="view-versions" class={["tab", view === "versions" && "tab-active"]}
@@ -377,6 +382,8 @@
       <MediaLibrary siteRoot={site.root} editing={editorDirty} onmoved={() => site && load(site.root)} />
     {:else if view === "assets"}
       <MediaLibrary siteRoot={site.root} library="assets" />
+    {:else if view === "static"}
+      <MediaLibrary siteRoot={site.root} library="static" />
     {:else if view === "versions"}
       <VersionsPanel siteRoot={site.root} editing={editorDirty} onrestored={() => site && load(site.root)} />
     {/if}

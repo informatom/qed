@@ -21,11 +21,18 @@ export const commands = {
 	 *  history. The UI opens it afterwards with `open_site`.
 	 */
 	createSite: (path: string, title: string, language: string) => __TAURI_INVOKE<null>("create_site", { path, title, language }),
-	/**  Lists the files in `media/` or `assets/` with their size and usage. */
+	/**  Lists the files in `media/`, `assets/` or `static/` with their size and usage. */
 	listMedia: (root: string, library: Library) => __TAURI_INVOKE<MediaFile[]>("list_media", { root, library }),
-	/**  Copies files into `media/` or `assets/`; returns their new names. */
+	/**  Copies files into `media/`, `assets/` or `static/` (also folders); returns their new names. */
 	importMedia: (root: string, library: Library, paths: string[]) => __TAURI_INVOKE<string[]>("import_media", { root, library, paths }),
-	/**  Deletes a file that no page uses. */
+	/**
+	 *  Copies files or folders into a folder inside `static/` (`""` for the
+	 *  top); returns their paths there.
+	 */
+	importStatic: (root: string, folder: string, paths: string[]) => __TAURI_INVOKE<string[]>("import_static", { root, folder, paths }),
+	/**  The text of a file in `media/`, `assets/` or `static/`, to read in the app. */
+	readLibraryFile: (root: string, library: Library, name: string) => __TAURI_INVOKE<string>("read_library_file", { root, library, name }),
+	/**  Deletes a file (or a folder in `static/`) that no page uses. */
 	deleteMedia: (root: string, library: Library, name: string) => __TAURI_INVOKE<null>("delete_media", { root, library, name }),
 	/**
 	 *  Moves the files in `media/` that aren't images into `assets/` and
@@ -166,6 +173,8 @@ export type BuildReport = {
 	resized_images: number,
 	/**  RSS feeds written, one per page with posts below it. */
 	feeds: number,
+	/**  Files from `static/`, copied as they are. */
+	static_files: number,
 	/**
 	 *  Things worth knowing that didn't stop the build, such as a feed
 	 *  left out.
@@ -315,14 +324,16 @@ export type Image = {
 	caption: string | null,
 };
 
-/**  Which of the two folders. */
+/**  Which of the folders. */
 export type Library = 
 /**  `media/`: images only. */
 "media" | 
 /**  `assets/`: files to download, of any type. */
-"assets";
+"assets" | 
+/**  `static/`: copied into the built site at the same paths. */
+"static";
 
-/**  One file in `media/` or `assets/`. */
+/**  One file in `media/`, `assets/` or `static/`. */
 export type MediaFile = {
 	/**  Path inside the folder, with `/` between folders: `team.jpg`, `logos/a.png`. */
 	name: string,
@@ -338,7 +349,9 @@ export type MediaFile = {
 };
 
 /**  What kind of file a media file is, judged by its extension. */
-export type MediaKind = "image" | "document" | "other";
+export type MediaKind = "image" | "document" | 
+/**  Plain text the app can show: HTML, CSS, JavaScript, `.txt`, … */
+"text" | "other";
 
 /**  Which menu a page appears in. */
 export type Menu = "none" | "main" | "footer";

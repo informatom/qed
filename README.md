@@ -14,8 +14,9 @@ blog with the learning notes written along the way ([docs/pages/blog](docs/pages
 
 ## How it works
 
-A site is a folder: one `site.toml`, pages and posts as Markdown files, and a
-`media/` folder. The app edits these files, keeps their history in git, and
+A site is a folder: one `site.toml`, pages and posts as Markdown files, a
+`media/` folder for images, `assets/` for downloads and `static/` for files
+copied into the site as they are. The app edits these files, keeps their history in git, and
 builds the static site from them.
 
 ## Development

@@ -10,6 +10,7 @@
 //!   media/…               copied from the site's media folder, plus smaller
 //!                         copies of photos (`team.480w.jpg`, see images.rs)
 //!   assets/…              copied from the site's assets folder (downloads)
+//!   pdf/a.pdf, …          the site's static folder, copied as it is
 //!   sitemap.xml           only if `base_url` is set
 //!   blog/feed.xml         an RSS feed for each page with posts below it,
 //!                         also only with `base_url`
@@ -23,11 +24,13 @@ use serde::Serialize;
 
 use crate::block::{self, Block, Side};
 use crate::calendar::{self, Date};
+use crate::deploy::MANIFEST_FILE;
 use crate::images::{self, ImageError, Images};
 use crate::links::LinkContext;
 use crate::markdown;
+use crate::media::CLUTTER;
 use crate::page::Menu;
-use crate::site::{ASSETS_DIR, MEDIA_DIR, Navigation, Page, Site, SiteConfig};
+use crate::site::{ASSETS_DIR, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig};
 
 pub const OUTPUT_DIR: &str = "_site";
 
@@ -51,6 +54,8 @@ pub struct BuildReport {
     pub resized_images: usize,
     /// RSS feeds written, one per page with posts below it.
     pub feeds: usize,
+    /// Files from `static/`, copied as they are.
+    pub static_files: usize,
     /// Things worth knowing that didn't stop the build, such as a feed
     /// left out.
     pub notes: Vec<String>,
@@ -75,6 +80,11 @@ pub enum BuildError {
 
     #[error("/{page} wants a redirect from /{from}, but a page already lives there")]
     RedirectOverPage { page: String, from: String },
+
+    #[error(
+        "{STATIC_DIR}/{path} would replace /{path}, which q.e.d. builds itself; rename or move the file"
+    )]
+    StaticOverBuilt { path: String },
 
     #[error(transparent)]
     Image(#[from] ImageError),
@@ -180,6 +190,9 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
     }
 
+    // Last, so a static file can't hide something q.e.d. built.
+    let static_files = copy_static(&site.root.join(STATIC_DIR), out_dir, "")?;
+
     Ok(BuildReport {
         out_dir: out_dir.to_path_buf(),
         pages: published.len(),
@@ -188,6 +201,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         media_files,
         resized_images,
         feeds: feeds.len(),
+        static_files,
         notes,
     })
 }
@@ -418,6 +432,58 @@ fn copy_dir(from: &Path, to: &Path) -> Result<usize, BuildError> {
             fs::copy(&source, &target).map_err(io(&target))?;
             count += 1;
         }
+    }
+    Ok(count)
+}
+
+/// Copies the static folder into the built site at the same paths, hidden
+/// files included (`.well-known/`, `.htaccess`). `prefix` is the path below
+/// the static folder so far (`""`, then `pdf/`). Fails rather than replace a
+/// file the build wrote. Returns the number of files copied.
+fn copy_static(from: &Path, out_dir: &Path, prefix: &str) -> Result<usize, BuildError> {
+    if !from.is_dir() {
+        return Ok(0);
+    }
+    let io = |path: &Path| {
+        let path = path.to_path_buf();
+        move |source| BuildError::Io { path, source }
+    };
+    let to = out_dir.join(prefix);
+    fs::create_dir_all(&to).map_err(io(&to))?;
+
+    let mut count = 0;
+    for entry in fs::read_dir(from).map_err(io(from))? {
+        let entry = entry.map_err(io(from))?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if CLUTTER.contains(&name.as_str()) {
+            continue;
+        }
+        let path = format!("{prefix}{name}");
+        let source = entry.path();
+        if source.is_dir() {
+            count += copy_static(&source, out_dir, &format!("{path}/"))?;
+            continue;
+        }
+        // The publish manifest lives next to the site on the server.
+        if path == MANIFEST_FILE {
+            return Err(BuildError::StaticOverBuilt { path });
+        }
+        let target = to.join(&name);
+        // `create_new` fails if the build already wrote this file.
+        let mut out = match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&target)
+        {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                return Err(BuildError::StaticOverBuilt { path });
+            }
+            Err(error) => return Err(io(&target)(error)),
+        };
+        let mut input = fs::File::open(&source).map_err(io(&source))?;
+        std::io::copy(&mut input, &mut out).map_err(io(&target))?;
+        count += 1;
     }
     Ok(count)
 }
@@ -1641,6 +1707,50 @@ mod tests {
             home.contains("Suggest a topic</a>"),
             "call to action inside a column"
         );
+    }
+
+    #[test]
+    fn copies_static_files_as_they_are() {
+        let dir = tempfile::tempdir().unwrap();
+        let site = blog(dir.path());
+        let files = dir.path().join(STATIC_DIR);
+        fs::create_dir_all(files.join("pdf")).unwrap();
+        fs::create_dir_all(files.join(".well-known")).unwrap();
+        fs::write(files.join("keybase.txt"), "proof").unwrap();
+        fs::write(files.join("pdf/a.pdf"), "%PDF").unwrap();
+        fs::write(files.join(".well-known/security.txt"), "Contact: x").unwrap();
+        fs::write(files.join("pdf/.DS_Store"), "").unwrap();
+
+        let out = tempfile::tempdir().unwrap();
+        let report = build_into(&site, out.path()).unwrap();
+        assert_eq!(report.static_files, 3);
+        assert_eq!(read(out.path().join("keybase.txt")), "proof");
+        assert_eq!(read(out.path().join("pdf/a.pdf")), "%PDF");
+        assert!(out.path().join(".well-known/security.txt").is_file());
+        assert!(!out.path().join("pdf/.DS_Store").exists());
+    }
+
+    #[test]
+    fn refuses_a_static_file_where_the_build_writes_one() {
+        for clash in [
+            "index.html",
+            "blog/index.html",
+            "style.css",
+            ".qed-manifest.json",
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let site = blog(dir.path());
+            let file = dir.path().join(STATIC_DIR).join(clash);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(file, "mine").unwrap();
+
+            let out = tempfile::tempdir().unwrap();
+            let error = build_into(&site, out.path()).unwrap_err();
+            assert!(
+                matches!(&error, BuildError::StaticOverBuilt { path } if path == clash),
+                "{clash}: {error}"
+            );
+        }
     }
 
     #[test]

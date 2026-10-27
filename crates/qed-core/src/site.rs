@@ -29,6 +29,9 @@ pub const PAGES_DIR: &str = "pages";
 pub const MEDIA_DIR: &str = "media";
 /// Files to download, such as PDFs. Images go into `media/`.
 pub const ASSETS_DIR: &str = "assets";
+/// Files copied into the built site as they are, at the same paths
+/// (`static/pdf/a.pdf` becomes `/pdf/a.pdf`).
+pub const STATIC_DIR: &str = "static";
 
 /// Settings from `site.toml`.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

@@ -20,11 +20,12 @@ fn main() -> ExitCode {
     match result {
         Ok(report) => {
             println!(
-                "Built {} pages, {} redirects, {} media files, {} resized images and {} feed(s) into {}",
+                "Built {} pages, {} redirects, {} media files, {} resized images, {} static files and {} feed(s) into {}",
                 report.pages,
                 report.redirects,
                 report.media_files,
                 report.resized_images,
+                report.static_files,
                 report.feeds,
                 report.out_dir.display()
             );

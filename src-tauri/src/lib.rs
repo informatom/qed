@@ -63,7 +63,7 @@ async fn create_site(path: PathBuf, title: String, language: String) -> Result<(
     Ok(())
 }
 
-/// Lists the files in `media/` or `assets/` with their size and usage.
+/// Lists the files in `media/`, `assets/` or `static/` with their size and usage.
 #[tauri::command]
 #[specta::specta]
 async fn list_media(root: PathBuf, library: Library) -> Result<Vec<MediaFile>, String> {
@@ -71,7 +71,7 @@ async fn list_media(root: PathBuf, library: Library) -> Result<Vec<MediaFile>, S
     media::list(&site, library).map_err(|error| error.to_string())
 }
 
-/// Copies files into `media/` or `assets/`; returns their new names.
+/// Copies files into `media/`, `assets/` or `static/` (also folders); returns their new names.
 #[tauri::command]
 #[specta::specta]
 async fn import_media(
@@ -87,7 +87,35 @@ async fn import_media(
     names
 }
 
-/// Deletes a file that no page uses.
+/// The text of a file in `media/`, `assets/` or `static/`, to read in the app.
+#[tauri::command]
+#[specta::specta]
+async fn read_library_file(
+    root: PathBuf,
+    library: Library,
+    name: String,
+) -> Result<String, String> {
+    media::read_text(&root, library, &name).map_err(|error| error.to_string())
+}
+
+/// Copies files or folders into a folder inside `static/` (`""` for the
+/// top); returns their paths there.
+#[tauri::command]
+#[specta::specta]
+async fn import_static(
+    root: PathBuf,
+    folder: String,
+    paths: Vec<PathBuf>,
+) -> Result<Vec<String>, String> {
+    let names = paths
+        .iter()
+        .map(|path| media::import_static(&root, &folder, path).map_err(|error| error.to_string()))
+        .collect();
+    record(&root);
+    names
+}
+
+/// Deletes a file (or a folder in `static/`) that no page uses.
 #[tauri::command]
 #[specta::specta]
 async fn delete_media(root: PathBuf, library: Library, name: String) -> Result<(), String> {
@@ -494,6 +522,8 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             create_site,
             list_media,
             import_media,
+            import_static,
+            read_library_file,
             delete_media,
             move_documents_to_assets,
             save_page_settings,

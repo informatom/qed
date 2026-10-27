@@ -237,6 +237,21 @@ rest is done.
   The app shows the mark in its header and on the start screen, from a
   copy in `src/lib/assets/logo-mark.svg` (copy it again after changing
   the mark).
+- **#088 Static files.** *Done 2026-10-27*: a `static/` folder in the
+  site is copied into the built site as it is, at the same paths
+  (`static/pdf/a.pdf` becomes `/pdf/a.pdf`), hidden files included
+  (`.well-known/`, `.htaccess`); `.DS_Store`, `Thumbs.db` and
+  `desktop.ini` are skipped. It's copied last, and a file the build wrote
+  itself (a page, `style.css`, a feed) or the publish manifest stops the
+  build with an error instead of being replaced. Link to the files as
+  `/pdf/a.pdf`. The build message counts them. The app has a Static tab
+  next to Media and Assets (`Library::Static`): import files or whole
+  folders under their own names (a taken name is an error, never a
+  rename), one folder at a time with a path to click back up (imports go
+  into the folder shown; a search looks through all), each with its address and
+  the pages linking to it (Markdown links and button links), delete files
+  or folders no page links to. Text files (HTML, CSS, `.txt`, …, the new
+  `MediaKind::Text`) open read only in a viewer, in all three libraries.
 
 ## Dropped
 
