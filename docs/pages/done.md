@@ -351,6 +351,13 @@ rest is done.
   the site's language: German (also `de-AT`), English, French, Spanish,
   Italian, Dutch; English for others. The text now says "q.e.d.", not
   "qed".
+- **#037 Backups.** *Done 2026-10-27*: a [Backups](backups.md) page:
+  a site is a git repository, so a backup is a push to a remote (Codeberg,
+  GitHub, a bare repo on one's own server), with full history; what it
+  leaves out (targets.toml, keychain secrets, the open version, `_site/`,
+  `.qed-cache/`). Decided with the owner instead of "copy the folder". A
+  button for it in the app: #109; the page also belongs into the app's
+  manual: #110.
 
 ## Dropped
 

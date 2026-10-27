@@ -72,7 +72,6 @@ over by hand.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.
-- **#037 Backups.** Document that backing up a site means copying its folder.
 - **#082 Restore the whole site.** Put the whole site folder back to an
   earlier version, as a new version on top (never rewriting history). Left
   open from #073, which restores single pages.
@@ -124,6 +123,20 @@ over by hand.
   automatic note after a while without saves (from #073).
 - **#084 Signed commits.** libgit2 doesn't sign, so q.e.d.'s versions are
   unsigned (from #073).
+- **#109 Back up button.** A *Back up* button in the Versions tab that
+  pushes the site's git repository to a configured remote (see
+  [Backups](backups.md)), so editors don't need the command line: libgit2
+  (already used for versions) can push over SSH with a key from the
+  keychain, like publishing. Close the open version first; show what was
+  pushed and when.
+- **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
+  view, also reachable from where a topic comes up, e.g. the Versions tab
+  for backups), and the same pages on the docs site. Written for site
+  owners and editors, not developers. Starts with [Backups](backups.md)
+  (#037); further topics: the first site, pages and blocks, media and
+  files, themes and fonts, versions, publishing, moving a site over.
+  To decide: where the pages live so app and docs site share them (e.g.
+  `docs/pages/manual/`, built into the app), and offline use.
 - **#087 Section block.** A full-width block that holds other blocks, in
   the same nested format as Columns (#074).
 - **#106 More languages for code highlighting.** syntect's built-in
