@@ -1,5 +1,5 @@
-//! Calendar dates without a date library: today's date, and dates as RSS
-//! wants them. All in UTC.
+//! Calendar dates without a date library: today's date, dates as RSS
+//! wants them, and dates for readers in the site's language. All in UTC.
 //!
 //! The conversions between days since 1970 and calendar dates are Howard
 //! Hinnant's, see <https://howardhinnant.github.io/date_algorithms.html>.
@@ -76,9 +76,172 @@ pub fn rfc822(date: Date) -> String {
     )
 }
 
+/// A date for readers, in the site's language (`language` in `site.toml`):
+/// `24. Februar 2017` for `de`, `24. Jänner 2017` for `de-AT`,
+/// `February 24, 2017` for `en`, `24 February 2017` for `en-GB`. Languages
+/// q.e.d. doesn't know get `2017-02-24`.
+pub fn long_date(date: Date, language: &str) -> String {
+    let language = language.trim().to_lowercase().replace('_', "-");
+    let (main, region) = language.split_once('-').unwrap_or((&language, ""));
+    let Date { year, day, .. } = date;
+    let month = |names: [&'static str; 12]| {
+        names[usize::try_from(date.month.clamp(1, 12) - 1).unwrap_or(0)]
+    };
+    match main {
+        "de" => {
+            let mut names = [
+                "Januar",
+                "Februar",
+                "März",
+                "April",
+                "Mai",
+                "Juni",
+                "Juli",
+                "August",
+                "September",
+                "Oktober",
+                "November",
+                "Dezember",
+            ];
+            if region == "at" {
+                names[0] = "Jänner";
+            }
+            format!("{day}. {} {year}", month(names))
+        }
+        "en" => {
+            let name = month([
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ]);
+            // Day first everywhere English is written but in the US.
+            if matches!(region, "" | "us") {
+                format!("{name} {day}, {year}")
+            } else {
+                format!("{day} {name} {year}")
+            }
+        }
+        "fr" => {
+            let name = month([
+                "janvier",
+                "février",
+                "mars",
+                "avril",
+                "mai",
+                "juin",
+                "juillet",
+                "août",
+                "septembre",
+                "octobre",
+                "novembre",
+                "décembre",
+            ]);
+            let day = if day == 1 {
+                "1er".to_string()
+            } else {
+                day.to_string()
+            };
+            format!("{day} {name} {year}")
+        }
+        "es" => format!(
+            "{day} de {} de {year}",
+            month([
+                "enero",
+                "febrero",
+                "marzo",
+                "abril",
+                "mayo",
+                "junio",
+                "julio",
+                "agosto",
+                "septiembre",
+                "octubre",
+                "noviembre",
+                "diciembre",
+            ])
+        ),
+        "it" => format!(
+            "{day} {} {year}",
+            month([
+                "gennaio",
+                "febbraio",
+                "marzo",
+                "aprile",
+                "maggio",
+                "giugno",
+                "luglio",
+                "agosto",
+                "settembre",
+                "ottobre",
+                "novembre",
+                "dicembre",
+            ])
+        ),
+        "nl" => format!(
+            "{day} {} {year}",
+            month([
+                "januari",
+                "februari",
+                "maart",
+                "april",
+                "mei",
+                "juni",
+                "juli",
+                "augustus",
+                "september",
+                "oktober",
+                "november",
+                "december",
+            ])
+        ),
+        "pt" => format!(
+            "{day} de {} de {year}",
+            month([
+                "janeiro",
+                "fevereiro",
+                "março",
+                "abril",
+                "maio",
+                "junho",
+                "julho",
+                "agosto",
+                "setembro",
+                "outubro",
+                "novembro",
+                "dezembro",
+            ])
+        ),
+        _ => format!("{year:04}-{:02}-{day:02}", date.month),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn writes_dates_in_the_site_language() {
+        let date = |year, month, day| Date { year, month, day };
+        let feb = date(2017, 2, 24);
+        assert_eq!(long_date(feb, "de"), "24. Februar 2017");
+        assert_eq!(long_date(date(2019, 1, 18), "de"), "18. Januar 2019");
+        assert_eq!(long_date(date(2019, 1, 18), "de-AT"), "18. Jänner 2019");
+        assert_eq!(long_date(date(2019, 1, 18), "de_at"), "18. Jänner 2019");
+        assert_eq!(long_date(feb, "en"), "February 24, 2017");
+        assert_eq!(long_date(feb, "en-GB"), "24 February 2017");
+        assert_eq!(long_date(date(2026, 3, 1), "fr"), "1er mars 2026");
+        assert_eq!(long_date(feb, "es"), "24 de febrero de 2017");
+        assert_eq!(long_date(date(2014, 3, 3), "xx"), "2014-03-03");
+    }
 
     fn date(year: i64, month: u32, day: u32) -> Date {
         Date { year, month, day }

@@ -273,6 +273,13 @@ rest is done.
   `name`), applied with one click, saved with "Save these colors",
   deleted after asking; the card follows `site.toml` after Reload, so an
   old copy in the app can't overwrite it.
+- **#098 Dates in the site's language.** *Done 2026-10-27*:
+  `calendar::long_date` writes dates for readers by the site's `language`:
+  `24. Februar 2017` (de), `24. Jänner 2017` (de-AT), `February 24, 2017`
+  (en), `24 February 2017` (en-GB), plus fr, es, it, nl, pt; other
+  languages keep `2017-02-24`. Used in post lists and bylines; `<time
+  datetime>` keeps the ISO date. podcasterei.at is `de-AT` now, like its
+  old template's Jänner.
 
 ## Dropped
 

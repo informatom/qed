@@ -118,7 +118,7 @@
   {%- for post in posts %}
   <li class="flex flex-col gap-1">
     <a href="{{ post.href }}" class="link link-hover text-xl font-semibold">{{ post.title }}</a>
-    <time datetime="{{ post.date }}" class="badge badge-secondary badge-sm self-start">{{ post.date }}</time>
+    <time datetime="{{ post.date }}" class="badge badge-secondary badge-sm self-start">{{ post.date_text }}</time>
     {%- if let Some(summary_html) = post.summary_html %}
     <div class="prose max-w-none">{{ summary_html|safe }}</div>
     {%- endif %}

@@ -143,6 +143,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         pages: &published,
         feeds: &feeds,
         today,
+        language: &site.config.language,
     };
 
     for page in &published {
@@ -225,6 +226,8 @@ struct Context<'a> {
     /// The feeds being written, so a Post list can link its own.
     feeds: &'a [Feed<'a>],
     today: Date,
+    /// The site's language, for dates.
+    language: &'a str,
 }
 
 /// The posts below the page at `parent`, newest first: pages with a date
@@ -669,7 +672,10 @@ struct FeedLink {
 struct PostEntry {
     title: String,
     href: String,
+    /// `2017-02-24`, for `<time datetime>`.
     date: String,
+    /// `24. Februar 2017`, in the site's language.
+    date_text: String,
     summary_html: Option<String>,
 }
 
@@ -794,7 +800,10 @@ fn render_page(
 
     let mut byline: Vec<String> = Vec::new();
     if let Some(date) = &front.date {
-        byline.push(date.to_string());
+        byline.push(date.date().map_or_else(
+            || date.to_string(),
+            |day| calendar::long_date(day, &site.config.language),
+        ));
     }
     if !front.authors.is_empty() {
         byline.push(front.authors.join(", "));
@@ -1055,17 +1064,18 @@ fn render_block(
                     .map(|feed| format!("{}{}", links.to_root(), feed.file)),
                 posts: posts
                     .iter()
-                    .map(|post| PostEntry {
-                        title: post.content.front.title.clone(),
-                        href: links.page(&post.path),
-                        date: post
-                            .content
-                            .front
-                            .date
-                            .as_ref()
-                            .map(ToString::to_string)
-                            .unwrap_or_default(),
-                        summary_html: markdown(&post.content.front.summary),
+                    .map(|post| {
+                        let date = post.content.front.date.as_ref();
+                        PostEntry {
+                            title: post.content.front.title.clone(),
+                            href: links.page(&post.path),
+                            date: date.map(ToString::to_string).unwrap_or_default(),
+                            date_text: date
+                                .and_then(|date| date.date())
+                                .map(|day| calendar::long_date(day, context.language))
+                                .unwrap_or_default(),
+                            summary_html: markdown(&post.content.front.summary),
+                        }
                     })
                     .collect(),
             }
@@ -1898,6 +1908,23 @@ mod tests {
             "{}",
             &css[css.len() - 200..]
         );
+    }
+
+    #[test]
+    fn writes_dates_in_the_site_language() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.language = "de-AT".into();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+
+        let list = read(out.path().join("blog/index.html"));
+        assert!(
+            list.contains(r#"<time datetime="2026-01-05" class="badge badge-secondary badge-sm self-start">5. Jänner 2026</time>"#),
+            "{list}"
+        );
+        let post = read(out.path().join("blog/2026-01-05-old/index.html"));
+        assert!(post.contains("5. Jänner 2026 · Ann"), "{post}");
     }
 
     #[test]

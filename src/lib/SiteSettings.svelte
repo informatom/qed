@@ -57,7 +57,7 @@
       <input id="site-title" class="input w-full" bind:value={form.title} required />
     </label>
     <label class="flex flex-col gap-1">
-      <span class="text-sm font-medium">Language <span class="font-normal text-base-content/50">· e.g. en, de</span></span>
+      <span class="text-sm font-medium">Language <span class="font-normal text-base-content/50">· e.g. en, de, de-AT (Jänner); also for dates</span></span>
       <input id="site-language" class="input w-full" bind:value={form.language} />
     </label>
     <label class="flex flex-col gap-1">
