@@ -5,3 +5,4 @@ logo = "logo-mark.svg"
 theme = "nord"
 base_url = "https://qed.informatom.com/"
 navigation = "sidebar"
+mark_external_links = true
