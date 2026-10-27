@@ -85,7 +85,7 @@
 </li>
 {%- endif %}
 {%- endmacro %}
-<body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased">
+<body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased{% if site.mark_external_links %} mark-external{% endif %}">
   <header class="{{ header.bar }}">
     <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
       <a href="{{ home_href }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">

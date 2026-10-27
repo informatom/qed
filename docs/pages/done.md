@@ -404,6 +404,14 @@ rest is done.
   deleted while a page writes them. informatom.com has its 14 old badges
   back: the six stacks in the start page's list and eight open-source
   logos under IT-Beratung.
+- **#116 Marking external links.** *Done 2026-10-27*: "Mark links to
+  other sites" in Site settings (`mark_external_links`, on for new sites,
+  off for existing ones): links in text to other sites get Lucide's
+  external-link icon after them, in the link's color, by CSS alone (every
+  internal link is relative). Not in menus or on buttons, not on linked
+  images. Full links to the site's own `base_url` (with or without
+  `www.`) now become relative links when building, so they stay inside
+  the site, in the preview too. informatom.com has it on.
 
 ## Dropped
 

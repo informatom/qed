@@ -85,6 +85,10 @@ pub struct SiteConfig {
     /// The site title next to the logo; off for logos that show the name.
     #[serde(default = "yes")]
     pub title_in_header: bool,
+    /// Links in text that lead to other sites get a small icon after them.
+    /// Off for sites from before it existed; new sites start with it on.
+    #[serde(default)]
+    pub mark_external_links: bool,
     /// Self-hosted fonts in `fonts/`; empty keeps the system's.
     #[serde(default, skip_serializing_if = "is_default_fonts")]
     pub fonts: Fonts,
@@ -586,6 +590,7 @@ pub fn create_site(root: &Path, title: &str, language: &str) -> Result<Site, Sit
     let mut config = toml_edit::DocumentMut::new();
     config["title"] = toml_edit::value(title);
     config["language"] = toml_edit::value(language.as_str());
+    config["mark_external_links"] = toml_edit::value(true);
     write_new(&root.join(CONFIG_FILE), &config.to_string())?;
 
     let words = StartWords::for_language(&language);
@@ -821,6 +826,11 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
             "title_in_header",
             &config.title_in_header.to_string(),
             "true".to_string(),
+        ),
+        (
+            "mark_external_links",
+            &config.mark_external_links.to_string(),
+            "false".to_string(),
         ),
     ] {
         if *value == default && !page_writer::writes_string(&original, key, &default) {
@@ -1110,6 +1120,7 @@ mod tests {
         let site = create_site(dir.path(), "  My Podcast ", "de").unwrap();
         assert_eq!(site.config.title, "My Podcast");
         assert_eq!(site.config.language, "de");
+        assert!(site.config.mark_external_links, "new sites mark them");
         assert_eq!(site.pages.len(), 1);
         let home = &site.pages[0];
         assert_eq!(home.path, "");

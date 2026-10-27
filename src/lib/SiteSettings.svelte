@@ -108,6 +108,16 @@
     </span>
   </label>
 
+  <label class="flex items-start gap-3">
+    <input id="site-mark-external-links" type="checkbox" class="toggle mt-0.5" bind:checked={form.mark_external_links} />
+    <span class="text-sm">
+      Mark links to other sites
+      <span class="block text-base-content/60">
+        Links in text that lead elsewhere get a small arrow-out-of-a-box icon. Menus and buttons stay as they are.
+      </span>
+    </span>
+  </label>
+
   <div class="flex flex-wrap items-center gap-3 text-sm">
     <span class="font-medium">Page width</span>
     <div class="join">

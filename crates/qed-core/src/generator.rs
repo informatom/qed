@@ -1094,7 +1094,8 @@ fn render_page(
         LinkContext::rooted(&site_root_path(config), &page.file)
     } else {
         LinkContext::new(&page.path, &page.file)
-    };
+    }
+    .with_own_site(config.base_url.as_deref());
 
     let menu_links = |entries: &[MenuEntry]| -> Vec<MenuLink> {
         entries
@@ -2745,6 +2746,30 @@ mod tests {
         site.config.logo_size = LogoSize::Original;
         build_on(&site, out.path(), TODAY).unwrap();
         assert!(read(out.path().join("index.html")).contains("h-auto max-h-28 w-auto"));
+    }
+
+    #[test]
+    fn marks_links_to_other_sites_when_asked() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.base_url = Some("https://example.com/".into());
+        let home = site.pages.iter_mut().find(|p| p.path.is_empty()).unwrap();
+        home.content.blocks.push(Block::Text {
+            markdown: "[Elsewhere](https://example.org/) and [ours](https://www.example.com/blog)"
+                .into(),
+        });
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let html = read(out.path().join("index.html"));
+        assert!(!html.contains("mark-external"), "off by default: {html}");
+        assert!(
+            html.contains(r#"<a href="blog/">ours</a>"#),
+            "a full link to the site itself stays inside: {html}"
+        );
+
+        site.config.mark_external_links = true;
+        build_on(&site, out.path(), TODAY).unwrap();
+        assert!(read(out.path().join("index.html")).contains("antialiased mark-external\""));
     }
 
     #[test]

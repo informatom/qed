@@ -698,6 +698,11 @@ export type SiteConfig_Deserialize = {
 	page_width?: PageWidth,
 	/**  The site title next to the logo; off for logos that show the name. */
 	title_in_header?: boolean,
+	/**
+	 *  Links in text that lead to other sites get a small icon after them.
+	 *  Off for sites from before it existed; new sites start with it on.
+	 */
+	mark_external_links?: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 	/**
@@ -746,6 +751,11 @@ export type SiteConfig_Serialize = {
 	page_width: PageWidth,
 	/**  The site title next to the logo; off for logos that show the name. */
 	title_in_header: boolean,
+	/**
+	 *  Links in text that lead to other sites get a small icon after them.
+	 *  Off for sites from before it existed; new sites start with it on.
+	 */
+	mark_external_links: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 	/**

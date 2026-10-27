@@ -78,3 +78,19 @@
   margin-block: 0;
   vertical-align: middle;
 }
+
+/* Links in text that lead to other sites (`mark_external_links`): Lucide's
+   external-link icon after them, in the link's color. Links inside the site
+   are always relative, so a full address means another site. Linked images
+   and icons stay unmarked. */
+.mark-external .prose a:is([href^="http://"], [href^="https://"]):not(:has(img, svg))::after {
+  content: "";
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-inline-start: 0.2em;
+  vertical-align: -0.05em;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}

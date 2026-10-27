@@ -18,6 +18,9 @@ pub struct LinkContext {
     /// A fixed way to the site root (`/`) instead of a relative one, for a
     /// page shown at any address: the 404 page.
     root: Option<String>,
+    /// The site's own web address (`base_url`): full links to it are
+    /// links inside the site.
+    own_site: Option<String>,
 }
 
 impl LinkContext {
@@ -26,6 +29,7 @@ impl LinkContext {
             page_path: page_path.to_string(),
             page_file: page_file.to_path_buf(),
             root: None,
+            own_site: None,
         }
     }
 
@@ -36,6 +40,41 @@ impl LinkContext {
             page_path: String::new(),
             page_file: page_file.to_path_buf(),
             root: Some(root.to_string()),
+            own_site: None,
+        }
+    }
+
+    /// Treats full links to `base_url` (with or without `www.`, over
+    /// http or https) as links inside the site, so they work in the
+    /// preview too and don't count as leading elsewhere.
+    pub fn with_own_site(mut self, base_url: Option<&str>) -> Self {
+        self.own_site = base_url.map(str::to_string);
+        self
+    }
+
+    /// `/blog/post#top` for `https://www.example.com/blog/post#top` when
+    /// the site is at `https://example.com/`.
+    fn own_path(&self, url: &str) -> Option<String> {
+        fn host_and_path(url: &str) -> Option<(String, &str)> {
+            let rest = url
+                .strip_prefix("https://")
+                .or_else(|| url.strip_prefix("http://"))?;
+            let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+            let host = rest[..end].to_ascii_lowercase();
+            let host = host.strip_prefix("www.").unwrap_or(&host).to_string();
+            Some((host, &rest[end..]))
+        }
+        let (own_host, own_path) = host_and_path(self.own_site.as_deref()?)?;
+        let (host, path) = host_and_path(url)?;
+        if host != own_host {
+            return None;
+        }
+        let rest = path.strip_prefix(own_path.trim_end_matches('/'))?;
+        match rest.chars().next() {
+            None => Some("/".to_string()),
+            Some('/') => Some(rest.to_string()),
+            Some('?' | '#') => Some(format!("/{rest}")),
+            _ => None,
         }
     }
 
@@ -93,6 +132,9 @@ impl LinkContext {
     /// - `other-post.md`, `../about.md#team`: the page in that file
     /// - anything else: unchanged
     pub fn resolve(&self, url: &str) -> String {
+        if let Some(path) = self.own_path(url) {
+            return self.resolve(&path);
+        }
         if is_external(url) || url.starts_with('#') || url.is_empty() {
             return url.to_string();
         }
@@ -197,6 +239,37 @@ mod tests {
 
     fn context(path: &str, file: &str) -> LinkContext {
         LinkContext::new(path, Path::new(file))
+    }
+
+    #[test]
+    fn full_links_to_the_own_site_stay_inside() {
+        let about = context("about", "pages/about.md").with_own_site(Some("https://example.com/"));
+        assert_eq!(
+            about.resolve("https://www.example.com/blog/post"),
+            "../blog/post/"
+        );
+        assert_eq!(about.resolve("http://EXAMPLE.com"), "../");
+        assert_eq!(about.resolve("https://example.com/#top"), "../#top");
+        assert_eq!(
+            about.resolve("https://example.org/blog"),
+            "https://example.org/blog"
+        );
+
+        let in_folder =
+            context("", "pages/index.md").with_own_site(Some("https://example.com/podcast/"));
+        assert_eq!(
+            in_folder.resolve("https://example.com/podcast/notes"),
+            "notes/"
+        );
+        assert_eq!(
+            in_folder.resolve("https://example.com/podcaster"),
+            "https://example.com/podcaster"
+        );
+        assert_eq!(
+            context("", "pages/index.md").resolve("https://example.com/x"),
+            "https://example.com/x",
+            "no base_url, nothing is own"
+        );
     }
 
     #[test]
