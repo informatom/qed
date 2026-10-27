@@ -1,7 +1,11 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
   import { ask, open } from "@tauri-apps/plugin-dialog";
   import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
+  import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
   import Eye from "@lucide/svelte/icons/eye";
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import Files from "@lucide/svelte/icons/files";
@@ -172,7 +176,10 @@
   /** Opens another site, after asking if edits in the open page would be lost. */
   async function switchTo(path: string) {
     if (!(await mayLeavePage())) return;
-    if (site && site.root !== path) selectedFile = null;
+    if (site && site.root !== path) {
+      selectedFile = null;
+      unfolded.clear();
+    }
     await load(path);
   }
 
@@ -222,6 +229,44 @@
   function depth(path: string): number {
     return path === "" ? 0 : path.split("/").length;
   }
+
+  // The page tree folds: pages below another page show only once it's
+  // unfolded. All folded at first, since a site may have hundreds of pages.
+  const unfolded = new SvelteSet<string>();
+
+  /** How many pages lie below each page that has any (all levels). */
+  let below = $derived.by(() => {
+    const counts = new Map<string, number>();
+    for (const page of site?.pages ?? []) {
+      for (const parent of parents(page.path)) counts.set(parent, (counts.get(parent) ?? 0) + 1);
+    }
+    return counts;
+  });
+
+  let paths = $derived(new Set(site?.pages.map((p) => p.path)));
+
+  /** The paths above a page that are pages themselves: `a/b/c` → `a`, `a/b`. */
+  function parents(path: string): string[] {
+    const parts = path.split("/");
+    return parts
+      .slice(0, -1)
+      .map((_, i) => parts.slice(0, i + 1).join("/"))
+      .filter((parent) => paths.has(parent));
+  }
+
+  let shownPages = $derived(site?.pages.filter((page) => parents(page.path).every((p) => unfolded.has(p))) ?? []);
+
+  function toggle(path: string) {
+    if (unfolded.has(path)) unfolded.delete(path);
+    else unfolded.add(path);
+  }
+
+  // A page opened some other way (new, moved) shows with its parents unfolded.
+  // Only a new selection does this; folding a parent afterwards stays allowed.
+  $effect(() => {
+    const path = selected?.path;
+    if (path !== undefined) untrack(() => parents(path).forEach((parent) => unfolded.add(parent)));
+  });
 
 </script>
 
@@ -395,6 +440,14 @@
       <span class="text-sm text-base-content/60">
         {site.pages.length} pages{draftCount ? `, ${draftCount} drafts` : ""}
       </span>
+      {#if below.size}
+        <button id="unfold-all" class="btn btn-ghost btn-xs" onclick={() => below.forEach((_, path) => unfolded.add(path))}>
+          <ChevronsUpDown class="size-3.5" /> Expand all
+        </button>
+        <button id="fold-all" class="btn btn-ghost btn-xs" onclick={() => unfolded.clear()}>
+          <ChevronsDownUp class="size-3.5" /> Collapse all
+        </button>
+      {/if}
     </div>
 
     <!-- The pages view stays mounted while hidden, so unsaved edits survive. -->
@@ -408,22 +461,33 @@
       <ul
         id="pages"
         class={[
-          "flex flex-col gap-1 rounded-box bg-base-100 p-2 shadow-sm",
+          "flex flex-col gap-0.5 rounded-box bg-base-100 p-2 shadow-sm",
           // While a page is open, the list stays in view and scrolls by itself.
           selected && "lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto",
         ]}
       >
-        {#each site.pages as page (page.path)}
-          <li id="page-{page.path || 'home'}">
+        {#each shownPages as page (page.path)}
+          {@const count = below.get(page.path)}
+          <li id="page-{page.path || 'home'}" class="flex items-center gap-1" style:padding-left="{Math.max(depth(page.path) - 1, 0) * 1.25}rem">
+            {#if count}
+              <button type="button" id="fold-{page.path}" class="btn btn-ghost btn-xs btn-square shrink-0"
+                aria-expanded={unfolded.has(page.path)}
+                aria-label="{unfolded.has(page.path) ? 'Fold' : 'Unfold'} {page.front.title}"
+                onclick={() => toggle(page.path)}>
+                <ChevronRight class={["size-4 transition-transform", unfolded.has(page.path) && "rotate-90"]} />
+              </button>
+            {:else}
+              <span class="w-6 shrink-0"></span>
+            {/if}
             <button
               type="button"
               class={[
-                "flex w-full items-center gap-4 rounded-field px-3 py-3 text-left transition-colors",
+                "flex min-w-0 flex-1 items-center gap-4 rounded-field px-3 py-1 text-left transition-colors",
                 page.file === selectedFile ? "bg-primary/10" : "hover:bg-base-200",
               ]}
               onclick={() => select(page.file)}
             >
-              <div style:padding-left="{depth(page.path) * 1.25}rem" class="flex min-w-0 flex-1 flex-col">
+              <div class="flex min-w-0 flex-1 flex-col leading-snug">
                 <span class="font-medium">
                   {#if page.front.icon && icons.has(page.front.icon)}
                     <!-- qed's own built-in SVG, safe to insert. -->
@@ -437,6 +501,7 @@
                 </span>
                 <span class="font-mono text-xs text-base-content/60">
                   /{page.path}{#if page.front.date}<span class="ms-2">· {page.front.date}</span>{/if}
+                  {#if count && !unfolded.has(page.path)}<span class="ms-2">· {count} below</span>{/if}
                 </span>
               </div>
               {#if !selected}
