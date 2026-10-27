@@ -422,8 +422,14 @@ rest is done.
   (it's cut to a square; before, it linked to the original file). The big
   one has every copy and the original in `srcset` with `sizes="95vw"`, so
   a phone loads a copy and a 4K screen the original (Sonja's second
-  wish). The close button
-  says "Schließen" on German sites, "Close" elsewhere.
+  wish). The close button says "Schließen" on German sites, "Close"
+  elsewhere.
+- **#118 Images open big in the app.** *Done 2026-10-27*: in the Media
+  tab, a click on an image shows it as large as the window allows
+  (`ImageViewer.svelte`, a modal `<dialog>`), with its name, size and
+  dimensions; ← and → step through the images shown (search and folder
+  apply), Esc or a click on it or beside it closes it. Not in the image
+  picker, where a click still picks.
 
 ## Dropped
 
