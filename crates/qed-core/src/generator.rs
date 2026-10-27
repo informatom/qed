@@ -31,6 +31,7 @@ use crate::links::LinkContext;
 use crate::markdown;
 use crate::media::CLUTTER;
 use crate::page::Menu;
+use crate::site::LogoSize;
 use crate::site::{
     ASSETS_DIR, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
 };
@@ -666,6 +667,9 @@ struct PageTemplate<'a> {
     /// Classes for the header, the current menu entry and the logo; see
     /// [`header_classes`].
     header: HeaderClasses,
+    /// The site title next to the logo; without it, the logo's alt text
+    /// carries the title.
+    show_site_title: bool,
     /// Date and authors, e.g. "2026-10-21 · Claude".
     byline: String,
     /// Each block's HTML, from `block.html`.
@@ -685,40 +689,39 @@ struct HeaderClasses {
     logo: &'static str,
 }
 
-fn header_classes(style: HeaderStyle) -> HeaderClasses {
+fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
     // On a colored bar, primary text would vanish (or not stand out), so
     // the current page is underlined instead.
     const UNDERLINED: &str = "font-semibold underline decoration-2 underline-offset-4";
-    // A fixed height and the width it needs: square logos stay square,
-    // wide ones (a wordmark, a row of icons) get room up to 12rem.
-    const BACKED: &str = "h-9 w-auto max-w-48 object-contain rounded-field bg-base-100 p-0.5";
-    match style {
-        HeaderStyle::Plain => HeaderClasses {
-            bar: "border-t-4 border-b border-t-accent border-b-base-300",
-            current: "font-semibold text-primary",
-            logo: "h-9 w-auto max-w-48 object-contain",
-        },
-        HeaderStyle::Primary => HeaderClasses {
-            bar: "bg-primary text-primary-content",
-            current: UNDERLINED,
-            logo: BACKED,
-        },
-        HeaderStyle::Secondary => HeaderClasses {
-            bar: "bg-secondary text-secondary-content",
-            current: UNDERLINED,
-            logo: BACKED,
-        },
-        HeaderStyle::Accent => HeaderClasses {
-            bar: "bg-accent text-accent-content",
-            current: UNDERLINED,
-            logo: BACKED,
-        },
-        HeaderStyle::Neutral => HeaderClasses {
-            bar: "bg-neutral text-neutral-content",
-            current: UNDERLINED,
-            logo: BACKED,
-        },
-    }
+    let (bar, current) = match style {
+        HeaderStyle::Plain => (
+            "border-t-4 border-b border-t-accent border-b-base-300",
+            "font-semibold text-primary",
+        ),
+        HeaderStyle::Primary => ("bg-primary text-primary-content", UNDERLINED),
+        HeaderStyle::Secondary => ("bg-secondary text-secondary-content", UNDERLINED),
+        HeaderStyle::Accent => ("bg-accent text-accent-content", UNDERLINED),
+        HeaderStyle::Neutral => ("bg-neutral text-neutral-content", UNDERLINED),
+    };
+    // A fixed height and the width it needs: square logos stay square, wide
+    // ones (a wordmark, a row of icons) get room. On a colored bar the logo
+    // gets a light backing. Whole class names, for Tailwind's scan.
+    let backed = style != HeaderStyle::Plain;
+    let logo = match (size, backed) {
+        (LogoSize::Small, false) => "h-9 w-auto max-w-48 object-contain",
+        (LogoSize::Small, true) => {
+            "h-9 w-auto max-w-48 object-contain rounded-field bg-base-100 p-0.5"
+        }
+        (LogoSize::Medium, false) => "h-12 w-auto max-w-64 object-contain",
+        (LogoSize::Medium, true) => {
+            "h-12 w-auto max-w-64 object-contain rounded-field bg-base-100 p-0.5"
+        }
+        (LogoSize::Large, false) => "h-16 w-auto max-w-80 object-contain",
+        (LogoSize::Large, true) => {
+            "h-16 w-auto max-w-80 object-contain rounded-field bg-base-100 p-1"
+        }
+    };
+    HeaderClasses { bar, current, logo }
 }
 
 /// One block, rendered on its own so columns can hold blocks.
@@ -823,6 +826,8 @@ enum RenderedBlock {
     Columns {
         /// Grid classes for the number of columns.
         grid: &'static str,
+        /// Unequal widths: `--cols: 2fr 1fr`, which the grid class reads.
+        style: Option<String>,
         columns: Vec<ColumnEntry>,
     },
     CallToAction {
@@ -976,7 +981,9 @@ fn render_page(
         show_title: show_title(page),
         sidebar,
         width: if sidebar { "max-w-6xl" } else { "max-w-4xl" },
-        header: header_classes(config.header),
+        header: header_classes(config.header, config.logo_size),
+        // Without a logo, the title is all the header has.
+        show_site_title: config.title_in_header || config.logo.is_none(),
         byline: byline.join(" · "),
         blocks: page
             .content
@@ -1021,6 +1028,9 @@ fn render_page(
 /// with a Hero has its headline instead; the start page that opens with an
 /// image (a banner) doesn't repeat the site's name, which the header shows.
 fn show_title(page: &Page) -> bool {
+    if page.content.front.hide_title {
+        return false;
+    }
     match page.content.blocks.first() {
         Some(Block::Hero(_)) => false,
         Some(Block::Image(_)) => !page.path.is_empty(),
@@ -1165,10 +1175,19 @@ fn render_block(
             // Whole class names, so Tailwind finds them when it scans the code.
             grid: match columns.items.len() {
                 0 | 1 => "",
+                _ if unequal(columns) => "md:grid-cols-(--cols)",
                 2 => "md:grid-cols-2",
                 3 => "md:grid-cols-3",
                 _ => "md:grid-cols-2 lg:grid-cols-4",
             },
+            style: (columns.items.len() > 1 && unequal(columns)).then(|| {
+                let shares: Vec<String> = columns
+                    .items
+                    .iter()
+                    .map(|column| format!("minmax(0,{}fr)", column.width.unwrap_or(1).max(1)))
+                    .collect();
+                format!("--cols: {}", shares.join(" "))
+            }),
             columns: columns
                 .items
                 .iter()
@@ -1281,6 +1300,15 @@ fn list_picture(page: &Page, links: &LinkContext, images: &Images) -> Option<Pic
         links,
         images,
     )
+}
+
+/// Whether the columns have different widths.
+fn unequal(columns: &block::Columns) -> bool {
+    let width = |column: &block::Column| column.width.unwrap_or(1).max(1);
+    columns
+        .items
+        .iter()
+        .any(|column| width(column) != width(&columns.items[0]))
 }
 
 /// A list's `from` as a page path; empty means the page the list is on.
@@ -2301,6 +2329,71 @@ mod tests {
             "first image: {home}"
         );
         assert!(home.contains("1220"), "{home}");
+    }
+
+    #[test]
+    fn hides_the_title_when_asked() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        for page in &mut site.pages {
+            if page.path == "blog/about" {
+                page.content.front.hide_title = true;
+            }
+        }
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let about = read(out.path().join("blog/about/index.html"));
+        assert!(!about.contains("About the blog</h1>"), "{about}");
+        assert!(
+            about.contains("<title>About the blog"),
+            "still the tab title: {about}"
+        );
+        let blog = read(out.path().join("blog/index.html"));
+        assert!(blog.contains("Blog</h1>"), "{blog}");
+    }
+
+    #[test]
+    fn gives_columns_their_widths() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("site.toml"), "title = \"S\"\n").unwrap();
+        fs::create_dir_all(dir.path().join("pages")).unwrap();
+        fs::write(
+            dir.path().join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\n:::: columns\n::: column\nwidth = 2\n:::\n\nText.\n\n::: column\n:::\n\nPhoto.\n::::\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(
+            home.contains(r#"<section class="grid gap-8 md:grid-cols-(--cols)" style="--cols: minmax(0,2fr) minmax(0,1fr)">"#),
+            "{home}"
+        );
+    }
+
+    #[test]
+    fn shows_a_logo_instead_of_the_site_title() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.logo = Some("wordmark.svg".into());
+        site.config.logo_size = LogoSize::Large;
+        site.config.title_in_header = false;
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        let header = &home[home.find("<header").unwrap()..home.find("</header>").unwrap()];
+        assert!(
+            header.contains(r#"<img src="media/wordmark.svg" alt="Pod &#38; Co" class="h-16 w-auto max-w-80 object-contain">"#),
+            "{header}"
+        );
+        assert!(!header.contains("Pod &#38; Co</a>"), "{header}");
+
+        // Without a logo, the title stays whatever the setting says.
+        site.config.logo = None;
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(home.contains("Pod &#38; Co</a>"), "{home}");
     }
 
     #[test]

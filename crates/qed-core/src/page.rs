@@ -35,6 +35,11 @@ pub struct FrontMatter {
     /// Drafts are left out of the built site.
     #[serde(default)]
     pub draft: bool,
+    /// Leaves out the page's title above the content, for pages that open
+    /// with a heading of their own. A page starting with a Hero leaves it
+    /// out anyway.
+    #[serde(default)]
+    pub hide_title: bool,
     #[serde(default)]
     pub menu: Menu,
     /// A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`.
@@ -395,6 +400,7 @@ fn columns_block(start: usize, lines: &[(usize, &str)]) -> Result<Piece, ParseEr
             Piece::Column(settings, toml) => {
                 items.push(Column {
                     title: settings.title,
+                    width: settings.width,
                     blocks: Vec::new(),
                 });
                 sources.push(ColumnSource {

@@ -83,8 +83,8 @@
   </details>
   {%- endfor %}
 </section>
-{%- when RenderedBlock::Columns with { grid, columns } %}
-<section class="grid gap-8 {{ grid }}">
+{%- when RenderedBlock::Columns with { grid, style, columns } %}
+<section class="grid gap-8 {{ grid }}"{% if let Some(style) = style %} style="{{ style }}"{% endif %}>
   {%- for column in columns %}
   <div class="flex flex-col gap-4">
     {%- if let Some(title) = column.title %}

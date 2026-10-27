@@ -238,6 +238,14 @@
                   <div class="flex items-center gap-1">
                     <span class="text-sm font-medium whitespace-nowrap">Column {i + 1}</span>
                     <input class="input input-sm w-full" placeholder="Title (optional)" bind:value={column.title} />
+                    <!-- A share of the width: 2 next to 1 is two thirds. -->
+                    <select class="select select-sm w-20 shrink-0" title="Width, relative to the other columns"
+                      aria-label="Width of column {i + 1}" value={String(column.width ?? 1)}
+                      onchange={(e) => (column.width = e.currentTarget.value === "1" ? null : Number(e.currentTarget.value))}>
+                      <option value="1">1×</option>
+                      <option value="2">2×</option>
+                      <option value="3">3×</option>
+                    </select>
                     <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move left" aria-label="Move left" disabled={i === 0}
                       onclick={() => columns.items.splice(i - 1, 0, ...columns.items.splice(i, 1))}><ChevronLeft class="size-4" /></button>
                     <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move right" aria-label="Move right"
@@ -253,8 +261,11 @@
             </div>
             <div class="flex items-center gap-3">
               <button type="button" class="btn btn-sm" disabled={columns.items.length >= 4}
-                onclick={() => columns.items.push({ title: null, blocks: [newBlock("text")] })}><Plus class="size-4" /> Column</button>
-              <span class="text-xs text-base-content/60">Up to four; on phones they stack.</span>
+                onclick={() => columns.items.push({ title: null, width: null, blocks: [newBlock("text")] })}><Plus class="size-4" /> Column</button>
+              <span class="text-xs text-base-content/60">
+                Up to four; on phones they stack. Widths {columns.items.map((c) => c.width ?? 1).join(" : ")}
+                (2× next to 1× is two thirds).
+              </span>
             </div>
           </div>
         {:else if block.type === "post-list"}

@@ -74,6 +74,12 @@ pub struct SiteConfig {
     /// The header: plain, or a full-width bar in one of the theme's colors.
     #[serde(default)]
     pub header: HeaderStyle,
+    /// How tall the logo is in the header.
+    #[serde(default)]
+    pub logo_size: LogoSize,
+    /// The site title next to the logo; off for logos that show the name.
+    #[serde(default = "yes")]
+    pub title_in_header: bool,
     /// Self-hosted fonts in `fonts/`; empty keeps the system's.
     #[serde(default, skip_serializing_if = "is_default_fonts")]
     pub fonts: Fonts,
@@ -81,6 +87,31 @@ pub struct SiteConfig {
 
 fn is_default_fonts(fonts: &Fonts) -> bool {
     *fonts == Fonts::default()
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// How tall the logo is in the header: 36, 48 or 64 pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum LogoSize {
+    #[default]
+    Small,
+    Medium,
+    Large,
+}
+
+impl LogoSize {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            LogoSize::Small => "small",
+            LogoSize::Medium => "medium",
+            LogoSize::Large => "large",
+        }
+    }
 }
 
 /// How the page header looks.
@@ -587,6 +618,16 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
             "header",
             &config.header.as_str().to_string(),
             "plain".to_string(),
+        ),
+        (
+            "logo_size",
+            &config.logo_size.as_str().to_string(),
+            "small".to_string(),
+        ),
+        (
+            "title_in_header",
+            &config.title_in_header.to_string(),
+            "true".to_string(),
         ),
     ] {
         if *value == default && !page_writer::writes_string(&original, key, &default) {
@@ -1233,6 +1274,28 @@ mod tests {
 
         assert!(save_footer(dir.path(), Vec::new()).unwrap().is_none());
         assert!(!dir.path().join(FOOTER_FILE).exists(), "no blocks, no file");
+    }
+
+    #[test]
+    fn saves_logo_settings_only_when_not_default() {
+        let dir = site_with(&[("site.toml", "title = \"S\"\n")]);
+        let mut config = open(dir.path()).unwrap().config;
+        assert!(config.title_in_header);
+        config.logo_size = LogoSize::Large;
+        config.title_in_header = false;
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains("logo_size = \"large\"\ntitle_in_header = false"),
+            "{text}"
+        );
+        assert_eq!(open(dir.path()).unwrap().config, config);
+
+        config.logo_size = LogoSize::Small;
+        config.title_in_header = true;
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert_eq!(text, "title = \"S\"\n", "defaults stay out");
     }
 
     #[test]

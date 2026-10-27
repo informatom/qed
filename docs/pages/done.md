@@ -320,6 +320,21 @@ rest is done.
   `style.css`, readable on every theme since code blocks are dark. No
   JavaScript. Grammars: syntect's defaults (Rust, HTML, CSS, JS, shell,
   JSON, YAML, XML, Markdown, LaTeX, Ruby, …); more in #106.
+- **#095 Wide logos.** *Done 2026-10-27*: the header logo keeps its
+  height and takes the width it needs; `logo_size` (small 36 px, medium
+  48 px, large 64 px) and `title_in_header = false` for logos that show
+  the name (the logo's alt text then carries the site title); a
+  `favicon.ico` in `static/` is the tab icon instead of the logo. In Site
+  settings below the logo. informatom.com: medium wordmark, no title.
+- **#096 Hide page title.** *Done 2026-10-27*: page setting `hide_title`
+  ("Hide the title" in Settings); a starting Hero still hides it by
+  itself. informatom.com's start page uses it.
+- **#097 Column widths.** *Done 2026-10-27*: `width` per column (1, 2 or
+  3, relative to the others; 1 is left out of the file). Unequal widths
+  become `--cols: minmax(0,2fr) minmax(0,1fr)` with the class
+  `md:grid-cols-(--cols)`; phones still stack. In the editor: 1×/2×/3×
+  next to each column's title. informatom.com's start page: two thirds
+  and one third, like the old Bulma `is-two-thirds`.
 
 ## Dropped
 

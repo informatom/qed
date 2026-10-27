@@ -54,9 +54,10 @@
   <header class="{{ header.bar }}">
     <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
       <a href="{{ home_href }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
-        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="" class="{{ header.logo }}"
+        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="{% if !show_site_title %}{{ site.title }}{% endif %}" class="{{ header.logo }}"
         {%- if let Some(width) = logo.width %} width="{{ width }}"{% endif %}
-        {%- if let Some(height) = logo.height %} height="{{ height }}"{% endif %}>{% endif %}{{ site.title }}</a>
+        {%- if let Some(height) = logo.height %} height="{{ height }}"{% endif %}>{% endif %}
+        {%- if show_site_title %}{{ site.title }}{% endif %}</a>
       {%- if !main_menu.is_empty() && !sidebar %}
       <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {%- for item in main_menu %}

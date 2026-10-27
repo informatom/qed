@@ -214,6 +214,11 @@ export type CallToAction = {
 /**  One column: an optional title above its blocks. */
 export type Column = {
 	title: string | null,
+	/**
+	 *  The column's share of the width, relative to the others: `2` next to
+	 *  a `1` is two thirds. Empty means 1.
+	 */
+	width: number | null,
 	/**  Any of [`COLUMN_TYPES`] and text. */
 	blocks?: Block[],
 };
@@ -341,6 +346,12 @@ export type FrontMatter = {
 	image: string | null,
 	/**  Drafts are left out of the built site. */
 	draft?: boolean,
+	/**
+	 *  Leaves out the page's title above the content, for pages that open
+	 *  with a heading of their own. A page starting with a Hero leaves it
+	 *  out anyway.
+	 */
+	hide_title?: boolean,
 	menu?: Menu,
 	/**  A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`. */
 	icon: string | null,
@@ -425,6 +436,9 @@ export type ListLayout =
  *  directories of people or things.
  */
 "tiles";
+
+/**  How tall the logo is in the header: 36, 48 or 64 pixels. */
+export type LogoSize = "small" | "medium" | "large";
 
 /**  One file in `media/`, `assets/` or `static/`. */
 export type MediaFile = {
@@ -616,6 +630,10 @@ export type SiteConfig_Deserialize = {
 	navigation?: Navigation,
 	/**  The header: plain, or a full-width bar in one of the theme's colors. */
 	header?: HeaderStyle,
+	/**  How tall the logo is in the header. */
+	logo_size?: LogoSize,
+	/**  The site title next to the logo; off for logos that show the name. */
+	title_in_header?: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 };
@@ -653,6 +671,10 @@ export type SiteConfig_Serialize = {
 	navigation: Navigation,
 	/**  The header: plain, or a full-width bar in one of the theme's colors. */
 	header: HeaderStyle,
+	/**  How tall the logo is in the header. */
+	logo_size: LogoSize,
+	/**  The site title next to the logo; off for logos that show the name. */
+	title_in_header: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 };

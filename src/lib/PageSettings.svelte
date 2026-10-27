@@ -138,10 +138,16 @@
       </div>
     </fieldset>
 
-    <label class="flex items-center gap-3 @xl:self-end @xl:pb-2">
-      <input id="setting-draft" type="checkbox" class="toggle" bind:checked={form.draft} />
-      <span class="text-sm">Draft (left out of the built site)</span>
-    </label>
+    <div class="flex flex-col gap-2 @xl:self-end @xl:pb-2">
+      <label class="flex items-center gap-3">
+        <input id="setting-draft" type="checkbox" class="toggle" bind:checked={form.draft} />
+        <span class="text-sm">Draft (left out of the built site)</span>
+      </label>
+      <label class="flex items-center gap-3">
+        <input id="setting-hide-title" type="checkbox" class="toggle" bind:checked={form.hide_title} />
+        <span class="text-sm">Hide the title (for pages that start with their own heading)</span>
+      </label>
+    </div>
 
     <fieldset class="grid gap-3 rounded-box border border-base-300 p-4 @xl:col-span-2 @xl:grid-cols-2">
       <legend class="px-1 text-sm font-medium">Blog post</legend>

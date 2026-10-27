@@ -26,17 +26,6 @@ phase 1 before podcasting, testing it by moving the owner's Jekyll sites
 over by hand.
 
 - **#093 404 page.** The generator writes `404.html` in the site's look.
-- **#095 Wide logos.** *Height done 2026-10-27*: the header logo keeps
-  its height (36 px) and takes the width it needs, up to 12rem, so wide
-  logos (waldgruber.at's row of trees) aren't squeezed; a `favicon.ico`
-  in `static/` is the tab icon instead of the logo. Still open: a logo in
-  place of the site title, and a larger logo height. Found moving
-  informatom.com.
-- **#096 Hide page title.** A page setting "Show title", for start pages
-  that open with their own heading. Today only a start page opening with
-  an Image block hides it.
-- **#097 Column widths.** A width choice per Columns block (equal, wide
-  left, wide right), e.g. text in two thirds and a photo in one.
 - **#104 New sites in their language.** A new site's placeholder texts
   ("Welcome to the new site.") in the language chosen for it.
 - **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust

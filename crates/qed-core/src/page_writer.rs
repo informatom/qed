@@ -105,6 +105,8 @@ fn write_block(block: &Block, previous: Option<(&Block, &BlockSource)>) -> Strin
 fn write_column(column: &Column, previous: Option<(&Column, &ColumnSource)>) -> String {
     let settings = ColumnSettings {
         title: column.title.clone(),
+        // 1 is the default; leave it out.
+        width: column.width.filter(|width| *width != 1),
     };
     let fresh = || {
         let mut document = toml_edit::ser::to_document(&settings).unwrap_or_default();
@@ -112,7 +114,9 @@ fn write_column(column: &Column, previous: Option<(&Column, &ColumnSource)>) -> 
         document
     };
     let toml = match previous {
-        Some((old, source)) if old.title == column.title => source.toml.clone(),
+        Some((old, source)) if old.title == column.title && old.width == column.width => {
+            source.toml.clone()
+        }
         Some((_, source)) => merge(&source.toml, fresh()),
         None => fresh().to_string(),
     };
@@ -162,8 +166,9 @@ fn block_document(block: &Block) -> DocumentMut {
 fn front_document(front: &FrontMatter, original: Option<&str>) -> DocumentMut {
     let mut document = toml_edit::ser::to_document(front).unwrap_or_default();
 
-    let defaults: [DefaultCheck; 6] = [
+    let defaults: [DefaultCheck; 7] = [
         ("draft", |item| item.as_bool() == Some(false)),
+        ("hide_title", |item| item.as_bool() == Some(false)),
         ("menu", |item| item.as_str() == Some("none")),
         ("weight", |item| item.as_integer() == Some(0)),
         ("redirect_from", is_empty_array),
@@ -398,16 +403,20 @@ More text.
         }
         columns.items.push(crate::block::Column {
             title: Some("New".into()),
+            width: Some(2),
             blocks: vec![],
         });
 
         let file = write(&content, Some(original));
         assert!(file.contains("title = 'Left'  # short"), "{file}");
         assert!(
+            file.contains("::: column\ntitle = \"New\"\nwidth = 2\n:::"),
+            "{file}"
+        );
+        assert!(
             file.contains("# Keep me\nbutton_label = \"Start\""),
             "{file}"
         );
-        assert!(file.contains("::: column\ntitle = \"New\"\n:::"), "{file}");
         // Two text blocks in a row read back as one.
         let Block::Columns(read) = &parse(&file).unwrap().blocks[0] else {
             panic!()

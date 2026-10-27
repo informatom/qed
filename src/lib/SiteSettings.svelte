@@ -73,8 +73,26 @@
   </div>
 
   <div id="site-logo" class="flex flex-col gap-1">
-    <span class="text-sm font-medium">Logo <span class="font-normal text-base-content/50">· before the title on every page, and the icon in the browser tab; a small square image, SVG at best</span></span>
+    <span class="text-sm font-medium">Logo <span class="font-normal text-base-content/50">· in the header of every page, and the browser-tab icon unless static/ has a favicon.ico; SVG at best</span></span>
     <ImageField siteRoot={site.root} bind:value={form.logo} />
+    {#if form.logo}
+      <div class="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div class="flex items-center gap-2 text-sm">
+          <span>Size</span>
+          <div class="join">
+            {#each [["small", "Small"], ["medium", "Medium"], ["large", "Large"]] as [value, label] (value)}
+              <button type="button" id="logo-size-{value}"
+                class={["btn join-item btn-sm", form.logo_size === value && "btn-active"]}
+                onclick={() => (form.logo_size = value as "small" | "medium" | "large")}>{label}</button>
+            {/each}
+          </div>
+        </div>
+        <label class="flex items-center gap-2 text-sm">
+          <input id="site-title-in-header" type="checkbox" class="toggle toggle-sm" bind:checked={form.title_in_header} />
+          Show the site title next to the logo <span class="text-base-content/50">(off for logos that show the name)</span>
+        </label>
+      </div>
+    {/if}
   </div>
 
   <label class="flex items-start gap-3">
