@@ -72,9 +72,6 @@ over by hand.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.
-- **#085 Images in Markdown text.** Resized copies and `srcset` for images
-  written into Text blocks as Markdown, like the image blocks get (#075),
-  plus WebP copies for all images (#033).
 - **#086 Testing on macOS and Windows.** The installers build in CI but
   were never run on macOS or Windows; friends try them and report back.
 
@@ -116,6 +113,12 @@ over by hand.
   when an episode lacks an external audio URL (#068).
 - **#011 GitHub Pages.** Decided: deploy key using q.e.d.'s generated key
   pair. Audio must be external for GitHub targets.
+- **#085 Images in Markdown text, WebP.** *Copies in text done
+  2026-10-27*: images written into text as `![…](/media/…)` get the
+  smaller copies in `srcset`, `sizes`, their width and height and
+  `loading="lazy"`, like image blocks (#075). Still open: WebP copies for
+  all images (#033). The image crate writes only lossless WebP, larger
+  than the JPEGs, so this needs another encoder.
 - **#083 Closing versions by themselves.** Close an open version with an
   automatic note after a while without saves (from #073).
 - **#084 Signed commits.** libgit2 doesn't sign, so q.e.d.'s versions are

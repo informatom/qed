@@ -30,6 +30,7 @@ use crate::icons::SiteIcons;
 use crate::images::{self, ImageError, Images};
 use crate::links::LinkContext;
 use crate::markdown;
+use crate::markdown::TextMedia;
 use crate::media::CLUTTER;
 use crate::page::Menu;
 use crate::site::{
@@ -347,6 +348,16 @@ struct Context<'a> {
     language: &'a str,
     /// Rendering the footer: lists come out compact, as plain links.
     footer: bool,
+}
+
+impl Context<'_> {
+    /// What Markdown text needs for icons and images.
+    fn text_media(&self) -> TextMedia<'_> {
+        TextMedia {
+            site_icons: self.site_icons,
+            images: self.images,
+        }
+    }
 }
 
 /// The posts below the page at `parent`, newest first: pages with a date
@@ -1054,7 +1065,7 @@ struct ShareImage {
     alt: Option<String>,
 }
 
-struct Picture {
+pub(crate) struct Picture {
     src: String,
     /// The smaller copies and the original, with their widths, for the
     /// browser to choose from: `media/a.480w.jpg 480w, …, media/a.jpg 2400w`.
@@ -1062,6 +1073,21 @@ struct Picture {
     alt: String,
     width: Option<u32>,
     height: Option<u32>,
+}
+
+impl Picture {
+    /// Everything but `src` and `alt` for an `<img>` written outside the
+    /// templates (images in Markdown text), each with a leading space.
+    pub(crate) fn attributes(&self, sizes: &str) -> String {
+        let mut out = String::new();
+        if let Some(srcset) = &self.srcset {
+            out.push_str(&format!(r#" srcset="{srcset}" sizes="{sizes}""#));
+        }
+        if let (Some(width), Some(height)) = (self.width, self.height) {
+            out.push_str(&format!(r#" width="{width}" height="{height}""#));
+        }
+        out
+    }
 }
 
 struct ColumnEntry {
@@ -1296,7 +1322,7 @@ fn render_block(
     let (root, images) = (context.root, context.images);
     let markdown = |text: &Option<String>| {
         text.as_deref()
-            .map(|t| markdown::render(t, links, context.site_icons))
+            .map(|t| markdown::render(t, links, &context.text_media()))
     };
     let button = |label: &Option<String>, link: &Option<String>| match (label, link) {
         (Some(label), Some(link)) => Some(Button {
@@ -1308,7 +1334,7 @@ fn render_block(
 
     Ok(match block {
         Block::Text { markdown: text } => RenderedBlock::Text {
-            html: markdown::render(text, links, context.site_icons),
+            html: markdown::render(text, links, &context.text_media()),
         },
         Block::Hero(hero) => RenderedBlock::Hero {
             image: hero
@@ -1386,7 +1412,7 @@ fn render_block(
                 .filter(|item| !item.question.trim().is_empty())
                 .map(|item| FaqEntry {
                     question: item.question.clone(),
-                    answer_html: markdown::render(&item.answer, links, context.site_icons),
+                    answer_html: markdown::render(&item.answer, links, &context.text_media()),
                 })
                 .collect(),
         },
@@ -1571,7 +1597,12 @@ fn children<'a>(pages: &[&'a Page], parent: &str) -> Vec<&'a Page> {
 /// An image ready for the page. Width and height let the browser reserve
 /// space before the image loads, so the page doesn't jump; `srcset` lets it
 /// load a smaller copy where a smaller one is enough.
-fn picture(name: &str, alt: Option<&str>, links: &LinkContext, images: &Images) -> Option<Picture> {
+pub(crate) fn picture(
+    name: &str,
+    alt: Option<&str>,
+    links: &LinkContext,
+    images: &Images,
+) -> Option<Picture> {
     let name = name.trim();
     if name.is_empty() {
         return None;
@@ -2064,6 +2095,49 @@ mod tests {
                 r#"<img src="media/small.png" alt="" width="300" height="200" loading="lazy""#
             ),
             "{home}"
+        );
+    }
+
+    #[test]
+    fn images_in_text_get_copies_and_their_size() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("pages/blog")).unwrap();
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        fs::write(dir.path().join("site.toml"), "title = \"Photos\"\n").unwrap();
+        fs::write(
+            dir.path().join("pages/blog/trip.md"),
+            "+++\ntitle = \"Trip\"\n+++\n\n![The lake](/media/wide.jpg)\n\n![Small](/media/small.png) ![Elsewhere](https://example.com/a.png)\n",
+        )
+        .unwrap();
+        image::RgbImage::new(2000, 1000)
+            .save(dir.path().join("media/wide.jpg"))
+            .unwrap();
+        image::RgbImage::new(300, 200)
+            .save(dir.path().join("media/small.png"))
+            .unwrap();
+
+        let site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        let report = build_into(&site, &out).unwrap();
+        let trip = read(out.join("blog/trip/index.html"));
+
+        assert_eq!(report.resized_images, 3, "{trip}");
+        assert!(out.join("media/wide.960w.jpg").is_file());
+        assert!(
+            trip.contains(
+                r#"<img loading="lazy" src="../../media/wide.jpg" srcset="../../media/wide.480w.jpg 480w, ../../media/wide.960w.jpg 960w, ../../media/wide.1600w.jpg 1600w, ../../media/wide.jpg 2000w" sizes="(min-width: 56rem) 56rem, 100vw" width="2000" height="1000" alt="The lake""#
+            ),
+            "{trip}"
+        );
+        assert!(
+            trip.contains(
+                r#"<img loading="lazy" src="../../media/small.png" width="300" height="200" alt="Small""#
+            ),
+            "too small for copies: {trip}"
+        );
+        assert!(
+            trip.contains(r#"<img loading="lazy" src="https://example.com/a.png" alt="Elsewhere""#),
+            "{trip}"
         );
     }
 

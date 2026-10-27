@@ -9,24 +9,38 @@ use comrak::plugins::syntect::{SyntectAdapter, SyntectAdapterBuilder};
 use comrak::{Arena, Options, format_html_with_plugins, parse_document};
 
 use crate::icons::{SITE_ICONS_DIR, SiteIcons};
+use crate::images::Images;
 use crate::links::LinkContext;
 
 /// Renders Markdown to HTML.
 ///
 /// Raw HTML in the Markdown is escaped, so it shows as text instead of
 /// running. Links and images are rewritten for the built site (see
-/// [`LinkContext::resolve`]). `:icon-name:` becomes an icon, the site's
-/// own if it has one by that name.
-pub fn render(markdown: &str, links: &LinkContext, site_icons: &SiteIcons) -> String {
+/// [`LinkContext::resolve`]). Images from `media/` get their smaller
+/// copies and their size, like image blocks. `:icon-name:` becomes an
+/// icon, the site's own if it has one by that name.
+pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String {
     let options = options();
     let arena = Arena::new();
     let root = parse_document(&arena, markdown, &options);
 
+    // What each image from `media/` gets added to its `<img src="…"`.
+    let mut image_attributes: BTreeMap<String, String> = BTreeMap::new();
     for node in root.descendants() {
-        if let NodeValue::Link(ref mut link) | NodeValue::Image(ref mut link) =
-            node.data.borrow_mut().value
-        {
-            link.url = links.resolve(&link.url);
+        match node.data.borrow_mut().value {
+            NodeValue::Link(ref mut link) => link.url = links.resolve(&link.url),
+            NodeValue::Image(ref mut image) => {
+                // Only `/media/…`: a relative `photo.png` isn't in media/.
+                let picture = image
+                    .url
+                    .starts_with("/media/")
+                    .then(|| crate::generator::picture(&image.url, None, links, media.images));
+                image.url = links.resolve(&image.url);
+                if let Some(picture) = picture.flatten() {
+                    image_attributes.insert(image.url.clone(), picture.attributes(TEXT_SIZES));
+                }
+            }
+            _ => {}
         }
     }
 
@@ -35,8 +49,27 @@ pub fn render(markdown: &str, links: &LinkContext, site_icons: &SiteIcons) -> St
     let mut html = String::new();
     // Writing into a String can't fail.
     let _ = format_html_with_plugins(root, &options, &mut html, &plugins);
-    with_icons(&html, links, site_icons)
+    for (src, attributes) in &image_attributes {
+        let tag = format!("<img src=\"{src}\"");
+        html = html.replace(&tag, &format!("{tag}{attributes}"));
+    }
+    // Images further down load when they're about to be seen.
+    let html = html.replace("<img src=", "<img loading=\"lazy\" src=");
+    with_icons(&html, links, media.site_icons)
 }
+
+/// What text needs from the site besides links: its own icons and its
+/// images, whose sizes and smaller copies the build keeps track of.
+pub struct TextMedia<'a> {
+    pub site_icons: &'a SiteIcons,
+    pub images: &'a Images,
+}
+
+/// How wide an image in text is shown at most: the width of the content,
+/// like a full-width image block (`full_sizes` in the generator). In a
+/// column it's less, so the browser may take a copy larger than needed,
+/// never a blurry one.
+const TEXT_SIZES: &str = "(min-width: 56rem) 56rem, 100vw";
 
 /// Replaces `:icon-phone:` in text with that icon, sized to the text: the
 /// site's own from `media/icons/` (an image, in its own colors) or else
@@ -269,10 +302,14 @@ mod tests {
     use super::*;
 
     fn render_on(path: &str, file: &str, markdown: &str) -> String {
+        let images = Images::new(Path::new("media"));
         render(
             markdown,
             &LinkContext::new(path, Path::new(file)),
-            &SiteIcons::default(),
+            &TextMedia {
+                site_icons: &SiteIcons::default(),
+                images: &images,
+            },
         )
     }
 
@@ -348,10 +385,14 @@ mod tests {
         std::fs::create_dir(&folder).unwrap();
         std::fs::write(folder.join("rails.svg"), "<svg/>").unwrap();
         std::fs::write(folder.join("phone.png"), "png").unwrap();
+        let images = Images::new(media.path());
         let html = render(
             ":icon-rails: Rails, :icon-phone: and :icon-mail:",
             &LinkContext::new("stack", Path::new("pages/stack.md")),
-            &SiteIcons::load(media.path()),
+            &TextMedia {
+                site_icons: &SiteIcons::load(media.path()),
+                images: &images,
+            },
         );
         assert!(
             html.contains(
