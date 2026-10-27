@@ -1,5 +1,19 @@
 <script lang="ts">
-  // Nothing to set up: the sketch is markup only.
+  import type { HeaderStyle } from "$lib/site";
+
+  interface Props {
+    /** The header setting: a plain header, or a bar in one of the colors. */
+    header?: HeaderStyle;
+  }
+
+  let { header = "plain" }: Props = $props();
+  const BARS: Record<HeaderStyle, string> = {
+    plain: "border-b border-base-300",
+    primary: "bg-primary text-primary-content",
+    secondary: "bg-secondary text-secondary-content",
+    accent: "bg-accent text-accent-content",
+    neutral: "bg-neutral text-neutral-content",
+  };
 </script>
 
 <!--
@@ -13,17 +27,30 @@
 
 <div id="site-sketch" aria-hidden="true"
   class="flex flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 text-base-content shadow-sm">
-  <!-- Accent stripe and header with the menu; the current page in primary. -->
-  <div class="relative h-1 bg-accent">{@render mark(3, "top-0.5 left-2")}</div>
-  <div class="flex items-center justify-between border-b border-base-300 px-3 py-2">
+  <!-- Header: plain with the accent stripe and the current page in primary,
+       or a colored bar with the current page underlined. -->
+  {#if header === "plain"}
+    <div class="relative h-1 bg-accent">{@render mark(3, "top-0.5 left-2")}</div>
+  {/if}
+  <div class={["relative flex items-center justify-between px-3 py-2", BARS[header]]}>
+    {#if header === "primary"}{@render mark(1, "top-0.5 left-0.5")}{/if}
+    {#if header === "secondary"}{@render mark(2, "top-0.5 left-0.5")}{/if}
+    {#if header === "accent"}{@render mark(3, "top-0.5 left-0.5")}{/if}
+    {#if header === "neutral"}{@render mark(4, "top-0.5 left-0.5")}{/if}
     <div class="flex items-center gap-1.5">
-      <span class="size-3 rounded-field bg-base-300"></span>
-      <span class="h-2 w-14 rounded-full bg-base-content/80"></span>
+      <span class={["size-3 rounded-field", header === "plain" ? "bg-base-300" : "bg-base-100"]}></span>
+      <span class={["h-2 w-14 rounded-full", header === "plain" ? "bg-base-content/80" : "bg-current opacity-90"]}></span>
     </div>
     <div class="flex items-center gap-2">
-      <span class="relative h-1.5 w-6 rounded-full bg-primary">{@render mark(1, "-top-4 -right-1")}</span>
-      <span class="h-1.5 w-6 rounded-full bg-base-content/30"></span>
-      <span class="h-1.5 w-6 rounded-full bg-base-content/30"></span>
+      {#if header === "plain"}
+        <span class="relative h-1.5 w-6 rounded-full bg-primary">{@render mark(1, "-top-4 -right-1")}</span>
+        <span class="h-1.5 w-6 rounded-full bg-base-content/30"></span>
+        <span class="h-1.5 w-6 rounded-full bg-base-content/30"></span>
+      {:else}
+        <span class="h-1.5 w-6 rounded-full border-b-2 border-current bg-current opacity-90"></span>
+        <span class="h-1.5 w-6 rounded-full bg-current opacity-50"></span>
+        <span class="h-1.5 w-6 rounded-full bg-current opacity-50"></span>
+      {/if}
     </div>
   </div>
 

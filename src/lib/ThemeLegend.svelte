@@ -1,6 +1,6 @@
 <script lang="ts">
   import SiteSketch from "$lib/SiteSketch.svelte";
-  import type { ThemeVariable } from "$lib/site";
+  import type { HeaderStyle, ThemeVariable } from "$lib/site";
 
   interface Props {
     /** The site's theme; the legend is drawn in it. */
@@ -9,18 +9,19 @@
     variables?: ThemeVariable[];
     /** The name to show, e.g. "custom". */
     label?: string;
+    header?: HeaderStyle;
   }
 
-  let { theme, variables = [], label = theme }: Props = $props();
+  let { theme, variables = [], label = theme, header = "plain" }: Props = $props();
   // Inline variables win over the theme's own, as `:root[data-theme]` does on the site.
   let style = $derived(variables.map((v) => `${v.name}: ${v.value}`).join("; "));
 
   /** The swatches in ThemePicker, left to right, and where generated sites use them. */
   const LEGEND = [
-    { color: "Primary", swatch: "bg-primary text-primary-content", uses: "Buttons, Call to action box, current page in the top menu, underline of links in text" },
-    { color: "Secondary", swatch: "bg-secondary text-secondary-content", uses: "Hero without an image, dates in Post lists" },
-    { color: "Accent", swatch: "bg-accent text-accent-content", uses: "Footer, stripe along the top of every page, bar beside quotes" },
-    { color: "Neutral", swatch: "bg-neutral text-neutral-content", uses: "Current page in the sidebar menu, file type in Download blocks" },
+    { color: "Primary", swatch: "bg-primary text-primary-content", uses: "Buttons, Call to action box, current page in the top menu, underline of links in text; the header bar if chosen" },
+    { color: "Secondary", swatch: "bg-secondary text-secondary-content", uses: "Hero without an image, dates in Post lists; the header bar if chosen" },
+    { color: "Accent", swatch: "bg-accent text-accent-content", uses: "Footer, stripe along the top of a plain header, bar beside quotes; the header bar if chosen" },
+    { color: "Neutral", swatch: "bg-neutral text-neutral-content", uses: "Current page in the sidebar menu, file type in Download blocks; the header bar if chosen" },
   ];
 </script>
 
@@ -31,7 +32,7 @@
   <span class="font-medium">Where the theme's colors go <span class="font-normal text-base-content/60">· {label}</span></span>
   <div class="grid items-start gap-4 @lg:grid-cols-[minmax(0,15rem)_1fr]">
     <div data-theme={theme} {style} class="bg-transparent">
-      <SiteSketch />
+      <SiteSketch {header} />
     </div>
     <div class="flex flex-col gap-3">
     {#each LEGEND as entry, i (entry.color)}

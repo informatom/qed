@@ -88,7 +88,10 @@ over by hand.
   underlines; secondary: Hero without image, post dates; accent: stripe at
   the top, quote bars; neutral: footer, sidebar's current page, file
   types), and Site settings explains them in a legend beside the theme
-  switcher; a picked theme saves at once. Other options are still open.
+  switcher; a picked theme saves at once. *Header bar done 2026-10-27*:
+  `header` in `site.toml` (plain, primary, secondary, accent, neutral); a colored bar
+  underlines the current page and gives the logo a light backing. Other
+  options are still open (fonts: #102).
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.

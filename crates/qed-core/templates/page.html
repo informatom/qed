@@ -51,16 +51,16 @@
 {%- endfor %}
 {%- endmacro %}
 <body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased">
-  <header class="border-t-4 border-b border-t-accent border-b-base-300">
+  <header class="{{ header.bar }}">
     <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
       <a href="{{ home_href }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
-        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="" class="size-9 object-contain"
+        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="" class="{{ header.logo }}"
         {%- if let Some(width) = logo.width %} width="{{ width }}"{% endif %}
         {%- if let Some(height) = logo.height %} height="{{ height }}"{% endif %}>{% endif %}{{ site.title }}</a>
       {%- if !main_menu.is_empty() && !sidebar %}
       <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {%- for item in main_menu %}
-        <li><a href="{{ item.href }}" class="inline-flex items-center gap-1.5 {% if item.current %}font-semibold text-primary{% else %}link-hover{% endif %}">
+        <li><a href="{{ item.href }}" class="inline-flex items-center gap-1.5 {% if item.current %}{{ header.current }}{% else %}link-hover{% endif %}">
           {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
         {%- endfor %}
       </ul>

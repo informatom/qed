@@ -320,6 +320,11 @@ export type GalleryImage = {
 	alt: string | null,
 };
 
+/**  How the page header looks. */
+export type HeaderStyle = 
+/**  The page background, with a stripe in the accent color on top. */
+"plain" | "primary" | "secondary" | "accent" | "neutral";
+
 /**  A large header: optional background image, headline, text and a button. */
 export type Hero = {
 	/**  File name in the site's `media/` folder. */
@@ -546,6 +551,8 @@ export type SiteConfig_Deserialize = {
 	 *  main menu is too long for the top bar.
 	 */
 	navigation?: Navigation,
+	/**  The header: plain, or a full-width bar in one of the theme's colors. */
+	header?: HeaderStyle,
 };
 
 /**  Settings from `site.toml`. */
@@ -579,6 +586,8 @@ export type SiteConfig_Serialize = {
 	 *  main menu is too long for the top bar.
 	 */
 	navigation: Navigation,
+	/**  The header: plain, or a full-width bar in one of the theme's colors. */
+	header: HeaderStyle,
 };
 
 /**  A site folder, read into memory. */

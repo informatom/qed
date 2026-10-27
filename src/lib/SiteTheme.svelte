@@ -7,7 +7,7 @@
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
   import ThemeLegend from "$lib/ThemeLegend.svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
-  import { commands, type Corners, type CustomTheme, type Site, type SiteConfig, type ThemeVariable } from "$lib/site";
+  import { commands, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type ThemeVariable } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -31,6 +31,14 @@
     { key: "neutral", label: "Neutral" },
   ] as const;
   type ColorKey = (typeof COLORS)[number]["key"];
+
+  const HEADERS: { value: HeaderStyle; label: string }[] = [
+    { value: "plain", label: "Plain" },
+    { value: "primary", label: "Primary" },
+    { value: "secondary", label: "Secondary" },
+    { value: "accent", label: "Accent" },
+    { value: "neutral", label: "Neutral" },
+  ];
 
   const CORNERS: { value: Corners | null; label: string }[] = [
     { value: null, label: "From the theme" },
@@ -181,6 +189,20 @@
       <div role="alert" class="alert alert-error alert-soft text-sm">{error}</div>
     {/if}
 
+    <div id="header-style" class="flex flex-wrap items-center gap-3 text-sm">
+      <span class="font-medium">Header</span>
+      <div class="join">
+        {#each HEADERS as option (option.value)}
+          <button type="button" id="header-{option.value}"
+            class={["btn join-item btn-sm", site.config.header === option.value && "btn-active"]}
+            onclick={() => site.config.header !== option.value && save({ ...$state.snapshot(site.config), header: option.value })}>
+            {option.label}
+          </button>
+        {/each}
+      </div>
+      <span class="text-xs text-base-content/60">Plain, or a full-width bar in one of the theme's colors.</span>
+    </div>
+
     <section id="custom-theme"
       class={["flex flex-col gap-3 rounded-box border p-3", isCustom ? "border-primary ring-2 ring-primary" : "border-base-300"]}>
       <div class="flex flex-wrap items-center gap-3">
@@ -283,7 +305,7 @@
 
   <!-- Stays in view while the theme list scrolls. -->
   <div class="@container xl:sticky xl:top-4">
-    <ThemeLegend theme={isCustom && draft ? draft.from : site.config.theme} {variables}
+    <ThemeLegend theme={isCustom && draft ? draft.from : site.config.theme} {variables} header={site.config.header}
       label={isCustom && draft ? (draft.name ? `“${draft.name}”, from ${draft.from}` : `custom, from ${draft.from}`) : site.config.theme} />
   </div>
 </div>

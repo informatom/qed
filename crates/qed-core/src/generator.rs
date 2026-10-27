@@ -30,7 +30,9 @@ use crate::links::LinkContext;
 use crate::markdown;
 use crate::media::CLUTTER;
 use crate::page::Menu;
-use crate::site::{ASSETS_DIR, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig};
+use crate::site::{
+    ASSETS_DIR, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
+};
 use crate::slug::slugify;
 
 pub const OUTPUT_DIR: &str = "_site";
@@ -621,10 +623,58 @@ struct PageTemplate<'a> {
     sidebar: bool,
     /// The content width; wider with a sidebar.
     width: &'static str,
+    /// Classes for the header, the current menu entry and the logo; see
+    /// [`header_classes`].
+    header: HeaderClasses,
     /// Date and authors, e.g. "2026-10-21 · Claude".
     byline: String,
     /// Each block's HTML, from `block.html`.
     blocks: Vec<String>,
+}
+
+/// Tailwind classes for the header, written out in full here so the
+/// stylesheet build finds them (`site.input.css` scans this file).
+struct HeaderClasses {
+    bar: &'static str,
+    /// The current page in the top menu.
+    current: &'static str,
+    /// The logo: on a colored bar it gets a light backing, so a logo in the
+    /// bar's own color doesn't disappear.
+    logo: &'static str,
+}
+
+fn header_classes(style: HeaderStyle) -> HeaderClasses {
+    // On a colored bar, primary text would vanish (or not stand out), so
+    // the current page is underlined instead.
+    const UNDERLINED: &str = "font-semibold underline decoration-2 underline-offset-4";
+    const BACKED: &str = "size-9 object-contain rounded-field bg-base-100 p-0.5";
+    match style {
+        HeaderStyle::Plain => HeaderClasses {
+            bar: "border-t-4 border-b border-t-accent border-b-base-300",
+            current: "font-semibold text-primary",
+            logo: "size-9 object-contain",
+        },
+        HeaderStyle::Primary => HeaderClasses {
+            bar: "bg-primary text-primary-content",
+            current: UNDERLINED,
+            logo: BACKED,
+        },
+        HeaderStyle::Secondary => HeaderClasses {
+            bar: "bg-secondary text-secondary-content",
+            current: UNDERLINED,
+            logo: BACKED,
+        },
+        HeaderStyle::Accent => HeaderClasses {
+            bar: "bg-accent text-accent-content",
+            current: UNDERLINED,
+            logo: BACKED,
+        },
+        HeaderStyle::Neutral => HeaderClasses {
+            bar: "bg-neutral text-neutral-content",
+            current: UNDERLINED,
+            logo: BACKED,
+        },
+    }
 }
 
 /// One block, rendered on its own so columns can hold blocks.
@@ -856,6 +906,7 @@ fn render_page(
         show_title: show_title(page),
         sidebar,
         width: if sidebar { "max-w-6xl" } else { "max-w-4xl" },
+        header: header_classes(config.header),
         byline: byline.join(" · "),
         blocks: page
             .content
@@ -1925,6 +1976,34 @@ mod tests {
         );
         let post = read(out.path().join("blog/2026-01-05-old/index.html"));
         assert!(post.contains("5. Jänner 2026 · Ann"), "{post}");
+    }
+
+    #[test]
+    fn colors_the_header_bar_when_asked() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.header = HeaderStyle::Primary;
+        for page in &mut site.pages {
+            if page.path == "blog" {
+                page.content.front.menu = Menu::Main;
+            }
+        }
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let blog = read(out.path().join("blog/index.html"));
+        assert!(
+            blog.contains(r#"<header class="bg-primary text-primary-content">"#),
+            "{blog}"
+        );
+        assert!(
+            blog.contains("underline decoration-2"),
+            "current page underlined: {blog}"
+        );
+
+        site.config.header = HeaderStyle::Plain;
+        build_on(&site, out.path(), TODAY).unwrap();
+        let blog = read(out.path().join("blog/index.html"));
+        assert!(blog.contains("border-t-accent"), "{blog}");
     }
 
     #[test]

@@ -64,6 +64,35 @@ pub struct SiteConfig {
     /// main menu is too long for the top bar.
     #[serde(default)]
     pub navigation: Navigation,
+    /// The header: plain, or a full-width bar in one of the theme's colors.
+    #[serde(default)]
+    pub header: HeaderStyle,
+}
+
+/// How the page header looks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum HeaderStyle {
+    /// The page background, with a stripe in the accent color on top.
+    #[default]
+    Plain,
+    Primary,
+    Secondary,
+    Accent,
+    Neutral,
+}
+
+impl HeaderStyle {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            HeaderStyle::Plain => "plain",
+            HeaderStyle::Primary => "primary",
+            HeaderStyle::Secondary => "secondary",
+            HeaderStyle::Accent => "accent",
+            HeaderStyle::Neutral => "neutral",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -459,6 +488,11 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
                 Navigation::Sidebar => "sidebar".to_string(),
             },
             "top".to_string(),
+        ),
+        (
+            "header",
+            &config.header.as_str().to_string(),
+            "plain".to_string(),
         ),
     ] {
         if *value == default && !page_writer::writes_string(&original, key, &default) {
