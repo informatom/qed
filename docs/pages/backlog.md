@@ -39,11 +39,6 @@ over by hand.
   an Image block hides it.
 - **#097 Column widths.** A width choice per Columns block (equal, wide
   left, wide right), e.g. text in two thirds and a photo in one.
-- **#103 Lists with pictures.** Post list and Page list as a grid of
-  cards with each page's image (`image` in its settings), title and
-  summary. waldgruber.at's old start page showed its posts that way, and
-  its Stofftiere overview is a grid of 53 photos with name and place.
-  Found moving waldgruber.at.
 - **#104 New sites in their language.** A new site's placeholder texts
   ("Welcome to the new site.") in the language chosen for it.
 - **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
@@ -147,3 +142,20 @@ over by hand.
   unsigned (from #073).
 - **#087 Section block.** A full-width block that holds other blocks, in
   the same nested format as Columns (#074).
+
+### Phase 4: Open to AI assistants
+
+- **#105 MCP server.** A second thin shell around qed-core next to the
+  Tauri app, so AI assistants (Claude Code, Claude Desktop) can work on a
+  site through the [Model Context Protocol](https://modelcontextprotocol.io):
+  a small crate with the official Rust SDK (`rmcp`), started locally over
+  stdio. Tools such as `list_pages`, `read_page`, `save_blocks`,
+  `create_page`, `move_page`, `list_media`, `import_media`, `build_site`,
+  `list_versions` and `save_version`, with the app's rules: usage checks
+  before deleting, links rewritten on moves, every change recorded in the
+  site's history, so it shows in Versions and can be undone. To decide:
+  publishing left out or only prepared (it reaches the outside world; keys
+  stay in the keychain); access only to sites opened in q.e.d.; the app
+  noticing changes made outside it and reloading instead of overwriting
+  them (useful for edits by hand, too); a separate program or built into
+  the running app.

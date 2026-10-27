@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 use askama::Template;
 use serde::Serialize;
 
-use crate::block::{self, Block, Side};
+use crate::block::{self, Block, ListLayout, Side};
 use crate::calendar::{self, Date};
 use crate::deploy::MANIFEST_FILE;
 use crate::fonts;
@@ -767,6 +767,8 @@ struct PostEntry {
     /// `24. Februar 2017`, in the site's language.
     date_text: String,
     summary_html: Option<String>,
+    /// For cards and tiles; see [`list_picture`].
+    picture: Option<Picture>,
 }
 
 /// One page in a Page list.
@@ -774,6 +776,7 @@ struct PageEntry {
     title: String,
     href: String,
     summary_html: Option<String>,
+    picture: Option<Picture>,
 }
 
 /// A block, ready for the template: Markdown rendered, links resolved.
@@ -829,10 +832,13 @@ enum RenderedBlock {
         feed_href: Option<String>,
         /// Titles only, for the footer.
         compact: bool,
+        /// `list`, `cards` or `tiles`.
+        layout: &'static str,
     },
     PageList {
         pages: Vec<PageEntry>,
         compact: bool,
+        layout: &'static str,
     },
     Video {
         href: String,
@@ -1190,6 +1196,7 @@ fn render_block(
             }
             RenderedBlock::PostList {
                 compact: context.footer,
+                layout: layout_name(list.layout),
                 feed_href: context
                     .feeds
                     .iter()
@@ -1208,6 +1215,7 @@ fn render_block(
                                 .map(|day| calendar::long_date(day, context.language))
                                 .unwrap_or_default(),
                             summary_html: markdown(&post.content.front.summary),
+                            picture: list_picture(post, links, context.images),
                         }
                     })
                     .collect(),
@@ -1234,16 +1242,41 @@ fn render_block(
         },
         Block::PageList(list) => RenderedBlock::PageList {
             compact: context.footer,
+            layout: layout_name(list.layout),
             pages: children(context.pages, list_source(&list.from, links))
                 .iter()
                 .map(|page| PageEntry {
                     title: page.content.front.title.clone(),
                     href: links.page(&page.path),
                     summary_html: markdown(&page.content.front.summary),
+                    picture: list_picture(page, links, context.images),
                 })
                 .collect(),
         },
     })
+}
+
+fn layout_name(layout: Option<ListLayout>) -> &'static str {
+    match layout.unwrap_or_default() {
+        ListLayout::List => "list",
+        ListLayout::Cards => "cards",
+        ListLayout::Tiles => "tiles",
+    }
+}
+
+/// A listed page's picture: its share image (`image` in its settings), or
+/// else the first image on it, as link previews choose.
+fn list_picture(page: &Page, links: &LinkContext, images: &Images) -> Option<Picture> {
+    let (name, alt) = match page.content.front.image.as_deref() {
+        Some(name) => (name, None),
+        None => first_image(&page.content.blocks)?,
+    };
+    picture(
+        name,
+        Some(alt.unwrap_or(&page.content.front.title)),
+        links,
+        images,
+    )
 }
 
 /// A list's `from` as a page path; empty means the page the list is on.
@@ -2211,6 +2244,59 @@ mod tests {
             "{top}"
         );
         assert!(out.path().join("news/index.html").is_file());
+    }
+
+    #[test]
+    fn shows_lists_as_cards_and_tiles_with_pictures() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"S\"\n");
+        write(
+            "pages/index.md",
+            "+++\ntitle = \"Home\"\n+++\n\n::: post-list\nfrom = \"/blog\"\nlayout = \"cards\"\n:::\n\n::: page-list\nfrom = \"/animals\"\nlayout = \"tiles\"\n:::\n",
+        );
+        write("pages/blog.md", "+++\ntitle = \"Blog\"\n+++\n");
+        write(
+            "pages/blog/2026-01-05-trip.md",
+            "+++\ntitle = \"Trip\"\ndate = 2026-01-05\nimage = \"trip.png\"\n+++\n",
+        );
+        write("pages/animals.md", "+++\ntitle = \"Animals\"\n+++\n");
+        write(
+            "pages/animals/gustaf.md",
+            "+++\ntitle = \"Gustaf\"\nsummary = \"1220\"\n+++\n\n::: text-image\ntext = \"A giraffe.\"\nimage = \"gustaf.png\"\n:::\n",
+        );
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        for name in ["trip.png", "gustaf.png"] {
+            image::RgbImage::new(4, 3)
+                .save(dir.path().join("media").join(name))
+                .unwrap();
+        }
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+
+        let home = read(out.path().join("index.html"));
+        assert!(
+            home.contains("sm:grid-cols-2 lg:grid-cols-3"),
+            "cards: {home}"
+        );
+        assert!(
+            home.contains(r#"<img src="media/trip.png" alt="Trip""#),
+            "share image: {home}"
+        );
+        assert!(
+            home.contains("sm:grid-cols-4 lg:grid-cols-6"),
+            "tiles: {home}"
+        );
+        assert!(
+            home.contains(r#"<img src="media/gustaf.png" alt="Gustaf""#),
+            "first image: {home}"
+        );
+        assert!(home.contains("1220"), "{home}");
     }
 
     #[test]

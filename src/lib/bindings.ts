@@ -414,6 +414,18 @@ export type Library =
 /**  `static/`: copied into the built site at the same paths. */
 "static";
 
+/**  How a Post list or Page list shows its pages. */
+export type ListLayout = 
+/**  Title, (date,) summary, one below the other. */
+"list" | 
+/**  A grid of cards: picture, title, (date,) summary. */
+"cards" | 
+/**
+ *  A dense grid of square pictures with title and summary below, for
+ *  directories of people or things.
+ */
+"tiles";
+
 /**  One file in `media/`, `assets/` or `static/`. */
 export type MediaFile = {
 	/**  Path inside the folder, with `/` between folders: `team.jpg`, `logos/a.png`. */
@@ -473,6 +485,8 @@ export type PageList = {
 	 *  `/team`); empty for the page the list is on.
 	 */
 	from: string | null,
+	/**  How the pages show; a plain list if empty. */
+	layout: ListLayout | null,
 };
 
 /**
@@ -487,6 +501,8 @@ export type PostList = {
 	from: string | null,
 	/**  At most this many posts; all of them if empty. */
 	limit: number | null,
+	/**  How the posts show; a plain list if empty. */
+	layout: ListLayout | null,
 };
 
 /**  What `preview_site` returns: where to look, and what was built. */

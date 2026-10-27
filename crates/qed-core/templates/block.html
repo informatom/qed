@@ -112,12 +112,48 @@
     {%- endif %}
   </div>
 </section>
-{%- when RenderedBlock::PostList with { posts, feed_href, compact } %}
+{%- when RenderedBlock::PostList with { posts, feed_href, compact, layout } %}
 {%- if *compact %}
 {#- In the footer: just the titles, as links. #}
 <ul class="flex flex-col gap-1">
   {%- for post in posts %}
   <li><a href="{{ post.href }}" class="link link-hover">{{ post.title }}</a></li>
+  {%- endfor %}
+</ul>
+{%- else if *layout == "cards" && !posts.is_empty() %}
+<ul class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  {%- for post in posts %}
+  <li class="card group overflow-hidden border border-base-300 bg-base-100">
+    <a href="{{ post.href }}" class="block aspect-[4/3] overflow-hidden bg-base-200">
+      {%- if let Some(picture) = post.picture %}
+      {%- call img(picture, "h-full w-full object-cover transition-transform duration-300 group-hover:scale-105", "(min-width: 64rem) 20rem, (min-width: 40rem) 50vw, 100vw", "lazy") %}{% endcall %}
+      {%- endif %}
+    </a>
+    <div class="card-body gap-2 p-4">
+      <a href="{{ post.href }}" class="link link-hover text-lg font-semibold leading-snug">{{ post.title }}</a>
+      <time datetime="{{ post.date }}" class="badge badge-secondary badge-sm">{{ post.date_text }}</time>
+      {%- if let Some(summary_html) = post.summary_html %}
+      <div class="prose prose-sm max-w-none">{{ summary_html|safe }}</div>
+      {%- endif %}
+    </div>
+  </li>
+  {%- endfor %}
+</ul>
+{%- if let Some(feed_href) = feed_href %}
+<p class="mt-6 text-sm"><a href="{{ feed_href }}" class="link link-hover inline-flex items-center gap-1.5">{{ rss_icon|safe }}Subscribe with RSS</a></p>
+{%- endif %}
+{%- else if *layout == "tiles" && !posts.is_empty() %}
+<ul class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+  {%- for post in posts %}
+  <li class="group flex flex-col gap-1.5">
+    <a href="{{ post.href }}" class="block aspect-square overflow-hidden rounded-box bg-base-200">
+      {%- if let Some(picture) = post.picture %}
+      {%- call img(picture, "h-full w-full object-cover transition-transform duration-300 group-hover:scale-105", "(min-width: 64rem) 14rem, (min-width: 40rem) 33vw, 50vw", "lazy") %}{% endcall %}
+      {%- endif %}
+    </a>
+    <a href="{{ post.href }}" class="link link-hover font-medium leading-snug">{{ post.title }}</a>
+    <time datetime="{{ post.date }}" class="text-xs text-base-content/60">{{ post.date_text }}</time>
+  </li>
   {%- endfor %}
 </ul>
 {%- else %}
@@ -138,11 +174,45 @@
 <p class="mt-6 text-sm"><a href="{{ feed_href }}" class="link link-hover inline-flex items-center gap-1.5">{{ rss_icon|safe }}Subscribe with RSS</a></p>
 {%- endif %}
 {%- endif %}
-{%- when RenderedBlock::PageList with { pages, compact } %}
+{%- when RenderedBlock::PageList with { pages, compact, layout } %}
 {%- if *compact %}
 <ul class="flex flex-col gap-1">
   {%- for page in pages %}
   <li><a href="{{ page.href }}" class="link link-hover">{{ page.title }}</a></li>
+  {%- endfor %}
+</ul>
+{%- else if *layout == "cards" && !pages.is_empty() %}
+<ul class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  {%- for page in pages %}
+  <li class="card group overflow-hidden border border-base-300 bg-base-100">
+    <a href="{{ page.href }}" class="block aspect-[4/3] overflow-hidden bg-base-200">
+      {%- if let Some(picture) = page.picture %}
+      {%- call img(picture, "h-full w-full object-cover transition-transform duration-300 group-hover:scale-105", "(min-width: 64rem) 20rem, (min-width: 40rem) 50vw, 100vw", "lazy") %}{% endcall %}
+      {%- endif %}
+    </a>
+    <div class="card-body gap-2 p-4">
+      <a href="{{ page.href }}" class="link link-hover text-lg font-semibold leading-snug">{{ page.title }}</a>
+      {%- if let Some(summary_html) = page.summary_html %}
+      <div class="prose prose-sm max-w-none">{{ summary_html|safe }}</div>
+      {%- endif %}
+    </div>
+  </li>
+  {%- endfor %}
+</ul>
+{%- else if *layout == "tiles" && !pages.is_empty() %}
+<ul class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+  {%- for page in pages %}
+  <li class="group flex flex-col gap-1">
+    <a href="{{ page.href }}" class="block aspect-square overflow-hidden rounded-box bg-base-200">
+      {%- if let Some(picture) = page.picture %}
+      {%- call img(picture, "h-full w-full object-cover transition-transform duration-300 group-hover:scale-105", "(min-width: 64rem) 10rem, (min-width: 40rem) 25vw, 50vw", "lazy") %}{% endcall %}
+      {%- endif %}
+    </a>
+    <a href="{{ page.href }}" class="link link-hover text-sm font-medium leading-snug">{{ page.title }}</a>
+    {%- if let Some(summary_html) = page.summary_html %}
+    <div class="text-xs text-base-content/60 [&_p]:inline">{{ summary_html|safe }}</div>
+    {%- endif %}
+  </li>
   {%- endfor %}
 </ul>
 {%- else %}

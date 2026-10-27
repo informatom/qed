@@ -66,6 +66,15 @@
   }
 </script>
 
+{#snippet layoutChoice(list: Extract<Block, { type: "post-list" | "page-list" }>)}
+  <div class="join">
+    {#each [["list", "List"], ["cards", "Cards"], ["tiles", "Tiles"]] as [value, label] (value)}
+      <button type="button" class={["btn join-item btn-sm", (list.layout ?? "list") === value && "btn-active"]}
+        onclick={() => (list.layout = value === "list" ? null : (value as "cards" | "tiles"))}>{label}</button>
+    {/each}
+  </div>
+{/snippet}
+
 {#snippet field(label: string, hint: string = "")}
   <span class="text-sm font-medium">
     {label}
@@ -250,6 +259,10 @@
           </div>
         {:else if block.type === "post-list"}
           <div class="grid gap-3 @2xl:grid-cols-[1fr_12rem]">
+            <div class="flex flex-col gap-1 @2xl:col-span-2">
+              {@render field("Layout", "cards and tiles show each post's share image, or its first picture")}
+              {@render layoutChoice(block)}
+            </div>
             <label class="flex flex-col gap-1">
               {@render field("From page", "this page if empty, or e.g. /blog")}
               <input class="input w-full font-mono" bind:value={block.from} placeholder="this page" />
@@ -295,6 +308,10 @@
           </div>
         {:else if block.type === "page-list"}
           <div class="flex flex-col gap-3">
+            <div class="flex flex-col gap-1">
+              {@render field("Layout", "cards and tiles show each page's share image, or its first picture")}
+              {@render layoutChoice(block)}
+            </div>
             <label class="flex flex-col gap-1">
               {@render field("From page", "this page if empty, or e.g. /team")}
               <input class="input w-full font-mono" bind:value={block.from} placeholder="this page" />

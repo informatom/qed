@@ -305,6 +305,13 @@ rest is done.
   In the app: a Footer entry below the page list opens the block editor
   (`BlockEditor` now takes the saved blocks and a save function).
   podcasterei.at has one: Letzte Posts, Meetup, Kontakt.
+- **#103 Lists with pictures.** *Done 2026-10-27*: Post list and Page
+  list have `layout`: `list` (default), `cards` (picture, title, date,
+  summary; 1–3 columns) and `tiles` (square pictures with title and
+  summary; 2–6 columns for pages, 2–4 for posts). The picture is the
+  page's share image, else its first image; resized copies with `srcset`
+  as everywhere. In the editor: a Layout choice on both blocks.
+  waldgruber.at uses cards for its posts and tiles for its 53 Stofftiere.
 
 ## Dropped
 

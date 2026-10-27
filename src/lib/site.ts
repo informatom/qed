@@ -116,16 +116,16 @@ export function newBlock(type: BlockType): Block {
     case "call-to-action":
       return { type, headline: null, text: null, button_label: null, button_link: null };
     case "post-list":
-      return { type, from: null, limit: null };
+      return { type, from: null, limit: null, layout: null };
     case "page-list":
-      return { type, from: null };
+      return { type, from: null, layout: null };
     case "video":
       return { type, url: null, title: null, image: null };
   }
 }
 
 /** Fields that may be empty in a file. Everything else is always text. */
-const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url"]);
+const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout"]);
 
 /** Empty optional fields become null, so "" and "nothing" count as the same. */
 export function normalizeBlock(block: Block): Block {

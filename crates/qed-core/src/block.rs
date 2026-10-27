@@ -210,6 +210,23 @@ pub struct PostList {
     pub from: Option<String>,
     /// At most this many posts; all of them if empty.
     pub limit: Option<u32>,
+    /// How the posts show; a plain list if empty.
+    pub layout: Option<ListLayout>,
+}
+
+/// How a Post list or Page list shows its pages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum ListLayout {
+    /// Title, (date,) summary, one below the other.
+    #[default]
+    List,
+    /// A grid of cards: picture, title, (date,) summary.
+    Cards,
+    /// A dense grid of square pictures with title and summary below, for
+    /// directories of people or things.
+    Tiles,
 }
 
 /// The pages one level below a page, by weight, then title, each with its
@@ -222,6 +239,8 @@ pub struct PageList {
     /// The page whose pages are listed, as its address (`team` or
     /// `/team`); empty for the page the list is on.
     pub from: Option<String>,
+    /// How the pages show; a plain list if empty.
+    pub layout: Option<ListLayout>,
 }
 
 /// A video on YouTube, Vimeo or PeerTube, shown as its thumbnail with a
