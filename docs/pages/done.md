@@ -269,6 +269,10 @@ rest is done.
   (`qed_core::theme`). Site → Theme has a Custom colors card that starts
   from a theme's colors (read via canvas) and saves on each change; the
   legend previews it live. Picking another theme keeps the custom colors.
+  *Saved colors*: named sets in `[[saved_themes]]` (same fields plus
+  `name`), applied with one click, saved with "Save these colors",
+  deleted after asking; the card follows `site.toml` after Reload, so an
+  old copy in the app can't overwrite it.
 
 ## Dropped
 

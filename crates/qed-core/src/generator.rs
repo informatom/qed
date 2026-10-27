@@ -1880,6 +1880,7 @@ mod tests {
         let mut site = blog(dir.path());
         site.config.theme = "custom".into();
         site.config.custom_theme = Some(crate::theme::CustomTheme {
+            name: None,
             from: "nord".into(),
             background: None,
             primary: Some("#ff6600".into()),

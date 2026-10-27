@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
+  import { ask } from "@tauri-apps/plugin-dialog";
+  import Save from "@lucide/svelte/icons/save";
+  import X from "@lucide/svelte/icons/x";
   import Palette from "@lucide/svelte/icons/palette";
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
   import ThemeLegend from "$lib/ThemeLegend.svelte";
@@ -40,10 +43,24 @@
     themes = await commands.listThemes();
   });
 
-  // Start from what's saved; a new site has no custom colors yet.
+  // Follow what's saved, also after Reload or an edit by hand; otherwise an
+  // old copy here would be saved over the file with the next change.
   $effect(() => {
-    if (draft === null && site.config.custom_theme) draft = $state.snapshot(site.config.custom_theme);
+    const saved = site.config.custom_theme;
+    untrack(() => (draft = saved ? $state.snapshot(saved) : null));
   });
+
+  let savedSets = $derived(site.config.saved_themes ?? []);
+  let newName = $state("");
+
+  /** Whether the colors equal the saved set they're named after. */
+  function same(a: CustomTheme, b: CustomTheme): boolean {
+    const plain = (t: CustomTheme) => JSON.stringify({ ...$state.snapshot(t), name: null });
+    return plain(a) === plain(b);
+  }
+  let changedSince = $derived(
+    !!draft?.name && savedSets.some((set) => set.name === draft?.name && draft && !same(set, draft)),
+  );
 
   // The legend previews the draft as it changes, even mid-drag.
   $effect(() => {
@@ -102,7 +119,7 @@
 
   /** Custom colors starting from a theme, with all of its colors filled in to change. */
   function startFrom(theme: string): CustomTheme {
-    return { from: theme, ...colorsOf(theme), corners: draft?.corners ?? null };
+    return { name: null, from: theme, ...colorsOf(theme), corners: draft?.corners ?? null };
   }
 
   /** Custom colors starting from the theme picked last. */
@@ -126,6 +143,34 @@
   async function changeBase(theme: string) {
     draft = startFrom(theme);
     await saveDraft();
+  }
+
+  /** Uses a saved set as the site's colors. */
+  async function applySaved(set: CustomTheme) {
+    draft = $state.snapshot(set);
+    await saveDraft();
+  }
+
+  /** Saves the current colors under a name, replacing a set of that name after asking. */
+  async function saveAs(event: SubmitEvent) {
+    event.preventDefault();
+    const name = newName.trim();
+    if (!draft || !name) return;
+    const taken = savedSets.some((set) => set.name === name);
+    if (taken && !(await ask(`Replace the saved colors "${name}" with these?`, { title: "Save colors", okLabel: "Replace", cancelLabel: "Cancel" })))
+      return;
+    draft.name = name;
+    const set = $state.snapshot(draft);
+    const saved = taken ? savedSets.map((s) => (s.name === name ? set : s)) : [...savedSets, set];
+    await save({ ...$state.snapshot(site.config), theme: "custom", custom_theme: set, saved_themes: $state.snapshot(saved) });
+    newName = "";
+  }
+
+  async function deleteSaved(set: CustomTheme) {
+    if (!(await ask(`Delete the saved colors "${set.name}"? The site's current colors stay.`, { title: "Delete saved colors", kind: "warning", okLabel: "Delete", cancelLabel: "Keep" })))
+      return;
+    const saved = savedSets.filter((s) => s.name !== set.name);
+    await save({ ...$state.snapshot(site.config), saved_themes: $state.snapshot(saved) });
   }
 </script>
 
@@ -193,6 +238,44 @@
           Start from any theme and change its five colors and its corners. Text on each color is made readable by itself.
         </p>
       {/if}
+
+      <!-- Named sets, to keep a look and come back to it. -->
+      <div id="saved-themes" class="flex flex-col gap-2 border-t border-base-300 pt-3">
+        <span class="text-sm font-medium">Saved colors
+          {#if isCustom && draft?.name}
+            <span class="font-normal text-base-content/60">· using “{draft.name}”{changedSince ? ", changed since" : ""}</span>
+          {/if}
+        </span>
+        {#if savedSets.length}
+          <div class="flex flex-wrap gap-2">
+            {#each savedSets as set (set.name)}
+              <span class={["join rounded-field border", isCustom && draft?.name === set.name && !changedSince ? "border-primary" : "border-base-300"]}>
+                <button type="button" class="btn join-item btn-ghost btn-sm gap-2" onclick={() => applySaved(set)}
+                  title="Use “{set.name}” (based on {set.from})">
+                  <span class="flex gap-0.5" style:background={set.background ?? "transparent"}>
+                    {#each [set.primary, set.secondary, set.accent, set.neutral] as color, i (i)}
+                      <span class="size-3 rounded-full border border-base-content/20" style:background={color ?? "transparent"}></span>
+                    {/each}
+                  </span>
+                  {set.name}
+                </button>
+                <button type="button" class="btn join-item btn-ghost btn-sm btn-square" aria-label="Delete {set.name}"
+                  onclick={() => deleteSaved(set)}><X class="size-3.5" /></button>
+              </span>
+            {/each}
+          </div>
+        {:else}
+          <p class="text-sm text-base-content/60">None yet. Save the colors under a name to keep them, and to come back to them after trying others.</p>
+        {/if}
+        {#if isCustom && draft}
+          <form class="flex flex-wrap items-center gap-2" onsubmit={saveAs}>
+            <input id="saved-theme-name" class="input input-sm w-48" placeholder="Name, e.g. Podcasterei" bind:value={newName} />
+            <button type="submit" id="save-theme-as" class="btn btn-sm" disabled={!newName.trim()}>
+              <Save class="size-4" /> Save these colors
+            </button>
+          </form>
+        {/if}
+      </div>
     </section>
 
     <ThemePicker {themes} bind:value={() => site.config.theme, (theme) => pick(theme ?? "light")} />
@@ -201,6 +284,6 @@
   <!-- Stays in view while the theme list scrolls. -->
   <div class="@container xl:sticky xl:top-4">
     <ThemeLegend theme={isCustom && draft ? draft.from : site.config.theme} {variables}
-      label={isCustom && draft ? `custom, from ${draft.from}` : site.config.theme} />
+      label={isCustom && draft ? (draft.name ? `“${draft.name}”, from ${draft.from}` : `custom, from ${draft.from}`) : site.config.theme} />
   </div>
 </div>

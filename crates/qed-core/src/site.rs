@@ -54,6 +54,9 @@ pub struct SiteConfig {
     /// Own colors on top of a theme, used when `theme` is `custom`. Kept
     /// when another theme is picked, so it can be picked again.
     pub custom_theme: Option<CustomTheme>,
+    /// Named sets of custom colors, to switch between or go back to.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub saved_themes: Vec<CustomTheme>,
     /// Where the site is published, e.g. `"https://example.com/"`. Needed
     /// for the sitemap and canonical links; the site works without it.
     pub base_url: Option<String>,
@@ -408,6 +411,20 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
         )));
     }
 
+    let mut names = std::collections::BTreeSet::new();
+    for saved in &config.saved_themes {
+        let name = saved.name.as_deref().map(str::trim).unwrap_or_default();
+        if name.is_empty() {
+            return Err(invalid("saved colors need a name".to_string()));
+        }
+        if !names.insert(name) {
+            return Err(invalid(format!("two saved colors are called \"{name}\"")));
+        }
+        saved
+            .check()
+            .map_err(|e| invalid(format!("saved colors \"{name}\": {e}")))?;
+    }
+
     let original = read(&path)?;
     let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
     // `[custom_theme]` as its own section, easier to read than one long line.
@@ -417,6 +434,19 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
     {
         let table = std::mem::take(inline).into_table();
         document["custom_theme"] = toml_edit::Item::Table(table);
+    }
+    // And each saved set as a `[[saved_themes]]` section.
+    if let Some(array) = document
+        .get_mut("saved_themes")
+        .and_then(|item| item.as_array_mut())
+    {
+        let mut tables = toml_edit::ArrayOfTables::new();
+        for value in std::mem::take(array).into_iter() {
+            if let toml_edit::Value::InlineTable(inline) = value {
+                tables.push(inline.into_table());
+            }
+        }
+        document["saved_themes"] = toml_edit::Item::ArrayOfTables(tables);
     }
     // Defaults stay out of the file, unless the file already names them.
     for (key, value, default) in [
@@ -986,6 +1016,7 @@ mod tests {
         assert!(save_config(dir.path(), &config).is_err(), "no colors yet");
 
         config.custom_theme = Some(CustomTheme {
+            name: None,
             from: "nord".into(),
             background: None,
             primary: Some("#ff6600".into()),
@@ -1021,6 +1052,42 @@ mod tests {
         let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
         assert_eq!(text.matches("primary").count(), 1, "{text}");
         assert!(!text.contains("corners"), "{text}");
+    }
+
+    #[test]
+    fn keeps_named_sets_of_colors() {
+        let dir = site_with(&[("site.toml", "title = \"S\"\n")]);
+        let mut config = open(dir.path()).unwrap().config;
+        let set = |name: &str, primary: &str| CustomTheme {
+            name: Some(name.into()),
+            from: "light".into(),
+            background: None,
+            primary: Some(primary.into()),
+            secondary: None,
+            accent: None,
+            neutral: None,
+            corners: None,
+        };
+        config.saved_themes = vec![set("Orange", "#fc6e51"), set("Blue", "#3366ff")];
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains(
+                "[[saved_themes]]\nname = \"Orange\"\nfrom = \"light\"\nprimary = \"#fc6e51\""
+            ),
+            "{text}"
+        );
+        assert_eq!(open(dir.path()).unwrap().config, config);
+
+        config.saved_themes.remove(0);
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert_eq!(text.matches("[[saved_themes]]").count(), 1, "{text}");
+
+        config.saved_themes.push(set("Blue", "#000000"));
+        assert!(save_config(dir.path(), &config).is_err(), "same name twice");
+        config.saved_themes = vec![set(" ", "#000000")];
+        assert!(save_config(dir.path(), &config).is_err(), "no name");
     }
 
     #[test]

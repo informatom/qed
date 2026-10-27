@@ -25,6 +25,7 @@
     ...form,
     theme: site.config.theme,
     custom_theme: site.config.custom_theme,
+    saved_themes: site.config.saved_themes,
     title: form.title.trim(),
     language: form.language.trim() || "en",
     description: orNull(form.description),

@@ -15,7 +15,7 @@ export const commands = {
 	 *  It also lets the window load files from this folder (for media
 	 *  thumbnails); the asset protocol starts with an empty scope.
 	 */
-	openSite: (path: string) => __TAURI_INVOKE<Site>("open_site", { path }),
+	openSite: (path: string) => __TAURI_INVOKE<Site_Serialize>("open_site", { path }),
 	/**
 	 *  Makes `path` a new site (see `site::create_site`) and starts its version
 	 *  history. The UI opens it afterwards with `open_site`.
@@ -44,7 +44,7 @@ export const commands = {
 	/**  Saves a page's blocks into its file and returns the page as it reads back. */
 	savePageBlocks: (root: string, file: string, blocks: Block[]) => __TAURI_INVOKE<Page>("save_page_blocks", { root, file, blocks }),
 	/**  Saves the site's settings into site.toml. */
-	saveSiteConfig: (root: string, config: SiteConfig) => __TAURI_INVOKE<null>("save_site_config", { root, config }),
+	saveSiteConfig: (root: string, config: SiteConfig_Deserialize) => __TAURI_INVOKE<null>("save_site_config", { root, config }),
 	/**  The daisyUI theme names the app and generated sites can use. */
 	listThemes: () => __TAURI_INVOKE<string[]>("list_themes"),
 	/**  The CSS variables a custom theme sets, for previews in the app. */
@@ -219,6 +219,11 @@ export type Corners = "sharp" | "soft" | "round";
  *  starting theme's color.
  */
 export type CustomTheme = {
+	/**
+	 *  The name it's saved under, for a saved set (`saved_themes`), or the
+	 *  saved set the site's colors came from.
+	 */
+	name: string | null,
 	/**  The theme it starts from; everything not set here comes from it. */
 	from: string,
 	/**  The page background (daisyUI's `base-100`). */
@@ -505,17 +510,13 @@ export type SincePublish = {
 };
 
 /**  A site folder, read into memory. */
-export type Site = {
-	root: string,
-	config: SiteConfig,
-	/**  Sorted by URL path. */
-	pages: Page[],
-	/**  Where the site can be published to, from `targets.toml`. */
-	targets: Target[],
-};
+export type Site = Site_Serialize | Site_Deserialize;
 
 /**  Settings from `site.toml`. */
-export type SiteConfig = {
+export type SiteConfig = SiteConfig_Serialize | SiteConfig_Deserialize;
+
+/**  Settings from `site.toml`. */
+export type SiteConfig_Deserialize = {
 	title: string,
 	/**  Language code for the `lang` attribute, e.g. `"de"` or `"en"`. */
 	language?: string,
@@ -533,6 +534,8 @@ export type SiteConfig = {
 	 *  when another theme is picked, so it can be picked again.
 	 */
 	custom_theme: CustomTheme | null,
+	/**  Named sets of custom colors, to switch between or go back to. */
+	saved_themes?: CustomTheme[],
 	/**
 	 *  Where the site is published, e.g. `"https://example.com/"`. Needed
 	 *  for the sitemap and canonical links; the site works without it.
@@ -543,6 +546,59 @@ export type SiteConfig = {
 	 *  main menu is too long for the top bar.
 	 */
 	navigation?: Navigation,
+};
+
+/**  Settings from `site.toml`. */
+export type SiteConfig_Serialize = {
+	title: string,
+	/**  Language code for the `lang` attribute, e.g. `"de"` or `"en"`. */
+	language: string,
+	description: string | null,
+	/**
+	 *  An image in `media/`, shown before the title in every page's header
+	 *  and as the icon in the browser tab. A small square one (an SVG at
+	 *  best) works best.
+	 */
+	logo: string | null,
+	/**  A daisyUI theme name, or `custom` for `custom_theme`. */
+	theme: string,
+	/**
+	 *  Own colors on top of a theme, used when `theme` is `custom`. Kept
+	 *  when another theme is picked, so it can be picked again.
+	 */
+	custom_theme: CustomTheme | null,
+	/**  Named sets of custom colors, to switch between or go back to. */
+	saved_themes?: CustomTheme[],
+	/**
+	 *  Where the site is published, e.g. `"https://example.com/"`. Needed
+	 *  for the sitemap and canonical links; the site works without it.
+	 */
+	base_url: string | null,
+	/**
+	 *  Where the main menu goes: the top bar, or a sidebar for sites whose
+	 *  main menu is too long for the top bar.
+	 */
+	navigation: Navigation,
+};
+
+/**  A site folder, read into memory. */
+export type Site_Deserialize = {
+	root: string,
+	config: SiteConfig_Deserialize,
+	/**  Sorted by URL path. */
+	pages: Page[],
+	/**  Where the site can be published to, from `targets.toml`. */
+	targets: Target[],
+};
+
+/**  A site folder, read into memory. */
+export type Site_Serialize = {
+	root: string,
+	config: SiteConfig_Serialize,
+	/**  Sorted by URL path. */
+	pages: Page[],
+	/**  Where the site can be published to, from `targets.toml`. */
+	targets: Target[],
 };
 
 export type Stage = "connecting" | "comparing" | "uploading" | "deleting" | "done";

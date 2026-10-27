@@ -63,6 +63,9 @@ pub fn is_theme(name: &str) -> bool {
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct CustomTheme {
+    /// The name it's saved under, for a saved set (`saved_themes`), or the
+    /// saved set the site's colors came from.
+    pub name: Option<String>,
     /// The theme it starts from; everything not set here comes from it.
     pub from: String,
     /// The page background (daisyUI's `base-100`).
@@ -240,6 +243,7 @@ mod tests {
 
     fn custom() -> CustomTheme {
         CustomTheme {
+            name: None,
             from: "nord".into(),
             background: None,
             primary: Some("#ff6600".into()),
