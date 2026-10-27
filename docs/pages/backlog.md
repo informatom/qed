@@ -72,9 +72,6 @@ over by hand.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.
-- **#082 Restore the whole site.** Put the whole site folder back to an
-  earlier version, as a new version on top (never rewriting history). Left
-  open from #073, which restores single pages.
 - **#085 Images in Markdown text.** Resized copies and `srcset` for images
   written into Text blocks as Markdown, like the image blocks get (#075),
   plus WebP copies for all images (#033).

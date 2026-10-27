@@ -575,7 +575,9 @@ pub fn versions(root: &Path, file: Option<&str>) -> Result<Vec<Version>, History
     if walk.push_head().is_err() {
         return Ok(Vec::new()); // No version yet.
     }
-    walk.set_sorting(git2::Sort::TIME)?;
+    // Newer before older by the history itself, not only by the clock:
+    // versions saved within the same second keep their order.
+    walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)?;
     let mut found = Vec::new();
     for id in walk {
         let commit = repo.find_commit(id?)?;
@@ -700,7 +702,7 @@ pub fn deleted_pages(root: &Path) -> Result<Vec<DeletedPage>, HistoryError> {
     // Deleted in a saved version: there in its parent, gone in it.
     let mut walk = repo.revwalk()?;
     walk.push(head.id())?;
-    walk.set_sorting(git2::Sort::TIME)?;
+    walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)?;
     for id in walk.take(MAX_VERSIONS) {
         let commit = repo.find_commit(id?)?;
         let Ok(parent) = commit.parent(0) else {
@@ -741,6 +743,86 @@ pub fn restore_page(root: &Path, file: &str, version: &str) -> Result<(), Histor
         fs::create_dir_all(folder).map_err(io)?;
     }
     fs::write(&target, text).map_err(io)
+}
+
+/// Puts the whole site folder back as it was in `version`, and records
+/// that as a new version on top; the history is never rewritten.
+///
+/// The present state is saved first ("Before going back to …"), so the
+/// step can be undone the same way. Only files git tracks in the site
+/// folder change: `_site/`, `targets.toml` and q.e.d.'s cache stay. Files
+/// that didn't exist in `version` are deleted, with folders they leave
+/// empty.
+pub fn restore_site(root: &Path, version: &str) -> Result<Version, HistoryError> {
+    let site = SiteRepo::open(root)?.ok_or(HistoryError::NotTracked)?;
+    let target = site.repo.find_commit(Oid::from_str(version)?)?;
+    let summary = target
+        .summary()
+        .ok()
+        .flatten()
+        .unwrap_or_default()
+        .to_string();
+    let short: String = version.chars().take(7).collect();
+
+    // 1. Keep the present as a version of its own.
+    save_version(root, &format!("Before going back to “{summary}” ({short})"))?;
+    let current = head_commit(&site.repo)
+        .map(|commit| commit.tree())
+        .transpose()?;
+
+    // 2. The files of `version`, then away with the ones it didn't have.
+    let io = |path: &Path| {
+        let path = path.to_path_buf();
+        move |source| HistoryError::Io { path, source }
+    };
+    let wanted = site_files(&site, &target.tree()?)?;
+    for (path, id) in &wanted {
+        let file = root.join(path);
+        if let Some(folder) = file.parent() {
+            fs::create_dir_all(folder).map_err(io(folder))?;
+        }
+        let blob = site.repo.find_blob(*id)?;
+        fs::write(&file, blob.content()).map_err(io(&file))?;
+    }
+    if let Some(current) = current {
+        for path in site_files(&site, &current)?.keys() {
+            if wanted.contains_key(path) {
+                continue;
+            }
+            let file = root.join(path);
+            if file.is_file() {
+                fs::remove_file(&file).map_err(io(&file))?;
+            }
+            let mut folder = file.parent();
+            while let Some(dir) = folder.filter(|dir| *dir != root) {
+                if fs::remove_dir(dir).is_err() {
+                    break;
+                }
+                folder = dir.parent();
+            }
+        }
+    }
+
+    // 3. Record it, so it's a version like any other.
+    save_version(root, &format!("Back to “{summary}” ({short})"))?
+        .ok_or_else(|| HistoryError::Missing(format!("a change from version {short}")))
+}
+
+/// The site's files in a tree, by their path inside the site folder,
+/// without the ones q.e.d. never commits.
+fn site_files(site: &SiteRepo, tree: &git2::Tree) -> Result<BTreeMap<String, Oid>, HistoryError> {
+    let mut files = BTreeMap::new();
+    tree.walk(TreeWalkMode::PreOrder, |dir, entry| {
+        let path = format!("{dir}{}", entry.name().unwrap_or_default());
+        if entry.kind() == Some(git2::ObjectType::Blob)
+            && let Some(inside) = path.strip_prefix(site.prefix.as_str())
+            && !site.excluded(&path)
+        {
+            files.insert(inside.to_string(), entry.id());
+        }
+        TreeWalkResult::Ok
+    })?;
+    Ok(files)
 }
 
 fn file_at(root: &Path, file: &str, version: &str) -> Result<Option<String>, HistoryError> {
@@ -842,6 +924,92 @@ mod tests {
         fs::write(dir.join(TARGETS_FILE), "# servers\n").unwrap();
         fs::create_dir_all(dir.join("_site")).unwrap();
         fs::write(dir.join("_site/index.html"), "built").unwrap();
+    }
+
+    #[test]
+    fn restores_only_the_site_folder_inside_a_larger_repository() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        Repository::init(repo).unwrap();
+        fs::write(repo.join("README.md"), "project").unwrap();
+        let root = repo.join("docs");
+        site(&root);
+        let first = start(&root).unwrap().unwrap();
+
+        fs::write(root.join("pages/new.md"), "+++\ntitle = \"New\"\n+++\n").unwrap();
+        fs::write(repo.join("README.md"), "project, changed").unwrap();
+        save_version(&root, "New page").unwrap();
+
+        restore_site(&root, &first.id).unwrap();
+        assert!(!root.join("pages/new.md").exists());
+        assert_eq!(
+            fs::read_to_string(repo.join("README.md")).unwrap(),
+            "project, changed",
+            "outside the site folder nothing changes"
+        );
+    }
+
+    #[test]
+    fn puts_the_whole_site_back_as_a_new_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        site(root);
+        fs::write(root.join("pages/about.md"), "+++\ntitle = \"About\"\n+++\n").unwrap();
+        let first = start(root).unwrap().unwrap();
+
+        // Later: a page changed, a picture added, a page deleted.
+        fs::write(
+            root.join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\nChanged.\n",
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("media/new")).unwrap();
+        fs::write(root.join("media/new/photo.jpg"), b"jpg").unwrap();
+        fs::remove_file(root.join("pages/about.md")).unwrap();
+        save_version(root, "Changes").unwrap();
+        // And something not saved in any version yet.
+        fs::write(root.join("pages/draft.md"), "+++\ntitle = \"Draft\"\n+++\n").unwrap();
+
+        let back = restore_site(root, &first.id).unwrap();
+        assert!(
+            back.summary.starts_with("Back to “First version”"),
+            "{}",
+            back.summary
+        );
+        assert!(
+            fs::read_to_string(root.join("pages/index.md"))
+                .unwrap()
+                .contains("Hello.")
+        );
+        assert!(
+            root.join("pages/about.md").is_file(),
+            "deleted page is back"
+        );
+        assert!(!root.join("pages/draft.md").exists());
+        assert!(!root.join("media/new").exists(), "empty folders go too");
+        assert_eq!(
+            fs::read_to_string(root.join("_site/index.html")).unwrap(),
+            "built"
+        );
+        assert!(root.join(TARGETS_FILE).is_file(), "targets stay");
+
+        // Nothing is lost: the state before is a version, and can come back.
+        let all = versions(root, None).unwrap();
+        let summaries: Vec<&str> = all.iter().map(|v| v.summary.as_str()).collect();
+        assert_eq!(summaries[0], back.summary);
+        assert!(
+            summaries[1].starts_with("Before going back to “First version”"),
+            "{summaries:?}"
+        );
+        assert_eq!(
+            summaries.last(),
+            Some(&"First version"),
+            "history not rewritten"
+        );
+        restore_site(root, &all[1].id).unwrap();
+        assert!(root.join("pages/draft.md").is_file());
+        assert!(root.join("media/new/photo.jpg").is_file());
+        assert!(!root.join("pages/about.md").exists());
     }
 
     #[test]

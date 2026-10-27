@@ -3,6 +3,7 @@
   import History from "@lucide/svelte/icons/history";
   import Save from "@lucide/svelte/icons/save";
   import Undo from "@lucide/svelte/icons/undo-2";
+  import { ask } from "@tauri-apps/plugin-dialog";
   import { commands, formatTime, type DeletedPage, type HistoryStatus, type Version } from "$lib/site";
 
   interface Props {
@@ -44,6 +45,28 @@
     try {
       await commands.restorePage(siteRoot, page.file, page.version);
       message = `“${page.title}” is back, as it was in its last version.`;
+      await refresh();
+      onrestored?.();
+    } catch (e) {
+      error = String(e);
+    } finally {
+      busy = false;
+    }
+  }
+
+  // The whole site back to an earlier version, as a new version on top.
+  async function goBack(version: Version) {
+    const sure = await ask(
+      `Put the whole site back as it was in “${version.summary}” (${formatTime(version.time)})?\n\n` +
+        "Pages, media and files change to that state. The present is saved as a version first, so you can come back to it the same way.",
+      { title: "Go back to this version", kind: "warning", okLabel: "Go back", cancelLabel: "Cancel" },
+    );
+    if (!sure) return;
+    busy = true;
+    message = null;
+    try {
+      const done = await commands.restoreSite(siteRoot, version.id);
+      message = `The site is back as it was in “${version.summary}”. Saved as “${done.summary}”.`;
       await refresh();
       onrestored?.();
     } catch (e) {
@@ -143,17 +166,26 @@
           <p class="text-sm text-base-content/60">No versions yet.</p>
         {:else}
           <ul id="version-list" class="flex flex-col divide-y divide-base-300 rounded-box border border-base-300">
-            {#each versions as version (version.id)}
-              <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2">
+            {#each versions as version, i (version.id)}
+              <li class="group flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
                 <span class="font-medium">{version.summary}</span>
                 {#if version.open}<span class="badge badge-warning badge-soft badge-sm">open</span>{/if}
                 {#each version.tags as tag (tag)}<span class="badge badge-soft badge-sm">{tag}</span>{/each}
                 <span class="ms-auto text-sm text-base-content/60">{formatTime(version.time)} · {version.author}</span>
+                {#if i > 0}
+                  <!-- The newest is the present; any older one can come back. -->
+                  <button type="button" class="btn btn-ghost btn-xs" disabled={busy || editing}
+                    title={editing ? "Save or discard the page you're editing first" : "Put the whole site back to this version"}
+                    onclick={() => goBack(version)}>
+                    <Undo class="size-3.5" /> Go back
+                  </button>
+                {/if}
               </li>
             {/each}
           </ul>
           <p class="text-sm text-base-content/60">
-            To bring back an earlier version of a page, open the page and use its Versions tab.
+            “Go back” puts the whole site back to that version, as a new version on top; nothing is lost. For a
+            single page, open it and use its Versions tab.
           </p>
         {/if}
 

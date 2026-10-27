@@ -99,6 +99,11 @@ export const commands = {
 	/**  Brings a deleted page back, as it was in `version`. */
 	restorePage: (root: string, file: string, version: string) => __TAURI_INVOKE<null>("restore_page", { root, file, version }),
 	/**
+	 *  Puts the whole site back as it was in `version`, as a new version on
+	 *  top; the present is saved as a version first.
+	 */
+	restoreSite: (root: string, version: string) => __TAURI_INVOKE<Version>("restore_site", { root, version }),
+	/**
 	 *  Whether the site has a version history, and what changed since the last
 	 *  version.
 	 */

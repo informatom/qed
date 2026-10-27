@@ -358,6 +358,16 @@ rest is done.
   `.qed-cache/`). Decided with the owner instead of "copy the folder". A
   button for it in the app: #109; the page also belongs into the app's
   manual: #110.
+- **#082 Restore the whole site.** *Done 2026-10-27*: "Go back" on any
+  older version in the Versions tab (`history::restore_site`) saves the
+  present as a version ("Before going back to …"), writes that version's
+  files into the site folder, deletes files it didn't have (and folders
+  left empty), and saves the result as a new version ("Back to …"); the
+  history is never rewritten. Only files git tracks in the site folder
+  change (`_site/`, `targets.toml`, `.qed-cache/` stay; for a site inside
+  a larger repository, nothing outside it). Disabled while a page has
+  unsaved changes. Also fixed: versions saved in the same second were
+  listed in any order (`Sort::TOPOLOGICAL | Sort::TIME`).
 
 ## Dropped
 

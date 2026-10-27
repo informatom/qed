@@ -264,6 +264,14 @@ async fn restore_page(root: PathBuf, file: String, version: String) -> Result<()
     Ok(())
 }
 
+/// Puts the whole site back as it was in `version`, as a new version on
+/// top; the present is saved as a version first.
+#[tauri::command]
+#[specta::specta]
+async fn restore_site(root: PathBuf, version: String) -> Result<Version, String> {
+    history::restore_site(&root, &version).map_err(|error| error.to_string())
+}
+
 /// Builds the site at `path` into its `_site` folder.
 #[tauri::command]
 #[specta::specta]
@@ -598,6 +606,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             move_page,
             deleted_pages,
             restore_page,
+            restore_site,
             history_status,
             since_publish,
             start_history,
