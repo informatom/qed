@@ -401,6 +401,7 @@ fn columns_block(start: usize, lines: &[(usize, &str)]) -> Result<Piece, ParseEr
                 items.push(Column {
                     title: settings.title,
                     width: settings.width,
+                    boxed: settings.boxed,
                     blocks: Vec::new(),
                 });
                 sources.push(ColumnSource {

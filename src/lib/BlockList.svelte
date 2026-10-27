@@ -246,6 +246,10 @@
                       <option value="2">2×</option>
                       <option value="3">3×</option>
                     </select>
+                    <label class="flex shrink-0 items-center gap-1 text-xs" title="Draw the column as a box: own background, border, rounded corners">
+                      <input type="checkbox" class="checkbox checkbox-xs" bind:checked={column.boxed} aria-label="Column {i + 1} as a box" />
+                      Box
+                    </label>
                     <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move left" aria-label="Move left" disabled={i === 0}
                       onclick={() => columns.items.splice(i - 1, 0, ...columns.items.splice(i, 1))}><ChevronLeft class="size-4" /></button>
                     <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move right" aria-label="Move right"
@@ -261,7 +265,7 @@
             </div>
             <div class="flex items-center gap-3">
               <button type="button" class="btn btn-sm" disabled={columns.items.length >= 4}
-                onclick={() => columns.items.push({ title: null, width: null, blocks: [newBlock("text")] })}><Plus class="size-4" /> Column</button>
+                onclick={() => columns.items.push({ title: null, width: null, boxed: false, blocks: [newBlock("text")] })}><Plus class="size-4" /> Column</button>
               <span class="text-xs text-base-content/60">
                 Up to four; on phones they stack. Widths {columns.items.map((c) => c.width ?? 1).join(" : ")}
                 (2× next to 1× is two thirds).

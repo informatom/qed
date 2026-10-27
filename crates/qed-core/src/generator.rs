@@ -1061,6 +1061,8 @@ struct Picture {
 
 struct ColumnEntry {
     title: Option<String>,
+    /// Drawn as a box.
+    boxed: bool,
     /// The column's blocks, each rendered with `block.html`.
     blocks: Vec<String>,
 }
@@ -1401,6 +1403,7 @@ fn render_block(
                 .iter()
                 .map(|column| {
                     Ok(ColumnEntry {
+                        boxed: column.boxed,
                         title: column
                             .title
                             .clone()
@@ -2567,7 +2570,7 @@ mod tests {
         fs::create_dir_all(dir.path().join("pages")).unwrap();
         fs::write(
             dir.path().join("pages/index.md"),
-            "+++\ntitle = \"Home\"\n+++\n\n:::: columns\n::: column\nwidth = 2\n:::\n\nText.\n\n::: column\n:::\n\nPhoto.\n::::\n",
+            "+++\ntitle = \"Home\"\n+++\n\n:::: columns\n::: column\nwidth = 2\nboxed = true\n:::\n\nText.\n\n::: column\n:::\n\nPhoto.\n::::\n",
         )
         .unwrap();
         let site = site::open(dir.path()).unwrap();
@@ -2577,6 +2580,12 @@ mod tests {
         assert!(
             home.contains(r#"<section class="grid gap-8 md:grid-cols-(--cols)" style="--cols: minmax(0,2fr) minmax(0,1fr)">"#),
             "{home}"
+        );
+        assert_eq!(
+            home.matches("rounded-box border border-base-300 bg-base-100 p-6")
+                .count(),
+            1,
+            "one boxed column: {home}"
         );
     }
 

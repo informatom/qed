@@ -58,3 +58,13 @@
   text-decoration: underline;
   text-decoration-color: currentColor;
 }
+
+/* Icons written into text as `:icon-phone:` (markdown.rs): as tall as the
+   letters, on their line. */
+.inline-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  margin-inline-end: 0.3em;
+}

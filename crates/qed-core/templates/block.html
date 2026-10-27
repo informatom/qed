@@ -86,7 +86,7 @@
 {%- when RenderedBlock::Columns with { grid, style, columns } %}
 <section class="grid gap-8 {{ grid }}"{% if let Some(style) = style %} style="{{ style }}"{% endif %}>
   {%- for column in columns %}
-  <div class="flex flex-col gap-4">
+  <div class="flex flex-col gap-4{% if column.boxed %} rounded-box border border-base-300 bg-base-100 p-6 shadow-sm{% endif %}">
     {%- if let Some(title) = column.title %}
     <h2 class="text-xl font-semibold tracking-tight">{{ title }}</h2>
     {%- endif %}

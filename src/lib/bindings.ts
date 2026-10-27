@@ -224,6 +224,8 @@ export type Column = {
 	 *  a `1` is two thirds. Empty means 1.
 	 */
 	width: number | null,
+	/**  Drawn as a box: a background of its own, a border, rounded corners. */
+	boxed?: boolean,
 	/**  Any of [`COLUMN_TYPES`] and text. */
 	blocks?: Block[],
 };

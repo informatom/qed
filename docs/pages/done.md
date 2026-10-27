@@ -384,6 +384,15 @@ rest is done.
   (Site settings): normal (56rem, as before; 72rem with a sidebar), wide
   (72rem; 80rem with a sidebar) or full (the window). Header, content and
   footer follow it together. informatom.com uses wide.
+- **#113 Boxed columns.** *Done 2026-10-27*: `boxed = true` per column
+  (a "Box" switch beside its width in the editor): the column gets the
+  theme's background, a thin border, a soft shadow, rounded corners and
+  inner spacing, like Bulma's `.boxed` on the old informatom.com.
+- **#114 Icons in text.** *Done 2026-10-27*: `:icon-phone:` in any
+  Markdown text becomes that icon from q.e.d.'s Lucide set (the same as
+  for menu entries), as tall as the letters (`.inline-icon`); not inside
+  code, and unknown names stay as written. informatom.com's footer uses
+  phone, mail, message-circle (Lucide has no Mastodon logo) and map.
 
 ## Dropped
 

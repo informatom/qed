@@ -131,7 +131,9 @@ over by hand.
   for backups), and the same pages on the docs site. Written for site
   owners and editors, not developers. Starts with [Backups](backups.md)
   (#037); further topics: the first site, pages and blocks, media and
-  files, themes and fonts, versions, publishing, moving a site over.
+  files, themes and fonts, versions, publishing, moving a site over,
+  icons in text (`:icon-phone:`, #114, with the list of icons), the
+  hand-made menu (#111), boxed columns (#113).
   To decide: where the pages live so app and docs site share them (e.g.
   `docs/pages/manual/`, built into the app), and offline use.
 - **#087 Section block.** A full-width block that holds other blocks, in

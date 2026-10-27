@@ -178,6 +178,9 @@ pub struct Column {
     /// The column's share of the width, relative to the others: `2` next to
     /// a `1` is two thirds. Empty means 1.
     pub width: Option<u8>,
+    /// Drawn as a box: a background of its own, a border, rounded corners.
+    #[serde(default)]
+    pub boxed: bool,
     /// Any of [`COLUMN_TYPES`] and text.
     #[serde(default)]
     pub blocks: Vec<Block>,
@@ -189,6 +192,8 @@ pub struct Column {
 pub(crate) struct ColumnSettings {
     pub title: Option<String>,
     pub width: Option<u8>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub boxed: bool,
 }
 
 /// A highlighted box that asks the visitor to do something.

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import OverType, { type OverTypeInstance, type Theme } from "overtype";
+  import { pageIcons } from "$lib/site";
 
   interface Props {
     value: string;
@@ -12,6 +13,25 @@
   let { value = $bindable(), placeholder = "", minHeight = "160px" }: Props = $props();
 
   let element: HTMLDivElement;
+
+  // The icons that `:icon-name:` can put into text, loaded when the hint
+  // is opened; a click copies the code to paste into the text.
+  let icons = $state<[string, string][]>([]);
+  let copied = $state<string | null>(null);
+  async function showIcons(event: Event) {
+    if ((event.currentTarget as HTMLDetailsElement).open && icons.length === 0) {
+      icons = [...(await pageIcons())];
+    }
+  }
+  async function copy(name: string) {
+    const code = `:icon-${name}:`;
+    try {
+      await navigator.clipboard.writeText(code);
+      copied = code;
+    } catch {
+      copied = null;
+    }
+  }
   let editor: OverTypeInstance | undefined;
 
   // Colours from the active daisyUI theme, so the editor matches the app.
@@ -71,3 +91,17 @@
 </script>
 
 <div bind:this={element} class="overflow-hidden rounded-field border border-base-300"></div>
+<details class="mt-1 text-xs text-base-content/60" ontoggle={showIcons}>
+  <summary class="cursor-pointer select-none">Icons in text: <code>:icon-phone:</code> and so on</summary>
+  <div class="mt-2 flex flex-col gap-2">
+    <p>Write the code where the icon should go; on the website it shows as tall as the text. Click an icon to copy its code{#if copied}: <span class="text-success">copied {copied}</span>{/if}.</p>
+    <div class="flex flex-wrap gap-1">
+      {#each icons as [name, svg] (name)}
+        <button type="button" class="btn btn-ghost btn-xs gap-1 font-normal" title=":icon-{name}:" onclick={() => copy(name)}>
+          <!-- q.e.d.'s own built-in SVG, safe to insert. -->
+          {@html svg}{name}
+        </button>
+      {/each}
+    </div>
+  </div>
+</details>

@@ -33,7 +33,59 @@ pub fn render(markdown: &str, links: &LinkContext) -> String {
     let mut html = String::new();
     // Writing into a String can't fail.
     let _ = format_html_with_plugins(root, &options, &mut html, &plugins);
-    html
+    with_icons(&html)
+}
+
+/// Replaces `:icon-phone:` in text with that icon from q.e.d.'s set (see
+/// `icons.rs`), sized to the text. Code is left alone, and so are names
+/// that aren't in the set.
+fn with_icons(html: &str) -> String {
+    if !html.contains(":icon-") {
+        return html.to_string();
+    }
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+    while let Some(start) = rest.find(":icon-") {
+        // Inside <code> or <pre>, write everything up to its end as it is.
+        let before = &rest[..start];
+        let open_code = ["<code", "<pre"]
+            .iter()
+            .filter_map(|tag| before.rfind(tag).map(|at| (at, *tag)))
+            .max_by_key(|(at, _)| *at);
+        if let Some((at, tag)) = open_code {
+            let close = if tag == "<pre" { "</pre>" } else { "</code>" };
+            if !before[at..].contains(close)
+                && let Some(end) = rest[at..].find(close)
+            {
+                let end = at + end + close.len();
+                out.push_str(&rest[..end]);
+                rest = &rest[end..];
+                continue;
+            }
+        }
+        out.push_str(before);
+        let after = &rest[start + ":icon-".len()..];
+        let name_len = after
+            .find(|c: char| !(c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'))
+            .unwrap_or(after.len());
+        let name = &after[..name_len];
+        match (after[name_len..].starts_with(':'), crate::icons::svg(name)) {
+            (true, Some(svg)) => {
+                out.push_str(&svg.replacen(
+                    "class=\"size-4 shrink-0\"",
+                    "class=\"inline-icon\"",
+                    1,
+                ));
+                rest = &after[name_len + 1..];
+            }
+            _ => {
+                out.push_str(":icon-");
+                rest = after;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// Code blocks with a language (```rust) get their parts marked with CSS
@@ -238,6 +290,27 @@ mod tests {
         );
         assert!(html.contains("&lt;b&gt;"), "code is escaped: {html}");
         assert!(code_css().contains(".hl-keyword {"), "{}", code_css());
+    }
+
+    #[test]
+    fn puts_icons_into_text_but_not_into_code() {
+        let html = render_on(
+            "",
+            "pages/index.md",
+            ":icon-phone: +43 1 234\n\n`:icon-phone:` and :icon-nope: stay\n\n```\n:icon-mail:\n```\n",
+        );
+        assert!(
+            html.contains(r#"<p><svg class="inline-icon" aria-hidden="true""#),
+            "{html}"
+        );
+        assert!(html.contains("</svg> +43 1 234</p>"), "{html}");
+        assert!(html.contains("<code>:icon-phone:</code>"), "{html}");
+        assert!(html.contains(":icon-nope: stay"), "{html}");
+        assert!(
+            html.contains(":icon-mail:\n</span></code></pre>") || html.contains(":icon-mail:"),
+            "{html}"
+        );
+        assert_eq!(html.matches("<svg").count(), 1, "{html}");
     }
 
     #[test]

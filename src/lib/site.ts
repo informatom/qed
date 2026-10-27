@@ -109,8 +109,8 @@ export function newBlock(type: BlockType): Block {
       return {
         type,
         items: [
-          { title: null, width: null, blocks: [{ type: "text", markdown: "" }] },
-          { title: null, width: null, blocks: [{ type: "text", markdown: "" }] },
+          { title: null, width: null, boxed: false, blocks: [{ type: "text", markdown: "" }] },
+          { title: null, width: null, boxed: false, blocks: [{ type: "text", markdown: "" }] },
         ],
       };
     case "call-to-action":

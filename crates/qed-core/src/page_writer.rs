@@ -107,6 +107,7 @@ fn write_column(column: &Column, previous: Option<(&Column, &ColumnSource)>) -> 
         title: column.title.clone(),
         // 1 is the default; leave it out.
         width: column.width.filter(|width| *width != 1),
+        boxed: column.boxed,
     };
     let fresh = || {
         let mut document = toml_edit::ser::to_document(&settings).unwrap_or_default();
@@ -114,7 +115,11 @@ fn write_column(column: &Column, previous: Option<(&Column, &ColumnSource)>) -> 
         document
     };
     let toml = match previous {
-        Some((old, source)) if old.title == column.title && old.width == column.width => {
+        Some((old, source))
+            if old.title == column.title
+                && old.width == column.width
+                && old.boxed == column.boxed =>
+        {
             source.toml.clone()
         }
         Some((_, source)) => merge(&source.toml, fresh()),
@@ -404,13 +409,14 @@ More text.
         columns.items.push(crate::block::Column {
             title: Some("New".into()),
             width: Some(2),
+            boxed: true,
             blocks: vec![],
         });
 
         let file = write(&content, Some(original));
         assert!(file.contains("title = 'Left'  # short"), "{file}");
         assert!(
-            file.contains("::: column\ntitle = \"New\"\nwidth = 2\n:::"),
+            file.contains("::: column\ntitle = \"New\"\nwidth = 2\nboxed = true\n:::"),
             "{file}"
         );
         assert!(
