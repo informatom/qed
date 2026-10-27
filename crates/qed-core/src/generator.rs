@@ -188,13 +188,17 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
     }
 
-    // A custom theme and the site's fonts add to the one stylesheet; the
+    // Colors for highlighted code, a custom theme and the site's fonts add
+    // to the one stylesheet; the
     // fonts in use are copied next to it.
     let custom_css = site.config.custom().map(|c| c.css()).unwrap_or_default();
     let fonts_css = fonts::css(&site.root, &site.config.fonts);
     write(
         &out_dir.join("style.css"),
-        format!("{STYLESHEET}{custom_css}{fonts_css}"),
+        format!(
+            "{STYLESHEET}{}{custom_css}{fonts_css}",
+            markdown::code_css()
+        ),
     )?;
     for font in fonts::used(&site.root, &site.config.fonts) {
         copy_dir(

@@ -1,9 +1,12 @@
 //! Markdown to HTML, with comrak (the engine behind Elixir's MDEx).
 
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 use comrak::nodes::NodeValue;
-use comrak::{Arena, Options, format_html, parse_document};
+use comrak::options::Plugins;
+use comrak::plugins::syntect::{SyntectAdapter, SyntectAdapterBuilder};
+use comrak::{Arena, Options, format_html_with_plugins, parse_document};
 
 use crate::links::LinkContext;
 
@@ -25,10 +28,56 @@ pub fn render(markdown: &str, links: &LinkContext) -> String {
         }
     }
 
+    let mut plugins = Plugins::default();
+    plugins.render.codefence_syntax_highlighter = Some(highlighter());
     let mut html = String::new();
     // Writing into a String can't fail.
-    let _ = format_html(root, &options, &mut html);
+    let _ = format_html_with_plugins(root, &options, &mut html, &plugins);
     html
+}
+
+/// Code blocks with a language (```rust) get their parts marked with CSS
+/// classes, `hl-keyword` and so on; [`code_css`] colors them. The `hl-`
+/// prefix keeps syntect's names apart from daisyUI's (both have `link`).
+/// Loading the grammars takes a moment, so it happens once.
+fn highlighter() -> &'static SyntectAdapter {
+    static ADAPTER: OnceLock<SyntectAdapter> = OnceLock::new();
+    ADAPTER.get_or_init(|| {
+        SyntectAdapterBuilder::new()
+            .css_with_class_prefix(CLASS_PREFIX)
+            .build()
+    })
+}
+
+const CLASS_PREFIX: &str = "hl-";
+
+/// The colors for highlighted code, for the site's stylesheet. Code blocks
+/// are dark on every theme, so the colors come from a dark scheme.
+pub fn code_css() -> &'static str {
+    static CSS: OnceLock<String> = OnceLock::new();
+    CSS.get_or_init(|| {
+        let themes = syntect::highlighting::ThemeSet::load_defaults();
+        themes
+            .themes
+            .get("base16-ocean.dark")
+            .and_then(|theme| {
+                syntect::html::css_for_theme_with_class_style(
+                    theme,
+                    syntect::html::ClassStyle::SpacedPrefixed {
+                        prefix: CLASS_PREFIX,
+                    },
+                )
+                .ok()
+            })
+            .map(|css| {
+                // The scheme's background is on `.hl-code`, which comrak
+                // doesn't write; give every code block those colors.
+                format!(
+                    "{css}\n.prose pre.syntax-highlighting, pre.syntax-highlighting {{ background-color: #2b303b; color: #c0c5ce; }}\n"
+                )
+            })
+            .unwrap_or_default()
+    })
 }
 
 /// Every link and image target in a piece of Markdown, as written.
@@ -177,6 +226,18 @@ mod tests {
     fn renders_tables() {
         let html = render_on("", "pages/index.md", "| a | b |\n|---|---|\n| 1 | 2 |\n");
         assert!(html.contains("<table>"), "{html}");
+    }
+
+    #[test]
+    fn highlights_code_with_a_language() {
+        let html = render_on("", "pages/index.md", "```rust\nlet x = \"<b>\";\n```\n");
+        assert!(html.contains(r#"<code class="language-rust">"#), "{html}");
+        assert!(
+            html.contains(r#"<span class="hl-storage hl-type hl-rust">let</span>"#),
+            "{html}"
+        );
+        assert!(html.contains("&lt;b&gt;"), "code is escaped: {html}");
+        assert!(code_css().contains(".hl-keyword {"), "{}", code_css());
     }
 
     #[test]

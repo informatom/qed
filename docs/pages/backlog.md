@@ -26,8 +26,6 @@ phase 1 before podcasting, testing it by moving the owner's Jekyll sites
 over by hand.
 
 - **#093 404 page.** The generator writes `404.html` in the site's look.
-- **#094 Code highlighting.** Colors for fenced code blocks at build time,
-  with CSS classes and no JavaScript.
 - **#095 Wide logos.** *Height done 2026-10-27*: the header logo keeps
   its height (36 px) and takes the width it needs, up to 12rem, so wide
   logos (waldgruber.at's row of trees) aren't squeezed; a `favicon.ico`
@@ -142,6 +140,27 @@ over by hand.
   unsigned (from #073).
 - **#087 Section block.** A full-width block that holds other blocks, in
   the same nested format as Columns (#074).
+- **#106 More languages for code highlighting.** syntect's built-in
+  grammars (#094) lack TypeScript, Svelte, TOML, Elixir and Jinja, so about
+  60 code blocks in the docs show without colors. The `two-face` crate
+  (the grammars of `bat`, some 200 languages) plugs into the same
+  highlighter; it costs a few MB in the app and a slower first build per
+  run.
+- **#107 Math formulas.** LaTeX math in Markdown (`$x^2$`, `$$ … $$`, a
+  ```` ```math ```` block), which comrak already recognizes, turned into
+  MathML when the site is built (e.g. with the pure-Rust `pulldown-latex`).
+  Browsers draw MathML themselves (Chrome, Edge, Firefox, Safari since
+  2023): no JavaScript and no extra files, unlike KaTeX in the browser.
+  Optionally a math font such as STIX Two Math, self-hosted via #102.
+- **#108 Site search with Pagefind.** [Pagefind](https://pagefind.app)
+  (written in Rust, usable as a library) builds a search index from the
+  finished pages during the normal build, split into small chunks; the
+  browser loads only what a search needs, from the site itself, nothing
+  from third parties. A search box that works without JavaScript as a
+  plain form to a search engine limited to the site (`site:…`), and with
+  JavaScript Pagefind takes over and shows results on the site. Decided
+  2026-10-27: Pagefind rather than lunr.js, MiniSearch or Fuse.js, which
+  load the whole index at once.
 
 ### Phase 4: Open to AI assistants
 

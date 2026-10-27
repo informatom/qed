@@ -43,8 +43,10 @@ Secrets (SSH keys, tokens) live in the OS keychain, never in the site folder.
 - Svelte 5 runes only (`$state`, `$derived`, `$effect`, `$props`); no legacy
   `export let` or stores for component state.
 - Give key UI elements stable `id`s.
-- Don't write inline `<script>` tags into generated sites without need; the
-  generated sites must work without JavaScript except for the player.
+- Don't write inline `<script>` tags into generated sites without need.
+  Content must be readable without JavaScript; JavaScript is only for
+  optional features that degrade gracefully, such as the player and site
+  search (#108).
 
 ## Learning blog
 

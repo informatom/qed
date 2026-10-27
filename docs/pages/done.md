@@ -312,6 +312,14 @@ rest is done.
   page's share image, else its first image; resized copies with `srcset`
   as everywhere. In the editor: a Layout choice on both blocks.
   waldgruber.at uses cards for its posts and tiles for its 53 Stofftiere.
+- **#094 Code highlighting.** *Done 2026-10-27*: fenced code blocks
+  with a language (```` ```rust ````) are highlighted when the site is
+  built, by comrak's syntect plugin (pure-Rust regex engine, no C):
+  classes with an `hl-` prefix (apart from daisyUI's, which also has
+  `link`), and the dark "Base16 Ocean Dark" colors appended to
+  `style.css`, readable on every theme since code blocks are dark. No
+  JavaScript. Grammars: syntect's defaults (Rust, HTML, CSS, JS, shell,
+  JSON, YAML, XML, Markdown, LaTeX, Ruby, …); more in #106.
 
 ## Dropped
 
