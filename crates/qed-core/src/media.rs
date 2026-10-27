@@ -84,8 +84,7 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
     names.sort();
 
     let usage: Vec<(&str, Vec<String>)> = site
-        .pages
-        .iter()
+        .pages_and_footer()
         .map(|page| (page.path.as_str(), references(page, library)))
         .collect();
 
@@ -344,14 +343,16 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
     let path = file_path(&site.root, library, name)?;
     let inside = format!("{name}/");
     let used_by: Vec<String> = site
-        .pages
-        .iter()
+        .pages_and_footer()
         .filter(|page| {
             references(page, library)
                 .iter()
                 .any(|n| n == name || n.starts_with(&inside))
         })
-        .map(|page| format!("/{}", page.path))
+        .map(|page| match page.path.as_str() {
+            site::FOOTER_PATH => "the footer".to_string(),
+            path => format!("/{path}"),
+        })
         .collect();
     if library == Library::Media && is_site_logo(site, name) {
         return Err(SiteError::Invalid {

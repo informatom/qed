@@ -112,7 +112,15 @@
     {%- endif %}
   </div>
 </section>
-{%- when RenderedBlock::PostList with { posts, feed_href } %}
+{%- when RenderedBlock::PostList with { posts, feed_href, compact } %}
+{%- if *compact %}
+{#- In the footer: just the titles, as links. #}
+<ul class="flex flex-col gap-1">
+  {%- for post in posts %}
+  <li><a href="{{ post.href }}" class="link link-hover">{{ post.title }}</a></li>
+  {%- endfor %}
+</ul>
+{%- else %}
 {%- if !posts.is_empty() %}
 <ul class="flex flex-col gap-6">
   {%- for post in posts %}
@@ -129,7 +137,15 @@
 {%- if let Some(feed_href) = feed_href %}
 <p class="mt-6 text-sm"><a href="{{ feed_href }}" class="link link-hover inline-flex items-center gap-1.5">{{ rss_icon|safe }}Subscribe with RSS</a></p>
 {%- endif %}
-{%- when RenderedBlock::PageList with { pages } %}
+{%- endif %}
+{%- when RenderedBlock::PageList with { pages, compact } %}
+{%- if *compact %}
+<ul class="flex flex-col gap-1">
+  {%- for page in pages %}
+  <li><a href="{{ page.href }}" class="link link-hover">{{ page.title }}</a></li>
+  {%- endfor %}
+</ul>
+{%- else %}
 {%- if !pages.is_empty() %}
 <ul class="flex flex-col gap-3">
   {%- for page in pages %}
@@ -141,6 +157,7 @@
   </li>
   {%- endfor %}
 </ul>
+{%- endif %}
 {%- endif %}
 {%- when RenderedBlock::Video with { href, picture, title, platform } %}
 {#- Only a link: nothing loads from the video platform until a click. #}

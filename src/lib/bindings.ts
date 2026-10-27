@@ -43,6 +43,11 @@ export const commands = {
 	savePageSettings: (root: string, file: string, front: FrontMatter) => __TAURI_INVOKE<Page>("save_page_settings", { root, file, front }),
 	/**  Saves a page's blocks into its file and returns the page as it reads back. */
 	savePageBlocks: (root: string, file: string, blocks: Block[]) => __TAURI_INVOKE<Page>("save_page_blocks", { root, file, blocks }),
+	/**
+	 *  Saves the site footer's blocks into `footer.md`; no blocks removes it.
+	 *  Returns the blocks as they read back.
+	 */
+	saveFooter: (root: string, blocks: Block[]) => __TAURI_INVOKE<Block[]>("save_footer", { root, blocks }),
 	/**  Saves the site's settings into site.toml. */
 	saveSiteConfig: (root: string, config: SiteConfig_Deserialize) => __TAURI_INVOKE<null>("save_site_config", { root, config }),
 	/**  The daisyUI theme names the app and generated sites can use. */
@@ -644,6 +649,11 @@ export type Site_Deserialize = {
 	pages: Page[],
 	/**  Where the site can be published to, from `targets.toml`. */
 	targets: Target[],
+	/**
+	 *  The footer from `footer.md`, if the site has one; its `path` is
+	 *  [`FOOTER_PATH`].
+	 */
+	footer: Page | null,
 };
 
 /**  A site folder, read into memory. */
@@ -654,6 +664,11 @@ export type Site_Serialize = {
 	pages: Page[],
 	/**  Where the site can be published to, from `targets.toml`. */
 	targets: Target[],
+	/**
+	 *  The footer from `footer.md`, if the site has one; its `path` is
+	 *  [`FOOTER_PATH`].
+	 */
+	footer: Page | null,
 };
 
 export type Stage = "connecting" | "comparing" | "uploading" | "deleting" | "done";

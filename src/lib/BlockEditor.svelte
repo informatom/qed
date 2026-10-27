@@ -1,29 +1,31 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import BlockList from "$lib/BlockList.svelte";
-  import { commands, normalizeBlock, type Block, type Page } from "$lib/site";
+  import { normalizeBlock, type Block } from "$lib/site";
 
   interface Props {
-    page: Page;
+    /** The blocks as saved. */
+    saved: Block[];
     siteRoot: string;
-    onsaved: (page: Page) => void;
+    /** Saves the blocks and returns them as they read back from the file. */
+    persist: (blocks: Block[]) => Promise<Block[]>;
     /** Blocks to start with instead of the saved ones (an earlier version). */
     start?: Block[];
     /** Tells the parent whether there are unsaved changes. */
     dirty?: boolean;
   }
 
-  let { page, siteRoot, onsaved, start, dirty = $bindable(false) }: Props = $props();
+  let { saved, siteRoot, persist, start, dirty = $bindable(false) }: Props = $props();
 
   // An editable copy. BlockList keys blocks by the objects themselves, so
   // Svelte can tell them apart while they move (the Markdown editors keep
   // their state); `$state.snapshot` makes the copy plain.
-  let blocks = $state<Block[]>(untrack(() => $state.snapshot(start ?? page.blocks)));
+  let blocks = $state<Block[]>(untrack(() => $state.snapshot(start ?? saved)));
   let saving = $state(false);
   let error = $state<string | null>(null);
 
   let edited = $derived(blocks.map(normalizeBlock));
-  let changed = $derived(JSON.stringify(edited) !== JSON.stringify(page.blocks.map(normalizeBlock)));
+  let changed = $derived(JSON.stringify(edited) !== JSON.stringify(saved.map(normalizeBlock)));
 
   // Keep the parent informed.
   $effect(() => {
@@ -31,7 +33,7 @@
   });
 
   function discard() {
-    blocks = $state.snapshot(page.blocks);
+    blocks = $state.snapshot(saved);
     error = null;
   }
 
@@ -39,11 +41,9 @@
     saving = true;
     error = null;
     try {
-      const saved = await commands.savePageBlocks(siteRoot, page.file, edited);
       // The file may read back slightly differently (empty text dropped,
       // neighbouring text joined), so show what was actually saved.
-      blocks = $state.snapshot(saved.blocks);
-      onsaved(saved);
+      blocks = $state.snapshot(await persist(edited));
     } catch (e) {
       error = String(e);
     } finally {

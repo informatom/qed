@@ -34,6 +34,12 @@ pub const ASSETS_DIR: &str = "assets";
 /// Files copied into the built site as they are, at the same paths
 /// (`static/pdf/a.pdf` becomes `/pdf/a.pdf`).
 pub const STATIC_DIR: &str = "static";
+/// The site-wide footer: blocks shown at the bottom of every page, in the
+/// same format as a page file.
+pub const FOOTER_FILE: &str = "footer.md";
+/// How the footer appears in lists of pages that use a file or link to a
+/// page; never a URL path, which can't start with `(`.
+pub const FOOTER_PATH: &str = "(footer)";
 
 /// Settings from `site.toml`.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -145,6 +151,16 @@ pub struct Site {
     pub pages: Vec<Page>,
     /// Where the site can be published to, from `targets.toml`.
     pub targets: Vec<Target>,
+    /// The footer from `footer.md`, if the site has one; its `path` is
+    /// [`FOOTER_PATH`].
+    pub footer: Option<Page>,
+}
+
+impl Site {
+    /// The pages and the footer: everything that holds blocks.
+    pub fn pages_and_footer(&self) -> impl Iterator<Item = &Page> {
+        self.pages.iter().chain(self.footer.as_ref())
+    }
 }
 
 /// One page of a site.
@@ -254,11 +270,78 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
         );
     }
 
+    let footer_file = root.join(FOOTER_FILE);
+    let footer = if footer_file.is_file() {
+        let content = page::parse(&read(&footer_file)?).map_err(|error| SiteError::Page {
+            path: PathBuf::from(FOOTER_FILE),
+            error,
+        })?;
+        Some(Page {
+            path: FOOTER_PATH.to_string(),
+            file: PathBuf::from(FOOTER_FILE),
+            content,
+        })
+    } else {
+        None
+    };
+
     Ok(Site {
         root: root.to_path_buf(),
         config,
         pages: pages.into_values().collect(),
         targets: crate::target::load(root)?,
+        footer,
+    })
+}
+
+/// Saves the footer's blocks into `footer.md` and returns the footer as
+/// saved. No blocks removes the file, and with it the footer.
+pub fn save_footer(root: &Path, blocks: Vec<Block>) -> Result<Option<Page>, SiteError> {
+    let blocks = without_empty_text(blocks);
+    let path = root.join(FOOTER_FILE);
+    if blocks.is_empty() {
+        if path.exists() {
+            fs::remove_file(&path).map_err(|source| SiteError::Write { path, source })?;
+        }
+        return Ok(None);
+    }
+    update_footer(root, |content| content.blocks = blocks).map(Some)
+}
+
+/// Like [`update_page`], for `footer.md`; makes the file if it's missing.
+pub(crate) fn update_footer(
+    root: &Path,
+    change: impl FnOnce(&mut PageContent),
+) -> Result<Page, SiteError> {
+    let path = root.join(FOOTER_FILE);
+    let parse = |text: &str| {
+        page::parse(text).map_err(|error| SiteError::Page {
+            path: PathBuf::from(FOOTER_FILE),
+            error,
+        })
+    };
+    let original = if path.is_file() {
+        Some(read(&path)?)
+    } else {
+        None
+    };
+    let mut content = match &original {
+        Some(text) => parse(text)?,
+        None => PageContent {
+            front: FrontMatter {
+                title: "Footer".to_string(),
+                ..FrontMatter::default()
+            },
+            blocks: Vec::new(),
+        },
+    };
+    change(&mut content);
+    let written = page_writer::write(&content, original.as_deref());
+    write_atomically(&path, &written)?;
+    Ok(Page {
+        path: FOOTER_PATH.to_string(),
+        file: PathBuf::from(FOOTER_FILE),
+        content: parse(&written)?,
     })
 }
 
@@ -560,8 +643,7 @@ fn without_empty_text(blocks: Vec<Block>) -> Vec<Block> {
 /// Markdown links and buttons.
 pub fn pages_linking_to(site: &Site, path: &str) -> Vec<String> {
     let mut found: Vec<String> = site
-        .pages
-        .iter()
+        .pages_and_footer()
         .filter(|page| page.path != path)
         .filter(|page| {
             let links = LinkContext::new(&page.path, &page.file);
@@ -1133,6 +1215,24 @@ mod tests {
         assert!(save_config(dir.path(), &config).is_err(), "same name twice");
         config.saved_themes = vec![set(" ", "#000000")];
         assert!(save_config(dir.path(), &config).is_err(), "no name");
+    }
+
+    #[test]
+    fn keeps_the_footer_in_its_own_file() {
+        let dir = site_with(&[("site.toml", "title = \"S\""), ("pages/index.md", PAGE)]);
+        assert!(open(dir.path()).unwrap().footer.is_none());
+
+        let blocks = vec![Block::Text {
+            markdown: "[Impressum](/impressum)".to_string(),
+        }];
+        let footer = save_footer(dir.path(), blocks.clone()).unwrap().unwrap();
+        assert_eq!(footer.path, FOOTER_PATH);
+        let site = open(dir.path()).unwrap();
+        assert_eq!(site.footer.as_ref().unwrap().content.blocks, blocks);
+        assert_eq!(pages_linking_to(&site, "impressum"), [FOOTER_PATH]);
+
+        assert!(save_footer(dir.path(), Vec::new()).unwrap().is_none());
+        assert!(!dir.path().join(FOOTER_FILE).exists(), "no blocks, no file");
     }
 
     #[test]

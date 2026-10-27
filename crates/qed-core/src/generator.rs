@@ -147,6 +147,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         feeds: &feeds,
         today,
         language: &site.config.language,
+        footer: false,
     };
 
     for page in &published {
@@ -238,6 +239,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
 const RSS_ICON: &str = include_str!("../assets/icons/rss.svg");
 
 /// What blocks need besides themselves.
+#[derive(Clone, Copy)]
 struct Context<'a> {
     /// The site folder.
     root: &'a Path,
@@ -249,6 +251,8 @@ struct Context<'a> {
     today: Date,
     /// The site's language, for dates.
     language: &'a str,
+    /// Rendering the footer: lists come out compact, as plain links.
+    footer: bool,
 }
 
 /// The posts below the page at `parent`, newest first: pages with a date
@@ -649,6 +653,8 @@ struct PageTemplate<'a> {
     byline: String,
     /// Each block's HTML, from `block.html`.
     blocks: Vec<String>,
+    /// The site footer's blocks, rendered for this page.
+    footer_blocks: Vec<String>,
 }
 
 /// Tailwind classes for the header, written out in full here so the
@@ -806,9 +812,12 @@ enum RenderedBlock {
         posts: Vec<PostEntry>,
         /// The feed of the listed page, if it has one.
         feed_href: Option<String>,
+        /// Titles only, for the footer.
+        compact: bool,
     },
     PageList {
         pages: Vec<PageEntry>,
+        compact: bool,
     },
     Video {
         href: String,
@@ -944,6 +953,27 @@ fn render_page(
                 page: page.path.clone(),
                 source,
             })?,
+        // The footer's blocks, with this page's links (the footer is on
+        // every page, so its links are relative to each one).
+        footer_blocks: match &site.footer {
+            Some(footer) => {
+                let in_footer = Context {
+                    footer: true,
+                    ..*context
+                };
+                footer
+                    .content
+                    .blocks
+                    .iter()
+                    .map(|block| render_html(block, &links, &in_footer, false))
+                    .collect::<Result<_, _>>()
+                    .map_err(|source| BuildError::Template {
+                        page: page.path.clone(),
+                        source,
+                    })?
+            }
+            None => Vec::new(),
+        },
     };
 
     template.render().map_err(|source| BuildError::Template {
@@ -1134,6 +1164,7 @@ fn render_block(
                 posts.truncate(limit);
             }
             RenderedBlock::PostList {
+                compact: context.footer,
                 feed_href: context
                     .feeds
                     .iter()
@@ -1177,6 +1208,7 @@ fn render_block(
             },
         },
         Block::PageList(list) => RenderedBlock::PageList {
+            compact: context.footer,
             pages: children(context.pages, list_source(&list.from, links))
                 .iter()
                 .map(|page| PageEntry {
@@ -2079,6 +2111,36 @@ mod tests {
         assert!(home.contains("A talk</span> · YouTube"), "{home}");
         assert!(
             !home.contains("<iframe") && !home.contains("<script"),
+            "{home}"
+        );
+    }
+
+    #[test]
+    fn shows_the_footer_blocks_on_every_page() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        let footer = "+++\ntitle = \"Footer\"\n+++\n\n:::: columns\n::: column\ntitle = \"Letzte Posts\"\n:::\n\n::: post-list\nfrom = \"/blog\"\nlimit = 2\n:::\n::: column\ntitle = \"Kontakt\"\n:::\n\n[Über uns](/blog/about)\n::::\n";
+        fs::write(dir.path().join(site::FOOTER_FILE), footer).unwrap();
+        site = site::open(&site.root).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+
+        let post = read(out.path().join("blog/2026-01-05-old/index.html"));
+        let footer = &post[post.find("<footer").unwrap()..];
+        assert!(footer.contains("site-footer"), "{footer}");
+        assert!(footer.contains("Letzte Posts"), "{footer}");
+        assert!(
+            footer.contains(r#"<li><a href="../../blog/2026-10-21-today/" class="link link-hover">Today</a></li>"#),
+            "compact post list with this page's links: {footer}"
+        );
+        assert!(
+            !footer.contains("badge"),
+            "no dates in the footer: {footer}"
+        );
+        assert!(footer.contains(r#"href="../../blog/about/""#), "{footer}");
+        let home = read(out.path().join("index.html"));
+        assert!(
+            home[home.find("<footer").unwrap()..].contains(r#"href="blog/about/""#),
             "{home}"
         );
     }

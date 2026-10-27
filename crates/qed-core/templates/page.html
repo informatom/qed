@@ -104,6 +104,13 @@
   {%- endif %}
 
   <footer class="bg-accent text-accent-content">
+    {%- if !footer_blocks.is_empty() %}
+    <div class="site-footer mx-auto flex w-full {{ width }} flex-col gap-8 px-5 pt-10 text-sm">
+      {%- for html in footer_blocks %}
+      {{ html|safe }}
+      {%- endfor %}
+    </div>
+    {%- endif %}
     <div class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-4 px-5 py-6 text-sm">
       <ul class="flex flex-wrap gap-x-6 gap-y-1">
         {%- for item in footer_menu %}

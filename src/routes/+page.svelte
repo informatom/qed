@@ -16,6 +16,8 @@
   import History from "@lucide/svelte/icons/history";
   import FileDown from "@lucide/svelte/icons/file-down";
   import FolderTree from "@lucide/svelte/icons/folder-tree";
+  import PanelBottom from "@lucide/svelte/icons/panel-bottom";
+  import FooterEditor from "$lib/FooterEditor.svelte";
   import Image from "@lucide/svelte/icons/image";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Settings from "@lucide/svelte/icons/settings";
@@ -55,6 +57,10 @@
   // The page whose settings are open, by file (files don't change on save).
   let selectedFile = $state<string | null>(null);
   let selected = $derived(site?.pages.find((p) => p.file === selectedFile) ?? null);
+  // The site footer opens like a page, by its file name.
+  const FOOTER_FILE = "footer.md";
+  let editingFooter = $derived(selectedFile === FOOTER_FILE);
+  let panelOpen = $derived(selected !== null || editingFooter);
   // True while the open page has unsaved changes.
   let editorDirty = $state(false);
 
@@ -127,7 +133,7 @@
     try {
       site = await commands.openSite(path);
       report = null;
-      if (!site.pages.some((p) => p.file === selectedFile)) selectedFile = null;
+      if (selectedFile !== FOOTER_FILE && !site.pages.some((p) => p.file === selectedFile)) selectedFile = null;
       recent = rememberSite(path, site.config.title);
       setSiteClosed(false);
     } catch (e) {
@@ -460,7 +466,7 @@
       class={[
         "grid items-start gap-6",
         view !== "pages" && "hidden",
-        selected && "lg:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[28rem_minmax(0,1fr)]",
+        panelOpen && "lg:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[28rem_minmax(0,1fr)]",
       ]}
     >
       <ul
@@ -468,7 +474,7 @@
         class={[
           "flex flex-col gap-0.5 rounded-box bg-base-100 p-2 shadow-sm",
           // While a page is open, the list stays in view and scrolls by itself.
-          selected && "lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto",
+          panelOpen && "lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto",
         ]}
       >
         {#each shownPages as page (page.path)}
@@ -509,7 +515,7 @@
                   {#if count && !unfolded.has(page.path)}<span class="ms-2">· {count} below</span>{/if}
                 </span>
               </div>
-              {#if !selected}
+              {#if !panelOpen}
                 <div class="flex flex-wrap justify-end gap-1">
                   {#each page.blocks as block, i (i)}
                     <span class="badge badge-soft badge-sm">{BLOCK_NAMES[block.type]}</span>
@@ -519,7 +525,32 @@
             </button>
           </li>
         {/each}
+        <!-- The footer is on every page, so it's listed after them. -->
+        <li id="page-footer" class="mt-1 flex items-center gap-1 border-t border-base-300 pt-1">
+          <span class="w-6 shrink-0"></span>
+          <button
+            type="button"
+            class={[
+              "flex min-w-0 flex-1 items-center gap-4 rounded-field px-3 py-1 text-left transition-colors",
+              editingFooter ? "bg-primary/10" : "hover:bg-base-200",
+            ]}
+            onclick={() => select(FOOTER_FILE)}
+          >
+            <div class="flex min-w-0 flex-1 flex-col leading-snug">
+              <span class="font-medium"><PanelBottom class="me-1 inline size-4 align-[-2px] text-base-content/70" />Footer</span>
+              <span class="text-xs text-base-content/60">
+                {site.footer ? `on every page · ${site.footer.blocks.length} ${site.footer.blocks.length === 1 ? "block" : "blocks"}` : "none yet"}
+              </span>
+            </div>
+          </button>
+        </li>
       </ul>
+
+      {#if editingFooter}
+        <FooterEditor siteRoot={site.root} saved={site.footer?.blocks ?? []} onclose={() => select(null)}
+          bind:dirty={editorDirty}
+          onsaved={() => site && load(site.root)} />
+      {/if}
 
       {#if selected}
         <!-- Re-create the editor when another page is picked, so it starts fresh. -->

@@ -5,7 +5,7 @@
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import PageVersions from "$lib/PageVersions.svelte";
-  import { commands, type Page, type PageContent, type Version } from "$lib/site";
+  import { commands, pageLabel, type Page, type PageContent, type Version } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -51,7 +51,7 @@
       ]);
       const lines = [`Delete “${page.front.title}”?`];
       if (links.length) {
-        const names = links.map((path) => `/${path}`).join(", ");
+        const names = links.map(pageLabel).join(", ");
         lines.push(`${names} ${links.length === 1 ? "links" : "link"} to it; those links will stop working.`);
       }
       if (dirty) lines.push("Your unsaved changes are lost too.");
@@ -127,7 +127,12 @@
   <!-- Content and Settings stay mounted, so switching tabs keeps unsaved edits. -->
   {#key restoreCount}
     <div class={[tab !== "content" && "hidden"]}>
-      <BlockEditor {page} {siteRoot} {onsaved} start={restored?.blocks} bind:dirty={contentDirty} />
+      <BlockEditor saved={page.blocks} {siteRoot} start={restored?.blocks} bind:dirty={contentDirty}
+        persist={async (blocks) => {
+          const saved = await commands.savePageBlocks(siteRoot, page.file, blocks);
+          onsaved(saved);
+          return saved.blocks;
+        }} />
     </div>
     <div class={[tab !== "settings" && "hidden"]}>
       <PageSettings {page} {siteRoot} {onsaved} start={restored?.front} bind:dirty={settingsDirty} />

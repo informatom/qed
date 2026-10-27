@@ -113,6 +113,14 @@ pub fn move_page(site: &Site, file: &Path, parent: &str, slug: &str) -> Result<P
         })?;
     }
 
+    // The footer links like any page, but never moves.
+    if let Some(footer) = &site.footer {
+        let links = new_links(footer, &footer.file, false, &new_paths, &new_files);
+        if !links.is_empty() {
+            site::update_footer(&site.root, |content| rewrite_links(content, &links))?;
+        }
+    }
+
     // Then the files.
     for moving in &moves {
         let to = site.root.join(&moving.new_file);
@@ -407,6 +415,23 @@ mod tests {
             ["/company", "/about/contact"]
         );
         assert!(read(root, "pages/index.md").contains("[contact](contact.md)"));
+    }
+
+    #[test]
+    fn rewrites_links_in_the_footer() {
+        let dir = sample();
+        write(
+            dir.path(),
+            "footer.md",
+            "+++\ntitle = \"Footer\"\n+++\n\n[About](/about) and [Home](/)\n",
+        );
+        let site = site::open(dir.path()).unwrap();
+        move_page(&site, Path::new("pages/about.md"), "", "who-we-are").unwrap();
+        let footer = read(dir.path(), "footer.md");
+        assert!(
+            footer.contains("[About](/who-we-are) and [Home](/)"),
+            "{footer}"
+        );
     }
 
     #[test]

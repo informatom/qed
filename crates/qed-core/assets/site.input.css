@@ -22,3 +22,39 @@
 .prose blockquote {
   border-inline-start-color: var(--color-accent);
 }
+
+/* The footer's blocks take the footer's colors and size: Markdown text,
+   headings and links in the accent's text color instead of the page's. */
+.site-footer .prose {
+  font-size: inherit;
+  color: inherit;
+  --tw-prose-body: currentColor;
+  --tw-prose-headings: currentColor;
+  --tw-prose-links: currentColor;
+  --tw-prose-bold: currentColor;
+  --tw-prose-bullets: currentColor;
+  --tw-prose-counters: currentColor;
+  --tw-prose-quotes: currentColor;
+  --tw-prose-hr: currentColor;
+}
+/* Lists in the footer look like its compact Post and Page lists: no
+   bullets, tight, links underlined on hover only. */
+.site-footer .prose :where(ul, ol) {
+  list-style: none;
+  margin: 0;
+  padding-inline-start: 0;
+}
+.site-footer .prose :where(li) {
+  margin: 0 0 0.25rem;
+  padding-inline-start: 0;
+}
+.site-footer .prose :where(p) {
+  margin: 0.25rem 0;
+}
+.site-footer .prose a {
+  text-decoration: none;
+}
+.site-footer .prose a:hover {
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+}

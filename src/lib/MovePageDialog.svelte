@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
-  import { commands, type Page, type Site } from "$lib/site";
+  import { commands, type Page, type Site, pageLabel } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -97,7 +97,7 @@
       {/if}
       {#if linking.length}
         <li>
-          Links in {linking.map((path) => `/${path}`).join(", ")} are updated.
+          Links in {linking.map(pageLabel).join(", ")} are updated.
         </li>
       {/if}
     </ul>

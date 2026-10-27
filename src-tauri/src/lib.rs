@@ -165,6 +165,16 @@ async fn save_page_blocks(
     Ok(page)
 }
 
+/// Saves the site footer's blocks into `footer.md`; no blocks removes it.
+/// Returns the blocks as they read back.
+#[tauri::command]
+#[specta::specta]
+async fn save_footer(root: PathBuf, blocks: Vec<Block>) -> Result<Vec<Block>, String> {
+    let footer = site::save_footer(&root, blocks).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(footer.map(|page| page.content.blocks).unwrap_or_default())
+}
+
 /// Creates an empty page below `parent` (a URL path, `""` for the top level).
 #[tauri::command]
 #[specta::specta]
@@ -568,6 +578,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             move_documents_to_assets,
             save_page_settings,
             save_page_blocks,
+            save_footer,
             save_site_config,
             list_themes,
             custom_theme_variables,

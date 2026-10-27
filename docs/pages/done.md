@@ -295,6 +295,14 @@ rest is done.
   `@font-face` rules with `unicode-range` to `style.css`; no third-party
   requests. Site → Theme → Fonts has a searchable picker and a live
   sample (FontFace API).
+- **#092 Footer blocks.** *Done 2026-10-27*: `footer.md` in the site
+  folder (page format) holds blocks shown on every page above the footer
+  menu, in the footer's colors; Post and Page lists there show titles
+  only. Links are rendered per page; moving a page rewrites footer links,
+  and the delete warning and media usage count the footer ("the footer").
+  In the app: a Footer entry below the page list opens the block editor
+  (`BlockEditor` now takes the saved blocks and a save function).
+  podcasterei.at has one: Letzte Posts, Meetup, Kontakt.
 
 ## Dropped
 

@@ -25,8 +25,6 @@ A complete site builder without podcast features. Decided 2026-10-26: finish
 phase 1 before podcasting, testing it by moving the owner's Jekyll sites
 over by hand.
 
-- **#092 Footer blocks.** A site-wide footer made of blocks (Columns,
-  Text, Post list), edited with the block editor, above the footer menu.
 - **#093 404 page.** The generator writes `404.html` in the site's look.
 - **#094 Code highlighting.** Colors for fenced code blocks at build time,
   with CSS classes and no JavaScript.

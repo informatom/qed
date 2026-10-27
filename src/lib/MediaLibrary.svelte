@@ -9,7 +9,7 @@
   import Trash from "@lucide/svelte/icons/trash";
   import Upload from "@lucide/svelte/icons/upload";
   import TextViewer from "$lib/TextViewer.svelte";
-  import { commands, formatSize, libraryUrl, type Library, type MediaFile, type MediaKind } from "$lib/site";
+  import { commands, formatSize, libraryUrl, pageLabel, type Library, type MediaFile, type MediaKind } from "$lib/site";
 
   interface Props {
     siteRoot: string;
@@ -296,8 +296,8 @@
                 {#if file.site_logo}
                   <span class="truncate text-xs text-base-content/60">Site logo{file.used_by.length ? ", used on pages" : ""}</span>
                 {:else if file.used_by.length}
-                  <span class="truncate text-xs text-base-content/60" title={file.used_by.map((p) => `/${p}`).join(", ")}>
-                    Used on {file.used_by.length === 1 ? `/${file.used_by[0]}` : `${file.used_by.length} pages`}
+                  <span class="truncate text-xs text-base-content/60" title={file.used_by.map(pageLabel).join(", ")}>
+                    Used on {file.used_by.length === 1 ? pageLabel(file.used_by[0]) : `${file.used_by.length} pages`}
                   </span>
                 {:else if isStatic}
                   <!-- Static files often aren't linked from pages at all (keybase.txt). -->
