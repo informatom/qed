@@ -1,6 +1,6 @@
 {
   "name": "qed",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Desktop app that turns a folder of pages and posts into a static website and publishes it",
   "type": "module",
   "scripts": {
