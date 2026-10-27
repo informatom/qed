@@ -15,6 +15,9 @@ pub struct LinkContext {
     page_path: String,
     /// The page's file relative to the site folder, e.g. `pages/blog/post.md`.
     page_file: PathBuf,
+    /// A fixed way to the site root (`/`) instead of a relative one, for a
+    /// page shown at any address: the 404 page.
+    root: Option<String>,
 }
 
 impl LinkContext {
@@ -22,6 +25,17 @@ impl LinkContext {
         LinkContext {
             page_path: page_path.to_string(),
             page_file: page_file.to_path_buf(),
+            root: None,
+        }
+    }
+
+    /// Links from the site root at `root` (`/`, or `/blog/` for a site in a
+    /// subfolder), for a page the server shows at any address.
+    pub fn rooted(root: &str, page_file: &Path) -> Self {
+        LinkContext {
+            page_path: String::new(),
+            page_file: page_file.to_path_buf(),
+            root: Some(root.to_string()),
         }
     }
 
@@ -33,6 +47,9 @@ impl LinkContext {
     /// The way from this page's folder up to the site root: `""` on the start
     /// page, `"../"` on `/about/`, `"../../"` on `/about/team/`.
     pub fn to_root(&self) -> String {
+        if let Some(root) = &self.root {
+            return root.clone();
+        }
         if self.page_path.is_empty() {
             String::new()
         } else {

@@ -110,10 +110,12 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
 fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, BuildError> {
     prepare_output(out_dir)?;
 
+    // A page at `404` is the 404 page (see `not_found_page`), not one of
+    // the site's pages.
     let published: Vec<&Page> = site
         .pages
         .iter()
-        .filter(|p| !p.content.front.draft)
+        .filter(|p| !p.content.front.draft && p.path != NOT_FOUND_PATH)
         .collect();
     let media_dir = site.root.join(MEDIA_DIR);
     let images = Images::new(&media_dir);
@@ -155,6 +157,10 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         let html = render_page(site, &context, page, &main_menu, &footer_menu, &feeds)?;
         write(&page_file(out_dir, &page.path), html)?;
     }
+
+    let not_found = not_found_page(site);
+    let html = render_page(site, &context, &not_found, &main_menu, &footer_menu, &feeds)?;
+    write(&out_dir.join("404.html"), html)?;
 
     let mut redirects = 0;
     for page in &published {
@@ -248,6 +254,74 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         static_files,
         notes,
     })
+}
+
+/// The URL path of a page that is the site's 404 page (`pages/404.md`).
+const NOT_FOUND_PATH: &str = "404";
+
+/// The page servers show for addresses that don't exist, written as
+/// `404.html`: the site's own `pages/404.md` if it has one, else a short
+/// page in the site's language with a link to the start page.
+fn not_found_page(site: &Site) -> Page {
+    if let Some(page) = site
+        .pages
+        .iter()
+        .find(|page| page.path == NOT_FOUND_PATH && !page.content.front.draft)
+    {
+        return page.clone();
+    }
+    let language = site.config.language.to_lowercase();
+    let (title, text) = match language.split(['-', '_']).next().unwrap_or_default() {
+        "de" => (
+            "Seite nicht gefunden",
+            "Diese Seite gibt es nicht (mehr). [Zur Startseite](/)",
+        ),
+        "fr" => (
+            "Page introuvable",
+            "Cette page n'existe pas (ou plus). [Vers l'accueil](/)",
+        ),
+        "es" => (
+            "Página no encontrada",
+            "Esta página no existe (o ya no existe). [Ir al inicio](/)",
+        ),
+        "it" => (
+            "Pagina non trovata",
+            "Questa pagina non esiste (più). [Vai alla home](/)",
+        ),
+        "nl" => (
+            "Pagina niet gevonden",
+            "Deze pagina bestaat niet (meer). [Naar de startpagina](/)",
+        ),
+        _ => (
+            "Page not found",
+            "This page doesn't exist (any more). [Go to the start page](/)",
+        ),
+    };
+    Page {
+        path: NOT_FOUND_PATH.to_string(),
+        file: PathBuf::from("pages/404.md"),
+        content: crate::page::PageContent {
+            front: crate::page::FrontMatter {
+                title: title.to_string(),
+                ..Default::default()
+            },
+            blocks: vec![Block::Text {
+                markdown: text.to_string(),
+            }],
+        },
+    }
+}
+
+/// The site's root as an absolute path: `/`, or the path of `base_url`
+/// for a site in a subfolder (`https://example.org/blog/` gives `/blog/`).
+fn site_root_path(config: &SiteConfig) -> String {
+    let path = config
+        .base_url
+        .as_deref()
+        .and_then(|base| reqwest::Url::parse(base).ok())
+        .map(|url| url.path().to_string())
+        .unwrap_or_default();
+    format!("/{}", path.trim_matches('/').to_string() + "/").replace("//", "/")
 }
 
 /// Lucide's RSS icon, for feed links.
@@ -897,7 +971,14 @@ fn render_page(
 ) -> Result<String, BuildError> {
     let config = &site.config;
     let front = &page.content.front;
-    let links = LinkContext::new(&page.path, &page.file);
+    // The 404 page is shown at whatever address was asked for, so its links
+    // start at the site root instead of being relative.
+    let not_found = page.path == NOT_FOUND_PATH;
+    let links = if not_found {
+        LinkContext::rooted(&site_root_path(config), &page.file)
+    } else {
+        LinkContext::new(&page.path, &page.file)
+    };
 
     let menu_links = |entries: &[MenuEntry]| -> Vec<MenuLink> {
         entries
@@ -927,11 +1008,13 @@ fn render_page(
     let canonical = config
         .base_url
         .as_ref()
+        .filter(|_| !not_found)
         .map(|base| absolute(base, &page.path));
 
     let share_image = config
         .base_url
         .as_ref()
+        .filter(|_| !not_found)
         .and_then(|base| share_image(page, base, context.images));
 
     let sidebar = config.navigation == Navigation::Sidebar && !main_menu.is_empty();
@@ -2394,6 +2477,53 @@ mod tests {
         build_on(&site, out.path(), TODAY).unwrap();
         let home = read(out.path().join("index.html"));
         assert!(home.contains("Pod &#38; Co</a>"), "{home}");
+    }
+
+    #[test]
+    fn writes_a_404_page_that_links_from_the_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.language = "de".into();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let page = read(out.path().join("404.html"));
+        assert!(page.contains("Seite nicht gefunden</h1>"), "{page}");
+        assert!(
+            page.contains(r#"<link rel="stylesheet" href="/style.css">"#),
+            "{page}"
+        );
+        assert!(page.contains(r#"<a href="/">Zur Startseite</a>"#), "{page}");
+        assert!(!page.contains("rel=\"canonical\""), "{page}");
+
+        // A site in a subfolder links from there.
+        site.config.base_url = Some("https://example.org/pod/".into());
+        build_on(&site, out.path(), TODAY).unwrap();
+        let page = read(out.path().join("404.html"));
+        assert!(page.contains(r#"href="/pod/style.css""#), "{page}");
+        assert!(page.contains(r#"<a href="/pod/">"#), "{page}");
+    }
+
+    #[test]
+    fn uses_the_sites_own_404_page() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        fs::write(
+            dir.path().join("pages/404.md"),
+            "+++\ntitle = \"Lost?\"\n+++\n\nTry the [blog](/blog).\n",
+        )
+        .unwrap();
+        site = site::open(&site.root).unwrap();
+        site.config.base_url = Some("https://example.org/".into());
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let page = read(out.path().join("404.html"));
+        assert!(page.contains("Lost?</h1>"), "{page}");
+        assert!(page.contains(r#"<a href="/blog/">blog</a>"#), "{page}");
+        assert!(
+            !out.path().join("404/index.html").exists(),
+            "not a normal page"
+        );
+        assert!(!read(out.path().join("sitemap.xml")).contains("/404"));
     }
 
     #[test]

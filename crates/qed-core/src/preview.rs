@@ -91,9 +91,15 @@ fn respond(root: &Path, request: Request) -> std::io::Result<()> {
             let header = Header::from_bytes("Location", location).expect("valid header");
             request.respond(Response::empty(301).with_header(header))
         }
-        Target::NotFound => {
-            request.respond(Response::from_string("Not found").with_status_code(404))
-        }
+        // The site's own 404 page, like a web server set up for it.
+        Target::NotFound => match File::open(root.join("404.html")) {
+            Ok(page) => request.respond(
+                Response::from_file(page)
+                    .with_status_code(404)
+                    .with_header(content_type(Path::new("404.html"))),
+            ),
+            Err(_) => request.respond(Response::from_string("Not found").with_status_code(404)),
+        },
     }
 }
 
