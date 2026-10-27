@@ -76,6 +76,9 @@ pub struct SiteConfig {
     /// The header: plain, or a full-width bar in one of the theme's colors.
     #[serde(default)]
     pub header: HeaderStyle,
+    /// Which theme color goes where: links, buttons, boxes, backgrounds.
+    #[serde(default, skip_serializing_if = "Colors::is_default")]
+    pub colors: Colors,
     /// How tall the logo is in the header.
     #[serde(default)]
     pub logo_size: LogoSize,
@@ -241,6 +244,76 @@ impl HeaderStyle {
             HeaderStyle::Secondary => "secondary",
             HeaderStyle::Accent => "accent",
             HeaderStyle::Neutral => "neutral",
+        }
+    }
+}
+
+/// Which of the theme's colors the site uses where (`[colors]` in
+/// `site.toml`). Empty means the default, which is how sites looked before
+/// these settings existed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct Colors {
+    /// The underline of links in text; primary if empty.
+    pub links: Option<ThemeColor>,
+    /// Buttons (Hero, Call to action); primary if empty. On a box of the
+    /// same color they're drawn plain, so they don't vanish.
+    pub buttons: Option<ThemeColor>,
+    /// The Call to action box; primary if empty.
+    pub call_to_action: Option<Surface>,
+    /// A Hero without an image; secondary if empty.
+    pub hero: Option<Surface>,
+    /// Columns drawn as a box; plain (the page background, a border) if
+    /// empty.
+    pub boxes: Option<Surface>,
+    /// The page background behind the content, a light tint of the color;
+    /// plain if empty.
+    pub content: Option<Surface>,
+    /// The footer; accent if empty.
+    pub footer: Option<Surface>,
+}
+
+impl Colors {
+    pub fn is_default(&self) -> bool {
+        *self == Colors::default()
+    }
+}
+
+/// One of the theme's four colors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum ThemeColor {
+    Primary,
+    Secondary,
+    Accent,
+    Neutral,
+}
+
+/// What an area is filled with: the page background (plain), a shade
+/// darker (shaded), or one of the theme's colors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum Surface {
+    Plain,
+    Shaded,
+    Primary,
+    Secondary,
+    Accent,
+    Neutral,
+}
+
+impl Surface {
+    /// The theme color it's filled with, if any.
+    pub fn color(self) -> Option<ThemeColor> {
+        match self {
+            Surface::Plain | Surface::Shaded => None,
+            Surface::Primary => Some(ThemeColor::Primary),
+            Surface::Secondary => Some(ThemeColor::Secondary),
+            Surface::Accent => Some(ThemeColor::Accent),
+            Surface::Neutral => Some(ThemeColor::Neutral),
         }
     }
 }
@@ -792,9 +865,9 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
 
     let original = read(&path)?;
     let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
-    // `[custom_theme]` and `[fonts]` as their own sections, easier to read
+    // `[custom_theme]`, `[fonts]` and `[colors]` as their own sections, easier to read
     // than one long line.
-    for key in ["custom_theme", "fonts"] {
+    for key in ["custom_theme", "fonts", "colors"] {
         if let Some(inline) = document
             .get_mut(key)
             .and_then(|item| item.as_inline_table_mut())
@@ -1538,6 +1611,30 @@ mod tests {
         assert!(save_config(dir.path(), &config).is_err(), "same name twice");
         config.saved_themes = vec![set(" ", "#000000")];
         assert!(save_config(dir.path(), &config).is_err(), "no name");
+    }
+
+    #[test]
+    fn writes_colors_as_their_own_section() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(CONFIG_FILE), "title = \"T\"\n").unwrap();
+        let mut config = open(dir.path()).unwrap().config;
+        config.colors.footer = Some(Surface::Neutral);
+        config.colors.links = Some(ThemeColor::Accent);
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join(CONFIG_FILE)).unwrap();
+        assert!(
+            text.contains("[colors]\nlinks = \"accent\"\nfooter = \"neutral\"\n"),
+            "{text}"
+        );
+        assert_eq!(open(dir.path()).unwrap().config.colors, config.colors);
+
+        config.colors = Colors::default();
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join(CONFIG_FILE)).unwrap();
+        assert!(
+            !text.contains("colors"),
+            "defaults leave no section: {text}"
+        );
     }
 
     #[test]

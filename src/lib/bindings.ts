@@ -239,6 +239,37 @@ export type CallToAction = {
 	button_link: string | null,
 };
 
+/**
+ *  Which of the theme's colors the site uses where (`[colors]` in
+ *  `site.toml`). Empty means the default, which is how sites looked before
+ *  these settings existed.
+ */
+export type Colors = {
+	/**  The underline of links in text; primary if empty. */
+	links: ThemeColor | null,
+	/**
+	 *  Buttons (Hero, Call to action); primary if empty. On a box of the
+	 *  same color they're drawn plain, so they don't vanish.
+	 */
+	buttons: ThemeColor | null,
+	/**  The Call to action box; primary if empty. */
+	call_to_action: Surface | null,
+	/**  A Hero without an image; secondary if empty. */
+	hero: Surface | null,
+	/**
+	 *  Columns drawn as a box; plain (the page background, a border) if
+	 *  empty.
+	 */
+	boxes: Surface | null,
+	/**
+	 *  The page background behind the content, a light tint of the color;
+	 *  plain if empty.
+	 */
+	content: Surface | null,
+	/**  The footer; accent if empty. */
+	footer: Surface | null,
+};
+
 /**  One column: an optional title above its blocks. */
 export type Column = {
 	title: string | null,
@@ -727,6 +758,8 @@ export type SiteConfig_Deserialize = {
 	navigation?: Navigation,
 	/**  The header: plain, or a full-width bar in one of the theme's colors. */
 	header?: HeaderStyle,
+	/**  Which theme color goes where: links, buttons, boxes, backgrounds. */
+	colors?: Colors,
 	/**  How tall the logo is in the header. */
 	logo_size?: LogoSize,
 	/**  How wide header, content and footer get on large screens. */
@@ -780,6 +813,8 @@ export type SiteConfig_Serialize = {
 	navigation: Navigation,
 	/**  The header: plain, or a full-width bar in one of the theme's colors. */
 	header: HeaderStyle,
+	/**  Which theme color goes where: links, buttons, boxes, backgrounds. */
+	colors?: Colors,
 	/**  How tall the logo is in the header. */
 	logo_size: LogoSize,
 	/**  How wide header, content and footer get on large screens. */
@@ -837,6 +872,12 @@ export type Site_Serialize = {
 export type Stage = "connecting" | "comparing" | "uploading" | "deleting" | "done";
 
 /**
+ *  What an area is filled with: the page background (plain), a shade
+ *  darker (shaded), or one of the theme's colors.
+ */
+export type Surface = "plain" | "shaded" | "primary" | "secondary" | "accent" | "neutral";
+
+/**
  *  One place to publish to. Tagged by `kind`, so more kinds (GitHub Pages)
  *  can be added later.
  */
@@ -860,6 +901,9 @@ export type TextImage = {
 	alt: string | null,
 	image_side?: Side,
 };
+
+/**  One of the theme's four colors. */
+export type ThemeColor = "primary" | "secondary" | "accent" | "neutral";
 
 /**  One CSS variable a custom theme sets. */
 export type ThemeVariable = {

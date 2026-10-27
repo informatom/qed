@@ -34,7 +34,8 @@ use crate::markdown::TextMedia;
 use crate::media::CLUTTER;
 use crate::page::Menu;
 use crate::site::{
-    ASSETS_DIR, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
+    ASSETS_DIR, Colors, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
+    Surface, ThemeColor,
 };
 use crate::site::{LogoSize, PageWidth};
 use crate::slug::slugify;
@@ -151,7 +152,9 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             Vec::new()
         }
     };
+    let colors = color_classes(&site.config.colors);
     let context = Context {
+        colors: &colors,
         root: &site.root,
         images: &images,
         site_icons: &site_icons,
@@ -353,6 +356,8 @@ struct Context<'a> {
     language: &'a str,
     /// Rendering the footer: lists come out compact, as plain links.
     footer: bool,
+    /// The site's color choices, as classes.
+    colors: &'a ColorClasses,
 }
 
 impl Context<'_> {
@@ -731,6 +736,7 @@ fn escape_xml(text: &str) -> String {
 #[template(path = "page.html")]
 struct PageTemplate<'a> {
     site: &'a SiteConfig,
+    colors: &'a ColorClasses,
     title: &'a str,
     description: Option<&'a str>,
     canonical: Option<String>,
@@ -828,6 +834,81 @@ fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
     HeaderClasses { bar, current, logo }
 }
 
+/// The site's color choices (`[colors]` in `site.toml`) as the classes
+/// the templates use.
+struct ColorClasses {
+    /// On `<body>`: the content background and the links' color.
+    body: String,
+    footer: &'static str,
+    hero: &'static str,
+    hero_button: &'static str,
+    /// For a Hero with a background image: any color stands out on it.
+    image_button: &'static str,
+    call_to_action: &'static str,
+    call_to_action_button: &'static str,
+    boxed: &'static str,
+}
+
+/// Whole class names throughout, so Tailwind finds them when it scans this
+/// file. A colored area gets `on-color`: Markdown text in it takes the
+/// area's text color (site.input.css).
+fn color_classes(colors: &Colors) -> ColorClasses {
+    let buttons = colors.buttons.unwrap_or(ThemeColor::Primary);
+    // A button on a box of its own color would vanish: it's drawn plain.
+    let button_on = |surface: Surface| {
+        if surface.color() == Some(buttons) {
+            "btn"
+        } else {
+            match buttons {
+                ThemeColor::Primary => "btn btn-primary",
+                ThemeColor::Secondary => "btn btn-secondary",
+                ThemeColor::Accent => "btn btn-accent",
+                ThemeColor::Neutral => "btn btn-neutral",
+            }
+        }
+    };
+    let filled = |surface: Surface| match surface {
+        Surface::Plain => "border border-base-300 bg-base-100 text-base-content",
+        Surface::Shaded => "bg-base-200 text-base-content",
+        Surface::Primary => "on-color bg-primary text-primary-content",
+        Surface::Secondary => "on-color bg-secondary text-secondary-content",
+        Surface::Accent => "on-color bg-accent text-accent-content",
+        Surface::Neutral => "on-color bg-neutral text-neutral-content",
+    };
+    let hero = colors.hero.unwrap_or(Surface::Secondary);
+    let call_to_action = colors.call_to_action.unwrap_or(Surface::Primary);
+    let content = match colors.content.unwrap_or(Surface::Plain) {
+        Surface::Plain => "bg-base-100",
+        Surface::Shaded => "bg-base-200",
+        Surface::Primary => "content-primary",
+        Surface::Secondary => "content-secondary",
+        Surface::Accent => "content-accent",
+        Surface::Neutral => "content-neutral",
+    };
+    let links = match colors.links.unwrap_or(ThemeColor::Primary) {
+        ThemeColor::Primary => "",
+        ThemeColor::Secondary => " links-secondary",
+        ThemeColor::Accent => " links-accent",
+        ThemeColor::Neutral => " links-neutral",
+    };
+    ColorClasses {
+        body: format!("{content}{links}"),
+        footer: match colors.footer.unwrap_or(Surface::Accent) {
+            Surface::Plain => "border-t border-base-300 bg-base-100 text-base-content",
+            other => filled(other),
+        },
+        hero: filled(hero),
+        hero_button: button_on(hero),
+        image_button: button_on(Surface::Plain),
+        call_to_action: filled(call_to_action),
+        call_to_action_button: button_on(call_to_action),
+        boxed: match colors.boxes.unwrap_or(Surface::Plain) {
+            Surface::Plain => "border border-base-300 bg-base-100 shadow-sm",
+            other => filled(other),
+        },
+    }
+}
+
 /// One block, rendered on its own so columns can hold blocks.
 #[derive(Template)]
 #[template(path = "block.html")]
@@ -840,6 +921,7 @@ struct BlockTemplate<'a> {
     rss_icon: &'static str,
     /// The label of the button that closes an image shown big.
     close: &'static str,
+    colors: &'a ColorClasses,
 }
 
 /// Images open big when they are this much wider than their place: an
@@ -1214,6 +1296,7 @@ fn render_page(
     };
     let sidebar = config.navigation == Navigation::Sidebar && !main_links.is_empty();
     let template = PageTemplate {
+        colors: context.colors,
         site: config,
         title: &front.title,
         description: front.description.as_deref(),
@@ -1349,6 +1432,7 @@ fn render_html(
         half_sizes,
         rss_icon: RSS_ICON,
         close: close_label(context.language),
+        colors: context.colors,
     }
     .render()
 }
@@ -2673,6 +2757,69 @@ mod tests {
     }
 
     #[test]
+    fn uses_the_chosen_theme_colors() {
+        let defaults = color_classes(&Colors::default());
+        assert_eq!(
+            defaults.body, "bg-base-100",
+            "links in primary need no class"
+        );
+        assert_eq!(defaults.footer, "on-color bg-accent text-accent-content");
+        assert_eq!(defaults.hero_button, "btn btn-primary");
+        assert_eq!(
+            defaults.call_to_action_button, "btn",
+            "plain on its primary box"
+        );
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.colors = Colors {
+            links: Some(ThemeColor::Accent),
+            buttons: Some(ThemeColor::Secondary),
+            hero: Some(Surface::Secondary),
+            content: Some(Surface::Primary),
+            footer: Some(Surface::Plain),
+            ..Colors::default()
+        };
+        let home = site.pages.iter_mut().find(|p| p.path.is_empty()).unwrap();
+        home.content.blocks.push(Block::Hero(block::Hero {
+            headline: Some("Hi".into()),
+            button_label: Some("Go".into()),
+            button_link: Some("/blog".into()),
+            ..block::Hero::default()
+        }));
+        home.content
+            .blocks
+            .push(Block::CallToAction(block::CallToAction {
+                headline: Some("Join".into()),
+                button_label: Some("Now".into()),
+                button_link: Some("/blog".into()),
+                ..block::CallToAction::default()
+            }));
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let html = read(out.path().join("index.html"));
+        assert!(html.contains("content-primary links-accent"), "{html}");
+        assert!(
+            html.contains(
+                r#"<footer class="border-t border-base-300 bg-base-100 text-base-content">"#
+            ),
+            "{html}"
+        );
+        assert!(
+            html.contains("on-color bg-secondary text-secondary-content"),
+            "the hero: {html}"
+        );
+        assert!(
+            html.contains(r#"class="btn mt-8""#),
+            "a secondary button on the secondary hero is plain: {html}"
+        );
+        assert!(
+            html.contains(r#"class="btn btn-secondary">Now</a>"#),
+            "on the primary box: {html}"
+        );
+    }
+
+    #[test]
     fn shows_shared_blocks_with_each_pages_links() {
         let dir = tempfile::tempdir().unwrap();
         let site = blog(dir.path());
@@ -2824,7 +2971,7 @@ mod tests {
             "{home}"
         );
         assert_eq!(
-            home.matches("rounded-box border border-base-300 bg-base-100 p-6")
+            home.matches("rounded-box p-6 border border-base-300 bg-base-100 shadow-sm")
                 .count(),
             1,
             "one boxed column: {home}"

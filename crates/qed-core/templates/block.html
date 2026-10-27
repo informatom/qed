@@ -35,7 +35,7 @@
 {%- when RenderedBlock::Text with { html } %}
 <div class="prose max-w-none">{{ html|safe }}</div>
 {%- when RenderedBlock::Hero with { image, headline, text_html, button } %}
-<section class="hero relative min-h-80 overflow-hidden rounded-box {% if image.is_some() %}text-neutral-content{% else %}bg-secondary text-secondary-content{% endif %}">
+<section class="hero relative min-h-80 overflow-hidden rounded-box {% if image.is_some() %}text-neutral-content{% else %}{{ colors.hero }}{% endif %}">
   {%- if let Some(image) = image %}
   {%- call img(image, "absolute inset-0 h-full w-full object-cover", full_sizes, "eager") %}{% endcall %}
   <div class="hero-overlay absolute inset-0"></div>
@@ -46,10 +46,10 @@
       <h1 class="text-4xl font-bold tracking-tight text-balance sm:text-5xl">{{ headline }}</h1>
       {%- endif %}
       {%- if let Some(text_html) = text_html %}
-      <div class="prose mt-5 max-w-none text-lg {% if image.is_some() %}text-neutral-content{% else %}text-secondary-content{% endif %}">{{ text_html|safe }}</div>
+      <div class="prose mt-5 max-w-none text-lg{% if image.is_some() %} text-neutral-content{% endif %}">{{ text_html|safe }}</div>
       {%- endif %}
       {%- if let Some(button) = button %}
-      <a href="{{ button.href }}" class="btn btn-primary mt-8">{{ button.label }}</a>
+      <a href="{{ button.href }}" class="{% if image.is_some() %}{{ colors.image_button }}{% else %}{{ colors.hero_button }}{% endif %} mt-8">{{ button.label }}</a>
       {%- endif %}
     </div>
   </div>
@@ -113,7 +113,7 @@
 {%- when RenderedBlock::Columns with { grid, style, columns } %}
 <section class="grid gap-8 {{ grid }}"{% if let Some(style) = style %} style="{{ style }}"{% endif %}>
   {%- for column in columns %}
-  <div class="flex flex-col gap-4{% if column.boxed %} rounded-box border border-base-300 bg-base-100 p-6 shadow-sm{% endif %}">
+  <div class="flex flex-col gap-4{% if column.boxed %} rounded-box p-6 {{ colors.boxed }}{% endif %}">
     {%- if let Some(title) = column.title %}
     <h2 class="text-xl font-semibold tracking-tight">{{ title }}</h2>
     {%- endif %}
@@ -124,7 +124,7 @@
   {%- endfor %}
 </section>
 {%- when RenderedBlock::CallToAction with { headline, text_html, button } %}
-<section class="card bg-primary text-primary-content">
+<section class="card {{ colors.call_to_action }}">
   <div class="card-body items-center gap-4 text-center sm:py-10">
     {%- if let Some(headline) = headline %}
     <h2 class="card-title text-2xl">{{ headline }}</h2>
@@ -134,7 +134,7 @@
     {%- endif %}
     {%- if let Some(button) = button %}
     <div class="card-actions mt-2">
-      <a href="{{ button.href }}" class="btn">{{ button.label }}</a>
+      <a href="{{ button.href }}" class="{{ colors.call_to_action_button }}">{{ button.label }}</a>
     </div>
     {%- endif %}
   </div>

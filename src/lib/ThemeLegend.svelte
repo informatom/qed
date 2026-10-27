@@ -1,6 +1,7 @@
 <script lang="ts">
   import SiteSketch from "$lib/SiteSketch.svelte";
-  import type { HeaderStyle, ThemeVariable } from "$lib/site";
+  import type { Colors, HeaderStyle, ThemeVariable } from "$lib/site";
+  import { usesOf } from "$lib/siteColors";
 
   interface Props {
     /** The site's theme; the legend is drawn in it. */
@@ -10,19 +11,20 @@
     /** The name to show, e.g. "custom". */
     label?: string;
     header?: HeaderStyle;
+    colors?: Colors;
   }
 
-  let { theme, variables = [], label = theme, header = "plain" }: Props = $props();
+  let { theme, variables = [], label = theme, header = "plain", colors }: Props = $props();
   // Inline variables win over the theme's own, as `:root[data-theme]` does on the site.
   let style = $derived(variables.map((v) => `${v.name}: ${v.value}`).join("; "));
 
   /** The swatches in ThemePicker, left to right, and where generated sites use them. */
-  const LEGEND = [
-    { color: "Primary", swatch: "bg-primary text-primary-content", uses: "Buttons, Call to action box, current page in the top menu, underline of links in text; the header bar if chosen" },
-    { color: "Secondary", swatch: "bg-secondary text-secondary-content", uses: "Hero without an image, dates in Post lists; the header bar if chosen" },
-    { color: "Accent", swatch: "bg-accent text-accent-content", uses: "Footer, stripe along the top of a plain header, bar beside quotes; the header bar if chosen" },
-    { color: "Neutral", swatch: "bg-neutral text-neutral-content", uses: "Current page in the sidebar menu, file type in Download blocks; the header bar if chosen" },
-  ];
+  let LEGEND = $derived([
+    { color: "Primary", swatch: "bg-primary text-primary-content", uses: usesOf("primary", colors, header) },
+    { color: "Secondary", swatch: "bg-secondary text-secondary-content", uses: usesOf("secondary", colors, header) },
+    { color: "Accent", swatch: "bg-accent text-accent-content", uses: usesOf("accent", colors, header) },
+    { color: "Neutral", swatch: "bg-neutral text-neutral-content", uses: usesOf("neutral", colors, header) },
+  ]);
 </script>
 
 <!-- What the four swatches in the theme picker stand for. The box keeps the
@@ -32,7 +34,7 @@
   <span class="font-medium">Where the theme's colors go <span class="font-normal text-base-content/60">· {label}</span></span>
   <div class="grid items-start gap-4 @lg:grid-cols-[minmax(0,15rem)_1fr]">
     <div data-theme={theme} {style} class="bg-transparent">
-      <SiteSketch {header} />
+      <SiteSketch {header} {colors} />
     </div>
     <div class="flex flex-col gap-3">
     {#each LEGEND as entry, i (entry.color)}
@@ -40,7 +42,7 @@
         <span data-theme={theme} {style} class={["mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-field text-[0.65rem] font-semibold", entry.swatch]}>{i + 1}</span>
         <span class="flex flex-col">
           <span class="font-medium">{entry.color}</span>
-          <span class="text-base-content/70">{entry.uses}</span>
+          <span class="text-base-content/70 first-letter:uppercase">{entry.uses}</span>
         </span>
       </div>
     {/each}

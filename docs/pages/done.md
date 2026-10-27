@@ -467,6 +467,29 @@ rest is done.
   reordered. The logic is in `src/lib/pageTree.ts` (`treeOrder`,
   `planDrop`).
 
+- **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
+  *Themes done 2026-10-21*: Site settings dialog edits `site.toml` (title,
+  description, language, web address, theme); the app has its own theme
+  (App settings, per computer, can follow the system). *Logo done
+  2026-10-22*: `logo` in `site.toml` (Site settings, image picker) shows
+  before the title in every page's header and is the browser-tab icon
+  (`<link rel="icon">`); the media library marks it "Site logo" and won't
+  delete it. *Theme colors done 2026-10-27*: sites use all four theme
+  colors (primary: buttons, Call to action, current menu page, link
+  underlines; secondary: Hero without image, post dates; accent: stripe at
+  the top, quote bars; neutral: footer, sidebar's current page, file
+  types), and Site settings explains them in a legend beside the theme
+  switcher; a picked theme saves at once. *Header bar done 2026-10-27*:
+  `header` in `site.toml` (plain, primary, secondary, accent, neutral); a colored bar
+  underlines the current page and gives the logo a light backing. Fonts:
+  #102 (done). *Colors per element done 2026-10-27*: `[colors]` in
+  `site.toml` (links, buttons, Hero, Call to action, boxed columns,
+  content background as a light tint, footer), each a theme color (or
+  plain/shaded for areas); empty means the old default; a button on a box
+  of its own color is drawn plain; the legend and sketch in Site → Theme
+  follow. *Closed 2026-10-27*: no other options planned; the Colors section
+  has a Reset button.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

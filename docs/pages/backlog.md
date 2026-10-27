@@ -44,22 +44,6 @@ over by hand.
   from the new `image` page setting ("Share image") or the page's first
   image (smallest copy at least 1200 px wide, else the original), only with `base_url`. Still open: copying only the
   media files that are used, and links that leave the site folder.
-- **#054 Theme options.** Per site: daisyUI theme, logo, a few options.
-  *Themes done 2026-10-21*: Site settings dialog edits `site.toml` (title,
-  description, language, web address, theme); the app has its own theme
-  (App settings, per computer, can follow the system). *Logo done
-  2026-10-22*: `logo` in `site.toml` (Site settings, image picker) shows
-  before the title in every page's header and is the browser-tab icon
-  (`<link rel="icon">`); the media library marks it "Site logo" and won't
-  delete it. *Theme colors done 2026-10-27*: sites use all four theme
-  colors (primary: buttons, Call to action, current menu page, link
-  underlines; secondary: Hero without image, post dates; accent: stripe at
-  the top, quote bars; neutral: footer, sidebar's current page, file
-  types), and Site settings explains them in a legend beside the theme
-  switcher; a picked theme saves at once. *Header bar done 2026-10-27*:
-  `header` in `site.toml` (plain, primary, secondary, accent, neutral); a colored bar
-  underlines the current page and gives the logo a light backing. Fonts:
-  #102 (done). Other options are still open.
 - **#032 Publish history.** Record each publish run per target as a git tag
   (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
   #073); the log and a list of publishes per target are still open.

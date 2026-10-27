@@ -9,7 +9,8 @@
   import FontPicker from "$lib/FontPicker.svelte";
   import ThemeLegend from "$lib/ThemeLegend.svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
-  import { commands, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type ThemeVariable } from "$lib/site";
+  import { commands, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type Surface, type ThemeVariable } from "$lib/site";
+  import { COLOR_SETTINGS, colorOf, SURFACES, THEME_COLORS, type ColorSetting } from "$lib/siteColors";
 
   interface Props {
     site: Site;
@@ -41,6 +42,41 @@
     { value: "accent", label: "Accent" },
     { value: "neutral", label: "Neutral" },
   ];
+
+  /** A small square of each choice, drawn in the site's theme. */
+  const SWATCHES: Record<Surface, string> = {
+    plain: "bg-base-100",
+    shaded: "bg-base-200",
+    primary: "bg-primary",
+    secondary: "bg-secondary",
+    accent: "bg-accent",
+    neutral: "bg-neutral",
+  };
+  // The theme the swatches are drawn in, as the legend does.
+  let swatchTheme = $derived(isCustom && draft ? draft.from : site.config.theme);
+  let swatchStyle = $derived(variables.map((v) => `${v.name}: ${v.value}`).join("; "));
+
+  // The default is saved as nothing, so site.toml only names what was changed.
+  function setColor(setting: ColorSetting, value: Surface) {
+    if (colorOf(site.config.colors, setting.key) === value) return;
+    const colors = { ...$state.snapshot(site.config.colors ?? {}), [setting.key]: value === setting.fallback ? null : value };
+    save({ ...$state.snapshot(site.config), colors: colors as SiteConfig["colors"] });
+  }
+
+  /** Whether any color, the header included, differs from its default. */
+  let colorsChanged = $derived(
+    site.config.header !== "plain" || COLOR_SETTINGS.some((setting) => colorOf(site.config.colors, setting.key) !== setting.fallback),
+  );
+
+  async function resetColors() {
+    const sure = await ask("Set the header and all colors back to their defaults?", {
+      title: "Reset colors",
+      kind: "warning",
+      okLabel: "Reset",
+      cancelLabel: "Keep",
+    });
+    if (sure) save({ ...$state.snapshot(site.config), header: "plain", colors: {} as SiteConfig["colors"] });
+  }
 
   const CORNERS: { value: Corners | null; label: string }[] = [
     { value: null, label: "From the theme" },
@@ -247,19 +283,50 @@
       <div role="alert" class="alert alert-error alert-soft text-sm">{error}</div>
     {/if}
 
-    <div id="header-style" class="flex flex-wrap items-center gap-3 text-sm">
-      <span class="font-medium">Header</span>
-      <div class="join">
-        {#each HEADERS as option (option.value)}
-          <button type="button" id="header-{option.value}"
-            class={["btn join-item btn-sm", site.config.header === option.value && "btn-active"]}
-            onclick={() => site.config.header !== option.value && save({ ...$state.snapshot(site.config), header: option.value })}>
-            {option.label}
-          </button>
+    {#snippet swatch(value: Surface)}
+      <span data-theme={swatchTheme} style={swatchStyle} class={["size-3 shrink-0 rounded-sm border border-black/20", SWATCHES[value]]}></span>
+    {/snippet}
+
+    <section id="site-colors" class="flex flex-col gap-2 rounded-box border border-base-300 p-3 text-sm">
+      <div class="flex items-center justify-between gap-2">
+        <span class="font-medium">Colors</span>
+        <button type="button" id="reset-colors" class="btn btn-ghost btn-xs" disabled={!colorsChanged}
+          title="The header and every color back to the defaults" onclick={resetColors}>
+          <RotateCcw class="size-3.5" /> Reset
+        </button>
+      </div>
+      <div class="grid items-center gap-x-3 gap-y-2 @container sm:grid-cols-[9rem_1fr]">
+        <span id="header-style" class="text-base-content/80">Header</span>
+        <div class="join flex-wrap">
+          {#each HEADERS as option (option.value)}
+            <button type="button" id="header-{option.value}"
+              class={["btn join-item btn-xs gap-1.5", site.config.header === option.value && "btn-active"]}
+              onclick={() => site.config.header !== option.value && save({ ...$state.snapshot(site.config), header: option.value })}>
+              {@render swatch(option.value)}{option.label}
+            </button>
+          {/each}
+        </div>
+        {#each COLOR_SETTINGS as setting (setting.key)}
+          {@const current = colorOf(site.config.colors, setting.key)}
+          <span class="text-base-content/80">{setting.label}</span>
+          <div id="color-{setting.key}" class="join flex-wrap">
+            {#each setting.surface ? SURFACES : THEME_COLORS as value (value)}
+              <button type="button" id="color-{setting.key}-{value}"
+                class={["btn join-item btn-xs gap-1.5 capitalize", current === value && "btn-active"]}
+                title={value === setting.fallback ? "The default" : undefined}
+                onclick={() => setColor(setting, value)}>
+                {@render swatch(value)}{value}
+              </button>
+            {/each}
+          </div>
         {/each}
       </div>
-      <span class="text-xs text-base-content/60">Plain, or a full-width bar in one of the theme's colors.</span>
-    </div>
+      <p class="text-xs text-base-content/60">
+        Which of the theme's colors goes where; the legend shows the result. Plain is the page background, shaded a
+        shade darker. The content background takes a light tint of the color, so text stays readable. A button on a box
+        of its own color is drawn plain.
+      </p>
+    </section>
 
     <section id="site-fonts" class="flex flex-col gap-3 rounded-box border border-base-300 p-3">
       <span class="font-medium">Fonts</span>
@@ -382,7 +449,7 @@
 
   <!-- Stays in view while the theme list scrolls. -->
   <div class="@container xl:sticky xl:top-4">
-    <ThemeLegend theme={isCustom && draft ? draft.from : site.config.theme} {variables} header={site.config.header}
+    <ThemeLegend theme={isCustom && draft ? draft.from : site.config.theme} {variables} header={site.config.header} colors={site.config.colors}
       label={isCustom && draft ? (draft.name ? `“${draft.name}”, from ${draft.from}` : `custom, from ${draft.from}`) : site.config.theme} />
   </div>
 </div>

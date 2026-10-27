@@ -11,11 +11,21 @@
   themes: all;
 }
 
-/* Theme colors beyond buttons: links in text get a primary underline, quotes
-   an accent bar. Text itself keeps the base color, so it stays readable in
-   every theme. */
+/* Theme colors beyond buttons: links in text get an underline in the
+   site's link color (primary unless `[colors] links` says otherwise),
+   quotes an accent bar. Text itself keeps the base color, so it stays
+   readable in every theme. */
+.links-secondary {
+  --qed-link: var(--color-secondary);
+}
+.links-accent {
+  --qed-link: var(--color-accent);
+}
+.links-neutral {
+  --qed-link: var(--color-neutral);
+}
 .prose a {
-  text-decoration-color: var(--color-primary);
+  text-decoration-color: var(--qed-link, var(--color-primary));
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
@@ -23,10 +33,30 @@
   border-inline-start-color: var(--color-accent);
 }
 
-/* The footer's blocks take the footer's colors and size: Markdown text,
-   headings and links in the accent's text color instead of the page's. */
+/* `[colors] content`: the page background tinted with a theme color,
+   light enough for the base text color to stay readable. */
+.content-primary {
+  background-color: color-mix(in oklab, var(--color-primary) 10%, var(--color-base-100));
+}
+.content-secondary {
+  background-color: color-mix(in oklab, var(--color-secondary) 10%, var(--color-base-100));
+}
+.content-accent {
+  background-color: color-mix(in oklab, var(--color-accent) 10%, var(--color-base-100));
+}
+.content-neutral {
+  background-color: color-mix(in oklab, var(--color-neutral) 10%, var(--color-base-100));
+}
+
+/* The footer's blocks, and Markdown on a colored box (`on-color`: a Hero,
+   a Call to action, a boxed column in a theme color), take the area's
+   text color: text, headings and links in the color's own text color
+   instead of the page's. */
 .site-footer .prose {
   font-size: inherit;
+}
+.site-footer .prose,
+.on-color .prose {
   color: inherit;
   --tw-prose-body: currentColor;
   --tw-prose-headings: currentColor;

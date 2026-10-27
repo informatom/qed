@@ -85,7 +85,7 @@
 </li>
 {%- endif %}
 {%- endmacro %}
-<body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased{% if site.mark_external_links %} mark-external{% endif %}">
+<body class="flex min-h-screen flex-col {{ colors.body }} text-base-content antialiased{% if site.mark_external_links %} mark-external{% endif %}">
   <header class="{{ header.bar }}">
     <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
       <a href="{{ home_href }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
@@ -150,7 +150,7 @@
   </div>
   {%- endif %}
 
-  <footer class="bg-accent text-accent-content">
+  <footer class="{{ colors.footer }}">
     {%- if !footer_blocks.is_empty() %}
     <div class="site-footer mx-auto flex w-full {{ width }} flex-col gap-8 px-5 pt-10 text-sm">
       {%- for html in footer_blocks %}
