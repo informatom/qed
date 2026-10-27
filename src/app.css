@@ -7,3 +7,12 @@
 @plugin "daisyui" {
   themes: all;
 }
+
+/* Monospaced text (file names, the text viewer). Tailwind's own list names
+   Mac and Windows fonts only, so on Linux it fell through to DejaVu Sans
+   Mono, which looks bold at small sizes. Linux fonts come before Windows'
+   Consolas, which fontconfig would otherwise map to DejaVu again. */
+@theme {
+  --font-mono: ui-monospace, "SF Mono", Menlo, "Ubuntu Sans Mono", "Ubuntu Mono", "Noto Sans Mono",
+    "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+}

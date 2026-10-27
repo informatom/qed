@@ -80,3 +80,40 @@ their clicks. Visually nothing changes; only where clicks land.
 `col-start-1 row-start-1` puts the content into the same cell as the
 backdrop. daisyUI places the backdrop there explicitly, and CSS grid
 would otherwise move the content to the next free cell, below it.
+
+## A title that shrank to one pixel
+
+Right after the viewers came the first bug report: in the text viewer,
+showing the long source of an old slide show, the title above the text
+was one pixel high. The viewer is a column (`flex flex-col`) of limited
+height, with the title, the text and the Close button:
+
+```svelte
+<div class="modal-box flex max-h-[85vh] flex-col gap-3">
+  <h2 class="truncate …">static/boja-2017/index.html</h2>
+  <pre class="min-h-0 flex-1 overflow-auto …">{text}</pre>
+  …
+</div>
+```
+
+When the content is taller than the box, flexbox shrinks the items to
+make them fit. It normally stops at an item's content: an item's
+smallest size is `min-height: auto`, as tall as what's inside. But
+there is an exception. For an item that hides its overflow, `auto`
+means zero. Tailwind's `truncate` sets `overflow: hidden` (to cut long
+names off with "…"), so the title had no lower limit and gave up all
+its height to the text below.
+([MDN on the automatic minimum size](https://developer.mozilla.org/en-US/docs/Web/CSS/min-height#auto))
+
+The fix is one class: `shrink-0` (`flex-shrink: 0`) tells flexbox not to
+shrink the title at all, and the text area, which has `min-h-0` on
+purpose and scrolls, takes all the shrinking. The PDF viewer got the
+same class.
+
+The same report found a font nobody had chosen. Tailwind's `font-mono`
+lists Mac and Windows fonts (`ui-monospace`, `Menlo`, `Consolas`, …),
+and on Linux none of them exists, so the webview fell back to DejaVu
+Sans Mono, which looks bold at small sizes. `src/app.css` now sets its
+own list in Tailwind's `@theme`, with Linux fonts (`Ubuntu Mono`,
+`Noto Sans Mono`) before Consolas, because Linux's fontconfig would
+otherwise quietly map Consolas to DejaVu Sans Mono again.

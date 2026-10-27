@@ -32,7 +32,7 @@
      a system without a viewer. -->
 <dialog bind:this={dialog} id="pdf-viewer" class="modal" onclose={onclose}>
   <div class="modal-box flex h-[92vh] w-11/12 max-w-6xl flex-col gap-3 p-4">
-    <h2 class="truncate font-mono text-base font-semibold" title={name}>{library}/{name}</h2>
+    <h2 class="shrink-0 truncate font-mono text-base font-semibold" title={name}>{library}/{name}</h2>
     <iframe id="pdf-viewer-frame" src={libraryUrl(siteRoot, library, name)} title={name}
       class="min-h-0 flex-1 rounded-box border border-base-300 bg-base-200"></iframe>
     {#if error}
