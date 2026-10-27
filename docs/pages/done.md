@@ -392,7 +392,10 @@ rest is done.
   Markdown text becomes that icon from q.e.d.'s Lucide set (the same as
   for menu entries), as tall as the letters (`.inline-icon`); not inside
   code, and unknown names stay as written. informatom.com's footer uses
-  phone, mail, message-circle (Lucide has no Mastodon logo) and map.
+  phone, mail, message-circle (Lucide has no Mastodon logo) and map. Fixed
+  along the way: eleven icons (mail, calendar, lock, …) had lost the size
+  of their rectangles when they were copied in, so the rectangles weren't
+  drawn; a test now checks every shape.
 
 ## Dropped
 

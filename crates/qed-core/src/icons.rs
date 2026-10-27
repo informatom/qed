@@ -87,6 +87,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn every_shape_has_its_size() {
+        // Rectangles without width and height (and circles without r)
+        // aren't drawn; an earlier copy of the icons lost them.
+        for (name, svg) in ICONS {
+            for rect in svg.split("<rect").skip(1) {
+                let rect = &rect[..rect.find('>').unwrap()];
+                assert!(
+                    rect.contains("width=") && rect.contains("height="),
+                    "{name}: <rect{rect}>"
+                );
+            }
+            for circle in svg.split("<circle").skip(1) {
+                assert!(
+                    circle[..circle.find('>').unwrap()].contains(" r="),
+                    "{name}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn every_icon_is_an_svg() {
         assert!(ICONS.len() >= 50);
         for (name, svg) in ICONS {
