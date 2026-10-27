@@ -165,7 +165,17 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
                     from: from.to_string(),
                 });
             }
-            let links = LinkContext::new(from, Path::new(""));
+            // An old address of a file (`2016/03/28/easterhegg.html`, as
+            // Jekyll made them) is written as that file; any other one as a
+            // folder with an index.html, like a page.
+            let (folder, file) = match from.strip_suffix(".html") {
+                Some(_) => (
+                    from.rsplit_once('/').map_or("", |(folder, _)| folder),
+                    out_dir.join(from),
+                ),
+                None => (from, page_file(out_dir, from)),
+            };
+            let links = LinkContext::new(folder, Path::new(""));
             let target = links.page(&page.path);
             let html = RedirectTemplate { target: &target }
                 .render()
@@ -173,7 +183,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
                     page: page.path.clone(),
                     source,
                 })?;
-            write(&page_file(out_dir, from), html)?;
+            write(&file, html)?;
             redirects += 1;
         }
     }
@@ -628,8 +638,11 @@ struct PageTemplate<'a> {
     og_type: &'static str,
     /// The image for link previews; only with `base_url`.
     share_image: Option<ShareImage>,
-    /// The site's logo, for the header and the browser tab.
+    /// The site's logo, for the header.
     logo: Option<Picture>,
+    /// The browser-tab icon: `favicon.ico` from `static/` if the site has
+    /// one, else the logo.
+    icon: Option<String>,
     /// The site's RSS feeds, for `<link rel="alternate">` and the footer.
     feeds: Vec<FeedLink>,
     rss_icon: &'static str,
@@ -672,12 +685,14 @@ fn header_classes(style: HeaderStyle) -> HeaderClasses {
     // On a colored bar, primary text would vanish (or not stand out), so
     // the current page is underlined instead.
     const UNDERLINED: &str = "font-semibold underline decoration-2 underline-offset-4";
-    const BACKED: &str = "size-9 object-contain rounded-field bg-base-100 p-0.5";
+    // A fixed height and the width it needs: square logos stay square,
+    // wide ones (a wordmark, a row of icons) get room up to 12rem.
+    const BACKED: &str = "h-9 w-auto max-w-48 object-contain rounded-field bg-base-100 p-0.5";
     match style {
         HeaderStyle::Plain => HeaderClasses {
             bar: "border-t-4 border-b border-t-accent border-b-base-300",
             current: "font-semibold text-primary",
-            logo: "size-9 object-contain",
+            logo: "h-9 w-auto max-w-48 object-contain",
         },
         HeaderStyle::Primary => HeaderClasses {
             bar: "bg-primary text-primary-content",
@@ -920,6 +935,16 @@ fn render_page(
             .logo
             .as_deref()
             .and_then(|name| picture(name, None, &links, context.images)),
+        // A favicon.ico of its own wins: a wide logo makes a poor tab icon.
+        icon: if site.root.join(STATIC_DIR).join("favicon.ico").is_file() {
+            Some(format!("{}favicon.ico", links.to_root()))
+        } else {
+            config
+                .logo
+                .as_deref()
+                .and_then(|name| picture(name, None, &links, context.images))
+                .map(|logo| logo.src)
+        },
         feeds: feeds
             .iter()
             .map(|feed| FeedLink {
@@ -1861,15 +1886,33 @@ mod tests {
             team.contains(r#"<link rel="icon" href="../../media/mark.svg">"#),
             "{team}"
         );
-        assert!(
-            team.contains(
-                r#"<img src="../../media/mark.svg" alt="" class="size-9 object-contain">"#
-            )
-        );
+        assert!(team.contains(
+            r#"<img src="../../media/mark.svg" alt="" class="h-9 w-auto max-w-48 object-contain">"#
+        ));
 
         site.config.logo = None;
         build_into(&site, out.path()).unwrap();
         assert!(!read(out.path().join("index.html")).contains("rel=\"icon\""));
+    }
+
+    #[test]
+    fn prefers_a_favicon_of_its_own_as_the_tab_icon() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.logo = Some("wide.svg".into());
+        fs::create_dir_all(dir.path().join("static")).unwrap();
+        fs::write(dir.path().join("static/favicon.ico"), b"ico").unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let blog = read(out.path().join("blog/index.html"));
+        assert!(
+            blog.contains(r#"<link rel="icon" href="../favicon.ico">"#),
+            "{blog}"
+        );
+        assert!(
+            blog.contains(r#"<img src="../media/wide.svg""#),
+            "logo stays in the header: {blog}"
+        );
     }
 
     #[test]
@@ -2143,6 +2186,31 @@ mod tests {
             home[home.find("<footer").unwrap()..].contains(r#"href="blog/about/""#),
             "{home}"
         );
+    }
+
+    #[test]
+    fn writes_redirects_from_old_html_addresses_as_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        for page in &mut site.pages {
+            if page.path == "blog/2026-01-05-old" {
+                page.content.front.redirect_from = vec![
+                    "/2026/01/05/old.html".into(),
+                    "/old.html".into(),
+                    "/news".into(),
+                ];
+            }
+        }
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let deep = read(out.path().join("2026/01/05/old.html"));
+        assert!(deep.contains("../../../blog/2026-01-05-old/"), "{deep}");
+        let top = read(out.path().join("old.html"));
+        assert!(
+            top.contains(r#"url=blog/2026-01-05-old/""#) || top.contains("blog/2026-01-05-old/"),
+            "{top}"
+        );
+        assert!(out.path().join("news/index.html").is_file());
     }
 
     #[test]

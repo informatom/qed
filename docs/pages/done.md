@@ -226,7 +226,9 @@ rest is done.
   `qed_core::calendar`.
 - **#041 Contributors.** Their own records, linked to episodes (#047).
 - **#042 Redirects.** Keep page redirects; write meta-refresh stubs at old
-  paths.
+  paths. *2026-10-27*: an old address ending in `.html`
+  (`/2016/03/28/easterhegg.html`, as Jekyll made them) is written as that
+  file instead of a folder.
 - **#080 Logo and app icon.** *Done 2026-10-22*: `brand/` holds the
   artwork: `logo-mark.svg` (the Q with the houses, drawn by hand, about
   2 KB), `logo.svg` (mark and wordmark, text as paths), `app-icon.svg`

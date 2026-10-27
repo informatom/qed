@@ -35,8 +35,8 @@
   {%- for feed in feeds %}
   <link rel="alternate" type="application/rss+xml" title="{{ feed.title }}" href="{{ feed.href }}">
   {%- endfor %}
-  {%- if let Some(logo) = logo %}
-  <link rel="icon" href="{{ logo.src }}">
+  {%- if let Some(icon) = icon %}
+  <link rel="icon" href="{{ icon }}">
   {%- endif %}
   <meta name="generator" content="q.e.d.">
   <link rel="stylesheet" href="{{ root }}style.css">

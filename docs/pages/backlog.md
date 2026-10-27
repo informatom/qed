@@ -28,15 +28,24 @@ over by hand.
 - **#093 404 page.** The generator writes `404.html` in the site's look.
 - **#094 Code highlighting.** Colors for fenced code blocks at build time,
   with CSS classes and no JavaScript.
-- **#095 Wide logos.** A logo that's wider than tall (e.g. 249×83) is
-  squeezed into a 36 px square today. Give wide logos their own height in
-  the header, optionally in place of the site title. Found moving
+- **#095 Wide logos.** *Height done 2026-10-27*: the header logo keeps
+  its height (36 px) and takes the width it needs, up to 12rem, so wide
+  logos (waldgruber.at's row of trees) aren't squeezed; a `favicon.ico`
+  in `static/` is the tab icon instead of the logo. Still open: a logo in
+  place of the site title, and a larger logo height. Found moving
   informatom.com.
 - **#096 Hide page title.** A page setting "Show title", for start pages
   that open with their own heading. Today only a start page opening with
   an Image block hides it.
 - **#097 Column widths.** A width choice per Columns block (equal, wide
   left, wide right), e.g. text in two thirds and a photo in one.
+- **#103 Lists with pictures.** Post list and Page list as a grid of
+  cards with each page's image (`image` in its settings), title and
+  summary. waldgruber.at's old start page showed its posts that way, and
+  its Stofftiere overview is a grid of 53 photos with name and place.
+  Found moving waldgruber.at.
+- **#104 New sites in their language.** A new site's placeholder texts
+  ("Welcome to the new site.") in the language chosen for it.
 - **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
   (`docs/notes/cms-handover-qed.md`; its Elixir file map no longer
   applies). *Done 2026-10-21*: nine block types (Text, Hero, Image, Text
