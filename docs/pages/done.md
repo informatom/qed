@@ -506,6 +506,29 @@ rest is done.
   `src/lib/unsaved.svelte.ts`); the window's close request waits for the
   answer (`onCloseRequested`, permission `core:window:allow-destroy`).
 
+- **#032 Publish history.** Record each publish run per target as a git tag
+  (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
+  #073); the log and a list of publishes per target are still open.
+  *Closed 2026-10-27*: written for the multi-user web app (who published
+  what); in the desktop app the Versions tab shows each publish as a tag
+  on its version and progress shows live, which is enough.
+
+- **#033 Images and media library.** Import, tag, search and resize images to
+  WebP; keep PDFs for downloads. Phase 2 adds Apple's cover art rules
+  (1400–3000 px square). *Media library done 2026-10-21*
+  (`qed_core::media`): list with size, dimensions and usage, import with
+  clean names, delete only unused files, image picker, Image block with
+  width/height and lazy loading. Still open: resizing to several sizes
+  with a build cache (#075, done), tags.
+  *Closed 2026-10-27*: tags dropped (a podcaster's site has dozens of
+  images; the Media tab's search by name is enough); Apple's cover art
+  rules moved to #066.
+
+- **#086 Testing on macOS and Windows.** The installers build in CI but
+  were never run on macOS or Windows; friends try them and report back.
+  *Closed 2026-10-27*: no item of its own; testing on macOS and Windows
+  goes on with every release, and problems come back as new items.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

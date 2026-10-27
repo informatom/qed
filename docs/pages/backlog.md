@@ -25,13 +25,6 @@ A complete site builder without podcast features. Decided 2026-10-26: finish
 phase 1 before podcasting, testing it by moving the owner's Jekyll sites
 over by hand.
 
-- **#033 Images and media library.** Import, tag, search and resize images to
-  WebP; keep PDFs for downloads. Phase 2 adds Apple's cover art rules
-  (1400–3000 px square). *Media library done 2026-10-21*
-  (`qed_core::media`): list with size, dimensions and usage, import with
-  clean names, delete only unused files, image picker, Image block with
-  width/height and lazy loading. Still open: resizing to several sizes
-  with a build cache (#075, done), tags.
 - **#026 Site generator.** Render HTML for published pages, posts, menus,
   redirects (meta-refresh stubs) and the sitemap with Rust templates. Copy
   the images used. Rewrite relative links to other `.md` pages into page
@@ -44,17 +37,12 @@ over by hand.
   from the new `image` page setting ("Share image") or the page's first
   image (smallest copy at least 1200 px wide, else the original), only with `base_url`. Still open: copying only the
   media files that are used, and links that leave the site folder.
-- **#032 Publish history.** Record each publish run per target as a git tag
-  (#073) plus a log; show progress live. *Tags done 2026-10-21* (with
-  #073); the log and a list of publishes per target are still open.
-- **#086 Testing on macOS and Windows.** The installers build in CI but
-  were never run on macOS or Windows; friends try them and report back.
-
 ### Phase 2: Podcasting
 
 - **#066 Podcast switch.** Per site; turns on episodes, feed, contributors and
   the podcast fields: type, owner name + email, cover, categories, explicit,
-  `podcast:guid`, funding.
+  `podcast:guid`, funding. The cover and episode images (#067) are checked
+  against Apple's rules: square, 1400–3000 px, JPEG or PNG (from #033).
 - **#067 Episodes.** Season, number, type, image, explicit, guid generated
   once, Markdown shownotes, chapters. Episode pages and the archive at
   `/episodes`.
