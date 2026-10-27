@@ -25,6 +25,9 @@
   import Image from "@lucide/svelte/icons/image";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Settings from "@lucide/svelte/icons/settings";
+  import MenuIcon from "@lucide/svelte/icons/menu";
+  import Palette from "@lucide/svelte/icons/palette";
+  import Upload from "@lucide/svelte/icons/upload";
   import AppSettings from "$lib/AppSettings.svelte";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
@@ -45,6 +48,8 @@
   import GripVertical from "@lucide/svelte/icons/grip-vertical";
   import { edgeScroll, scrollParent } from "$lib/dragScroll";
   import { parentOf, planDrop, treeOrder, type DropPlan, type Zone } from "$lib/pageTree";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { mayDiscardUnsaved, trackUnsaved } from "$lib/unsaved.svelte";
   import { forgetSite, recentSites, rememberSite, reopenOnStart, setSiteClosed } from "$lib/recentSites";
   import {
     commands,
@@ -147,7 +152,7 @@
   let creatingPage = $state(false);
   let creatingSite = $state(false);
   let movingPage = $state(false);
-  let view = $state<"pages" | "media" | "assets" | "static" | "site" | "versions" | "app">("pages");
+  let view = $state<"pages" | "media" | "assets" | "static" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -238,9 +243,13 @@
     if (typeof path === "string") await switchTo(path);
   }
 
-  /** Opens another site, after asking if edits in the open page would be lost. */
+  /** Opens another site, after asking if unsaved edits would be lost. */
   async function switchTo(path: string) {
-    if (!(await mayLeavePage())) return;
+    if (site && site.root !== path) {
+      // Every editor of the old site goes away.
+      if (!(await mayDiscardUnsaved("Open another site"))) return;
+      editorDirty = false;
+    } else if (!(await mayLeavePage())) return;
     if (site && site.root !== path) {
       selectedFile = null;
       unfolded.clear();
@@ -264,7 +273,8 @@
   /** Back to the start screen. The site stays in the recent list, and the
       next start shows the start screen too, until a site is opened. */
   async function closeSite() {
-    if (!(await mayLeavePage())) return;
+    if (!(await mayDiscardUnsaved("Close the site"))) return;
+    editorDirty = false;
     site = null;
     selectedFile = null;
     report = null;
@@ -272,6 +282,28 @@
     if (view !== "app") view = "pages";
     setSiteClosed(true);
   }
+
+  // The open editor counts as unsaved while it has changes, by its name.
+  trackUnsaved(
+    () =>
+      selectedShared
+        ? `the shared block “${selectedShared.front.title}”`
+        : editingFooter
+          ? "the footer"
+          : `the page “${selected?.front.title ?? ""}”`,
+    () => editorDirty,
+  );
+
+  // Closing the window asks first when changes would be lost. Tauri waits
+  // for this handler, then closes the window unless it was prevented.
+  onMount(() => {
+    const stop = getCurrentWindow().onCloseRequested(async (event) => {
+      if (!(await mayDiscardUnsaved("Close q.e.d."))) event.preventDefault();
+    });
+    return () => {
+      stop.then((unlisten) => unlisten());
+    };
+  });
 
   // Reopen the last site once, when the page first appears.
   // Page icons (SVG by name), for the page list.
@@ -530,6 +562,12 @@
         onclick={() => (view = "static")}><FolderTree class="me-1.5 size-4" />Static</button>
       <button type="button" role="tab" id="view-site" class={["tab", view === "site" && "tab-active"]}
         onclick={() => (view = "site")}><Globe class="me-1.5 size-4" />Site</button>
+      <button type="button" role="tab" id="view-menu" class={["tab", view === "menu" && "tab-active"]}
+        onclick={() => (view = "menu")}><MenuIcon class="me-1.5 size-4" />Menu</button>
+      <button type="button" role="tab" id="view-theme" class={["tab", view === "theme" && "tab-active"]}
+        onclick={() => (view = "theme")}><Palette class="me-1.5 size-4" />Theme</button>
+      <button type="button" role="tab" id="view-publish" class={["tab", view === "publish" && "tab-active"]}
+        onclick={() => (view = "publish")}><Upload class="me-1.5 size-4" />Publish</button>
       <button type="button" role="tab" id="view-versions" class={["tab", view === "versions" && "tab-active"]}
         onclick={() => (view = "versions")}><History class="me-1.5 size-4" />Versions</button>
     {/if}
@@ -545,7 +583,7 @@
     <!-- Stays mounted while hidden, so unsaved settings survive a tab switch;
          re-created for another site. -->
     {#key site.root}
-      <div class={["flex flex-col gap-6", view !== "site" && "hidden"]}>
+      <div class={["flex flex-col gap-8", view !== "site" && "hidden"]}>
         <div class="flex flex-wrap items-center gap-3 rounded-box bg-base-200 px-4 py-3">
           <span class="text-sm text-base-content/60">Folder</span>
           <code class="min-w-0 flex-1 truncate font-mono text-sm">{site.root}</code>
@@ -559,7 +597,7 @@
             <FolderPlus class="size-4" /> New site…
           </button>
         </div>
-        <div class="grid items-start gap-8 xl:grid-cols-2">
+        <div class="max-w-4xl">
           <section class="flex flex-col gap-3">
             <h2 class="text-lg font-semibold">Settings</h2>
             <SiteSettings {site} onsaved={(config) => {
@@ -568,32 +606,33 @@
               recent = rememberSite(site.root, config.title);
             }} />
           </section>
-          <div class="flex flex-col gap-8">
-            <section class="flex flex-col gap-3">
-              <div class="flex items-center justify-between gap-2">
-                <h2 class="text-lg font-semibold">Build</h2>
-                <button id="build-site" class="btn btn-sm" onclick={build} disabled={loading || building}>
-                  {#if building}<span class="loading loading-spinner loading-sm"></span>{:else}<Hammer class="size-4" />{/if}
-                  Build
-                </button>
-              </div>
-              <p class="text-sm text-base-content/60">
-                Writes the website into <code>_site/</code> in the site folder, without publishing it. Preview and
-                Publish do this by themselves; this is for looking at the files or uploading them yourself.
-              </p>
-            </section>
-            <PublishPanel {site} ontargets={(targets) => site && (site.targets = targets)} />
-          </div>
         </div>
-        <section class="flex flex-col gap-3 xl:w-1/2 xl:pe-4">
-          <h2 class="text-lg font-semibold">Menu</h2>
-          <MenuEditor {site} onsaved={(config) => site && (site.config = config)} />
-        </section>
-        <section class="flex flex-col gap-3">
-          <h2 class="text-lg font-semibold">Theme</h2>
-          <SiteTheme {site} onsaved={(config) => site && (site.config = config)} />
-        </section>
       </div>
+      <!-- Menu, Theme and Publish have tabs of their own, also kept mounted. -->
+      <div id="site-publish" class={["flex max-w-4xl flex-col gap-8", view !== "publish" && "hidden"]}>
+        <section class="flex flex-col gap-3">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="text-lg font-semibold">Build</h2>
+            <button id="build-site" class="btn btn-sm" onclick={build} disabled={loading || building}>
+              {#if building}<span class="loading loading-spinner loading-sm"></span>{:else}<Hammer class="size-4" />{/if}
+              Build
+            </button>
+          </div>
+          <p class="text-sm text-base-content/60">
+            Writes the website into <code>_site/</code> in the site folder, without publishing it. Preview and
+            Publish do this by themselves; this is for looking at the files or uploading them yourself.
+          </p>
+        </section>
+        <PublishPanel {site} ontargets={(targets) => site && (site.targets = targets)} />
+      </div>
+      <section id="site-menu" class={["flex max-w-4xl flex-col gap-3", view !== "menu" && "hidden"]}>
+        <h2 class="text-lg font-semibold">Menu</h2>
+        <MenuEditor {site} onsaved={(config) => site && (site.config = config)} />
+      </section>
+      <section id="site-theme-tab" class={["flex flex-col gap-3", view !== "theme" && "hidden"]}>
+        <h2 class="text-lg font-semibold">Theme</h2>
+        <SiteTheme {site} onsaved={(config) => site && (site.config = config)} />
+      </section>
     {/key}
 
     {#if view === "media"}

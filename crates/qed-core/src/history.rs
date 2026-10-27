@@ -72,7 +72,7 @@ pub enum HistoryError {
     },
 }
 
-/// What the Site tab shows about the history.
+/// What the Versions tab shows about the history.
 #[derive(Debug, Clone, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct HistoryStatus {

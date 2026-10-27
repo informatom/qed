@@ -231,7 +231,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     {
         if fonts::installed(&site.root, family).is_none() {
             notes.push(format!(
-                "The font \"{family}\" isn't downloaded; the site uses the system font. Download it under Site → Theme → Fonts."
+                "The font \"{family}\" isn't downloaded; the site uses the system font. Download it under Theme → Fonts."
             ));
         }
     }

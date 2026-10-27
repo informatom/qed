@@ -490,6 +490,22 @@ rest is done.
   follow. *Closed 2026-10-27*: no other options planned; the Colors section
   has a Reset button.
 
+- **#121 Menu, Theme and Publish tabs.** *Done 2026-10-27*: the Site tab
+  was long; Menu, Theme and Publish (Build and the publish targets) now
+  have tabs of their own next to it (kept mounted, like Site, so unsaved
+  edits survive switching). Site keeps the folder and the settings. "Show the main menu in a sidebar" moved
+  to the Menu tab and saves at once. Fixed on the way: saving Site
+  settings no longer brings back older colors or menu layout from its own
+  copy of `site.toml`.
+
+- **#122 Warning before losing unsaved changes.** *Done 2026-10-27*:
+  closing the window, opening another site, closing the site and
+  "Install and restart" ask first when something is unsaved: the open
+  page, footer or shared block (content or settings), Site settings or
+  the hand-made menu. Each part reports itself (`trackUnsaved` in
+  `src/lib/unsaved.svelte.ts`); the window's close request waits for the
+  answer (`onCloseRequested`, permission `core:window:allow-destroy`).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

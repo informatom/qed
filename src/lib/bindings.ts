@@ -455,7 +455,7 @@ export type Hero = {
 	button_link: string | null,
 };
 
-/**  What the Site tab shows about the history. */
+/**  What the Versions tab shows about the history. */
 export type HistoryStatus = {
 	/**  Whether the site folder is in a git repository at all. */
 	tracked: boolean,

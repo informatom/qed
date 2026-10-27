@@ -25,7 +25,7 @@
 <section id="app-settings" class="flex flex-col gap-2">
   <h2 class="text-lg font-semibold">Theme of the q.e.d. app</h2>
   <p class="text-sm text-base-content/60">
-    Only for this computer, and applied right away. Each website has its own theme, under Site.
+    Only for this computer, and applied right away. Each website has its own theme, in its Theme tab.
   </p>
   <ThemePicker {themes} bind:value={theme} allowSystem />
 </section>

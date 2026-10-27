@@ -6,6 +6,7 @@
 
 import { getVersion } from "@tauri-apps/api/app";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { mayDiscardUnsaved } from "$lib/unsaved.svelte";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 
 export const updates = $state({
@@ -49,6 +50,7 @@ export async function checkForUpdate(quiet = false) {
 export async function installUpdate() {
   const update = updates.available;
   if (!update) return;
+  if (!(await mayDiscardUnsaved("Install the update and restart"))) return;
   updates.installing = true;
   updates.error = null;
   updates.done = 0;

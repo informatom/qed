@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import ImageField from "$lib/ImageField.svelte";
+  import { trackUnsaved } from "$lib/unsaved.svelte";
   import { commands, type Site, type SiteConfig } from "$lib/site";
 
   interface Props {
@@ -19,16 +20,19 @@
     return text && text.trim() !== "" ? text.trim() : null;
   }
 
-  // What would be saved, and whether it differs from the file. The theme
-  // has its own section (SiteTheme), which saves it by itself.
+  // What would be saved, and whether it differs from the file. Theme and
+  // Menu have their own tabs, which save their settings by themselves; here
+  // they're always taken as saved, never from this form's older copy.
   let edited: SiteConfig = $derived({
     ...form,
     theme: site.config.theme,
     custom_theme: site.config.custom_theme,
     saved_themes: site.config.saved_themes,
     header: site.config.header,
+    colors: site.config.colors,
     fonts: site.config.fonts,
     main_menu: site.config.main_menu,
+    navigation: site.config.navigation,
     title: form.title.trim(),
     language: form.language.trim() || "en",
     description: orNull(form.description),
@@ -36,6 +40,7 @@
     base_url: orNull(form.base_url),
   });
   let changed = $derived(JSON.stringify(edited) !== JSON.stringify(site.config));
+  trackUnsaved(() => "Site settings", () => changed);
 
   async function save(event: SubmitEvent) {
     event.preventDefault();
@@ -53,28 +58,37 @@
   }
 </script>
 
-<form id="site-settings" class="@container flex flex-col gap-4" onsubmit={save}>
-  <div class="grid gap-3 @3xl:grid-cols-[2fr_1fr]">
-    <label class="flex flex-col gap-1">
-      <span class="text-sm font-medium">Title</span>
-      <input id="site-title" class="input w-full" bind:value={form.title} required />
-    </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-sm font-medium">Language <span class="font-normal text-base-content/50">· e.g. en, de, de-AT (Jänner); also for dates</span></span>
-      <input id="site-language" class="input w-full" bind:value={form.language} />
-    </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-sm font-medium">Description</span>
-      <input id="site-description" class="input w-full" bind:value={form.description} placeholder="Shown by search engines" />
-    </label>
-    <label class="flex flex-col gap-1">
-      <span class="text-sm font-medium">Web address <span class="font-normal text-base-content/50">· for the sitemap and feeds</span></span>
-      <input id="site-base-url" class="input w-full" bind:value={form.base_url} placeholder="https://example.com/" />
-    </label>
-  </div>
+{#snippet heading(text: string)}
+  <h3 class="text-xs font-semibold tracking-wide text-base-content/60 uppercase">{text}</h3>
+{/snippet}
 
-  <div id="site-logo" class="flex flex-col gap-1">
-    <span class="text-sm font-medium">Logo <span class="font-normal text-base-content/50">· in the header of every page, and the browser-tab icon unless static/ has a favicon.ico; SVG at best</span></span>
+<!-- Groups with a heading each, divided by thin lines. -->
+<form id="site-settings" class="@container flex flex-col gap-6" onsubmit={save}>
+  <section id="site-general" class="flex flex-col gap-3">
+    {@render heading("General")}
+    <div class="grid gap-x-3 gap-y-4 @3xl:grid-cols-[2fr_1fr]">
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Title</span>
+        <input id="site-title" class="input w-full" bind:value={form.title} required />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Language <span class="font-normal text-base-content/50">· e.g. en, de, de-AT (Jänner); also for dates</span></span>
+        <input id="site-language" class="input w-full" bind:value={form.language} />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Description</span>
+        <input id="site-description" class="input w-full" bind:value={form.description} placeholder="Shown by search engines" />
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Web address <span class="font-normal text-base-content/50">· for the sitemap and feeds</span></span>
+        <input id="site-base-url" class="input w-full" bind:value={form.base_url} placeholder="https://example.com/" />
+      </label>
+    </div>
+  </section>
+
+  <section id="site-logo" class="flex flex-col gap-2 border-t border-base-300 pt-6">
+    {@render heading("Logo")}
+    <p class="text-sm text-base-content/60">In the header of every page, and the browser-tab icon unless static/ has a favicon.ico; SVG at best.</p>
     <ImageField siteRoot={site.root} bind:value={form.logo} />
     {#if form.logo}
       <div class="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -95,45 +109,40 @@
         </label>
       </div>
     {/if}
-  </div>
+  </section>
 
-  <label class="flex items-start gap-3">
-    <input id="site-sidebar" type="checkbox" class="toggle mt-0.5"
-      bind:checked={() => form.navigation === "sidebar", (on) => (form.navigation = on ? "sidebar" : "top")} />
-    <span class="text-sm">
-      Show the main menu in a sidebar
-      <span class="block text-base-content/60">
-        For sites with more menu pages than fit into the top bar. On phones, it becomes a "Menu" box above the content.
+  <section id="site-links" class="flex flex-col gap-3 border-t border-base-300 pt-6">
+    {@render heading("Links")}
+    <label class="flex items-start gap-3">
+      <input id="site-mark-external-links" type="checkbox" class="toggle mt-0.5" bind:checked={form.mark_external_links} />
+      <span class="text-sm">
+        Mark links to other sites
+        <span class="block text-base-content/60">
+          Links in text that lead elsewhere get a small arrow-out-of-a-box icon. Menus and buttons stay as they are.
+        </span>
       </span>
-    </span>
-  </label>
+    </label>
+  </section>
 
-  <label class="flex items-start gap-3">
-    <input id="site-mark-external-links" type="checkbox" class="toggle mt-0.5" bind:checked={form.mark_external_links} />
-    <span class="text-sm">
-      Mark links to other sites
-      <span class="block text-base-content/60">
-        Links in text that lead elsewhere get a small arrow-out-of-a-box icon. Menus and buttons stay as they are.
-      </span>
-    </span>
-  </label>
-
-  <div class="flex flex-wrap items-center gap-3 text-sm">
-    <span class="font-medium">Page width</span>
-    <div class="join">
-      {#each [["normal", "Normal"], ["wide", "Wide"], ["full", "Full"]] as [value, label] (value)}
-        <button type="button" id="page-width-{value}" class={["btn join-item btn-sm", form.page_width === value && "btn-active"]}
-          onclick={() => (form.page_width = value as "normal" | "wide" | "full")}>{label}</button>
-      {/each}
+  <section id="site-layout" class="flex flex-col gap-3 border-t border-base-300 pt-6">
+    {@render heading("Layout")}
+    <div class="flex flex-wrap items-center gap-3 text-sm">
+      <span class="font-medium">Page width</span>
+      <div class="join">
+        {#each [["normal", "Normal"], ["wide", "Wide"], ["full", "Full"]] as [value, label] (value)}
+          <button type="button" id="page-width-{value}" class={["btn join-item btn-sm", form.page_width === value && "btn-active"]}
+            onclick={() => (form.page_width = value as "normal" | "wide" | "full")}>{label}</button>
+        {/each}
+      </div>
+      <span class="text-base-content/60">Normal suits text; Wide gives columns room; Full uses the whole window.</span>
     </div>
-    <span class="text-base-content/60">Normal suits text; Wide gives columns room; Full uses the whole window.</span>
-  </div>
+  </section>
 
   {#if error}
     <div role="alert" class="alert alert-error alert-soft text-sm">{error}</div>
   {/if}
 
-  <div class="flex items-center justify-end gap-2">
+  <div class="flex items-center justify-end gap-2 border-t border-base-300 pt-6">
     {#if changed}
       <span class="text-sm text-warning">Unsaved changes</span>
       <button type="button" class="btn btn-ghost" onclick={() => (form = $state.snapshot(site.config))}>Discard</button>

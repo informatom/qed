@@ -6,6 +6,7 @@
   import Plus from "@lucide/svelte/icons/plus";
   import Trash from "@lucide/svelte/icons/trash";
   import { commands, type Site, type SiteConfig } from "$lib/site";
+  import { trackUnsaved } from "$lib/unsaved.svelte";
 
   interface Props {
     site: Site;
@@ -57,6 +58,7 @@
   let changed = $derived(
     JSON.stringify(clean($state.snapshot(draft))) !== JSON.stringify(clean(fromConfig($state.snapshot(site.config.main_menu)))),
   );
+  trackUnsaved(() => "the menu", () => changed);
 
   // Pages to choose from, by address, start page first.
   let pages = $derived(
@@ -89,6 +91,21 @@
     saving = true;
     error = null;
     const config = { ...$state.snapshot(site.config), main_menu: clean(entries) };
+    try {
+      await commands.saveSiteConfig(site.root, config);
+      onsaved(config);
+    } catch (e) {
+      error = String(e);
+    } finally {
+      saving = false;
+    }
+  }
+
+  // Saved at once, like the choices in the Theme tab.
+  async function saveNavigation(sidebar: boolean) {
+    saving = true;
+    error = null;
+    const config = { ...$state.snapshot(site.config), navigation: sidebar ? ("sidebar" as const) : ("top" as const) };
     try {
       await commands.saveSiteConfig(site.root, config);
       onsaved(config);
@@ -136,6 +153,17 @@
 {/snippet}
 
 <section id="menu-editor" class="flex flex-col gap-3">
+  <label class="flex items-start gap-3 rounded-box border border-base-300 p-3">
+    <input id="site-sidebar" type="checkbox" class="toggle mt-0.5" checked={site.config.navigation === "sidebar"}
+      disabled={saving} onchange={(e) => saveNavigation(e.currentTarget.checked)} />
+    <span class="text-sm">
+      Show the main menu in a sidebar
+      <span class="block text-base-content/60">
+        For sites with more menu pages than fit into the top bar. On phones, it becomes a "Menu" box above the content.
+        Saved at once.
+      </span>
+    </span>
+  </label>
   {#if draft.length === 0}
     <p class="text-sm text-base-content/60">
       The main menu is made from the pages: each page whose Menu setting is “main”, ordered by weight. To arrange it
