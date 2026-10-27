@@ -518,6 +518,12 @@ fn media_name(value: &str) -> Option<String> {
         .then(|| value.to_string())
 }
 
+/// The full path of a file in one of the folders, for opening it in
+/// another app. Only plain names inside the folder (no `..`) are accepted.
+pub fn path_of(root: &Path, library: Library, name: &str) -> Result<PathBuf, SiteError> {
+    file_path(root, library, name)
+}
+
 /// Checks a file name from the UI and returns the file's full path.
 fn file_path(root: &Path, library: Library, name: &str) -> Result<PathBuf, SiteError> {
     let relative = Path::new(name);
@@ -784,6 +790,17 @@ mod tests {
         assert!(!dir.path().join("media/unused.txt").exists());
 
         assert!(delete(&site, Library::Media, "../site.toml").is_err());
+    }
+
+    #[test]
+    fn opens_only_files_inside_the_folder() {
+        let dir = site_dir();
+        assert_eq!(
+            path_of(dir.path(), Library::Media, "team.png").unwrap(),
+            dir.path().join("media/team.png")
+        );
+        assert!(path_of(dir.path(), Library::Media, "../site.toml").is_err());
+        assert!(path_of(dir.path(), Library::Media, "missing.pdf").is_err());
     }
 
     #[test]

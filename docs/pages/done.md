@@ -430,6 +430,13 @@ rest is done.
   dimensions; ← and → step through the images shown (search and folder
   apply), Esc or a click on it or beside it closes it. Not in the image
   picker, where a click still picks.
+- **#119 PDFs in the app.** *Done 2026-10-27*: a click on a PDF in the
+  Assets (or Media, Static) tab shows it in a large window inside the app
+  (`PdfViewer.svelte`, an `<iframe>`): the webview's own viewer, PDF.js in
+  WebKitGTK (2.52 here), Edge's in WebView2, PDFKit on macOS. "Open in PDF
+  app" opens it in the computer's PDF reader, through the new
+  `open_library_file` command, which only opens files inside the site's
+  folders (`media::path_of`).
 
 ## Dropped
 

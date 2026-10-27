@@ -9,6 +9,7 @@
   import Trash from "@lucide/svelte/icons/trash";
   import Upload from "@lucide/svelte/icons/upload";
   import ImageViewer from "$lib/ImageViewer.svelte";
+  import PdfViewer from "$lib/PdfViewer.svelte";
   import TextViewer from "$lib/TextViewer.svelte";
   import { commands, formatSize, libraryUrl, pageLabel, type Library, type MediaFile, type MediaKind } from "$lib/site";
 
@@ -39,6 +40,12 @@
   let reading = $state<string | null>(null);
   /** The image shown big. */
   let viewing = $state<string | null>(null);
+  /** The PDF open in the viewer. */
+  let pdf = $state<string | null>(null);
+
+  function isPdf(name: string): boolean {
+    return name.toLowerCase().endsWith(".pdf");
+  }
   /** In static/: the folder being shown, `""` or `talks/2019/`. */
   let dir = $state("");
   let crumbs = $derived(
@@ -264,19 +271,21 @@
             type="button"
             id="media-file-{file.name}"
             class={["block aspect-[4/3] overflow-hidden rounded-t-box bg-base-200",
-              onpick || file.count !== undefined || file.kind === "text" ? "cursor-pointer"
+              onpick || file.count !== undefined || file.kind === "text" || isPdf(file.name) ? "cursor-pointer"
                 : file.kind === "image" ? "cursor-zoom-in" : "cursor-default"]}
             onclick={() =>
               file.count !== undefined ? openFolder(`${file.name}/`)
                 : onpick ? onpick(file.name)
                 : file.kind === "image" ? (viewing = file.name)
+                : isPdf(file.name) ? (pdf = file.name)
                 : (reading = file.name)}
-            disabled={!onpick && file.count === undefined && file.kind !== "text" && file.kind !== "image"}
+            disabled={!onpick && file.count === undefined && file.kind !== "text" && file.kind !== "image" && !isPdf(file.name)}
             title={file.count !== undefined
               ? `Open ${file.label}`
               : onpick ? `Use ${file.name}`
               : file.kind === "text" ? `Read ${file.name}`
-              : file.kind === "image" ? `Show ${file.name} big` : file.name}
+              : file.kind === "image" ? `Show ${file.name} big`
+              : isPdf(file.name) ? `Read ${file.name}` : file.name}
           >
             {#if file.count !== undefined}
               <span class="flex h-full flex-col items-center justify-center gap-1 text-base-content/40">
@@ -335,6 +344,10 @@
   <ImageViewer {siteRoot} {library} start={viewing}
     images={cards.filter((card) => card.kind === "image" && card.count === undefined)}
     onclose={() => (viewing = null)} />
+{/if}
+
+{#if pdf}
+  <PdfViewer {siteRoot} {library} name={pdf} onclose={() => (pdf = null)} />
 {/if}
 
 {#if reading}

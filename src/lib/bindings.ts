@@ -32,6 +32,11 @@ export const commands = {
 	importStatic: (root: string, folder: string, paths: string[]) => __TAURI_INVOKE<string[]>("import_static", { root, folder, paths }),
 	/**  The text of a file in `media/`, `assets/` or `static/`, to read in the app. */
 	readLibraryFile: (root: string, library: Library, name: string) => __TAURI_INVOKE<string>("read_library_file", { root, library, name }),
+	/**
+	 *  Opens a file in `media/`, `assets/` or `static/` in the computer's app
+	 *  for it (a PDF in the PDF reader).
+	 */
+	openLibraryFile: (root: string, library: Library, name: string) => __TAURI_INVOKE<null>("open_library_file", { root, library, name }),
 	/**  Deletes a file (or a folder in `static/`) that no page uses. */
 	deleteMedia: (root: string, library: Library, name: string) => __TAURI_INVOKE<null>("delete_media", { root, library, name }),
 	/**

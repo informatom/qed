@@ -101,6 +101,23 @@ async fn read_library_file(
     media::read_text(&root, library, &name).map_err(|error| error.to_string())
 }
 
+/// Opens a file in `media/`, `assets/` or `static/` in the computer's app
+/// for it (a PDF in the PDF reader).
+#[tauri::command]
+#[specta::specta]
+async fn open_library_file(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    library: Library,
+    name: String,
+) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let path = media::path_of(&root, library, &name).map_err(|error| error.to_string())?;
+    app.opener()
+        .open_path(path.to_string_lossy(), None::<&str>)
+        .map_err(|error| error.to_string())
+}
+
 /// Copies files or folders into a folder inside `static/` (`""` for the
 /// top); returns their paths there.
 #[tauri::command]
@@ -582,6 +599,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             import_media,
             import_static,
             read_library_file,
+            open_library_file,
             delete_media,
             move_documents_to_assets,
             save_page_settings,
