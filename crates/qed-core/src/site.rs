@@ -586,7 +586,7 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             // that page knows about the list.
             Block::PostList(list) => targets.extend(list.from.as_deref().map(post_list_link)),
             Block::PageList(list) => targets.extend(list.from.as_deref().map(post_list_link)),
-            Block::Gallery(_) | Block::Download(_) | Block::Columns(_) => {}
+            Block::Gallery(_) | Block::Download(_) | Block::Columns(_) | Block::Video(_) => {}
         }
     }
     for text in texts {

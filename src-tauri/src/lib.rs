@@ -17,6 +17,7 @@ use qed_core::sftp::{self, Progress, PublishReport, SftpError};
 use qed_core::site::{self, Page, Site, SiteConfig};
 use qed_core::target::{self, SftpAuth, SftpTarget, Target};
 use qed_core::theme::{CustomTheme, ThemeVariable};
+use qed_core::video::{self, VideoInfo};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
@@ -318,6 +319,18 @@ fn list_icons() -> Vec<(&'static str, &'static str)> {
         .collect()
 }
 
+/// Fetches a video's title and thumbnail (YouTube, Vimeo, PeerTube) and
+/// keeps the thumbnail in `media/`.
+#[tauri::command]
+#[specta::specta]
+async fn fetch_video(root: PathBuf, url: String) -> Result<VideoInfo, String> {
+    let info = video::fetch(&root, &url)
+        .await
+        .map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(info)
+}
+
 /// The CSS variables a custom theme sets, for previews in the app.
 #[tauri::command]
 #[specta::specta]
@@ -539,6 +552,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             save_site_config,
             list_themes,
             custom_theme_variables,
+            fetch_video,
             list_icons,
             save_targets,
             set_target_password,

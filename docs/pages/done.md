@@ -280,6 +280,13 @@ rest is done.
   languages keep `2017-02-24`. Used in post lists and bylines; `<time
   datetime>` keeps the ISO date. podcasterei.at is `de-AT` now, like its
   old template's Jänner.
+- **#100 Video block.** *Done 2026-10-27*: `::: video` with `url`,
+  `title` and `image`. The website shows the thumbnail with a play mark
+  as a link to the video: no iframe, no JavaScript, nothing loaded from
+  the platform until a click. "Get thumbnail and title" in the editor asks
+  YouTube, Vimeo or a PeerTube instance once over oEmbed
+  (`qed_core::video`, reqwest with rustls on ring) and keeps the thumbnail
+  in `media/` (YouTube: the 16:9 `maxresdefault.jpg` when there is one).
 
 ## Dropped
 

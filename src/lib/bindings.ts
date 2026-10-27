@@ -49,6 +49,11 @@ export const commands = {
 	listThemes: () => __TAURI_INVOKE<string[]>("list_themes"),
 	/**  The CSS variables a custom theme sets, for previews in the app. */
 	customThemeVariables: (custom: CustomTheme) => __TAURI_INVOKE<ThemeVariable[]>("custom_theme_variables", { custom }),
+	/**
+	 *  Fetches a video's title and thumbnail (YouTube, Vimeo, PeerTube) and
+	 *  keeps the thumbnail in `media/`.
+	 */
+	fetchVideo: (root: string, url: string) => __TAURI_INVOKE<VideoInfo>("fetch_video", { root, url }),
 	/**  The page icons: names and SVG markup, from qed's built-in set. */
 	listIcons: () => __TAURI_INVOKE<([string, string])[]>("list_icons"),
 	/**  Replaces the site's publish targets in targets.toml. */
@@ -163,7 +168,9 @@ export type Block =
 	type: "post-list",
 } & PostList | {
 	type: "page-list",
-} & PageList;
+} & PageList | {
+	type: "video",
+} & Video;
 
 /**  What a build produced. */
 export type BuildReport = {
@@ -657,5 +664,24 @@ export type Version = {
 	tags: string[],
 	/**  Still open: later saves go into it until it's closed. */
 	open: boolean,
+};
+
+/**
+ *  A video on YouTube, Vimeo or PeerTube, shown as its thumbnail with a
+ *  play mark and linked to the video (see `video.rs`).
+ */
+export type Video = {
+	/**  The video's address on its platform. */
+	url: string | null,
+	title: string | null,
+	/**  The thumbnail's name in `media/`, fetched once. */
+	image: string | null,
+};
+
+/**  What [`fetch`] found for a video. */
+export type VideoInfo = {
+	title: string | null,
+	/**  The thumbnail's name in `media/`. */
+	image: string,
 };
 

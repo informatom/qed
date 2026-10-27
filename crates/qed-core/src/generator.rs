@@ -791,6 +791,13 @@ enum RenderedBlock {
     PageList {
         pages: Vec<PageEntry>,
     },
+    Video {
+        href: String,
+        picture: Option<Picture>,
+        title: Option<String>,
+        /// `YouTube`, `Vimeo`, or a PeerTube instance's host.
+        platform: Option<String>,
+    },
 }
 
 /// The image link previews show, with its full address.
@@ -1131,6 +1138,25 @@ fn render_block(
                     .collect(),
             }
         }
+        Block::Video(video) => match video
+            .url
+            .as_deref()
+            .map(str::trim)
+            .filter(|u| !u.is_empty())
+        {
+            // Without an address there's nothing to link to.
+            None => RenderedBlock::Text {
+                html: String::new(),
+            },
+            Some(url) => RenderedBlock::Video {
+                href: url.to_string(),
+                picture: video.image.as_deref().and_then(|image| {
+                    picture(image, video.title.as_deref(), links, context.images)
+                }),
+                title: video.title.clone().filter(|t| !t.trim().is_empty()),
+                platform: crate::video::host_label(url),
+            },
+        },
         Block::PageList(list) => RenderedBlock::PageList {
             pages: children(context.pages, list_source(&list.from, links))
                 .iter()
@@ -2004,6 +2030,38 @@ mod tests {
         build_on(&site, out.path(), TODAY).unwrap();
         let blog = read(out.path().join("blog/index.html"));
         assert!(blog.contains("border-t-accent"), "{blog}");
+    }
+
+    #[test]
+    fn links_a_video_without_loading_anything_from_its_platform() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"S\"\n");
+        write(
+            "pages/index.md",
+            "+++\ntitle = \"Home\"\n+++\n\n::: video\nurl = \"https://youtu.be/abc\"\ntitle = \"A talk\"\nimage = \"video-a-talk.jpg\"\n:::\n",
+        );
+        let thumbnail = image::RgbImage::new(16, 9);
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        thumbnail
+            .save(dir.path().join("media/video-a-talk.jpg"))
+            .unwrap();
+        let site = site::open(dir.path()).unwrap();
+
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(home.contains(r#"<a href="https://youtu.be/abc""#), "{home}");
+        assert!(home.contains(r#"src="media/video-a-talk.jpg""#), "{home}");
+        assert!(home.contains("A talk</span> · YouTube"), "{home}");
+        assert!(
+            !home.contains("<iframe") && !home.contains("<script"),
+            "{home}"
+        );
     }
 
     #[test]

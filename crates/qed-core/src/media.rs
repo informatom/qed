@@ -206,13 +206,23 @@ pub fn import(root: &Path, library: Library, source: &Path) -> Result<String, Si
         .map(|e| format!(".{}", e.to_string_lossy().to_lowercase()))
         .unwrap_or_default();
 
-    let folder = root.join(library.dir());
-    fs::create_dir_all(&folder).map_err(|source| SiteError::Write {
-        path: folder.clone(),
+    let mut input = fs::File::open(source).map_err(read_error)?;
+    write_unique(&root.join(library.dir()), &stem, &extension, &mut input)
+}
+
+/// Writes `input` into `folder` as `{stem}{extension}`, or with a number
+/// (`{stem}-2{extension}`) if that's taken, and returns the name used.
+/// Never overwrites a file.
+pub(crate) fn write_unique(
+    folder: &Path,
+    stem: &str,
+    extension: &str,
+    input: &mut impl io::Read,
+) -> Result<String, SiteError> {
+    fs::create_dir_all(folder).map_err(|source| SiteError::Write {
+        path: folder.to_path_buf(),
         source,
     })?;
-
-    let mut input = fs::File::open(source).map_err(read_error)?;
     for number in 1.. {
         let name = match number {
             1 => format!("{stem}{extension}"),
@@ -225,7 +235,7 @@ pub fn import(root: &Path, library: Library, source: &Path) -> Result<String, Si
             .open(&target)
         {
             Ok(mut output) => {
-                io::copy(&mut input, &mut output).map_err(|source| SiteError::Write {
+                io::copy(input, &mut output).map_err(|source| SiteError::Write {
                     path: target,
                     source,
                 })?;
@@ -433,6 +443,7 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
                 markdown_texts.extend(cta.text.as_deref());
                 buttons.extend(cta.button_link.as_deref());
             }
+            Block::Video(video) => images.extend(video.image.as_deref().and_then(media_name)),
             Block::PostList(_) | Block::PageList(_) => {}
         }
     }

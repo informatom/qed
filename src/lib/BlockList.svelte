@@ -7,12 +7,13 @@
   import Plus from "@lucide/svelte/icons/plus";
   import Trash from "@lucide/svelte/icons/trash";
   // A component may use itself: each column holds a BlockList of its own.
+  import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import BlockList from "$lib/BlockList.svelte";
   import ImageField from "$lib/ImageField.svelte";
   import { BLOCK_ICONS } from "$lib/icons";
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
   import MediaPicker from "$lib/MediaPicker.svelte";
-  import { BLOCK_NAMES, COLUMN_BLOCK_TYPES, mediaUrl, newBlock, type Block, type BlockType, type Gallery } from "$lib/site";
+  import { BLOCK_NAMES, COLUMN_BLOCK_TYPES, commands, mediaUrl, newBlock, type Block, type BlockType, type Gallery } from "$lib/site";
 
   interface Props {
     /** The blocks being edited; changed in place. */
@@ -25,6 +26,28 @@
   }
 
   let { blocks = $bindable(), siteRoot, types = Object.keys(BLOCK_NAMES) as BlockType[], nested = false }: Props = $props();
+
+  type VideoBlock = Extract<Block, { type: "video" }>;
+  /** Video blocks whose thumbnail is being fetched, and why a fetch failed. */
+  const fetching = new SvelteSet<VideoBlock>();
+  const videoErrors = new SvelteMap<VideoBlock, string>();
+
+  // Asks the platform once for title and thumbnail; the thumbnail lands in
+  // Media. A title typed by hand stays.
+  async function fetchVideo(block: VideoBlock) {
+    if (!block.url) return;
+    fetching.add(block);
+    videoErrors.delete(block);
+    try {
+      const info = await commands.fetchVideo(siteRoot, block.url.trim());
+      block.image = info.image;
+      if (!block.title?.trim()) block.title = info.title;
+    } catch (e) {
+      videoErrors.set(block, String(e));
+    } finally {
+      fetching.delete(block);
+    }
+  }
 
   /** The gallery an image is being picked for, if any. */
   let pickingFor = $state<Gallery | null>(null);
@@ -238,6 +261,36 @@
             <p class="text-sm text-base-content/60 @2xl:col-span-2">
               Lists the pages below that page that have a date, newest first, with date and summary. Posts dated in
               the future appear once the site is built on or after their date.
+            </p>
+          </div>
+        {:else if block.type === "video"}
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-wrap items-end gap-2">
+              <label class="flex min-w-64 flex-1 flex-col gap-1">
+                {@render field("Video address", "on YouTube, Vimeo or PeerTube")}
+                <input class="input w-full font-mono" bind:value={block.url}
+                  placeholder="https://www.youtube.com/watch?v=…" />
+              </label>
+              <button type="button" class="btn" disabled={!block.url?.trim() || fetching.has(block)}
+                onclick={() => block.type === "video" && fetchVideo(block)}>
+                {#if fetching.has(block)}<span class="loading loading-spinner loading-sm"></span>{/if}
+                Get thumbnail and title
+              </button>
+            </div>
+            {#if videoErrors.get(block)}
+              <div role="alert" class="alert alert-error alert-soft text-sm">{videoErrors.get(block)}</div>
+            {/if}
+            <label class="flex flex-col gap-1">
+              {@render field("Title", "shown below the video")}
+              <input class="input w-full" bind:value={block.title} />
+            </label>
+            <div class="flex flex-col gap-1">
+              {@render field("Thumbnail", "fetched once and kept in Media; any image works")}
+              <ImageField {siteRoot} bind:value={block.image} />
+            </div>
+            <p class="text-sm text-base-content/60">
+              Works with YouTube, Vimeo and PeerTube (any instance). The website shows the thumbnail with a play mark and
+              links to the video: no embedded player, nothing loaded from the platform until a visitor clicks.
             </p>
           </div>
         {:else if block.type === "page-list"}

@@ -39,11 +39,6 @@ over by hand.
   an Image block hides it.
 - **#097 Column widths.** A width choice per Columns block (equal, wide
   left, wide right), e.g. text in two thirds and a photo in one.
-- **#100 Video block.** A video from YouTube, Vimeo or PeerTube shown as
-  its thumbnail with a play mark, linking to the video: no iframe, no
-  JavaScript, no tracking until the visitor clicks. The thumbnail is
-  fetched once and kept in `media/`. Found in podcasterei.at's meetup
-  notes (an embedded YouTube playlist).
 - **#102 Fonts.** A font choice per site (text and headings), e.g.
   podcasterei.at's Ubuntu. Self-hosted: the font files are copied into the
   built site, no Google Fonts or other third-party requests. Could sit with

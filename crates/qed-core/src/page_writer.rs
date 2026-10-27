@@ -146,6 +146,7 @@ fn block_document(block: &Block) -> DocumentMut {
         Block::CallToAction(cta) => toml_edit::ser::to_document(cta),
         Block::PostList(list) => toml_edit::ser::to_document(list),
         Block::PageList(list) => toml_edit::ser::to_document(list),
+        Block::Video(video) => toml_edit::ser::to_document(video),
     };
     // Structs of strings always serialize; an empty document is a safe fallback.
     let mut document = document.unwrap_or_default();

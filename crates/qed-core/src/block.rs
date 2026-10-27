@@ -55,6 +55,7 @@ pub enum Block {
     CallToAction(CallToAction),
     PostList(PostList),
     PageList(PageList),
+    Video(Video),
 }
 
 /// A large header: optional background image, headline, text and a button.
@@ -223,6 +224,19 @@ pub struct PageList {
     pub from: Option<String>,
 }
 
+/// A video on YouTube, Vimeo or PeerTube, shown as its thumbnail with a
+/// play mark and linked to the video (see `video.rs`).
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct Video {
+    /// The video's address on its platform.
+    pub url: Option<String>,
+    pub title: Option<String>,
+    /// The thumbnail's name in `media/`, fetched once.
+    pub image: Option<String>,
+}
+
 impl Block {
     /// The name after `:::` in a page file; `None` for plain text.
     pub fn container_type(&self) -> Option<&'static str> {
@@ -238,6 +252,7 @@ impl Block {
             Block::CallToAction(_) => Some("call-to-action"),
             Block::PostList(_) => Some("post-list"),
             Block::PageList(_) => Some("page-list"),
+            Block::Video(_) => Some("video"),
         }
     }
 }
@@ -288,13 +303,14 @@ pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)
         | Block::Download(_)
         | Block::Columns(_)
         | Block::PostList(_)
-        | Block::PageList(_) => {}
+        | Block::PageList(_)
+        | Block::Video(_) => {}
     }
 }
 
 /// The blocks a column can hold, besides text. Hero, Gallery and Columns
 /// need the full width.
-pub const COLUMN_TYPES: [&str; 7] = [
+pub const COLUMN_TYPES: [&str; 8] = [
     "image",
     "text-image",
     "download",
@@ -302,9 +318,10 @@ pub const COLUMN_TYPES: [&str; 7] = [
     "call-to-action",
     "post-list",
     "page-list",
+    "video",
 ];
 
-pub const CONTAINER_TYPES: [&str; 10] = [
+pub const CONTAINER_TYPES: [&str; 11] = [
     "hero",
     "image",
     "text-image",
@@ -315,6 +332,7 @@ pub const CONTAINER_TYPES: [&str; 10] = [
     "call-to-action",
     "post-list",
     "page-list",
+    "video",
 ];
 
 /// Builds a block from a container's type name and its TOML body.
@@ -331,6 +349,7 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
         "call-to-action" => Ok(Block::CallToAction(toml::from_str(toml)?)),
         "post-list" => Ok(Block::PostList(toml::from_str(toml)?)),
         "page-list" => Ok(Block::PageList(toml::from_str(toml)?)),
+        "video" => Ok(Block::Video(toml::from_str(toml)?)),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }
 }
