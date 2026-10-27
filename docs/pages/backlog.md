@@ -32,8 +32,13 @@ over by hand.
   Call to action); the block editor with Content/Versions/Settings tabs
   per page, OverType for Markdown, the image picker (#033), add, remove,
   move up/down, save with `site::save_blocks`, a warning before losing
-  unsaved changes. Still open: a Shared block (one block used on several
-  pages) and drag and drop.
+  unsaved changes. *Shared blocks done 2026-10-27* (`qed_core::shared`):
+  files in `shared/` (title + blocks, no page of their own), shown on a
+  page by a Shared block (`::: shared` / `name = "…"`, also in columns and
+  the footer); the build swaps in the blocks with the page's links and
+  notes missing ones; "Make shared" on any block, a Shared blocks list
+  under the pages, rename, delete only when unused; links in them follow
+  moved pages, their images count as used. Still open: drag and drop.
 - **#033 Images and media library.** Import, tag, search and resize images to
   WebP; keep PDFs for downloads. Phase 2 adds Apple's cover art rules
   (1400–3000 px square). *Media library done 2026-10-21*

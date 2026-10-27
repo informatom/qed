@@ -17,6 +17,7 @@ pub mod page;
 pub mod page_writer;
 pub mod preview;
 pub mod sftp;
+pub mod shared;
 pub mod site;
 pub mod slug;
 pub mod target;

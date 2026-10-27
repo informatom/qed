@@ -112,6 +112,12 @@ pub fn build_into(site: &Site, out_dir: &Path) -> Result<BuildReport, BuildError
 fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, BuildError> {
     prepare_output(out_dir)?;
 
+    // Shared blocks become their pieces' blocks; the rest of the build
+    // sees only ordinary blocks.
+    let mut notes = Vec::new();
+    let expanded = crate::shared::expanded(site, &mut notes);
+    let site = &expanded;
+
     // A page at `404` is the 404 page (see `not_found_page`), not one of
     // the site's pages.
     let published: Vec<&Page> = site
@@ -125,7 +131,6 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     let main_menu = menu(&published, Menu::Main);
     let footer_menu = menu(&published, Menu::Footer);
     // Feeds need full addresses, so only a site with a web address gets them.
-    let mut notes = Vec::new();
     let sources = feed_sources(&published, today);
     let feeds: Vec<Feed> = match &site.config.base_url {
         Some(_) => sources
@@ -1534,6 +1539,10 @@ fn render_block(
                     .collect(),
             }
         }
+        // Replaced by its piece's blocks before rendering (`shared::expanded`).
+        Block::Shared(_) => RenderedBlock::Text {
+            html: String::new(),
+        },
         Block::Video(video) => match video
             .url
             .as_deref()
@@ -2660,6 +2669,40 @@ mod tests {
         assert!(
             home[home.find("<footer").unwrap()..].contains(r#"href="blog/about/""#),
             "{home}"
+        );
+    }
+
+    #[test]
+    fn shows_shared_blocks_with_each_pages_links() {
+        let dir = tempfile::tempdir().unwrap();
+        let site = blog(dir.path());
+        fs::create_dir(dir.path().join("shared")).unwrap();
+        fs::write(
+            dir.path().join("shared/hours.md"),
+            "+++\ntitle = \"Hours\"\n+++\n\nOpen **9–17**, see [the blog](/blog).\n",
+        )
+        .unwrap();
+        let shared = "\n::: shared\nname = \"hours\"\n:::\n\n::: shared\nname = \"gone\"\n:::\n";
+        let old = dir.path().join("pages/blog/2026-01-05-old.md");
+        fs::write(&old, read(old.clone()) + shared).unwrap();
+        let site = site::open(&site.root).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        let report = build_on(&site, out.path(), TODAY).unwrap();
+
+        let post = read(out.path().join("blog/2026-01-05-old/index.html"));
+        assert!(post.contains("Open <strong>9–17</strong>"), "{post}");
+        assert!(
+            post.contains(r#"href="../../blog/""#),
+            "this page's links: {post}"
+        );
+        assert!(
+            !out.path().join("shared").exists(),
+            "pieces aren't pages of their own"
+        );
+        assert!(
+            report.notes.iter().any(|note| note.contains("\"gone\"")),
+            "{:?}",
+            report.notes
         );
     }
 

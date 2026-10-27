@@ -3,6 +3,7 @@
   import ChevronLeft from "@lucide/svelte/icons/chevron-left";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import ChevronUp from "@lucide/svelte/icons/chevron-up";
+  import Component from "@lucide/svelte/icons/component";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
   import Plus from "@lucide/svelte/icons/plus";
   import Trash from "@lucide/svelte/icons/trash";
@@ -13,7 +14,8 @@
   import { BLOCK_ICONS } from "$lib/icons";
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
   import MediaPicker from "$lib/MediaPicker.svelte";
-  import { BLOCK_NAMES, COLUMN_BLOCK_TYPES, commands, mediaUrl, newBlock, type Block, type BlockType, type Gallery } from "$lib/site";
+  import { sharedBlocks } from "$lib/sharedBlocks";
+  import { BLOCK_NAMES, COLUMN_BLOCK_TYPES, commands, mediaUrl, newBlock, sharedName, type Block, type BlockType, type Gallery } from "$lib/site";
 
   interface Props {
     /** The blocks being edited; changed in place. */
@@ -26,6 +28,40 @@
   }
 
   let { blocks = $bindable(), siteRoot, types = Object.keys(BLOCK_NAMES) as BlockType[], nested = false }: Props = $props();
+
+  const shared = sharedBlocks();
+  // A shared block can't hold another one.
+  let offered = $derived(shared?.insidePiece ? types.filter((type) => type !== "shared") : types);
+  let canShare = $derived(shared !== undefined && !shared.insidePiece);
+
+  /** The block "Make shared" was clicked on, its new name, and what went wrong. */
+  let sharing = $state<Block | null>(null);
+  let shareTitle = $state("");
+  let shareError = $state<string | null>(null);
+  let makingShared = $state(false);
+
+  function startSharing(block: Block) {
+    sharing = block;
+    shareTitle = "";
+    shareError = null;
+  }
+
+  // The block moves into a new file in shared/; a Shared block showing that
+  // file takes its place here.
+  async function makeShared(index: number) {
+    if (!shared || !shareTitle.trim()) return;
+    makingShared = true;
+    shareError = null;
+    try {
+      const name = await shared.make(shareTitle, $state.snapshot(blocks[index]));
+      blocks[index] = { type: "shared", name };
+      sharing = null;
+    } catch (e) {
+      shareError = String(e);
+    } finally {
+      makingShared = false;
+    }
+  }
 
   type VideoBlock = Extract<Block, { type: "video" }>;
   /** Video blocks whose thumbnail is being fetched, and why a fetch failed. */
@@ -99,6 +135,10 @@
         <header class="flex items-center gap-2">
           <span class="badge badge-soft gap-1.5"><Icon class="size-3.5" />{BLOCK_NAMES[block.type]}</span>
           <div class="flex-1"></div>
+          {#if canShare && block.type !== "shared"}
+            <button type="button" class="btn btn-ghost btn-xs" title="Move this block into a shared block, to show it on other pages too"
+              onclick={() => startSharing(block)}><Component class="size-3.5" /> Make shared</button>
+          {/if}
           <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move up" aria-label="Move up"
             disabled={index === 0} onclick={() => move(index, -1)}><ChevronUp class="size-4" /></button>
           <button type="button" class="btn btn-ghost btn-xs btn-square" title="Move down" aria-label="Move down"
@@ -106,6 +146,30 @@
           <button type="button" class="btn btn-ghost btn-xs btn-square text-error" title="Remove block" aria-label="Remove block"
             onclick={() => remove(index)}><Trash class="size-4" /></button>
         </header>
+
+        {#if sharing === block}
+          <form class="flex flex-col gap-2 rounded-box border border-primary/40 bg-primary/5 p-3"
+            onsubmit={(e) => {
+              e.preventDefault();
+              makeShared(index);
+            }}>
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- svelte-ignore a11y_autofocus -->
+              <input class="input input-sm min-w-48 flex-1" placeholder="Name, e.g. Opening hours" aria-label="Name of the shared block"
+                bind:value={shareTitle} autofocus />
+              <button type="submit" class="btn btn-primary btn-sm" disabled={!shareTitle.trim() || makingShared}>
+                {#if makingShared}<span class="loading loading-spinner loading-xs"></span>{/if}
+                Make shared
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick={() => (sharing = null)}>Cancel</button>
+            </div>
+            <p class="text-xs text-base-content/60">
+              The block moves into its own file in <code>shared/</code>; here a Shared block shows it. Add it to other
+              pages with Add → Shared block. Save this page to keep the change.
+            </p>
+            {#if shareError}<p role="alert" class="text-sm text-error">{shareError}</p>{/if}
+          </form>
+        {/if}
 
         {#if block.type === "text"}
           <MarkdownEditor bind:value={block.markdown} placeholder="Write in Markdown…" />
@@ -336,6 +400,40 @@
               that page). Pages with a date are posts and left out; a Post list shows those.
             </p>
           </div>
+        {:else if block.type === "shared"}
+          {@const piece = shared?.pieces.find((p) => sharedName(p) === block.name)}
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-wrap items-end gap-2">
+              <label class="flex min-w-64 flex-1 flex-col gap-1">
+                {@render field("Shows", "the same blocks on every page that uses it")}
+                <select class="select w-full" bind:value={block.name}>
+                  <option value={null}>Pick a shared block…</option>
+                  {#each shared?.pieces ?? [] as option (option.file)}
+                    <option value={sharedName(option)}>{option.front.title}</option>
+                  {/each}
+                  {#if block.name && !piece}<option value={block.name}>{block.name} (missing)</option>{/if}
+                </select>
+              </label>
+              <button type="button" class="btn" disabled={!piece}
+                onclick={() => block.type === "shared" && block.name && shared?.open(block.name)}>Edit shared block</button>
+            </div>
+            {#if piece}
+              <div class="flex flex-wrap items-center gap-1">
+                {#each piece.blocks as inner, i (i)}
+                  <span class="badge badge-soft badge-sm">{BLOCK_NAMES[inner.type]}</span>
+                {:else}
+                  <span class="text-sm text-base-content/60">It has no blocks yet.</span>
+                {/each}
+              </div>
+              <p class="text-sm text-base-content/60">Edit it in one place; changes show on every page that uses it.</p>
+            {:else if block.name}
+              <p role="alert" class="text-sm text-error">There's no shared block “{block.name}”; the site shows nothing here.</p>
+            {:else if !shared?.pieces.length}
+              <p class="text-sm text-base-content/60">
+                No shared blocks yet. Use “Make shared” on any block, or “New” under Shared blocks in the page list.
+              </p>
+            {/if}
+          </div>
         {:else if block.type === "hero" || block.type === "call-to-action"}
           <!-- Hero and Call to action share most fields. -->
           <div class="grid gap-3 @2xl:grid-cols-2">
@@ -379,7 +477,7 @@
 
   <div class="flex flex-wrap items-center gap-2">
     <span class="text-sm text-base-content/60">Add:</span>
-    {#each types as type (type)}
+    {#each offered as type (type)}
       {@const Icon = BLOCK_ICONS[type]}
       <button type="button" id={nested ? undefined : `add-${type}`} class={["btn", nested ? "btn-xs" : "btn-sm"]} onclick={() => add(type)}>
         <Icon class="size-4" />

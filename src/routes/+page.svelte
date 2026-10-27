@@ -18,6 +18,10 @@
   import FolderTree from "@lucide/svelte/icons/folder-tree";
   import PanelBottom from "@lucide/svelte/icons/panel-bottom";
   import FooterEditor from "$lib/FooterEditor.svelte";
+  import SharedEditor from "$lib/SharedEditor.svelte";
+  import Component from "@lucide/svelte/icons/component";
+  import Plus from "@lucide/svelte/icons/plus";
+  import { provideSharedBlocks, usesShared } from "$lib/sharedBlocks";
   import Image from "@lucide/svelte/icons/image";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Settings from "@lucide/svelte/icons/settings";
@@ -43,6 +47,7 @@
     commands,
     BLOCK_NAMES,
     pageIcons,
+    sharedName,
     type BuildReport,
     type Page,
     type Site,
@@ -61,7 +66,54 @@
   // The site footer opens like a page, by its file name.
   const FOOTER_FILE = "footer.md";
   let editingFooter = $derived(selectedFile === FOOTER_FILE);
-  let panelOpen = $derived(selected !== null || editingFooter);
+  // So do shared blocks, by their file in shared/.
+  let selectedShared = $derived(site?.shared.find((p) => p.file === selectedFile) ?? null);
+  let panelOpen = $derived(selected !== null || editingFooter || selectedShared !== null);
+
+  /** The pages (and the footer) that show the shared block `name`. */
+  function sharedUsers(name: string): string[] {
+    if (!site) return [];
+    return [...site.pages, ...(site.footer ? [site.footer] : [])]
+      .filter((page) => usesShared(page.blocks, name))
+      .map((page) => page.path);
+  }
+
+  /** Puts a new or saved shared block into the list, in name order. */
+  function replaceShared(piece: Page) {
+    if (!site) return;
+    site.shared = [...site.shared.filter((p) => p.file !== piece.file), piece].sort((a, b) => a.file.localeCompare(b.file));
+  }
+
+  provideSharedBlocks({
+    get pieces() {
+      return site?.shared ?? [];
+    },
+    insidePiece: false,
+    open: (name) => select(`shared/${name}.md`),
+    async make(title, block) {
+      if (!site) throw new Error("no site open");
+      const piece = await commands.createShared(site.root, title, [block]);
+      replaceShared(piece);
+      return sharedName(piece);
+    },
+  });
+
+  // The name typed for a new shared block in the page list, while open.
+  let newSharedTitle = $state<string | null>(null);
+  let newSharedError = $state<string | null>(null);
+
+  async function createShared() {
+    if (!site || !newSharedTitle?.trim()) return;
+    newSharedError = null;
+    try {
+      const piece = await commands.createShared(site.root, newSharedTitle, []);
+      replaceShared(piece);
+      newSharedTitle = null;
+      await select(piece.file);
+    } catch (e) {
+      newSharedError = String(e);
+    }
+  }
   // True while the open page has unsaved changes.
   let editorDirty = $state(false);
 
@@ -134,7 +186,8 @@
     try {
       site = await commands.openSite(path);
       report = null;
-      if (selectedFile !== FOOTER_FILE && !site.pages.some((p) => p.file === selectedFile)) selectedFile = null;
+      const files = [FOOTER_FILE, ...site.pages.map((p) => p.file), ...site.shared.map((p) => p.file)];
+      if (selectedFile !== null && !files.includes(selectedFile)) selectedFile = null;
       recent = rememberSite(path, site.config.title);
       setSiteClosed(false);
     } catch (e) {
@@ -530,6 +583,58 @@
             </button>
           </li>
         {/each}
+        <!-- Shared blocks show on several pages, so they come after them. -->
+        <li id="shared-blocks" class="mt-1 flex items-center gap-1 border-t border-base-300 px-1 pt-2">
+          <span class="flex-1 text-xs font-semibold tracking-wide text-base-content/60 uppercase">Shared blocks</span>
+          <button type="button" id="new-shared" class="btn btn-ghost btn-xs" title="A new shared block: the same blocks on several pages"
+            onclick={() => {
+              newSharedTitle = "";
+              newSharedError = null;
+            }}><Plus class="size-3.5" /> New</button>
+        </li>
+        {#if newSharedTitle !== null}
+          <li class="flex flex-col gap-1 px-1">
+            <form class="flex items-center gap-1"
+              onsubmit={(e) => {
+                e.preventDefault();
+                createShared();
+              }}>
+              <!-- svelte-ignore a11y_autofocus -->
+              <input id="new-shared-title" class="input input-sm min-w-0 flex-1" placeholder="Name, e.g. Opening hours"
+                aria-label="Name of the new shared block" bind:value={newSharedTitle} autofocus />
+              <button type="submit" class="btn btn-primary btn-sm" disabled={!newSharedTitle.trim()}>Create</button>
+              <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Cancel"
+                onclick={() => (newSharedTitle = null)}><X class="size-4" /></button>
+            </form>
+            {#if newSharedError}<p role="alert" class="text-xs text-error">{newSharedError}</p>{/if}
+          </li>
+        {/if}
+        {#each site.shared as piece (piece.file)}
+          {@const users = sharedUsers(sharedName(piece))}
+          <li id="shared-{sharedName(piece)}" class="flex items-center gap-1">
+            <span class="w-6 shrink-0"></span>
+            <button
+              type="button"
+              class={[
+                "flex min-w-0 flex-1 items-center gap-4 rounded-field px-3 py-1 text-left transition-colors",
+                piece.file === selectedFile ? "bg-primary/10" : "hover:bg-base-200",
+              ]}
+              onclick={() => select(piece.file)}
+            >
+              <div class="flex min-w-0 flex-1 flex-col leading-snug">
+                <span class="font-medium"><Component class="me-1 inline size-4 align-[-2px] text-base-content/70" />{piece.front.title}</span>
+                <span class="text-xs text-base-content/60">
+                  {users.length ? `on ${users.length} ${users.length === 1 ? "page" : "pages"}` : "not used yet"}
+                  · {piece.blocks.length} {piece.blocks.length === 1 ? "block" : "blocks"}
+                </span>
+              </div>
+            </button>
+          </li>
+        {:else}
+          {#if newSharedTitle === null}
+            <li class="px-3 pb-1 text-xs text-base-content/50">None yet. “Make shared” on a block makes one.</li>
+          {/if}
+        {/each}
         <!-- The footer is on every page, so it's listed after them. -->
         <li id="page-footer" class="mt-1 flex items-center gap-1 border-t border-base-300 pt-1">
           <span class="w-6 shrink-0"></span>
@@ -555,6 +660,16 @@
         <FooterEditor siteRoot={site.root} saved={site.footer?.blocks ?? []} onclose={() => select(null)}
           bind:dirty={editorDirty}
           onsaved={() => site && load(site.root)} />
+      {/if}
+
+      {#if selectedShared}
+        {#key selectedShared.file}
+          <SharedEditor siteRoot={site.root} piece={selectedShared} usedOn={sharedUsers(sharedName(selectedShared))}
+            bind:dirty={editorDirty}
+            onsaved={replaceShared}
+            ondeleted={pageDeleted}
+            onclose={() => select(null)} />
+        {/key}
       {/if}
 
       {#if selected}

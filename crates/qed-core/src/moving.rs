@@ -126,6 +126,15 @@ pub fn move_page(site: &Site, file: &Path, parent: &str, slug: &str) -> Result<P
             site::update_footer(&site.root, |content| rewrite_links(content, &links))?;
         }
     }
+    // So do the shared pieces.
+    for piece in &site.shared {
+        let links = new_links(piece, &piece.file, false, &new_paths, &new_files);
+        if !links.is_empty() {
+            site::update_part(&site.root, &piece.file, &piece.path, "", |content| {
+                rewrite_links(content, &links)
+            })?;
+        }
+    }
 
     // Then the files.
     for moving in &moves {

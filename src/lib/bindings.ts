@@ -53,6 +53,17 @@ export const commands = {
 	 *  Returns the blocks as they read back.
 	 */
 	saveFooter: (root: string, blocks: Block[]) => __TAURI_INVOKE<Block[]>("save_footer", { root, blocks }),
+	/**
+	 *  Makes a shared piece from these blocks (usually one, from "Make
+	 *  shared"); its name comes from the title.
+	 */
+	createShared: (root: string, title: string, blocks: Block[]) => __TAURI_INVOKE<Page>("create_shared", { root, title, blocks }),
+	/**  Saves a shared piece's blocks and returns it as it reads back. */
+	saveShared: (root: string, name: string, blocks: Block[]) => __TAURI_INVOKE<Page>("save_shared", { root, name, blocks }),
+	/**  Gives a shared piece a new title; its name, which pages use, stays. */
+	renameShared: (root: string, name: string, title: string) => __TAURI_INVOKE<Page>("rename_shared", { root, name, title }),
+	/**  Deletes a shared piece no page uses any more. */
+	deleteShared: (root: string, name: string) => __TAURI_INVOKE<null>("delete_shared", { root, name }),
 	/**  Saves the site's settings into site.toml. */
 	saveSiteConfig: (root: string, config: SiteConfig_Deserialize) => __TAURI_INVOKE<null>("save_site_config", { root, config }),
 	/**  The daisyUI theme names the app and generated sites can use. */
@@ -189,7 +200,9 @@ export type Block =
 	type: "page-list",
 } & PageList | {
 	type: "video",
-} & Video;
+} & Video | {
+	type: "shared",
+} & Shared;
 
 /**  What a build produced. */
 export type BuildReport = {
@@ -644,6 +657,18 @@ export type SftpTarget = {
 	delete_stale?: boolean,
 };
 
+/**
+ *  Stands for the blocks of a shared piece, a file in `shared/` (see
+ *  `shared.rs`): the same blocks on several pages, edited in one place.
+ */
+export type Shared = {
+	/**
+	 *  The piece's file name without `.md`: `opening-hours` for
+	 *  `shared/opening-hours.md`.
+	 */
+	name: string | null,
+};
+
 /**  Which side an image goes on. */
 export type Side = "left" | "right";
 
@@ -783,6 +808,8 @@ export type Site_Deserialize = {
 	 *  [`FOOTER_PATH`].
 	 */
 	footer: Page | null,
+	/**  The shared pieces from `shared/`, sorted by name; see `shared.rs`. */
+	shared: Page[],
 };
 
 /**  A site folder, read into memory. */
@@ -798,6 +825,8 @@ export type Site_Serialize = {
 	 *  [`FOOTER_PATH`].
 	 */
 	footer: Page | null,
+	/**  The shared pieces from `shared/`, sorted by name; see `shared.rs`. */
+	shared: Page[],
 };
 
 export type Stage = "connecting" | "comparing" | "uploading" | "deleting" | "done";

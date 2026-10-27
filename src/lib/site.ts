@@ -73,6 +73,7 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   "post-list": "Post list",
   "page-list": "Page list",
   video: "Video",
+  shared: "Shared block",
 };
 
 /** The blocks a column can hold (see COLUMN_TYPES in block.rs). */
@@ -86,6 +87,7 @@ export const COLUMN_BLOCK_TYPES: BlockType[] = [
   "post-list",
   "page-list",
   "video",
+  "shared",
 ];
 
 /** A new, empty block of the given type. */
@@ -121,11 +123,13 @@ export function newBlock(type: BlockType): Block {
       return { type, from: null, layout: null };
     case "video":
       return { type, url: null, title: null, image: null };
+    case "shared":
+      return { type, name: null };
   }
 }
 
 /** Fields that may be empty in a file. Everything else is always text. */
-const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout"]);
+const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout", "name"]);
 
 /** Empty optional fields become null, so "" and "nothing" count as the same. */
 export function normalizeBlock(block: Block): Block {
@@ -146,6 +150,11 @@ function normalize(value: unknown, topLevel: boolean): unknown {
   return Object.fromEntries(entries);
 }
 
+/** A shared block's name: its file in `shared/` without `.md`. */
+export function sharedName(piece: Page): string {
+  return piece.file.replace(/^shared\//, "").replace(/\.md$/, "");
+}
+
 /** A URL the app window can load a media file from (for thumbnails). */
 export function mediaUrl(root: string, name: string): string {
   return libraryUrl(root, "media", name);
@@ -155,6 +164,7 @@ export function mediaUrl(root: string, name: string): string {
 export function pageLabel(path: string): string {
   if (path === "(footer)") return "the footer";
   if (path === "(menu)") return "the menu";
+  if (path.startsWith("(shared) ")) return `the shared block “${path.slice(9)}”`;
   return `/${path}`;
 }
 

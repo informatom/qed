@@ -290,12 +290,18 @@ pub struct Site {
     /// The footer from `footer.md`, if the site has one; its `path` is
     /// [`FOOTER_PATH`].
     pub footer: Option<Page>,
+    /// The shared pieces from `shared/`, sorted by name; see `shared.rs`.
+    pub shared: Vec<Page>,
 }
 
 impl Site {
-    /// The pages and the footer: everything that holds blocks.
-    pub fn pages_and_footer(&self) -> impl Iterator<Item = &Page> {
-        self.pages.iter().chain(self.footer.as_ref())
+    /// The pages, the footer and the shared pieces: everything that holds
+    /// blocks.
+    pub fn with_blocks(&self) -> impl Iterator<Item = &Page> {
+        self.pages
+            .iter()
+            .chain(self.footer.as_ref())
+            .chain(&self.shared)
     }
 }
 
@@ -427,6 +433,7 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
         pages: pages.into_values().collect(),
         targets: crate::target::load(root)?,
         footer,
+        shared: crate::shared::load(root)?,
     })
 }
 
@@ -449,15 +456,28 @@ pub(crate) fn update_footer(
     root: &Path,
     change: impl FnOnce(&mut PageContent),
 ) -> Result<Page, SiteError> {
-    let path = root.join(FOOTER_FILE);
+    update_part(root, Path::new(FOOTER_FILE), FOOTER_PATH, "Footer", change)
+}
+
+/// Like [`update_page`], for a file of blocks that isn't a page, such as
+/// the footer or a shared piece: `path` is how it shows in lists, and a
+/// missing file is made with `title`.
+pub(crate) fn update_part(
+    root: &Path,
+    file: &Path,
+    path: &str,
+    title: &str,
+    change: impl FnOnce(&mut PageContent),
+) -> Result<Page, SiteError> {
+    let full = root.join(file);
     let parse = |text: &str| {
         page::parse(text).map_err(|error| SiteError::Page {
-            path: PathBuf::from(FOOTER_FILE),
+            path: file.to_path_buf(),
             error,
         })
     };
-    let original = if path.is_file() {
-        Some(read(&path)?)
+    let original = if full.is_file() {
+        Some(read(&full)?)
     } else {
         None
     };
@@ -465,7 +485,7 @@ pub(crate) fn update_footer(
         Some(text) => parse(text)?,
         None => PageContent {
             front: FrontMatter {
-                title: "Footer".to_string(),
+                title: title.to_string(),
                 ..FrontMatter::default()
             },
             blocks: Vec::new(),
@@ -473,10 +493,16 @@ pub(crate) fn update_footer(
     };
     change(&mut content);
     let written = page_writer::write(&content, original.as_deref());
-    write_atomically(&path, &written)?;
+    if let Some(folder) = full.parent() {
+        fs::create_dir_all(folder).map_err(|source| SiteError::Write {
+            path: folder.to_path_buf(),
+            source,
+        })?;
+    }
+    write_atomically(&full, &written)?;
     Ok(Page {
-        path: FOOTER_PATH.to_string(),
-        file: PathBuf::from(FOOTER_FILE),
+        path: path.to_string(),
+        file: file.to_path_buf(),
         content: parse(&written)?,
     })
 }
@@ -701,7 +727,7 @@ impl StartWords {
 }
 
 /// Writes a file that must not exist yet, creating its folder if needed.
-fn write_new(path: &Path, contents: &str) -> Result<(), SiteError> {
+pub(crate) fn write_new(path: &Path, contents: &str) -> Result<(), SiteError> {
     use std::io::Write;
 
     let error = |source| SiteError::Write {
@@ -867,7 +893,7 @@ pub fn save_blocks(root: &Path, file: &Path, blocks: Vec<Block>) -> Result<Page,
 
 /// Leaves out text blocks with nothing in them, inside columns too. A file
 /// can't hold them anyway: they'd read back as nothing.
-fn without_empty_text(blocks: Vec<Block>) -> Vec<Block> {
+pub(crate) fn without_empty_text(blocks: Vec<Block>) -> Vec<Block> {
     blocks
         .into_iter()
         .filter(|block| !matches!(block, Block::Text { markdown } if markdown.trim().is_empty()))
@@ -887,7 +913,7 @@ fn without_empty_text(blocks: Vec<Block>) -> Vec<Block> {
 /// Markdown links and buttons.
 pub fn pages_linking_to(site: &Site, path: &str) -> Vec<String> {
     let mut found: Vec<String> = site
-        .pages_and_footer()
+        .with_blocks()
         .filter(|page| page.path != path)
         .filter(|page| {
             let links = LinkContext::new(&page.path, &page.file);
@@ -926,7 +952,11 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             // that page knows about the list.
             Block::PostList(list) => targets.extend(list.from.as_deref().map(post_list_link)),
             Block::PageList(list) => targets.extend(list.from.as_deref().map(post_list_link)),
-            Block::Gallery(_) | Block::Download(_) | Block::Columns(_) | Block::Video(_) => {}
+            Block::Gallery(_)
+            | Block::Download(_)
+            | Block::Columns(_)
+            | Block::Video(_)
+            | Block::Shared(_) => {}
         }
     }
     for text in texts {
@@ -1057,7 +1087,7 @@ pub(crate) fn write_atomically(path: &Path, contents: &str) -> Result<(), SiteEr
     fs::rename(&temporary, path).map_err(error)
 }
 
-fn read(path: &Path) -> Result<String, SiteError> {
+pub(crate) fn read(path: &Path) -> Result<String, SiteError> {
     fs::read_to_string(path).map_err(|source| SiteError::Io {
         path: path.to_path_buf(),
         source,

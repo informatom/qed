@@ -85,7 +85,7 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
     names.sort();
 
     let usage: Vec<(&str, Vec<String>)> = site
-        .pages_and_footer()
+        .with_blocks()
         .map(|page| (page.path.as_str(), references(page, library)))
         .collect();
 
@@ -344,7 +344,7 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
     let path = file_path(&site.root, library, name)?;
     let inside = format!("{name}/");
     let used_by: Vec<String> = site
-        .pages_and_footer()
+        .with_blocks()
         .filter(|page| {
             references(page, library)
                 .iter()
@@ -352,6 +352,9 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
         })
         .map(|page| match page.path.as_str() {
             site::FOOTER_PATH => "the footer".to_string(),
+            path if path.starts_with('(') => {
+                format!("the shared block \"{}\"", page.content.front.title)
+            }
             path => format!("/{path}"),
         })
         .collect();
@@ -446,7 +449,8 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
                 buttons.extend(cta.button_link.as_deref());
             }
             Block::Video(video) => images.extend(video.image.as_deref().and_then(media_name)),
-            Block::PostList(_) | Block::PageList(_) => {}
+            // The piece's own file counts its files.
+            Block::PostList(_) | Block::PageList(_) | Block::Shared(_) => {}
         }
     }
 

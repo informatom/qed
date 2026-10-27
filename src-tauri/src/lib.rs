@@ -15,6 +15,7 @@ use qed_core::moving;
 use qed_core::page::{FrontMatter, PageContent, PageDate};
 use qed_core::preview::Preview;
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
+use qed_core::shared;
 use qed_core::site::{self, Page, Site, SiteConfig};
 use qed_core::target::{self, SftpAuth, SftpTarget, Target};
 use qed_core::theme::{CustomTheme, ThemeVariable};
@@ -190,6 +191,44 @@ async fn save_footer(root: PathBuf, blocks: Vec<Block>) -> Result<Vec<Block>, St
     let footer = site::save_footer(&root, blocks).map_err(|error| error.to_string())?;
     record(&root);
     Ok(footer.map(|page| page.content.blocks).unwrap_or_default())
+}
+
+/// Makes a shared piece from these blocks (usually one, from "Make
+/// shared"); its name comes from the title.
+#[tauri::command]
+#[specta::specta]
+async fn create_shared(root: PathBuf, title: String, blocks: Vec<Block>) -> Result<Page, String> {
+    let piece = shared::create(&root, &title, blocks).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(piece)
+}
+
+/// Saves a shared piece's blocks and returns it as it reads back.
+#[tauri::command]
+#[specta::specta]
+async fn save_shared(root: PathBuf, name: String, blocks: Vec<Block>) -> Result<Page, String> {
+    let piece = shared::save_blocks(&root, &name, blocks).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(piece)
+}
+
+/// Gives a shared piece a new title; its name, which pages use, stays.
+#[tauri::command]
+#[specta::specta]
+async fn rename_shared(root: PathBuf, name: String, title: String) -> Result<Page, String> {
+    let piece = shared::save_title(&root, &name, &title).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(piece)
+}
+
+/// Deletes a shared piece no page uses any more.
+#[tauri::command]
+#[specta::specta]
+async fn delete_shared(root: PathBuf, name: String) -> Result<(), String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    shared::delete(&site, &name).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(())
 }
 
 /// Creates an empty page below `parent` (a URL path, `""` for the top level).
@@ -605,6 +644,10 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             save_page_settings,
             save_page_blocks,
             save_footer,
+            create_shared,
+            save_shared,
+            rename_shared,
+            delete_shared,
             save_site_config,
             list_themes,
             custom_theme_variables,

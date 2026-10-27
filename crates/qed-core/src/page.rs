@@ -267,15 +267,13 @@ fn parse_body<'a>(lines: &[(usize, &'a str)], in_columns: bool) -> Result<Vec<Pi
     let mut open: Option<Open> = None;
     // An open `:::: columns`: its first line and the lines inside.
     let mut columns: Option<(usize, Vec<(usize, &'a str)>)> = None;
-    // Inside a ``` code fence, colons are just text.
-    let mut in_code = false;
+    // Inside a ``` code block, colons are just text.
+    let mut fence: Option<Fence> = None;
 
     for &(number, line) in lines {
         if let Some((_, inner)) = columns.as_mut() {
-            if is_code_fence(line) {
-                in_code = !in_code;
-            }
-            if !in_code && marker(line) == Some((4, "")) {
+            track_fence(&mut fence, line);
+            if fence.is_none() && marker(line) == Some((4, "")) {
                 if let Some((start, inner)) = columns.take() {
                     pieces.push(columns_block(start, &inner)?);
                 }
@@ -306,10 +304,8 @@ fn parse_body<'a>(lines: &[(usize, &'a str)], in_columns: bool) -> Result<Vec<Pi
             continue;
         }
 
-        if is_code_fence(line) {
-            in_code = !in_code;
-        }
-        let Some((colons, kind)) = marker(line).filter(|_| !in_code) else {
+        track_fence(&mut fence, line);
+        let Some((colons, kind)) = marker(line).filter(|_| fence.is_none()) else {
             text.push(line);
             continue;
         };
@@ -429,9 +425,37 @@ fn columns_block(start: usize, lines: &[(usize, &str)]) -> Result<Piece, ParseEr
     ))
 }
 
-fn is_code_fence(line: &str) -> bool {
+/// An open code block: its fence character (`` ` `` or `~`) and how many.
+type Fence = (char, usize);
+
+/// Follows code blocks as Markdown (CommonMark) does: a line of three or
+/// more backticks or tildes opens one, and only the same character, at
+/// least as many, with nothing after them, closes it. A backtick line with
+/// another backtick after the fence is inline code at the start of a line,
+/// such as ```` ```math ````, and opens nothing.
+fn track_fence(fence: &mut Option<Fence>, line: &str) {
     let line = line.trim_start();
-    line.starts_with("```") || line.starts_with("~~~")
+    let Some(mark) = line.chars().next().filter(|c| *c == '`' || *c == '~') else {
+        return;
+    };
+    let count = line.chars().take_while(|&c| c == mark).count();
+    if count < 3 {
+        return;
+    }
+    // The fence characters are ASCII, one byte each.
+    let rest = &line[count..];
+    match *fence {
+        Some((open, length)) => {
+            if open == mark && count >= length && rest.trim().is_empty() {
+                *fence = None;
+            }
+        }
+        None => {
+            if !(mark == '`' && rest.contains('`')) {
+                *fence = Some((mark, count));
+            }
+        }
+    }
 }
 
 /// Turns collected Markdown lines into a text block, unless they're blank.
@@ -520,6 +544,14 @@ mod tests {
                 }),
             ]
         );
+    }
+
+    #[test]
+    fn inline_code_at_the_start_of_a_line_opens_no_code_block() {
+        let source = "+++\ntitle = \"T\"\n+++\n\n- A ```` ```math ```` block.\n  ```` ```math ```` again\n\n::: shared\nname = \"hours\"\n:::\n\n~~~\n::: hero\n```\n~~~\n";
+        let blocks = parse(source).unwrap().blocks;
+        assert!(matches!(blocks[1], Block::Shared(_)), "{blocks:?}");
+        assert_eq!(blocks.len(), 3, "the ~~~ block holds the rest: {blocks:?}");
     }
 
     #[test]
