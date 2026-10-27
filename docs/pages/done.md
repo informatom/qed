@@ -346,6 +346,11 @@ rest is done.
   site's `server` block (the owner's server runs nginx; `.htaccess` files
   don't work there), Apache `ErrorDocument 404 /404.html`; GitHub Pages
   does it by itself.
+- **#104 New sites in their language.** *Done 2026-10-27*: a new
+  site's start page (title, Hero line, first paragraph) is written in
+  the site's language: German (also `de-AT`), English, French, Spanish,
+  Italian, Dutch; English for others. The text now says "q.e.d.", not
+  "qed".
 
 ## Dropped
 

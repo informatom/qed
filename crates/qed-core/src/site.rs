@@ -487,21 +487,20 @@ pub fn create_site(root: &Path, title: &str, language: &str) -> Result<Site, Sit
     config["language"] = toml_edit::value(language.as_str());
     write_new(&root.join(CONFIG_FILE), &config.to_string())?;
 
+    let words = StartWords::for_language(&language);
     let start = PageContent {
         front: FrontMatter {
-            title: "Home".to_string(),
+            title: words.title.to_string(),
             ..FrontMatter::default()
         },
         blocks: vec![
             Block::Hero(crate::block::Hero {
                 headline: Some(title.to_string()),
-                text: Some("Welcome to the new site.".to_string()),
+                text: Some(words.welcome.to_string()),
                 ..Default::default()
             }),
             Block::Text {
-                markdown: "This is the start page. Change this text, add blocks, and \
-                           make new pages in qed."
-                    .to_string(),
+                markdown: words.text.to_string(),
             },
         ],
     };
@@ -514,6 +513,59 @@ pub fn create_site(root: &Path, title: &str, language: &str) -> Result<Site, Sit
         fs::create_dir_all(&path).map_err(|source| SiteError::Write { path, source })?;
     }
     open(root)
+}
+
+/// The placeholder texts of a new site's start page.
+struct StartWords {
+    title: &'static str,
+    welcome: &'static str,
+    text: &'static str,
+}
+
+impl StartWords {
+    /// In the site's language (`de`, `de-AT`, …); English for languages
+    /// q.e.d. has no words for.
+    fn for_language(language: &str) -> StartWords {
+        let main = language.trim().to_lowercase();
+        let main = main.split(['-', '_']).next().unwrap_or_default();
+        let (title, welcome, text) = match main {
+            "de" => (
+                "Startseite",
+                "Willkommen auf der neuen Website.",
+                "Das ist die Startseite. Ändere diesen Text, füge Blöcke hinzu und lege in q.e.d. neue Seiten an.",
+            ),
+            "fr" => (
+                "Accueil",
+                "Bienvenue sur le nouveau site.",
+                "Ceci est la page d'accueil. Modifiez ce texte, ajoutez des blocs et créez de nouvelles pages dans q.e.d.",
+            ),
+            "es" => (
+                "Inicio",
+                "Bienvenido al nuevo sitio.",
+                "Esta es la página de inicio. Cambia este texto, añade bloques y crea nuevas páginas en q.e.d.",
+            ),
+            "it" => (
+                "Home",
+                "Benvenuti nel nuovo sito.",
+                "Questa è la pagina iniziale. Modifica questo testo, aggiungi blocchi e crea nuove pagine in q.e.d.",
+            ),
+            "nl" => (
+                "Home",
+                "Welkom op de nieuwe website.",
+                "Dit is de startpagina. Wijzig deze tekst, voeg blokken toe en maak nieuwe pagina's in q.e.d.",
+            ),
+            _ => (
+                "Home",
+                "Welcome to the new site.",
+                "This is the start page. Change this text, add blocks, and make new pages in q.e.d.",
+            ),
+        };
+        StartWords {
+            title,
+            welcome,
+            text,
+        }
+    }
 }
 
 /// Writes a file that must not exist yet, creating its folder if needed.
@@ -902,13 +954,21 @@ mod tests {
         let home = &site.pages[0];
         assert_eq!(home.path, "");
         assert!(matches!(&home.content.blocks[0], Block::Hero(hero)
-            if hero.headline.as_deref() == Some("My Podcast")));
+            if hero.headline.as_deref() == Some("My Podcast")
+                && hero.text.as_deref() == Some("Willkommen auf der neuen Website.")));
+        assert_eq!(home.content.front.title, "Startseite");
         assert!(dir.path().join(MEDIA_DIR).is_dir());
         assert!(dir.path().join(ASSETS_DIR).is_dir());
 
         let new = dir.path().join("sites/second");
         let second = create_site(&new, "Second", "").unwrap();
         assert_eq!(second.config.language, "en");
+        assert_eq!(second.pages[0].content.front.title, "Home");
+        let third = create_site(&dir.path().join("sites/third"), "Third", "de-AT").unwrap();
+        assert_eq!(
+            third.pages[0].content.front.title, "Startseite",
+            "de-AT is German"
+        );
     }
 
     #[test]
