@@ -79,6 +79,9 @@ pub struct SiteConfig {
     /// How tall the logo is in the header.
     #[serde(default)]
     pub logo_size: LogoSize,
+    /// How wide header, content and footer get on large screens.
+    #[serde(default)]
+    pub page_width: PageWidth,
     /// The site title next to the logo; off for logos that show the name.
     #[serde(default = "yes")]
     pub title_in_header: bool,
@@ -166,7 +169,30 @@ fn yes() -> bool {
     true
 }
 
-/// How tall the logo is in the header: 36, 48 or 64 pixels.
+/// How wide pages get: normal (56rem, a good line length for text), wide
+/// (72rem, for columns) or the full window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum PageWidth {
+    #[default]
+    Normal,
+    Wide,
+    Full,
+}
+
+impl PageWidth {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            PageWidth::Normal => "normal",
+            PageWidth::Wide => "wide",
+            PageWidth::Full => "full",
+        }
+    }
+}
+
+/// How tall the logo is in the header: 36, 48 or 64 pixels, or the image's
+/// own size (up to 112 pixels), which keeps a bitmap logo sharp.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
@@ -175,6 +201,7 @@ pub enum LogoSize {
     Small,
     Medium,
     Large,
+    Original,
 }
 
 impl LogoSize {
@@ -183,6 +210,7 @@ impl LogoSize {
             LogoSize::Small => "small",
             LogoSize::Medium => "medium",
             LogoSize::Large => "large",
+            LogoSize::Original => "original",
         }
     }
 }
@@ -783,6 +811,11 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
             "logo_size",
             &config.logo_size.as_str().to_string(),
             "small".to_string(),
+        ),
+        (
+            "page_width",
+            &config.page_width.as_str().to_string(),
+            "normal".to_string(),
         ),
         (
             "title_in_header",

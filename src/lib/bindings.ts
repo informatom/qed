@@ -442,8 +442,11 @@ export type ListLayout =
  */
 "tiles";
 
-/**  How tall the logo is in the header: 36, 48 or 64 pixels. */
-export type LogoSize = "small" | "medium" | "large";
+/**
+ *  How tall the logo is in the header: 36, 48 or 64 pixels, or the image's
+ *  own size (up to 112 pixels), which keeps a bitmap logo sharp.
+ */
+export type LogoSize = "small" | "medium" | "large" | "original";
 
 /**  One file in `media/`, `assets/` or `static/`. */
 export type MediaFile = {
@@ -553,6 +556,12 @@ export type PageList = {
 	/**  How the pages show; a plain list if empty. */
 	layout: ListLayout | null,
 };
+
+/**
+ *  How wide pages get: normal (56rem, a good line length for text), wide
+ *  (72rem, for columns) or the full window.
+ */
+export type PageWidth = "normal" | "wide" | "full";
 
 /**
  *  The posts below a page, newest first, each with its date and summary.
@@ -683,6 +692,8 @@ export type SiteConfig_Deserialize = {
 	header?: HeaderStyle,
 	/**  How tall the logo is in the header. */
 	logo_size?: LogoSize,
+	/**  How wide header, content and footer get on large screens. */
+	page_width?: PageWidth,
 	/**  The site title next to the logo; off for logos that show the name. */
 	title_in_header?: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
@@ -729,6 +740,8 @@ export type SiteConfig_Serialize = {
 	header: HeaderStyle,
 	/**  How tall the logo is in the header. */
 	logo_size: LogoSize,
+	/**  How wide header, content and footer get on large screens. */
+	page_width: PageWidth,
 	/**  The site title next to the logo; off for logos that show the name. */
 	title_in_header: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */

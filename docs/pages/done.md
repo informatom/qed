@@ -322,7 +322,8 @@ rest is done.
   JSON, YAML, XML, Markdown, LaTeX, Ruby, …); more in #106.
 - **#095 Wide logos.** *Done 2026-10-27*: the header logo keeps its
   height and takes the width it needs; `logo_size` (small 36 px, medium
-  48 px, large 64 px) and `title_in_header = false` for logos that show
+  48 px, large 64 px, original: the image's own size up to 112 px, sharp
+  for bitmap logos) and `title_in_header = false` for logos that show
   the name (the logo's alt text then carries the site title); a
   `favicon.ico` in `static/` is the tab icon instead of the logo. In Site
   settings below the logo. informatom.com: medium wordmark, no title.
@@ -379,6 +380,10 @@ rest is done.
   the delete warning names "the menu". Without one, the automatic menu
   from the pages' Menu setting stays. informatom.com's old navbar
   rebuilt with it (top bar instead of the sidebar).
+- **#112 Page width.** *Done 2026-10-27*: `page_width` in `site.toml`
+  (Site settings): normal (56rem, as before; 72rem with a sidebar), wide
+  (72rem; 80rem with a sidebar) or full (the window). Header, content and
+  footer follow it together. informatom.com uses wide.
 
 ## Dropped
 

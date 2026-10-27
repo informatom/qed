@@ -81,10 +81,11 @@
         <div class="flex items-center gap-2 text-sm">
           <span>Size</span>
           <div class="join">
-            {#each [["small", "Small"], ["medium", "Medium"], ["large", "Large"]] as [value, label] (value)}
+            {#each [["small", "Small"], ["medium", "Medium"], ["large", "Large"], ["original", "Original"]] as [value, label] (value)}
               <button type="button" id="logo-size-{value}"
                 class={["btn join-item btn-sm", form.logo_size === value && "btn-active"]}
-                onclick={() => (form.logo_size = value as "small" | "medium" | "large")}>{label}</button>
+                onclick={() => (form.logo_size = value as "small" | "medium" | "large" | "original")}
+                title={value === "original" ? "The image's own size, up to 112 px high: sharp for bitmap logos" : undefined}>{label}</button>
             {/each}
           </div>
         </div>
@@ -106,6 +107,17 @@
       </span>
     </span>
   </label>
+
+  <div class="flex flex-wrap items-center gap-3 text-sm">
+    <span class="font-medium">Page width</span>
+    <div class="join">
+      {#each [["normal", "Normal"], ["wide", "Wide"], ["full", "Full"]] as [value, label] (value)}
+        <button type="button" id="page-width-{value}" class={["btn join-item btn-sm", form.page_width === value && "btn-active"]}
+          onclick={() => (form.page_width = value as "normal" | "wide" | "full")}>{label}</button>
+      {/each}
+    </div>
+    <span class="text-base-content/60">Normal suits text; Wide gives columns room; Full uses the whole window.</span>
+  </div>
 
   {#if error}
     <div role="alert" class="alert alert-error alert-soft text-sm">{error}</div>

@@ -31,10 +31,10 @@ use crate::links::LinkContext;
 use crate::markdown;
 use crate::media::CLUTTER;
 use crate::page::Menu;
-use crate::site::LogoSize;
 use crate::site::{
     ASSETS_DIR, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
 };
+use crate::site::{LogoSize, PageWidth};
 use crate::slug::slugify;
 
 pub const OUTPUT_DIR: &str = "_site";
@@ -797,6 +797,12 @@ fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
         (LogoSize::Large, true) => {
             "h-16 w-auto max-w-80 object-contain rounded-field bg-base-100 p-1"
         }
+        // The image's own size (its width and height attributes), but no
+        // taller than 112 px and no wider than the bar allows.
+        (LogoSize::Original, false) => "h-auto max-h-28 w-auto max-w-full object-contain",
+        (LogoSize::Original, true) => {
+            "h-auto max-h-28 w-auto max-w-full object-contain rounded-field bg-base-100 p-1"
+        }
     };
     HeaderClasses { bar, current, logo }
 }
@@ -1175,7 +1181,14 @@ fn render_page(
         footer_menu: menu_links(footer_menu),
         show_title: show_title(page),
         sidebar,
-        width: if sidebar { "max-w-6xl" } else { "max-w-4xl" },
+        // A sidebar takes room of its own, so the page gets wider with it.
+        // Whole class names, for Tailwind's scan.
+        width: match (config.page_width, sidebar) {
+            (PageWidth::Normal, false) => "max-w-4xl",
+            (PageWidth::Normal, true) | (PageWidth::Wide, false) => "max-w-6xl",
+            (PageWidth::Wide, true) => "max-w-7xl",
+            (PageWidth::Full, _) => "max-w-none",
+        },
         header: header_classes(config.header, config.logo_size),
         // Without a logo, the title is all the header has.
         show_site_title: config.title_in_header || config.logo.is_none(),
@@ -2690,6 +2703,31 @@ mod tests {
             header.contains(r#"<li class="menu-title mt-2">More</li>"#),
             "phone menu heading: {header}"
         );
+    }
+
+    #[test]
+    fn makes_pages_as_wide_as_asked() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        let out = tempfile::tempdir().unwrap();
+        for (width, class) in [
+            (PageWidth::Normal, "max-w-4xl"),
+            (PageWidth::Wide, "max-w-6xl"),
+            (PageWidth::Full, "max-w-none"),
+        ] {
+            site.config.page_width = width;
+            build_on(&site, out.path(), TODAY).unwrap();
+            let home = read(out.path().join("index.html"));
+            assert!(
+                home.contains(&format!("mx-auto w-full {class} flex-1")),
+                "{width:?}: {home}"
+            );
+        }
+
+        site.config.logo = Some("logo.png".into());
+        site.config.logo_size = LogoSize::Original;
+        build_on(&site, out.path(), TODAY).unwrap();
+        assert!(read(out.path().join("index.html")).contains("h-auto max-h-28 w-auto"));
     }
 
     #[test]
