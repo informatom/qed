@@ -113,6 +113,12 @@ pub fn move_page(site: &Site, file: &Path, parent: &str, slug: &str) -> Result<P
         })?;
     }
 
+    // Entries of a hand-made menu follow their pages.
+    let mut config = site.config.clone();
+    if move_menu_entries(&mut config.main_menu, &new_paths) {
+        site::save_config(&site.root, &config)?;
+    }
+
     // The footer links like any page, but never moves.
     if let Some(footer) = &site.footer {
         let links = new_links(footer, &footer.file, false, &new_paths, &new_files);
@@ -143,6 +149,31 @@ pub fn move_page(site: &Site, file: &Path, parent: &str, slug: &str) -> Result<P
         .into_iter()
         .find(|p| p.path == new_path)
         .ok_or_else(|| SiteError::NotAPage(moves[0].new_file.clone()))
+}
+
+/// Points menu entries at the new addresses of moved pages; `page = …`
+/// and links to `/old-address`. Returns whether anything changed.
+fn move_menu_entries(items: &mut [site::MenuItem], new_paths: &BTreeMap<&str, &str>) -> bool {
+    let mut changed = false;
+    for item in items {
+        if let Some(page) = &mut item.page
+            && let Some(new) = new_paths.get(page.trim().trim_matches('/'))
+        {
+            *page = new.to_string();
+            changed = true;
+        }
+        if let Some(link) = &mut item.link
+            && let Some(path) = link.strip_prefix('/')
+        {
+            let (path, rest) = path.split_at(path.find(['#', '?']).unwrap_or(path.len()));
+            if let Some(new) = new_paths.get(path.trim_end_matches('/')) {
+                *link = format!("/{new}{rest}");
+                changed = true;
+            }
+        }
+        changed |= move_menu_entries(&mut item.items, new_paths);
+    }
+    changed
 }
 
 /// The page and every page below it, with their new paths and files.
@@ -432,6 +463,24 @@ mod tests {
             footer.contains("[About](/who-we-are) and [Home](/)"),
             "{footer}"
         );
+    }
+
+    #[test]
+    fn moves_menu_entries_with_their_pages() {
+        let dir = sample();
+        let toml = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        fs::write(
+            dir.path().join("site.toml"),
+            format!("{toml}\n[[main_menu]]\npage = \"about\"\n\n[[main_menu]]\ntitle = \"Team\"\nlink = \"/about/team/#people\"\n"),
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+        assert!(site::pages_linking_to(&site, "about").contains(&site::MENU_PATH.to_string()));
+
+        move_page(&site, Path::new("pages/about.md"), "", "who-we-are").unwrap();
+        let menu = site::open(dir.path()).unwrap().config.main_menu;
+        assert_eq!(menu[0].page.as_deref(), Some("who-we-are"));
+        assert_eq!(menu[1].link.as_deref(), Some("/who-we-are/team#people"));
     }
 
     #[test]

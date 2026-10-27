@@ -730,6 +730,9 @@ struct PageTemplate<'a> {
     root: String,
     home_href: String,
     main_menu: Vec<MenuLink>,
+    /// A hand-made main menu for the top bar, with dropdowns; empty for
+    /// the automatic menu.
+    nav: Vec<NavItem>,
     footer_menu: Vec<MenuLink>,
     /// No title above a starting Hero or the start page's banner; see
     /// [`show_title`].
@@ -826,6 +829,106 @@ struct MenuLink {
     current: bool,
     /// Exactly this page is being shown.
     exact: bool,
+    /// A group's title in the sidebar: a heading, not a link.
+    heading: bool,
+}
+
+/// An entry of a hand-made main menu in the top bar: a link, or a group
+/// with entries in a dropdown.
+struct NavItem {
+    title: String,
+    href: String,
+    current: bool,
+    exact: bool,
+    divider: bool,
+    children: Vec<NavItem>,
+}
+
+/// The hand-made menu for the page at `page_path`. Pages that aren't
+/// (or aren't any longer) on the site are left out.
+fn hand_made_menu(
+    items: &[crate::site::MenuItem],
+    links: &LinkContext,
+    page_path: &str,
+    pages: &[&Page],
+) -> Vec<NavItem> {
+    items
+        .iter()
+        .filter_map(|item| {
+            let title = item.title.clone().filter(|t| !t.trim().is_empty());
+            if item.divider {
+                return Some(NavItem {
+                    title: String::new(),
+                    href: String::new(),
+                    current: false,
+                    exact: false,
+                    divider: true,
+                    children: Vec::new(),
+                });
+            }
+            if !item.items.is_empty() {
+                let children = hand_made_menu(&item.items, links, page_path, pages);
+                return Some(NavItem {
+                    title: title.unwrap_or_default(),
+                    href: String::new(),
+                    current: children.iter().any(|child| child.current),
+                    exact: false,
+                    divider: false,
+                    children,
+                });
+            }
+            let (title, href, target) = if let Some(path) = &item.page {
+                let path = path.trim().trim_matches('/');
+                let page = pages.iter().find(|page| page.path == path)?;
+                (
+                    title.unwrap_or_else(|| page.content.front.title.clone()),
+                    links.page(path),
+                    Some(path.to_string()),
+                )
+            } else {
+                let link = item.link.as_deref()?.trim();
+                (title?, links.resolve(link), links.page_path_of(link))
+            };
+            Some(NavItem {
+                current: target.as_deref().is_some_and(|t| is_within(page_path, t)),
+                exact: target.as_deref() == Some(page_path),
+                title,
+                href,
+                divider: false,
+                children: Vec::new(),
+            })
+        })
+        .collect()
+}
+
+/// A hand-made menu for the sidebar: groups become headings with their
+/// entries below; dividers are left out.
+fn sidebar_links(nav: &[NavItem]) -> Vec<MenuLink> {
+    let mut links = Vec::new();
+    for item in nav {
+        let group = !item.children.is_empty();
+        links.push(MenuLink {
+            title: item.title.clone(),
+            href: item.href.clone(),
+            level: 0,
+            icon: None,
+            current: item.current,
+            exact: item.exact,
+            heading: group,
+        });
+        for child in item.children.iter().filter(|child| !child.divider) {
+            links.push(MenuLink {
+                title: child.title.clone(),
+                href: child.href.clone(),
+                level: 0,
+                icon: None,
+                current: child.current,
+                exact: child.exact,
+                heading: false,
+            });
+        }
+    }
+    links
 }
 
 struct Button {
@@ -990,6 +1093,7 @@ fn render_page(
                 icon: entry.icon,
                 current: is_within(&page.path, &entry.path),
                 exact: page.path == entry.path,
+                heading: false,
             })
             .collect()
     };
@@ -1017,7 +1121,14 @@ fn render_page(
         .filter(|_| !not_found)
         .and_then(|base| share_image(page, base, context.images));
 
-    let sidebar = config.navigation == Navigation::Sidebar && !main_menu.is_empty();
+    // A hand-made menu replaces the automatic one.
+    let nav = hand_made_menu(&config.main_menu, &links, &page.path, context.pages);
+    let main_links = if nav.is_empty() {
+        menu_links(main_menu)
+    } else {
+        sidebar_links(&nav)
+    };
+    let sidebar = config.navigation == Navigation::Sidebar && !main_links.is_empty();
     let template = PageTemplate {
         site: config,
         title: &front.title,
@@ -1059,7 +1170,8 @@ fn render_page(
         is_home: page.path.is_empty(),
         root: links.to_root(),
         home_href: links.page(""),
-        main_menu: menu_links(main_menu),
+        main_menu: main_links,
+        nav,
         footer_menu: menu_links(footer_menu),
         show_title: show_title(page),
         sidebar,
@@ -2524,6 +2636,60 @@ mod tests {
             "not a normal page"
         );
         assert!(!read(out.path().join("sitemap.xml")).contains("/404"));
+    }
+
+    #[test]
+    fn shows_a_hand_made_menu_with_dropdowns() {
+        use crate::site::MenuItem;
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        let page = |path: &str, title: Option<&str>| MenuItem {
+            page: Some(path.into()),
+            title: title.map(Into::into),
+            ..MenuItem::default()
+        };
+        site.config.main_menu = vec![
+            MenuItem {
+                title: Some("More".into()),
+                items: vec![
+                    page("blog/about", Some("About us")),
+                    MenuItem {
+                        divider: true,
+                        ..MenuItem::default()
+                    },
+                    MenuItem {
+                        title: Some("Elsewhere".into()),
+                        link: Some("https://example.org/".into()),
+                        ..MenuItem::default()
+                    },
+                ],
+                ..MenuItem::default()
+            },
+            page("blog", None),
+            page("gone", None),
+        ];
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let about = read(out.path().join("blog/about/index.html"));
+        let header = &about[about.find("<header").unwrap()..about.find("</header>").unwrap()];
+        assert!(header.contains("dropdown dropdown-hover"), "{header}");
+        assert!(header.contains(r#"<a href="../../blog/about/" class="menu-active" aria-current="page">About us</a>"#), "{header}");
+        assert!(
+            header.contains(r#"<a href="https://example.org/">Elsewhere</a>"#),
+            "{header}"
+        );
+        assert!(
+            header.contains(">Blog</a>"),
+            "page title by default: {header}"
+        );
+        assert!(
+            !header.contains("gone"),
+            "missing pages are left out: {header}"
+        );
+        assert!(
+            header.contains(r#"<li class="menu-title mt-2">More</li>"#),
+            "phone menu heading: {header}"
+        );
     }
 
     #[test]

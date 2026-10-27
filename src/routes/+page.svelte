@@ -25,6 +25,7 @@
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
   import SiteTheme from "$lib/SiteTheme.svelte";
+  import MenuEditor from "$lib/MenuEditor.svelte";
   import VersionsPanel from "$lib/VersionsPanel.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
   import NewSiteDialog from "$lib/NewSiteDialog.svelte";
@@ -426,6 +427,10 @@
             <PublishPanel {site} ontargets={(targets) => site && (site.targets = targets)} />
           </div>
         </div>
+        <section class="flex flex-col gap-3 xl:w-1/2 xl:pe-4">
+          <h2 class="text-lg font-semibold">Menu</h2>
+          <MenuEditor {site} onsaved={(config) => site && (site.config = config)} />
+        </section>
         <section class="flex flex-col gap-3">
           <h2 class="text-lg font-semibold">Theme</h2>
           <SiteTheme {site} onsaved={(config) => site && (site.config = config)} />

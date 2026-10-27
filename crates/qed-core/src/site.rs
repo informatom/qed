@@ -40,6 +40,8 @@ pub const FOOTER_FILE: &str = "footer.md";
 /// How the footer appears in lists of pages that use a file or link to a
 /// page; never a URL path, which can't start with `(`.
 pub const FOOTER_PATH: &str = "(footer)";
+/// How a hand-made main menu appears in those lists.
+pub const MENU_PATH: &str = "(menu)";
 
 /// Settings from `site.toml`.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -83,6 +85,77 @@ pub struct SiteConfig {
     /// Self-hosted fonts in `fonts/`; empty keeps the system's.
     #[serde(default, skip_serializing_if = "is_default_fonts")]
     pub fonts: Fonts,
+    /// The main menu, arranged by hand: pages, links and groups (dropdowns).
+    /// Empty means the automatic menu from the pages' Menu setting.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub main_menu: Vec<MenuItem>,
+}
+
+/// One entry of a hand-made main menu: a page, a link, a group of entries
+/// (a dropdown in the top bar), or a divider inside a group.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct MenuItem {
+    /// The text shown; for a page, its title if empty.
+    pub title: Option<String>,
+    /// A page by its address (`elixir`, `` for the start page); follows the
+    /// page when it moves.
+    pub page: Option<String>,
+    /// Any address: `https://…`, or one on the site such as `/blog`.
+    pub link: Option<String>,
+    /// A line between entries of a group.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub divider: bool,
+    /// The entries of a group.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub items: Vec<MenuItem>,
+}
+
+fn is_false(value: &bool) -> bool {
+    !value
+}
+
+impl MenuItem {
+    /// Why the entry can't be used, if it can't: `top` for entries in the
+    /// bar itself, else inside a group.
+    fn problem(&self, top: bool) -> Option<String> {
+        let title = self.title.as_deref().map(str::trim).unwrap_or_default();
+        let kinds = [
+            self.page.is_some(),
+            self.link.is_some(),
+            self.divider,
+            !self.items.is_empty(),
+        ]
+        .iter()
+        .filter(|kind| **kind)
+        .count();
+        if self.divider {
+            return (top || kinds > 1)
+                .then(|| "a divider goes inside a group, on its own".to_string());
+        }
+        if !self.items.is_empty() {
+            if !top {
+                return Some(format!("“{title}”: groups can't hold groups"));
+            }
+            if kinds > 1 {
+                return Some(format!("“{title}”: a group has no page or link of its own"));
+            }
+            if title.is_empty() {
+                return Some("a group needs a title".to_string());
+            }
+            return self.items.iter().find_map(|item| item.problem(false));
+        }
+        match (&self.page, &self.link) {
+            (Some(_), Some(_)) => Some(format!("“{title}”: a page or a link, not both")),
+            (None, Some(link)) if link.trim().is_empty() || title.is_empty() => {
+                Some("a link needs an address and a title".to_string())
+            }
+            (None, None) if title.is_empty() => Some("an empty menu entry".to_string()),
+            (None, None) => Some(format!("“{title}” is a group without entries")),
+            _ => None,
+        }
+    }
 }
 
 fn is_default_fonts(fonts: &Fonts) -> bool {
@@ -515,6 +588,32 @@ pub fn create_site(root: &Path, title: &str, language: &str) -> Result<Site, Sit
     open(root)
 }
 
+/// An array of inline tables (`x = [{…}, {…}]`) as `[[x]]` sections, with
+/// arrays of inline tables inside them turned the same way.
+fn tables_from_inline(item: &mut toml_edit::Item) {
+    let Some(array) = item.as_array_mut() else {
+        return;
+    };
+    let mut tables = toml_edit::ArrayOfTables::new();
+    for value in std::mem::take(array).into_iter() {
+        if let toml_edit::Value::InlineTable(inline) = value {
+            let mut table = inline.into_table();
+            let keys: Vec<String> = table.iter().map(|(key, _)| key.to_string()).collect();
+            for key in keys {
+                if let Some(inner) = table.get_mut(&key)
+                    && inner
+                        .as_array()
+                        .is_some_and(|a| a.iter().all(|v| v.is_inline_table()) && !a.is_empty())
+                {
+                    tables_from_inline(inner);
+                }
+            }
+            tables.push(table);
+        }
+    }
+    *item = toml_edit::Item::ArrayOfTables(tables);
+}
+
 /// The placeholder texts of a new site's start page.
 struct StartWords {
     title: &'static str,
@@ -628,6 +727,10 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
             .map_err(|e| invalid(format!("saved colors \"{name}\": {e}")))?;
     }
 
+    if let Some(problem) = config.main_menu.iter().find_map(|item| item.problem(true)) {
+        return Err(invalid(format!("menu: {problem}")));
+    }
+
     let original = read(&path)?;
     let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
     // `[custom_theme]` and `[fonts]` as their own sections, easier to read
@@ -640,6 +743,11 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
             let table = std::mem::take(inline).into_table();
             document[key] = toml_edit::Item::Table(table);
         }
+    }
+    // The menu as `[[main_menu]]` sections, a group's entries as
+    // `[[main_menu.items]]` below it.
+    if let Some(item) = document.get_mut("main_menu") {
+        tables_from_inline(item);
     }
     // And each saved set as a `[[saved_themes]]` section.
     if let Some(array) = document
@@ -746,6 +854,9 @@ pub fn pages_linking_to(site: &Site, path: &str) -> Vec<String> {
         })
         .map(|page| page.path.clone())
         .collect();
+    if menu_links_to(&site.config.main_menu, path) {
+        found.push(MENU_PATH.to_string());
+    }
     found.sort();
     found
 }
@@ -779,6 +890,22 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
         targets.extend(markdown::link_targets(text));
     }
     targets
+}
+
+/// Whether a hand-made menu has an entry for the page at `path`.
+fn menu_links_to(items: &[MenuItem], path: &str) -> bool {
+    items.iter().any(|item| {
+        item.page.as_deref().map(|p| p.trim().trim_matches('/')) == Some(path)
+            || item.link.as_deref().is_some_and(|link| {
+                link.strip_prefix('/').map(|l| {
+                    l.split(['#', '?'])
+                        .next()
+                        .unwrap_or_default()
+                        .trim_end_matches('/')
+                }) == Some(path)
+            })
+            || menu_links_to(&item.items, path)
+    })
 }
 
 /// A Post list's or Page list's `from` as a link: `/blog`.
@@ -1356,6 +1483,65 @@ mod tests {
         save_config(dir.path(), &config).unwrap();
         let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
         assert_eq!(text, "title = \"S\"\n", "defaults stay out");
+    }
+
+    #[test]
+    fn keeps_a_hand_made_menu_in_sections() {
+        let dir = site_with(&[("site.toml", "title = \"S\"\n")]);
+        let mut config = open(dir.path()).unwrap().config;
+        let page = |path: &str| MenuItem {
+            page: Some(path.into()),
+            ..MenuItem::default()
+        };
+        config.main_menu = vec![
+            MenuItem {
+                title: Some("Stacks".into()),
+                items: vec![
+                    page("elixir"),
+                    MenuItem {
+                        divider: true,
+                        ..MenuItem::default()
+                    },
+                    MenuItem {
+                        title: Some("Layer 8".into()),
+                        link: Some("https://layer8.example".into()),
+                        ..MenuItem::default()
+                    },
+                ],
+                ..MenuItem::default()
+            },
+            page("kontakt"),
+        ];
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains("[[main_menu]]\ntitle = \"Stacks\"\n\n[[main_menu.items]]\npage = \"elixir\"\n\n[[main_menu.items]]\ndivider = true\n"),
+            "{text}"
+        );
+        assert!(text.contains("[[main_menu]]\npage = \"kontakt\""), "{text}");
+        assert_eq!(open(dir.path()).unwrap().config, config);
+
+        for bad in [
+            vec![MenuItem {
+                divider: true,
+                ..MenuItem::default()
+            }],
+            vec![MenuItem {
+                title: Some("Empty".into()),
+                ..MenuItem::default()
+            }],
+            vec![MenuItem {
+                link: Some("https://x".into()),
+                ..MenuItem::default()
+            }],
+        ] {
+            config.main_menu = bad;
+            assert!(
+                save_config(dir.path(), &config).is_err(),
+                "{:?}",
+                config.main_menu
+            );
+        }
     }
 
     #[test]

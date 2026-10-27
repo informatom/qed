@@ -468,6 +468,52 @@ export type MediaKind = "image" | "document" |
 /**  Which menu a page appears in. */
 export type Menu = "none" | "main" | "footer";
 
+/**
+ *  One entry of a hand-made main menu: a page, a link, a group of entries
+ *  (a dropdown in the top bar), or a divider inside a group.
+ */
+export type MenuItem = MenuItem_Serialize | MenuItem_Deserialize;
+
+/**
+ *  One entry of a hand-made main menu: a page, a link, a group of entries
+ *  (a dropdown in the top bar), or a divider inside a group.
+ */
+export type MenuItem_Deserialize = {
+	/**  The text shown; for a page, its title if empty. */
+	title: string | null,
+	/**
+	 *  A page by its address (`elixir`, `` for the start page); follows the
+	 *  page when it moves.
+	 */
+	page: string | null,
+	/**  Any address: `https://…`, or one on the site such as `/blog`. */
+	link: string | null,
+	/**  A line between entries of a group. */
+	divider?: boolean,
+	/**  The entries of a group. */
+	items?: MenuItem_Deserialize[],
+};
+
+/**
+ *  One entry of a hand-made main menu: a page, a link, a group of entries
+ *  (a dropdown in the top bar), or a divider inside a group.
+ */
+export type MenuItem_Serialize = {
+	/**  The text shown; for a page, its title if empty. */
+	title: string | null,
+	/**
+	 *  A page by its address (`elixir`, `` for the start page); follows the
+	 *  page when it moves.
+	 */
+	page: string | null,
+	/**  Any address: `https://…`, or one on the site such as `/blog`. */
+	link: string | null,
+	/**  A line between entries of a group. */
+	divider?: boolean,
+	/**  The entries of a group. */
+	items?: MenuItem_Serialize[],
+};
+
 export type Navigation = "top" | "sidebar";
 
 /**  One page of a site. */
@@ -641,6 +687,11 @@ export type SiteConfig_Deserialize = {
 	title_in_header?: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
+	/**
+	 *  The main menu, arranged by hand: pages, links and groups (dropdowns).
+	 *  Empty means the automatic menu from the pages' Menu setting.
+	 */
+	main_menu?: MenuItem_Deserialize[],
 };
 
 /**  Settings from `site.toml`. */
@@ -682,6 +733,11 @@ export type SiteConfig_Serialize = {
 	title_in_header: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
+	/**
+	 *  The main menu, arranged by hand: pages, links and groups (dropdowns).
+	 *  Empty means the automatic menu from the pages' Menu setting.
+	 */
+	main_menu?: MenuItem_Serialize[],
 };
 
 /**  A site folder, read into memory. */

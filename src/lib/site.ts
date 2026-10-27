@@ -153,7 +153,9 @@ export function mediaUrl(root: string, name: string): string {
 
 /** A page's URL path for people: `/about`, or "the footer" for the site footer. */
 export function pageLabel(path: string): string {
-  return path === "(footer)" ? "the footer" : `/${path}`;
+  if (path === "(footer)") return "the footer";
+  if (path === "(menu)") return "the menu";
+  return `/${path}`;
 }
 
 /** A file in one of the site's folders (`media/`, `assets/`, `static/`), for the webview. */

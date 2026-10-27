@@ -43,12 +43,47 @@
 </head>
 {%- macro menu_items(items) %}
 {%- for item in items %}
+{%- if item.heading %}
+<li class="menu-title mt-2">{{ item.title }}</li>
+{%- else %}
 <li
   {%- if item.level > 0 %} class="ms-4 border-s border-base-300"
   {%- if item.level > 1 %} style="margin-inline-start: {{ item.level }}rem"{% endif %}{% endif %}><a href="{{ item.href }}"
   {%- if item.exact %} class="menu-active" aria-current="page"{% else if item.current %} class="font-semibold"{% endif %}>
   {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
+{%- endif %}
 {%- endfor %}
+{%- endmacro %}
+{#- A hand-made menu's entry in the top bar: a link, or a group whose
+    entries open below it. daisyUI's dropdown works without JavaScript: on
+    hover, on click or tap (focus), and with the keyboard; it closes when
+    focus leaves it. #}
+{%- macro nav_entry(item, current_class) %}
+{%- if item.children.is_empty() %}
+<li><a href="{{ item.href }}" class="inline-flex items-center gap-1.5 {% if item.current %}{{ current_class }}{% else %}link-hover{% endif %}"
+  {%- if item.exact %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+{%- else %}
+<li class="dropdown dropdown-hover dropdown-end md:dropdown-start">
+  <div tabindex="0" role="button" class="inline-flex cursor-pointer items-center gap-1 {% if item.current %}{{ current_class }}{% else %}link-hover{% endif %}">
+    {{- item.title }}<svg viewBox="0 0 24 24" class="size-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+  {#- The box hangs in a transparent frame that starts right below the
+      title: its top padding is the gap, so the pointer never leaves the
+      dropdown on its way down (hover would end and close it). #}
+  <div tabindex="-1" class="dropdown-content z-30 pt-2">
+    <ul class="menu w-64 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg">
+      {%- for child in item.children %}
+      {%- if child.divider %}
+      {#- daisyUI draws an empty menu entry as a line, but at 10% opacity;
+          these win over that (the `!`). #}
+      <li aria-hidden="true" class="pointer-events-none mx-3 my-1.5 h-px bg-base-content/25! opacity-100!"></li>
+      {%- else %}
+      <li><a href="{{ child.href }}"{% if child.exact %} class="menu-active" aria-current="page"{% endif %}>{{ child.title }}</a></li>
+      {%- endif %}
+      {%- endfor %}
+    </ul>
+  </div>
+</li>
+{%- endif %}
 {%- endmacro %}
 <body class="flex min-h-screen flex-col bg-base-100 text-base-content antialiased">
   <header class="{{ header.bar }}">
@@ -58,7 +93,18 @@
         {%- if let Some(width) = logo.width %} width="{{ width }}"{% endif %}
         {%- if let Some(height) = logo.height %} height="{{ height }}"{% endif %}>{% endif %}
         {%- if show_site_title %}{{ site.title }}{% endif %}</a>
-      {%- if !main_menu.is_empty() && !sidebar %}
+      {%- if !nav.is_empty() && !sidebar %}
+      <ul class="hidden flex-wrap items-center gap-x-6 gap-y-1 text-sm md:flex">
+        {%- for item in nav %}{% call nav_entry(item, header.current) %}{% endcall %}{% endfor %}
+      </ul>
+      {#- On phones: the whole menu behind one button. #}
+      <details class="dropdown dropdown-end md:hidden">
+        <summary class="btn btn-ghost btn-sm">Menu</summary>
+        <ul class="dropdown-content menu z-30 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg">
+          {%- call menu_items(main_menu) %}{% endcall %}
+        </ul>
+      </details>
+      {%- else if !main_menu.is_empty() && !sidebar %}
       <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {%- for item in main_menu %}
         <li><a href="{{ item.href }}" class="inline-flex items-center gap-1.5 {% if item.current %}{{ header.current }}{% else %}link-hover{% endif %}">

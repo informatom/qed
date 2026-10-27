@@ -368,6 +368,17 @@ rest is done.
   a larger repository, nothing outside it). Disabled while a page has
   unsaved changes. Also fixed: versions saved in the same second were
   listed in any order (`Sort::TOPOLOGICAL | Sort::TIME`).
+- **#111 Hand-made menu.** *Done 2026-10-27*: `[[main_menu]]` in
+  `site.toml` (entries: `page`, `link` to any address, groups with
+  `[[main_menu.items]]`, `divider = true` inside groups), edited in
+  Site → Menu ("Arrange the menu by hand" starts from the automatic menu;
+  "Back to automatic"). In the top bar groups are daisyUI dropdowns:
+  hover, click/tap and keyboard, no JavaScript; the box hangs in a
+  transparent frame so the pointer can reach it. On phones one "Menu"
+  button; in the sidebar groups are headings. Entries follow moved pages;
+  the delete warning names "the menu". Without one, the automatic menu
+  from the pages' Menu setting stays. informatom.com's old navbar
+  rebuilt with it (top bar instead of the sidebar).
 
 ## Dropped
 

@@ -28,6 +28,7 @@
     saved_themes: site.config.saved_themes,
     header: site.config.header,
     fonts: site.config.fonts,
+    main_menu: site.config.main_menu,
     title: form.title.trim(),
     language: form.language.trim() || "en",
     description: orNull(form.description),
