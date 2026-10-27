@@ -304,6 +304,18 @@ async fn move_page(
     Ok(page)
 }
 
+/// Puts sibling pages in this order, by their weights (see
+/// `site::set_order`).
+#[tauri::command]
+#[specta::specta]
+async fn set_page_order(root: PathBuf, files: Vec<PathBuf>) -> Result<(), String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    if site::set_order(&site, &files).map_err(|error| error.to_string())? > 0 {
+        record(&root);
+    }
+    Ok(())
+}
+
 /// Pages that earlier versions had and the folder doesn't any more.
 #[tauri::command]
 #[specta::specta]
@@ -665,6 +677,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             pages_linking_to,
             delete_page,
             move_page,
+            set_page_order,
             deleted_pages,
             restore_page,
             restore_site,

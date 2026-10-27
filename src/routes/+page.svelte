@@ -42,12 +42,16 @@
   import UpdateBar from "$lib/UpdateBar.svelte";
   import { checkForUpdate } from "$lib/updates.svelte";
   import X from "@lucide/svelte/icons/x";
+  import GripVertical from "@lucide/svelte/icons/grip-vertical";
+  import { edgeScroll, scrollParent } from "$lib/dragScroll";
+  import { parentOf, planDrop, treeOrder, type DropPlan, type Zone } from "$lib/pageTree";
   import { forgetSite, recentSites, rememberSite, reopenOnStart, setSiteClosed } from "$lib/recentSites";
   import {
     commands,
     BLOCK_NAMES,
     pageIcons,
     sharedName,
+    pageLabel,
     type BuildReport,
     type Page,
     type Site,
@@ -315,7 +319,106 @@
       .filter((parent) => paths.has(parent));
   }
 
-  let shownPages = $derived(site?.pages.filter((page) => parents(page.path).every((p) => unfolded.has(p))) ?? []);
+  // In the order the site shows them (weight, then title; posts by date).
+  let ordered = $derived(site ? treeOrder(site.pages) : []);
+  let shownPages = $derived(ordered.filter((page) => parents(page.path).every((p) => unfolded.has(p))));
+
+  // Dragging a page by its handle, as blocks are dragged (BlockList).
+  // Dropped between pages, it changes the order (weights); dropped onto a
+  // page, it moves below it, which changes its address.
+  let rows = $state<HTMLElement[]>([]);
+  let pageDrag = $state<{ page: Page; row: number; zone: Zone; plan: DropPlan | null } | null>(null);
+  let treeY = 0;
+  let treeScroller: HTMLElement | null = null;
+  // Re-creates the open page's editor after its order changed on disk.
+  let reorders = $state(0);
+
+  function treeDragStart(event: PointerEvent, page: Page) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture(event.pointerId);
+    pageDrag = { page, row: -1, zone: "onto", plan: null };
+    treeY = event.clientY;
+    treeScroller = scrollParent(handle);
+    requestAnimationFrame(treeAutoScroll);
+  }
+
+  function treeDragMove(event: PointerEvent) {
+    if (!pageDrag) return;
+    treeY = event.clientY;
+    findDrop();
+  }
+
+  function treeAutoScroll() {
+    if (!pageDrag) return;
+    if (edgeScroll(treeScroller, treeY)) findDrop();
+    requestAnimationFrame(treeAutoScroll);
+  }
+
+  // The row under the pointer; its top and bottom third mean the gap
+  // above or below it, the middle the page itself.
+  function findDrop() {
+    if (!pageDrag) return;
+    const boxes = rows.slice(0, shownPages.length).map((row) => row.getBoundingClientRect());
+    if (!boxes.length) return;
+    let row = boxes.findIndex((box) => treeY >= box.top && treeY < box.bottom);
+    let zone: Zone;
+    if (row < 0) {
+      row = treeY < boxes[0].top ? 0 : boxes.length - 1;
+      zone = row === 0 ? "before" : "after";
+    } else {
+      const share = (treeY - boxes[row].top) / boxes[row].height;
+      zone = share < 0.3 ? "before" : share > 0.7 ? "after" : "onto";
+    }
+    const target = shownPages[row];
+    const childrenShown = unfolded.has(target.path) && (below.get(target.path) ?? 0) > 0;
+    pageDrag.row = row;
+    pageDrag.zone = zone;
+    pageDrag.plan = planDrop(ordered, pageDrag.page, target, zone, childrenShown);
+  }
+
+  async function treeDragEnd() {
+    const dropped = pageDrag;
+    pageDrag = null;
+    if (dropped?.plan) await applyDrop(dropped.page, dropped.plan);
+  }
+
+  async function applyDrop(page: Page, plan: DropPlan) {
+    if (!site || !(await mayLeavePage())) return;
+    const root = site.root;
+    let file = page.file;
+    try {
+      if (plan.moveTo !== null) {
+        const slug = page.path.slice(page.path.lastIndexOf("/") + 1);
+        const to = plan.moveTo ? `${plan.moveTo}/${slug}` : slug;
+        const along = below.get(page.path) ?? 0;
+        const sure = await ask(
+          `Move “${page.front.title}” from ${pageLabel(page.path)} to /${to}?` +
+            (along ? ` The ${along} ${along === 1 ? "page" : "pages"} below it move along.` : "") +
+            " Links to it are updated, and the old address redirects to the new one.",
+          { title: "Move page", kind: "info", okLabel: "Move", cancelLabel: "Cancel" },
+        );
+        if (!sure) return;
+        file = (await commands.movePage(root, page.file, plan.moveTo, slug)).file;
+      }
+      if (plan.order) await commands.setPageOrder(root, plan.order.map((f) => f ?? file));
+      const wasOpen = selectedFile === page.file;
+      editorDirty = false;
+      await load(root);
+      if (wasOpen) selectedFile = file;
+      if (plan.moveTo) [...parents(plan.moveTo), plan.moveTo].forEach((p) => unfolded.add(p));
+      reorders += 1;
+    } catch (e) {
+      error = String(e);
+      await load(root);
+    }
+  }
+
+  /** How far a line for the gap among the pages below `parent` is indented. */
+  function gapIndent(parent: string): string {
+    return `${(parent === "" ? 0 : depth(parent)) * 1.25 + 1.5}rem`;
+  }
 
   function toggle(path: string) {
     if (unfolded.has(path)) unfolded.delete(path);
@@ -330,6 +433,8 @@
   });
 
 </script>
+
+<svelte:window onkeydown={(e) => pageDrag && e.key === "Escape" && (pageDrag = null)} />
 
 <main class="flex min-h-screen flex-col gap-8 p-8">
   <UpdateBar />
@@ -535,9 +640,26 @@
           panelOpen && "lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto",
         ]}
       >
-        {#each shownPages as page (page.path)}
+        {#each shownPages as page, row (page.path)}
           {@const count = below.get(page.path)}
-          <li id="page-{page.path || 'home'}" class="flex items-center gap-1" style:padding-left="{Math.max(depth(page.path) - 1, 0) * 1.25}rem">
+          {@const drop = pageDrag?.plan && pageDrag.row === row ? pageDrag : null}
+          <li id="page-{page.path || 'home'}" bind:this={rows[row]}
+            class={["group relative flex items-center gap-1", pageDrag?.page.path === page.path && "opacity-50"]}
+            style:padding-left="{Math.max(depth(page.path) - 1, 0) * 1.25}rem">
+            <!-- Where the dragged page would land. -->
+            {#if drop && drop.zone !== "onto"}
+              {@const parent = drop.zone === "after" && unfolded.has(page.path) && count ? page.path : page.path === "" ? "" : parentOf(page.path)}
+              <div class={["pointer-events-none absolute right-0 h-0.5 rounded-full bg-primary", drop.zone === "before" ? "-top-px" : "-bottom-px"]}
+                style:left={gapIndent(parent)}></div>
+            {/if}
+            {#if page.path === ""}
+              <span class="w-5 shrink-0"></span>
+            {:else}
+              <button type="button" class={["flex shrink-0 touch-none items-center rounded-field py-0.5 text-base-content/25 select-none group-hover:text-base-content/60 hover:bg-base-200", pageDrag ? "cursor-grabbing" : "cursor-grab"]}
+                title="Drag to reorder, or onto another page to move it there" aria-label="Drag {page.front.title}"
+                onpointerdown={(e) => treeDragStart(e, page)} onpointermove={treeDragMove} onpointerup={treeDragEnd}
+                onpointercancel={() => (pageDrag = null)}><GripVertical class="size-4" /></button>
+            {/if}
             {#if count}
               <button type="button" id="fold-{page.path}" class="btn btn-ghost btn-xs btn-square shrink-0"
                 aria-expanded={unfolded.has(page.path)}
@@ -553,6 +675,7 @@
               class={[
                 "flex min-w-0 flex-1 items-center gap-4 rounded-field px-3 py-1 text-left transition-colors",
                 page.file === selectedFile ? "bg-primary/10" : "hover:bg-base-200",
+                drop?.zone === "onto" && "ring-2 ring-primary",
               ]}
               onclick={() => select(page.file)}
             >
@@ -674,7 +797,7 @@
 
       {#if selected}
         <!-- Re-create the editor when another page is picked, so it starts fresh. -->
-        {#key selected.file}
+        {#key `${selected.file} ${reorders}`}
           <PageEditor
             page={selected}
             siteRoot={site.root}

@@ -3,6 +3,7 @@
   import ChevronLeft from "@lucide/svelte/icons/chevron-left";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import ChevronUp from "@lucide/svelte/icons/chevron-up";
+  import GripVertical from "@lucide/svelte/icons/grip-vertical";
   import Component from "@lucide/svelte/icons/component";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
   import Plus from "@lucide/svelte/icons/plus";
@@ -14,6 +15,7 @@
   import { BLOCK_ICONS } from "$lib/icons";
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
   import MediaPicker from "$lib/MediaPicker.svelte";
+  import { edgeScroll, scrollParent } from "$lib/dragScroll";
   import { sharedBlocks } from "$lib/sharedBlocks";
   import { BLOCK_NAMES, COLUMN_BLOCK_TYPES, commands, mediaUrl, newBlock, sharedName, type Block, type BlockType, type Gallery } from "$lib/site";
 
@@ -100,6 +102,58 @@
     const [block] = blocks.splice(index, 1);
     blocks.splice(index + by, 0, block);
   }
+
+  // Dragging a block by its handle. Pointer events rather than HTML drag
+  // and drop: the Tauri window takes over the latter for dropped files on
+  // some systems. `gap` is where the block would land: 0 is before the
+  // first block, blocks.length after the last.
+  let cards = $state<HTMLElement[]>([]);
+  let drag = $state<{ from: number; gap: number } | null>(null);
+  let pointerY = 0;
+  let scroller: HTMLElement | null = null;
+
+  /** Whether dropping now would move the block at all. */
+  let moves = $derived(drag !== null && drag.gap !== drag.from && drag.gap !== drag.from + 1);
+
+  function dragStart(event: PointerEvent, index: number) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture(event.pointerId);
+    drag = { from: index, gap: index };
+    pointerY = event.clientY;
+    scroller = scrollParent(handle);
+    requestAnimationFrame(autoScroll);
+  }
+
+  function dragMove(event: PointerEvent) {
+    if (!drag) return;
+    pointerY = event.clientY;
+    findGap();
+  }
+
+  function dragEnd() {
+    if (drag && moves) {
+      const to = drag.gap > drag.from ? drag.gap - 1 : drag.gap;
+      move(drag.from, to - drag.from);
+    }
+    drag = null;
+  }
+
+  // The gap is below every block whose middle is above the pointer.
+  function findGap() {
+    if (!drag) return;
+    drag.gap = cards.slice(0, blocks.length).filter((card) => {
+      const box = card.getBoundingClientRect();
+      return box.top + box.height / 2 < pointerY;
+    }).length;
+  }
+
+  function autoScroll() {
+    if (!drag) return;
+    if (edgeScroll(scroller, pointerY)) findGap();
+    requestAnimationFrame(autoScroll);
+  }
 </script>
 
 {#snippet layoutChoice(list: Extract<Block, { type: "post-list" | "page-list" }>)}
@@ -118,6 +172,8 @@
   </span>
 {/snippet}
 
+<svelte:window onkeydown={(e) => drag && e.key === "Escape" && (drag = null)} />
+
 {#if pickingFor}
   <MediaPicker
     {siteRoot}
@@ -130,9 +186,22 @@
 <div class={["flex flex-col", nested ? "gap-2" : "gap-4"]}>
   {#each blocks as block, index (block)}
     {@const Icon = BLOCK_ICONS[block.type]}
-    <section id={nested ? undefined : `block-${index}`} class={["@container card border border-base-300", nested ? "bg-base-200/40" : "bg-base-100"]}>
+    <section id={nested ? undefined : `block-${index}`} bind:this={cards[index]}
+      class={["@container card relative border border-base-300", nested ? "bg-base-200/40" : "bg-base-100", drag?.from === index && "opacity-50"]}>
+      <!-- Where a dragged block would land: a line in the gap above this
+           block, or below the last one. Placed absolutely, so nothing moves
+           while dragging. -->
+      {#if moves && drag?.gap === index}
+        <div class={["pointer-events-none absolute inset-x-0 h-1 rounded-full bg-primary", nested ? "-top-1.5" : "-top-2.5"]}></div>
+      {:else if moves && drag?.gap === blocks.length && index === blocks.length - 1}
+        <div class={["pointer-events-none absolute inset-x-0 h-1 rounded-full bg-primary", nested ? "-bottom-1.5" : "-bottom-2.5"]}></div>
+      {/if}
       <div class="card-body gap-3 p-4">
         <header class="flex items-center gap-2">
+          <button type="button" class={["-ms-2 -me-1 flex touch-none items-center rounded-field p-0.5 text-base-content/40 select-none hover:bg-base-200 hover:text-base-content", drag?.from === index ? "cursor-grabbing" : "cursor-grab"]}
+            title="Drag to move" aria-label="Drag to move"
+            onpointerdown={(e) => dragStart(e, index)} onpointermove={dragMove} onpointerup={dragEnd}
+            onpointercancel={() => (drag = null)}><GripVertical class="size-4" /></button>
           <span class="badge badge-soft gap-1.5"><Icon class="size-3.5" />{BLOCK_NAMES[block.type]}</span>
           <div class="flex-1"></div>
           {#if canShare && block.type !== "shared"}

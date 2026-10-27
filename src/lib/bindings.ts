@@ -110,6 +110,11 @@ export const commands = {
 	 *  its new place.
 	 */
 	movePage: (root: string, file: string, parent: string, slug: string) => __TAURI_INVOKE<Page>("move_page", { root, file, parent, slug }),
+	/**
+	 *  Puts sibling pages in this order, by their weights (see
+	 *  `site::set_order`).
+	 */
+	setPageOrder: (root: string, files: string[]) => __TAURI_INVOKE<null>("set_page_order", { root, files }),
 	/**  Pages that earlier versions had and the folder doesn't any more. */
 	deletedPages: (root: string) => __TAURI_INVOKE<DeletedPage[]>("deleted_pages", { root }),
 	/**  Brings a deleted page back, as it was in `version`. */

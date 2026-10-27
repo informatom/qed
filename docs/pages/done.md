@@ -438,6 +438,35 @@ rest is done.
   `open_library_file` command, which only opens files inside the site's
   folders (`media::path_of`).
 
+- **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
+  (`docs/notes/cms-handover-qed.md`; its Elixir file map no longer
+  applies). *Done 2026-10-21*: nine block types (Text, Hero, Image, Text
+  with image, Gallery, Download, FAQ, Columns with nested blocks (#074),
+  Call to action); the block editor with Content/Versions/Settings tabs
+  per page, OverType for Markdown, the image picker (#033), add, remove,
+  move up/down, save with `site::save_blocks`, a warning before losing
+  unsaved changes. *Shared blocks done 2026-10-27* (`qed_core::shared`):
+  files in `shared/` (title + blocks, no page of their own), shown on a
+  page by a Shared block (`::: shared` / `name = "…"`, also in columns and
+  the footer); the build swaps in the blocks with the page's links and
+  notes missing ones; "Make shared" on any block, a Shared blocks list
+  under the pages, rename, delete only when unused; links in them follow
+  moved pages, their images count as used. *Drag and drop done
+  2026-10-27*: a grip handle on every block (inside columns too) drags it
+  to its new place within its list, with a line where it will land and
+  scrolling near the window's edges; pointer events, not HTML drag and
+  drop, which the Tauri window takes over for dropped files.
+
+- **#120 Drag and drop in the page tree.** *Done 2026-10-27*: a grip
+  handle on every page in the Pages tab (not the start page). Dropped
+  between pages, it changes the order: the pages below the same parent get
+  the weights 10, 20, 30, … (`site::set_order`, `set_page_order`); the tree
+  now shows the site's order (weight, then title; posts by date). Dropped
+  onto a page, it moves below it after a confirmation, through
+  `move_page` (links and redirects as in the Move dialog). Posts can't be
+  reordered. The logic is in `src/lib/pageTree.ts` (`treeOrder`,
+  `planDrop`).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

@@ -25,20 +25,6 @@ A complete site builder without podcast features. Decided 2026-10-26: finish
 phase 1 before podcasting, testing it by moving the owner's Jekyll sites
 over by hand.
 
-- **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
-  (`docs/notes/cms-handover-qed.md`; its Elixir file map no longer
-  applies). *Done 2026-10-21*: nine block types (Text, Hero, Image, Text
-  with image, Gallery, Download, FAQ, Columns with nested blocks (#074),
-  Call to action); the block editor with Content/Versions/Settings tabs
-  per page, OverType for Markdown, the image picker (#033), add, remove,
-  move up/down, save with `site::save_blocks`, a warning before losing
-  unsaved changes. *Shared blocks done 2026-10-27* (`qed_core::shared`):
-  files in `shared/` (title + blocks, no page of their own), shown on a
-  page by a Shared block (`::: shared` / `name = "…"`, also in columns and
-  the footer); the build swaps in the blocks with the page's links and
-  notes missing ones; "Make shared" on any block, a Shared blocks list
-  under the pages, rename, delete only when unused; links in them follow
-  moved pages, their images count as used. Still open: drag and drop.
 - **#033 Images and media library.** Import, tag, search and resize images to
   WebP; keep PDFs for downloads. Phase 2 adds Apple's cover art rules
   (1400–3000 px square). *Media library done 2026-10-21*

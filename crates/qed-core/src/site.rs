@@ -891,6 +891,27 @@ pub fn save_blocks(root: &Path, file: &Path, blocks: Vec<Block>) -> Result<Page,
     update_page(root, file, |content| content.blocks = blocks)
 }
 
+/// Puts pages in the order given by setting their weights to 10, 20,
+/// 30, …; the steps leave room for a page placed by hand in between.
+/// Pages that already have their weight aren't written. Returns how many
+/// files changed.
+pub fn set_order(site: &Site, files: &[PathBuf]) -> Result<usize, SiteError> {
+    let mut changed = 0;
+    for (index, file) in files.iter().enumerate() {
+        let page = site
+            .pages
+            .iter()
+            .find(|page| &page.file == file)
+            .ok_or_else(|| SiteError::NotAPage(file.clone()))?;
+        let weight = i32::try_from(index + 1).unwrap_or(i32::MAX / 10) * 10;
+        if page.content.front.weight != weight {
+            update_page(&site.root, file, |content| content.front.weight = weight)?;
+            changed += 1;
+        }
+    }
+    Ok(changed)
+}
+
 /// Leaves out text blocks with nothing in them, inside columns too. A file
 /// can't hold them anyway: they'd read back as nothing.
 pub(crate) fn without_empty_text(blocks: Vec<Block>) -> Vec<Block> {
@@ -1517,6 +1538,37 @@ mod tests {
         assert!(save_config(dir.path(), &config).is_err(), "same name twice");
         config.saved_themes = vec![set(" ", "#000000")];
         assert!(save_config(dir.path(), &config).is_err(), "no name");
+    }
+
+    #[test]
+    fn sets_the_order_with_weights() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(CONFIG_FILE), "title = \"T\"\n").unwrap();
+        fs::create_dir(dir.path().join(PAGES_DIR)).unwrap();
+        for (name, weight) in [("a", 20), ("b", 0), ("c", 5)] {
+            fs::write(
+                dir.path().join(PAGES_DIR).join(format!("{name}.md")),
+                format!("+++\ntitle = \"{name}\"\nweight = {weight}\n+++\n\nText.\n"),
+            )
+            .unwrap();
+        }
+        let site = open(dir.path()).unwrap();
+        let files: Vec<PathBuf> = ["c", "a", "b"]
+            .iter()
+            .map(|name| PathBuf::from(format!("pages/{name}.md")))
+            .collect();
+        assert_eq!(set_order(&site, &files).unwrap(), 2, "a has its 20 already");
+        let site = open(dir.path()).unwrap();
+        let weights: Vec<(String, i32)> = site
+            .pages
+            .iter()
+            .map(|page| (page.path.clone(), page.content.front.weight))
+            .collect();
+        assert_eq!(
+            weights,
+            [("a".into(), 20), ("b".into(), 30), ("c".into(), 10)]
+        );
+        assert!(set_order(&site, &[PathBuf::from("pages/x.md")]).is_err());
     }
 
     #[test]
