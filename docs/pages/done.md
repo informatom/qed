@@ -335,6 +335,17 @@ rest is done.
   `md:grid-cols-(--cols)`; phones still stack. In the editor: 1×/2×/3×
   next to each column's title. informatom.com's start page: two thirds
   and one third, like the old Bulma `is-two-thirds`.
+- **#093 404 page.** *Done 2026-10-27*: the build writes `404.html` in
+  the site's look: a short text in the site's language (de, en, fr, es,
+  it, nl) with a link to the start page, or the site's own `pages/404.md`,
+  which then isn't built as a normal page, menu entry or sitemap entry.
+  Its links start at the site root (`/`, or the path of `base_url`),
+  since servers show it at any address (`LinkContext::rooted`). The
+  preview server shows it for missing pages. The web server must be told
+  to use it, once per site: nginx `error_page 404 /404.html;` in the
+  site's `server` block (the owner's server runs nginx; `.htaccess` files
+  don't work there), Apache `ErrorDocument 404 /404.html`; GitHub Pages
+  does it by itself.
 
 ## Dropped
 

@@ -25,7 +25,6 @@ A complete site builder without podcast features. Decided 2026-10-26: finish
 phase 1 before podcasting, testing it by moving the owner's Jekyll sites
 over by hand.
 
-- **#093 404 page.** The generator writes `404.html` in the site's look.
 - **#104 New sites in their language.** A new site's placeholder texts
   ("Welcome to the new site.") in the language chosen for it.
 - **#043 Block CMS.** Mercator's block CMS design rebuilt in Rust
