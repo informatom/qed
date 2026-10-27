@@ -396,6 +396,14 @@ rest is done.
   along the way: eleven icons (mail, calendar, lock, …) had lost the size
   of their rectangles when they were copied in, so the rectangles weren't
   drawn; a test now checks every shape.
+- **#115 Site icons.** *Done 2026-10-27*: image files in a site's
+  `media/icons/` work as icons in text too: `:icon-rails:` shows
+  `media/icons/rails.svg` (else `.webp`, `.png`, `.jpg`) in its own
+  colors, 1.5 times as tall as the letters, before q.e.d.'s Lucide icon
+  of that name. The media library counts them as used, so they can't be
+  deleted while a page writes them. informatom.com has its 14 old badges
+  back: the six stacks in the start page's list and eight open-source
+  logos under IT-Beratung.
 
 ## Dropped
 

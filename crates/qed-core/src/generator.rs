@@ -26,6 +26,7 @@ use crate::block::{self, Block, ListLayout, Side};
 use crate::calendar::{self, Date};
 use crate::deploy::MANIFEST_FILE;
 use crate::fonts;
+use crate::icons::SiteIcons;
 use crate::images::{self, ImageError, Images};
 use crate::links::LinkContext;
 use crate::markdown;
@@ -119,6 +120,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         .collect();
     let media_dir = site.root.join(MEDIA_DIR);
     let images = Images::new(&media_dir);
+    let site_icons = SiteIcons::load(&media_dir);
     let main_menu = menu(&published, Menu::Main);
     let footer_menu = menu(&published, Menu::Footer);
     // Feeds need full addresses, so only a site with a web address gets them.
@@ -146,6 +148,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     let context = Context {
         root: &site.root,
         images: &images,
+        site_icons: &site_icons,
         pages: &published,
         feeds: &feeds,
         today,
@@ -333,6 +336,8 @@ struct Context<'a> {
     /// The site folder.
     root: &'a Path,
     images: &'a Images,
+    /// The site's own icons, for `:icon-name:` in text.
+    site_icons: &'a SiteIcons,
     /// The pages being built, for Post lists.
     pages: &'a [&'a Page],
     /// The feeds being written, so a Post list can link its own.
@@ -1288,7 +1293,10 @@ fn render_block(
     context: &Context,
 ) -> Result<RenderedBlock, askama::Error> {
     let (root, images) = (context.root, context.images);
-    let markdown = |text: &Option<String>| text.as_deref().map(|t| markdown::render(t, links));
+    let markdown = |text: &Option<String>| {
+        text.as_deref()
+            .map(|t| markdown::render(t, links, context.site_icons))
+    };
     let button = |label: &Option<String>, link: &Option<String>| match (label, link) {
         (Some(label), Some(link)) => Some(Button {
             label: label.clone(),
@@ -1299,7 +1307,7 @@ fn render_block(
 
     Ok(match block {
         Block::Text { markdown: text } => RenderedBlock::Text {
-            html: markdown::render(text, links),
+            html: markdown::render(text, links, context.site_icons),
         },
         Block::Hero(hero) => RenderedBlock::Hero {
             image: hero
@@ -1377,7 +1385,7 @@ fn render_block(
                 .filter(|item| !item.question.trim().is_empty())
                 .map(|item| FaqEntry {
                     question: item.question.clone(),
-                    answer_html: markdown::render(&item.answer, links),
+                    answer_html: markdown::render(&item.answer, links, context.site_icons),
                 })
                 .collect(),
         },

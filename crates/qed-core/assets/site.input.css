@@ -68,3 +68,13 @@
   vertical-align: -0.125em;
   margin-inline-end: 0.3em;
 }
+
+/* A site's own icons from media/icons/ (logos, in their own colors):
+   a little taller than the letters, as wide as they are drawn. */
+.prose .inline-icon.site-icon,
+.inline-icon.site-icon {
+  width: auto;
+  height: 1.5em;
+  margin-block: 0;
+  vertical-align: middle;
+}

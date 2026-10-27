@@ -8,14 +8,16 @@ use comrak::options::Plugins;
 use comrak::plugins::syntect::{SyntectAdapter, SyntectAdapterBuilder};
 use comrak::{Arena, Options, format_html_with_plugins, parse_document};
 
+use crate::icons::{SITE_ICONS_DIR, SiteIcons};
 use crate::links::LinkContext;
 
 /// Renders Markdown to HTML.
 ///
 /// Raw HTML in the Markdown is escaped, so it shows as text instead of
 /// running. Links and images are rewritten for the built site (see
-/// [`LinkContext::resolve`]).
-pub fn render(markdown: &str, links: &LinkContext) -> String {
+/// [`LinkContext::resolve`]). `:icon-name:` becomes an icon, the site's
+/// own if it has one by that name.
+pub fn render(markdown: &str, links: &LinkContext, site_icons: &SiteIcons) -> String {
     let options = options();
     let arena = Arena::new();
     let root = parse_document(&arena, markdown, &options);
@@ -33,13 +35,14 @@ pub fn render(markdown: &str, links: &LinkContext) -> String {
     let mut html = String::new();
     // Writing into a String can't fail.
     let _ = format_html_with_plugins(root, &options, &mut html, &plugins);
-    with_icons(&html)
+    with_icons(&html, links, site_icons)
 }
 
-/// Replaces `:icon-phone:` in text with that icon from q.e.d.'s set (see
-/// `icons.rs`), sized to the text. Code is left alone, and so are names
-/// that aren't in the set.
-fn with_icons(html: &str) -> String {
+/// Replaces `:icon-phone:` in text with that icon, sized to the text: the
+/// site's own from `media/icons/` (an image, in its own colors) or else
+/// q.e.d.'s (see `icons.rs`). Code is left alone, and so are names that
+/// are in neither.
+fn with_icons(html: &str, links: &LinkContext, site_icons: &SiteIcons) -> String {
     if !html.contains(":icon-") {
         return html.to_string();
     }
@@ -69,20 +72,26 @@ fn with_icons(html: &str) -> String {
             .find(|c: char| !(c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'))
             .unwrap_or(after.len());
         let name = &after[..name_len];
-        match (after[name_len..].starts_with(':'), crate::icons::svg(name)) {
-            (true, Some(svg)) => {
-                out.push_str(&svg.replacen(
-                    "class=\"size-4 shrink-0\"",
-                    "class=\"inline-icon\"",
-                    1,
-                ));
-                rest = &after[name_len + 1..];
-            }
-            _ => {
-                out.push_str(":icon-");
-                rest = after;
-            }
+        if !after[name_len..].starts_with(':') {
+            out.push_str(":icon-");
+            rest = after;
+            continue;
         }
+        // Names are lowercase letters, digits and dashes, so they need no
+        // escaping in the attribute.
+        if let Some(file) = site_icons.file(name) {
+            let src = links.media(&format!("{SITE_ICONS_DIR}/{file}"));
+            out.push_str(&format!(
+                r#"<img class="inline-icon site-icon" src="{src}" alt="" aria-hidden="true">"#
+            ));
+        } else if let Some(svg) = crate::icons::svg(name) {
+            out.push_str(&svg.replacen("class=\"size-4 shrink-0\"", "class=\"inline-icon\"", 1));
+        } else {
+            out.push_str(":icon-");
+            rest = after;
+            continue;
+        }
+        rest = &after[name_len + 1..];
     }
     out.push_str(rest);
     out
@@ -130,6 +139,21 @@ pub fn code_css() -> &'static str {
             })
             .unwrap_or_default()
     })
+}
+
+/// The icon names written as `:icon-name:` in a piece of Markdown, code
+/// included (it errs on the side of a file counting as used).
+pub fn icon_names(markdown: &str) -> Vec<&str> {
+    markdown
+        .split(":icon-")
+        .skip(1)
+        .filter_map(|after| {
+            let len = after
+                .find(|c: char| !(c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'))
+                .unwrap_or(after.len());
+            (len > 0 && after[len..].starts_with(':')).then_some(&after[..len])
+        })
+        .collect()
 }
 
 /// Every link and image target in a piece of Markdown, as written.
@@ -245,7 +269,11 @@ mod tests {
     use super::*;
 
     fn render_on(path: &str, file: &str, markdown: &str) -> String {
-        render(markdown, &LinkContext::new(path, Path::new(file)))
+        render(
+            markdown,
+            &LinkContext::new(path, Path::new(file)),
+            &SiteIcons::default(),
+        )
     }
 
     #[test]
@@ -311,6 +339,28 @@ mod tests {
             "{html}"
         );
         assert_eq!(html.matches("<svg").count(), 1, "{html}");
+    }
+
+    #[test]
+    fn prefers_the_sites_own_icons() {
+        let media = tempfile::tempdir().unwrap();
+        let folder = media.path().join(SITE_ICONS_DIR);
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(folder.join("rails.svg"), "<svg/>").unwrap();
+        std::fs::write(folder.join("phone.png"), "png").unwrap();
+        let html = render(
+            ":icon-rails: Rails, :icon-phone: and :icon-mail:",
+            &LinkContext::new("stack", Path::new("pages/stack.md")),
+            &SiteIcons::load(media.path()),
+        );
+        assert!(
+            html.contains(
+                r#"<img class="inline-icon site-icon" src="../media/icons/rails.svg" alt="" aria-hidden="true"> Rails"#
+            ),
+            "{html}"
+        );
+        assert!(html.contains(r#"src="../media/icons/phone.png""#), "{html}");
+        assert_eq!(html.matches("<svg").count(), 1, "mail is q.e.d.'s: {html}");
     }
 
     #[test]

@@ -15,6 +15,7 @@ use std::path::{Component, Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::block::{self, Block};
+use crate::icons;
 use crate::markdown;
 use crate::site::{self, ASSETS_DIR, MEDIA_DIR, Page, STATIC_DIR, Site, SiteError};
 use crate::slug::slugify;
@@ -467,6 +468,16 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
     }
     let prefix = format!("{}/", library.dir());
     for text in markdown_texts {
+        // A site icon (`:icon-rails:`) is one of these files, whichever exists.
+        if library == Library::Media {
+            for icon in markdown::icon_names(text) {
+                names.extend(
+                    icons::SITE_ICON_EXTENSIONS
+                        .iter()
+                        .map(|extension| format!("{}/{icon}.{extension}", icons::SITE_ICONS_DIR)),
+                );
+            }
+        }
         for target in markdown::link_targets(text) {
             let path = target.split(['?', '#']).next().unwrap_or_default();
             if let Some(name) = path.trim_start_matches('/').strip_prefix(prefix.as_str()) {
@@ -773,6 +784,30 @@ mod tests {
         assert!(!dir.path().join("media/unused.txt").exists());
 
         assert!(delete(&site, Library::Media, "../site.toml").is_err());
+    }
+
+    #[test]
+    fn site_icons_in_text_are_used() {
+        let dir = site_dir();
+        fs::create_dir(dir.path().join("media/icons")).unwrap();
+        fs::write(dir.path().join("media/icons/rails.svg"), "<svg/>").unwrap();
+        fs::write(
+            dir.path().join("pages/stack.md"),
+            "+++\ntitle = \"Stack\"\n+++\n\n:icon-rails: Rails\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+        let rails = list(&site, Library::Media)
+            .unwrap()
+            .into_iter()
+            .find(|file| file.name == "icons/rails.svg")
+            .unwrap();
+        assert_eq!(rails.used_by, ["stack"]);
+        let error = delete(&site, Library::Media, "icons/rails.svg").unwrap_err();
+        assert!(
+            error.to_string().contains("still used by /stack"),
+            "{error}"
+        );
     }
 
     #[test]
