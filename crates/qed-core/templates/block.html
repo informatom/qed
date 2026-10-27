@@ -8,6 +8,29 @@
   {%- if let Some(width) = picture.width %} width="{{ width }}"{% endif %}
   {%- if let Some(height) = picture.height %} height="{{ height }}"{% endif %} loading="{{ loading }}" class="{{ classes }}">
 {%- endmacro %}
+{#- An image that opens big over the page when clicked, if it's zoomable:
+    the browser's popover (`popovertarget`), no JavaScript. Esc, a click on
+    the big image or beside it closes it. Browsers without popovers just
+    show the image. The big one lists every copy and the original, so the
+    browser takes what fills 95% of the window: the original on a 4K
+    screen, a copy on a phone. `wrapper` goes on whatever is outermost. #}
+{%- macro zoomable(picture, wrapper, classes, sizes, close) %}
+{%- if let Some(zoom) = picture.zoom %}
+<button type="button" popovertarget="{{ zoom.id }}" class="block w-full cursor-zoom-in {{ wrapper }}">
+  {%- call img(picture, classes, sizes, "lazy") %}{% endcall %}
+</button>
+<div id="{{ zoom.id }}" popover class="image-zoom">
+  <button type="button" popovertarget="{{ zoom.id }}" popovertargetaction="hide" class="block cursor-zoom-out" aria-label="{{ close }}">
+    <img src="{{ zoom.src }}" alt="{{ picture.alt }}"
+      {%- if let Some(srcset) = picture.srcset %} srcset="{{ srcset }}" sizes="95vw"{% endif %} width="{{ zoom.width }}" height="{{ zoom.height }}" loading="lazy">
+  </button>
+</div>
+{%- else %}
+<div class="{{ wrapper }}">
+  {%- call img(picture, classes, sizes, "lazy") %}{% endcall %}
+</div>
+{%- endif %}
+{%- endmacro %}
 {%- match block %}
 {%- when RenderedBlock::Text with { html } %}
 <div class="prose max-w-none">{{ html|safe }}</div>
@@ -34,7 +57,7 @@
 {%- when RenderedBlock::Image with { picture, caption_html } %}
 {%- if let Some(picture) = picture %}
 <figure class="flex flex-col gap-3">
-  {%- call img(picture, "h-auto w-full rounded-box", full_sizes, "lazy") %}{% endcall %}
+  {%- call zoomable(picture, "", "h-auto w-full rounded-box", full_sizes, close) %}{% endcall %}
   {%- if let Some(caption_html) = caption_html %}
   <figcaption class="prose prose-sm max-w-none text-base-content/70">{{ caption_html|safe }}</figcaption>
   {%- endif %}
@@ -44,9 +67,9 @@
 <section class="grid items-center gap-8 md:grid-cols-2">
   {%- if let Some(picture) = picture %}
   {%- if *image_left %}
-  {%- call img(picture, "h-auto w-full rounded-box md:order-first", half_sizes, "lazy") %}{% endcall %}
+  {%- call zoomable(picture, "md:order-first", "h-auto w-full rounded-box", half_sizes, close) %}{% endcall %}
   {%- else %}
-  {%- call img(picture, "h-auto w-full rounded-box md:order-last", half_sizes, "lazy") %}{% endcall %}
+  {%- call zoomable(picture, "md:order-last", "h-auto w-full rounded-box", half_sizes, close) %}{% endcall %}
   {%- endif %}
   {%- endif %}
   {%- if let Some(text_html) = text_html %}
@@ -57,9 +80,13 @@
 {%- if !pictures.is_empty() %}
 <section class="grid grid-cols-2 gap-3 sm:grid-cols-3">
   {%- for picture in pictures %}
+  {%- if picture.zoom.is_some() %}
+  {%- call zoomable(picture, "group overflow-hidden rounded-box", "aspect-square h-full w-full object-cover transition-transform duration-300 group-hover:scale-105", "(min-width: 56rem) 18rem, (min-width: 40rem) 33vw, 50vw", close) %}{% endcall %}
+  {%- else %}
   <a href="{{ picture.src }}" class="group block overflow-hidden rounded-box">
     {%- call img(picture, "aspect-square h-full w-full object-cover transition-transform duration-300 group-hover:scale-105", "(min-width: 56rem) 18rem, (min-width: 40rem) 33vw, 50vw", "lazy") %}{% endcall %}
   </a>
+  {%- endif %}
   {%- endfor %}
 </section>
 {%- endif %}

@@ -833,6 +833,22 @@ struct BlockTemplate<'a> {
     full_sizes: &'static str,
     half_sizes: &'static str,
     rss_icon: &'static str,
+    /// The label of the button that closes an image shown big.
+    close: &'static str,
+}
+
+/// Images open big when they are this much wider than their place: an
+/// Image block's (the content column, 56rem = 896 px) or a Text with
+/// image's (half of it), by about half again.
+const ZOOM_ABOVE_FULL: u32 = 1300;
+const ZOOM_ABOVE_HALF: u32 = 700;
+
+/// "Close" in the site's language, for the button over an image shown big.
+fn close_label(language: &str) -> &'static str {
+    match language.split('-').next().unwrap_or_default() {
+        "de" => "Schließen",
+        _ => "Close",
+    }
 }
 
 #[derive(Template)]
@@ -1073,9 +1089,32 @@ pub(crate) struct Picture {
     alt: String,
     width: Option<u32>,
     height: Option<u32>,
+    /// The largest copy up to 1600 pixels wide (or the original, if it has
+    /// no copies), for showing the image big; `srcset` offers the original
+    /// too, for large screens.
+    largest: Option<Zoom>,
+    /// Set when a click shows the image big over the page (see
+    /// [`Picture::zoomable_above`]).
+    zoom: Option<Zoom>,
+}
+
+/// The image shown big over the page, in a popover with this `id`.
+#[derive(Clone)]
+struct Zoom {
+    id: String,
+    src: String,
+    width: u32,
+    height: u32,
 }
 
 impl Picture {
+    /// Lets a click show the picture big when its largest version is wider
+    /// than `shown` pixels: noticeably more than its place on the page.
+    fn zoomable_above(mut self, shown: u32) -> Self {
+        self.zoom = self.largest.clone().filter(|big| big.width > shown);
+        self
+    }
+
     /// Everything but `src` and `alt` for an `<img>` written outside the
     /// templates (images in Markdown text), each with a leading space.
     pub(crate) fn attributes(&self, sizes: &str) -> String {
@@ -1304,6 +1343,7 @@ fn render_html(
         full_sizes,
         half_sizes,
         rss_icon: RSS_ICON,
+        close: close_label(context.language),
     }
     .render()
 }
@@ -1349,7 +1389,8 @@ fn render_block(
             picture: image
                 .image
                 .as_deref()
-                .and_then(|name| picture(name, image.alt.as_deref(), links, images)),
+                .and_then(|name| picture(name, image.alt.as_deref(), links, images))
+                .map(|picture| picture.zoomable_above(ZOOM_ABOVE_FULL)),
             caption_html: markdown(&image.caption),
         },
         Block::TextImage(block) => RenderedBlock::TextImage {
@@ -1357,7 +1398,8 @@ fn render_block(
             picture: block
                 .image
                 .as_deref()
-                .and_then(|name| picture(name, block.alt.as_deref(), links, images)),
+                .and_then(|name| picture(name, block.alt.as_deref(), links, images))
+                .map(|picture| picture.zoomable_above(ZOOM_ABOVE_HALF)),
             image_left: block.image_side == Side::Left,
         },
         Block::Gallery(gallery) => RenderedBlock::Gallery {
@@ -1365,6 +1407,8 @@ fn render_block(
                 .images
                 .iter()
                 .filter_map(|image| picture(&image.image, image.alt.as_deref(), links, images))
+                // Shown cut to a square, so every one opens big.
+                .map(|picture| picture.zoomable_above(0))
                 .collect(),
         },
         Block::Download(download) => {
@@ -1621,7 +1665,32 @@ pub(crate) fn picture(
             candidates.push(format!("{src} {}w", info.width));
             candidates.join(", ")
         });
+    let largest = info.as_ref().map(|(file, info)| {
+        let id = format!(
+            "zoom-{}",
+            file.chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+                .collect::<String>()
+        );
+        match info.widths.last() {
+            Some(&width) => Zoom {
+                id,
+                src: links.media(&images::copy_name(file, width)),
+                width,
+                height: (u64::from(info.height) * u64::from(width) / u64::from(info.width.max(1)))
+                    as u32,
+            },
+            None => Zoom {
+                id,
+                src: src.clone(),
+                width: info.width,
+                height: info.height,
+            },
+        }
+    });
     Some(Picture {
+        largest,
+        zoom: None,
         src,
         srcset,
         alt: alt.unwrap_or_default().to_string(),
@@ -2095,6 +2164,53 @@ mod tests {
                 r#"<img src="media/small.png" alt="" width="300" height="200" loading="lazy""#
             ),
             "{home}"
+        );
+    }
+
+    #[test]
+    fn large_images_open_big_over_the_page() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("pages")).unwrap();
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        fs::write(
+            dir.path().join("site.toml"),
+            "title = \"Stofftiere\"\nlanguage = \"de-AT\"\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.path().join("pages/eule.md"),
+            "+++\ntitle = \"Eule\"\n+++\n\n::: text-image\ntext = \"Weise.\"\nimage = \"eule.jpg\"\nalt = \"Eule\"\nimage_side = \"left\"\n:::\n\n::: text-image\ntext = \"Klein.\"\nimage = \"small.png\"\n:::\n",
+        )
+        .unwrap();
+        image::RgbImage::new(2000, 1000)
+            .save(dir.path().join("media/eule.jpg"))
+            .unwrap();
+        image::RgbImage::new(300, 200)
+            .save(dir.path().join("media/small.png"))
+            .unwrap();
+
+        let site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        build_into(&site, &out).unwrap();
+        let eule = read(out.join("eule/index.html"));
+
+        assert!(
+            eule.contains(
+                r#"<button type="button" popovertarget="zoom-eule-jpg" class="block w-full cursor-zoom-in md:order-first">"#
+            ),
+            "{eule}"
+        );
+        assert!(
+            eule.contains(
+                r#"<img src="../media/eule.1600w.jpg" alt="Eule" srcset="../media/eule.480w.jpg 480w, ../media/eule.960w.jpg 960w, ../media/eule.1600w.jpg 1600w, ../media/eule.jpg 2000w" sizes="95vw" width="1600" height="800" loading="lazy">"#
+            ),
+            "the browser picks the size for its screen, up to the original: {eule}"
+        );
+        assert!(eule.contains(r#"aria-label="Schließen""#), "{eule}");
+        assert_eq!(
+            eule.matches("popovertarget=").count(),
+            2,
+            "one to open, one to close; the small image doesn't open: {eule}"
         );
     }
 

@@ -412,6 +412,18 @@ rest is done.
   images. Full links to the site's own `base_url` (with or without
   `www.`) now become relative links when building, so they stay inside
   the site, in the preview too. informatom.com has it on.
+- **#117 Images open big.** *Done 2026-10-27*, asked for by Sonja for
+  waldgruber.at's plushies (the old site had a Bootstrap modal): a click
+  on an image shows it big over the page on a dark backdrop, closed with
+  Esc, a click on it or beside it. The browser's popover
+  (`popovertarget`), no JavaScript; browsers without it just show the
+  image. Automatic for images noticeably larger than their place: Image
+  blocks over 1300 px, Text with image over 700 px, every Gallery image
+  (it's cut to a square; before, it linked to the original file). The big
+  one has every copy and the original in `srcset` with `sizes="95vw"`, so
+  a phone loads a copy and a 4K screen the original (Sonja's second
+  wish). The close button
+  says "Schließen" on German sites, "Close" elsewhere.
 
 ## Dropped
 

@@ -874,8 +874,9 @@ answer = "See [the menu](/media/menu.pdf)."
         assert!(html.contains("md:order-first"), "image on the left");
         assert!(html.contains("<p>Some <em>text</em>.</p>"), "{html}");
         assert!(
-            html.contains(r#"<a href="../media/logos/a.png""#),
-            "gallery links to full size"
+            html.contains(r#"<button type="button" popovertarget="zoom-logos-a-png""#)
+                && html.contains(r#"<div id="zoom-logos-a-png" popover class="image-zoom">"#),
+            "gallery images open big: {html}"
         );
         assert!(
             html.contains(r#"<a href="../media/menu.pdf" download"#),
