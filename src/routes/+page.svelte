@@ -7,6 +7,7 @@
   import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
   import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
   import Eye from "@lucide/svelte/icons/eye";
+  import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import Mic from "@lucide/svelte/icons/mic";
   import Files from "@lucide/svelte/icons/files";
@@ -16,6 +17,7 @@
   import Hammer from "@lucide/svelte/icons/hammer";
   import History from "@lucide/svelte/icons/history";
   import FileDown from "@lucide/svelte/icons/file-down";
+  import AudioLines from "@lucide/svelte/icons/audio-lines";
   import FolderTree from "@lucide/svelte/icons/folder-tree";
   import PanelBottom from "@lucide/svelte/icons/panel-bottom";
   import FooterEditor from "$lib/FooterEditor.svelte";
@@ -32,6 +34,7 @@
   import AppSettings from "$lib/AppSettings.svelte";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
+  import PodcastPanel from "$lib/PodcastPanel.svelte";
   import SiteTheme from "$lib/SiteTheme.svelte";
   import MenuEditor from "$lib/MenuEditor.svelte";
   import VersionsPanel from "$lib/VersionsPanel.svelte";
@@ -154,7 +157,7 @@
   let creatingEpisode = $state(false);
   let creatingSite = $state(false);
   let movingPage = $state(false);
-  let view = $state<"pages" | "media" | "assets" | "static" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
+  let view = $state<"pages" | "media" | "assets" | "static" | "audio" | "podcast" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -186,6 +189,12 @@
     if (!report || report.notes.length) return;
     const timer = setTimeout(() => (report = null), 10_000);
     return () => clearTimeout(timer);
+  });
+
+  // Podcasts keep their audio files in audio/, unless they're elsewhere.
+  let hasAudioLibrary = $derived(!!site?.config.podcast && site.config.podcast.audio_files !== "external");
+  $effect(() => {
+    if (view === "audio" && !hasAudioLibrary) view = "pages";
   });
 
   // Derived values update by themselves when `site` changes.
@@ -545,22 +554,31 @@
   {/if}
 
   {#if report}
-    <div id="build-report" role="status" class="alert alert-success alert-soft">
-      <span class="flex-1">
-        Built {report.pages} pages{report.drafts_skipped ? ` (${report.drafts_skipped} drafts skipped)` : ""},
-        {report.redirects} redirects, {report.media_files} media files, {report.resized_images} resized images{report.static_files
-          ? `, ${report.static_files} static files`
-          : ""}{report.feeds
-          ? ` and ${report.feeds === 1 ? "1 feed" : `${report.feeds} feeds`}`
-          : ""} into
-        <code class="font-mono text-sm">{report.out_dir}</code>.
-        <button class="link" onclick={() => report && revealItemInDir(report.out_dir)}>Show in file manager</button>
+    <!-- A light green box with text in the normal color: green on green is hard to read. -->
+    <div id="build-report" role="status" class="alert items-start border-success/40 bg-success/10 text-base-content">
+      <span class="flex flex-1 flex-col gap-0.5">
+        <span>
+          Built {report.pages} pages{report.drafts_skipped ? ` (${report.drafts_skipped} drafts skipped)` : ""},
+          {report.redirects} redirects, {report.media_files} media files, {report.resized_images} resized images{report.static_files
+            ? `, ${report.static_files} static files`
+            : ""}{report.feeds
+            ? ` and ${report.feeds === 1 ? "1 feed" : `${report.feeds} feeds`}`
+            : ""}.
+        </span>
+        <span>
+          Into <code class="font-mono text-sm">{report.out_dir}</code> ·
+          <button class="link" onclick={() => report && revealItemInDir(report.out_dir)}>Show in file manager</button>
+        </span>
         {#if previewUrl}
-          Preview: <button class="link" onclick={() => previewUrl && openUrl(previewUrl)}>{previewUrl}</button>
+          <span>Preview: <button class="link" onclick={() => previewUrl && openUrl(previewUrl)}>{previewUrl}</button></span>
         {/if}
-        {#each report.notes as note (note)}
-          <span class="mt-1 block text-warning">{note}</span>
-        {/each}
+        {#if report.notes.length}
+          <ul id="build-notes" class="mt-2 flex flex-col gap-1">
+            {#each report.notes as note (note)}
+              <li class="flex items-start gap-2"><TriangleAlert class="mt-0.5 size-4 shrink-0 text-warning" />{note}</li>
+            {/each}
+          </ul>
+        {/if}
       </span>
       <button type="button" class="btn btn-ghost btn-xs btn-square" aria-label="Close" onclick={() => (report = null)}>✕</button>
     </div>
@@ -576,8 +594,14 @@
         onclick={() => (view = "assets")}><FileDown class="me-1.5 size-4" />Assets</button>
       <button type="button" role="tab" id="view-static" class={["tab", view === "static" && "tab-active"]}
         onclick={() => (view = "static")}><FolderTree class="me-1.5 size-4" />Static</button>
+      {#if hasAudioLibrary}
+        <button type="button" role="tab" id="view-audio" class={["tab", view === "audio" && "tab-active"]}
+          onclick={() => (view = "audio")}><AudioLines class="me-1.5 size-4" />Audio</button>
+      {/if}
       <button type="button" role="tab" id="view-site" class={["tab", view === "site" && "tab-active"]}
         onclick={() => (view = "site")}><Globe class="me-1.5 size-4" />Site</button>
+      <button type="button" role="tab" id="view-podcast" class={["tab", view === "podcast" && "tab-active"]}
+        onclick={() => (view = "podcast")}><Mic class="me-1.5 size-4" />Podcast</button>
       <button type="button" role="tab" id="view-menu" class={["tab", view === "menu" && "tab-active"]}
         onclick={() => (view = "menu")}><MenuIcon class="me-1.5 size-4" />Menu</button>
       <button type="button" role="tab" id="view-theme" class={["tab", view === "theme" && "tab-active"]}
@@ -624,7 +648,7 @@
           </section>
         </div>
       </div>
-      <!-- Menu, Theme and Publish have tabs of their own, also kept mounted. -->
+      <!-- Podcast, Menu, Theme and Publish have tabs of their own, also kept mounted. -->
       <div id="site-publish" class={["flex max-w-4xl flex-col gap-8", view !== "publish" && "hidden"]}>
         <section class="flex flex-col gap-3">
           <div class="flex items-center justify-between gap-2">
@@ -641,6 +665,10 @@
         </section>
         <PublishPanel {site} ontargets={(targets) => site && (site.targets = targets)} />
       </div>
+      <section id="site-podcast" class={["flex max-w-4xl flex-col gap-3", view !== "podcast" && "hidden"]}>
+        <h2 class="text-lg font-semibold">Podcast</h2>
+        <PodcastPanel {site} onsaved={(config) => site && (site.config = config)} />
+      </section>
       <section id="site-menu" class={["flex max-w-4xl flex-col gap-3", view !== "menu" && "hidden"]}>
         <h2 class="text-lg font-semibold">Menu</h2>
         <MenuEditor {site} onsaved={(config) => site && (site.config = config)} />
@@ -656,6 +684,8 @@
       <MediaLibrary siteRoot={site.root} editing={editorDirty} onmoved={() => site && load(site.root)} />
     {:else if view === "assets"}
       <MediaLibrary siteRoot={site.root} library="assets" />
+    {:else if view === "audio"}
+      <MediaLibrary siteRoot={site.root} library="audio" />
     {:else if view === "static"}
       <MediaLibrary siteRoot={site.root} library="static" />
     {:else if view === "versions"}
@@ -865,6 +895,8 @@
             onclose={() => select(null)}
             ondeleted={pageDeleted}
             onmove={() => (movingPage = true)}
+            audioFiles={site.config.podcast?.audio_files ?? null}
+            audioBaseUrl={site.config.podcast?.audio_base_url ?? null}
             bind:dirty={editorDirty}
           />
         {/key}

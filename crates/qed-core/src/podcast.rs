@@ -80,6 +80,10 @@ pub struct Podcast {
     /// Where the audio files are kept.
     #[serde(default)]
     pub audio_files: AudioFiles,
+    /// For audio kept elsewhere: the address the files are under, such as
+    /// `https://cdn.example.com/podcast/`. New episodes' audio addresses
+    /// start with it.
+    pub audio_base_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -138,6 +142,15 @@ pub struct Episode {
     /// moves. Made when the episode is made.
     #[serde(default)]
     pub guid: String,
+    /// The audio: a file in `audio/` (`episode1.mp3`), or a web address
+    /// for audio kept elsewhere.
+    pub audio: Option<String>,
+    /// The audio's size in bytes, its type (`audio/mpeg`) and its length
+    /// (`01:24:22`), as the feed needs them. Read from the file when it's
+    /// chosen; for audio elsewhere, given by hand.
+    pub audio_length: Option<u64>,
+    pub audio_type: Option<String>,
+    pub duration: Option<String>,
     #[serde(default)]
     pub chapters: Vec<Chapter>,
 }
@@ -219,6 +232,20 @@ pub fn readable_start(start: &str) -> String {
 impl Episode {
     /// What's wrong with the episode's settings, if anything.
     pub fn problem(&self) -> Option<String> {
+        if let Some(duration) = self.duration.as_deref()
+            && start_millis(duration).is_none()
+        {
+            return Some(format!(
+                "the length “{duration}” isn't a time like 01:24:22 or 29:55"
+            ));
+        }
+        if let Some(audio) = self.local_audio()
+            && (audio.contains('/') || audio.contains('\\') || audio.starts_with('.'))
+        {
+            return Some(format!(
+                "the audio “{audio}” must be a file in {AUDIO_DIR}/ or a web address"
+            ));
+        }
         let mut last = None;
         for chapter in &self.chapters {
             let title = chapter.title.trim();
@@ -239,6 +266,121 @@ impl Episode {
             last = Some(start);
         }
         None
+    }
+}
+
+impl Episode {
+    /// The audio file's name in `audio/`, if the audio is one (and not a
+    /// web address).
+    pub fn local_audio(&self) -> Option<&str> {
+        self.audio
+            .as_deref()
+            .map(str::trim)
+            .filter(|audio| !audio.is_empty() && !audio.contains("://"))
+    }
+}
+
+/// Where the site keeps its audio files.
+pub const AUDIO_DIR: &str = "audio";
+
+/// Where the built site serves them: `/episodes/episode1.mp3`, as
+/// jekyll-octopod did, so the addresses in old feeds keep working.
+pub const AUDIO_URL_DIR: &str = EPISODES_PATH;
+
+/// What the feed needs to know about an audio file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct AudioInfo {
+    /// Size in bytes.
+    pub length: u64,
+    /// `audio/mpeg`, `audio/x-m4a`, …
+    pub mime_type: String,
+    /// `01:24:22`.
+    pub duration: String,
+}
+
+/// Reads size, type and length of an audio file. The length comes from the
+/// file's header (or, for some MP3s, is worked out from the bitrate), so
+/// this is quick even for long episodes.
+pub fn audio_info(path: &Path) -> Result<AudioInfo, String> {
+    use lofty::file::{AudioFile, FileType, TaggedFileExt};
+
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let length = std::fs::metadata(path)
+        .map_err(|e| format!("can't read {name}: {e}"))?
+        .len();
+    let file = lofty::read_from_path(path)
+        .map_err(|e| format!("{name} isn't an audio file q.e.d. can read ({e})"))?;
+    let mime_type = match file.file_type() {
+        FileType::Mpeg => "audio/mpeg",
+        // Apple's name for it; podcast apps all know it.
+        FileType::Mp4 => "audio/x-m4a",
+        FileType::Vorbis | FileType::Opus | FileType::Speex => "audio/ogg",
+        FileType::Flac => "audio/flac",
+        FileType::Aac => "audio/aac",
+        FileType::Wav => "audio/wav",
+        _ => {
+            return Err(format!(
+                "{name}: podcast apps don't play this kind of audio"
+            ));
+        }
+    };
+    Ok(AudioInfo {
+        length,
+        mime_type: mime_type.to_string(),
+        duration: clock(file.properties().duration().as_secs()),
+    })
+}
+
+/// The audio types every podcast app plays. Ogg (Vorbis, Opus) and FLAC
+/// work in many open apps and in browsers, but not in Apple Podcasts or
+/// Spotify.
+pub const PLAYS_EVERYWHERE: [&str; 2] = ["audio/mpeg", "audio/x-m4a"];
+
+/// Seconds as `01:02:03`.
+pub fn clock(seconds: u64) -> String {
+    format!(
+        "{:02}:{:02}:{:02}",
+        seconds / 3600,
+        seconds / 60 % 60,
+        seconds % 60
+    )
+}
+
+/// The first line of the `.gitignore` q.e.d. puts into `audio/`, to tell
+/// it from one written by hand.
+const AUDIO_IGNORE_MARK: &str = "# Audio files stay out of the site's history";
+
+/// Keeps `audio/` out of the site's history, or puts it back in, as the
+/// podcast's `audio_files` setting says: a `.gitignore` in the folder that
+/// ignores everything, itself included. A `.gitignore` written by hand is
+/// left alone.
+pub fn sync_audio_ignore(root: &Path, podcast: Option<&Podcast>) -> Result<(), SiteError> {
+    let dir = root.join(AUDIO_DIR);
+    let ignore = dir.join(".gitignore");
+    let ours = std::fs::read_to_string(&ignore)
+        .map(|text| text.starts_with(AUDIO_IGNORE_MARK))
+        .unwrap_or(false);
+    let write_error = |path: &Path| {
+        let path = path.to_path_buf();
+        move |source| SiteError::Write { path, source }
+    };
+    match podcast.map(|p| p.audio_files) {
+        Some(AudioFiles::Local) if !ignore.exists() => {
+            std::fs::create_dir_all(&dir).map_err(write_error(&dir))?;
+            std::fs::write(
+                &ignore,
+                format!("{AUDIO_IGNORE_MARK} (Podcast tab → Audio files).\n*\n"),
+            )
+            .map_err(write_error(&ignore))
+        }
+        Some(AudioFiles::InHistory) if ours => {
+            std::fs::remove_file(&ignore).map_err(write_error(&ignore))
+        }
+        _ => Ok(()),
     }
 }
 
@@ -458,6 +600,13 @@ impl Podcast {
         {
             return Some(format!("“{email}” isn't an email address"));
         }
+        if let Some(base) = self.audio_base_url.as_deref()
+            && !(base.starts_with("https://") || base.starts_with("http://"))
+        {
+            return Some(format!(
+                "the address of the audio files must start with https://, not “{base}”"
+            ));
+        }
         if let Some(funding) = self
             .funding
             .iter()
@@ -517,53 +666,68 @@ pub struct Words {
     pub trailer: &'static str,
     pub bonus: &'static str,
     pub chapters: &'static str,
+    pub download: &'static str,
 }
 
 impl Words {
     /// For `de`, `de-AT`, …; English for languages q.e.d. has no words for.
     pub fn for_language(language: &str) -> Words {
         let main = language.trim().to_lowercase();
-        let (episodes, season, episode, trailer, bonus, chapters) =
-            match main.split(['-', '_']).next().unwrap_or_default() {
-                "de" => ("Folgen", "Staffel", "Folge", "Trailer", "Bonus", "Kapitel"),
-                "fr" => (
-                    "Épisodes",
-                    "Saison",
-                    "Épisode",
-                    "Bande-annonce",
-                    "Bonus",
-                    "Chapitres",
-                ),
-                "es" => (
-                    "Episodios",
-                    "Temporada",
-                    "Episodio",
-                    "Tráiler",
-                    "Extra",
-                    "Capítulos",
-                ),
-                "it" => (
-                    "Episodi", "Stagione", "Episodio", "Trailer", "Extra", "Capitoli",
-                ),
-                "nl" => (
-                    "Afleveringen",
-                    "Seizoen",
-                    "Aflevering",
-                    "Trailer",
-                    "Bonus",
-                    "Hoofdstukken",
-                ),
-                _ => (
-                    "Episodes", "Season", "Episode", "Trailer", "Bonus", "Chapters",
-                ),
-            };
-        Words {
-            episodes,
-            season,
-            episode,
-            trailer,
-            bonus,
-            chapters,
+        match main.split(['-', '_']).next().unwrap_or_default() {
+            "de" => Words {
+                episodes: "Folgen",
+                season: "Staffel",
+                episode: "Folge",
+                trailer: "Trailer",
+                bonus: "Bonus",
+                chapters: "Kapitel",
+                download: "Herunterladen",
+            },
+            "fr" => Words {
+                episodes: "Épisodes",
+                season: "Saison",
+                episode: "Épisode",
+                trailer: "Bande-annonce",
+                bonus: "Bonus",
+                chapters: "Chapitres",
+                download: "Télécharger",
+            },
+            "es" => Words {
+                episodes: "Episodios",
+                season: "Temporada",
+                episode: "Episodio",
+                trailer: "Tráiler",
+                bonus: "Extra",
+                chapters: "Capítulos",
+                download: "Descargar",
+            },
+            "it" => Words {
+                episodes: "Episodi",
+                season: "Stagione",
+                episode: "Episodio",
+                trailer: "Trailer",
+                bonus: "Extra",
+                chapters: "Capitoli",
+                download: "Scarica",
+            },
+            "nl" => Words {
+                episodes: "Afleveringen",
+                season: "Seizoen",
+                episode: "Aflevering",
+                trailer: "Trailer",
+                bonus: "Bonus",
+                chapters: "Hoofdstukken",
+                download: "Downloaden",
+            },
+            _ => Words {
+                episodes: "Episodes",
+                season: "Season",
+                episode: "Episode",
+                trailer: "Trailer",
+                bonus: "Bonus",
+                chapters: "Chapters",
+                download: "Download",
+            },
         }
     }
 }
@@ -599,7 +763,7 @@ pub fn create_episode(root: &Path, title: &str, number: Option<u32>) -> Result<P
     if site.config.podcast.is_none() {
         return Err(SiteError::Invalid {
             path: PathBuf::from(site::CONFIG_FILE),
-            message: "the site has no podcast; turn it on in the Site settings first".to_string(),
+            message: "the site has no podcast; turn it on in the Podcast tab first".to_string(),
         });
     }
     if !site.pages.iter().any(|page| page.path == EPISODES_PATH) {
@@ -876,6 +1040,13 @@ mod tests {
         let text = std::fs::read_to_string(dir.path().join(site::CONFIG_FILE)).unwrap();
         assert!(text.contains("[[podcast.funding]]"), "{text}");
 
+        // The address of audio elsewhere must be a web address.
+        let mut config = site::open(dir.path()).unwrap().config;
+        if let Some(podcast) = config.podcast.as_mut() {
+            podcast.audio_base_url = Some("cdn.example.com/pod".to_string());
+        }
+        assert!(site::save_config(dir.path(), &config).is_err());
+
         // Unknown categories are refused.
         let mut config = site::open(dir.path()).unwrap().config;
         if let Some(podcast) = config.podcast.as_mut() {
@@ -913,5 +1084,119 @@ mod tests {
             report.notes
         );
         assert!(out.join("episodes/index.html").is_file());
+    }
+
+    /// One second of silence as a WAV file: 8000 samples of 8 bits.
+    fn wav() -> Vec<u8> {
+        let samples = 8000u32;
+        let mut bytes = Vec::new();
+        bytes.extend(b"RIFF");
+        bytes.extend((36 + samples).to_le_bytes());
+        bytes.extend(b"WAVEfmt ");
+        bytes.extend(16u32.to_le_bytes());
+        bytes.extend(1u16.to_le_bytes()); // PCM
+        bytes.extend(1u16.to_le_bytes()); // mono
+        bytes.extend(8000u32.to_le_bytes()); // samples per second
+        bytes.extend(8000u32.to_le_bytes()); // bytes per second
+        bytes.extend(1u16.to_le_bytes()); // bytes per sample
+        bytes.extend(8u16.to_le_bytes()); // bits per sample
+        bytes.extend(b"data");
+        bytes.extend(samples.to_le_bytes());
+        bytes.extend(std::iter::repeat_n(128u8, samples as usize));
+        bytes
+    }
+
+    #[test]
+    fn reads_size_type_and_length_of_audio() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("one.wav");
+        std::fs::write(&file, wav()).unwrap();
+        let info = audio_info(&file).unwrap();
+        assert_eq!(info.length, 8044);
+        assert_eq!(info.mime_type, "audio/wav");
+        assert_eq!(info.duration, "00:00:01");
+
+        std::fs::write(dir.path().join("fake.mp3"), b"not audio").unwrap();
+        assert!(audio_info(&dir.path().join("fake.mp3")).is_err());
+        assert_eq!(clock(5062), "01:24:22");
+    }
+
+    #[test]
+    fn keeps_local_audio_out_of_the_history() {
+        let dir = podcast_site();
+        let ignore = dir.path().join(AUDIO_DIR).join(".gitignore");
+        // Local is the default: saving the settings wrote it.
+        assert!(std::fs::read_to_string(&ignore).unwrap().contains("*"));
+
+        let mut config = site::open(dir.path()).unwrap().config;
+        if let Some(podcast) = config.podcast.as_mut() {
+            podcast.audio_files = AudioFiles::InHistory;
+        }
+        site::save_config(dir.path(), &config).unwrap();
+        assert!(!ignore.exists());
+
+        // One written by hand stays.
+        std::fs::write(&ignore, "*.wav\n").unwrap();
+        if let Some(podcast) = config.podcast.as_mut() {
+            podcast.audio_files = AudioFiles::Local;
+        }
+        site::save_config(dir.path(), &config).unwrap();
+        assert_eq!(std::fs::read_to_string(&ignore).unwrap(), "*.wav\n");
+    }
+
+    #[test]
+    fn puts_audio_on_episode_pages_at_octopods_addresses() {
+        let dir = podcast_site();
+        let source = dir.path().join("one.wav");
+        std::fs::write(&source, wav()).unwrap();
+        let name = crate::media::import(dir.path(), crate::media::Library::Audio, &source).unwrap();
+        assert_eq!(name, "one.wav");
+
+        let page = create_episode(dir.path(), "Mit Ton", None).unwrap();
+        let silent = create_episode(dir.path(), "Ohne Ton", None).unwrap();
+        let mut front = page.content.front.clone();
+        if let Some(episode) = front.episode.as_mut() {
+            episode.audio = Some(name.clone());
+            episode.duration = Some("00:00:01".to_string());
+            episode.audio_type = Some("audio/wav".to_string());
+        }
+        site::save_front_matter(dir.path(), &page.file, front).unwrap();
+
+        let site = site::open(dir.path()).unwrap();
+        // The episode uses the file, so it can't be deleted.
+        assert!(crate::media::delete(&site, crate::media::Library::Audio, &name).is_err());
+
+        let out = dir.path().join("_site");
+        let report = crate::generator::build_into(&site, &out).unwrap();
+        assert!(out.join("episodes/one.wav").is_file());
+        assert!(!out.join("episodes/.gitignore").exists());
+        let html = std::fs::read_to_string(out.join(&page.path).join("index.html")).unwrap();
+        assert!(
+            html.contains(r#"<source src="../../episodes/one.wav" type="audio/wav">"#),
+            "{html}"
+        );
+        assert!(html.contains("Herunterladen (WAV, 8 KB)"), "{html}");
+        assert!(html.contains("<span>00:01</span>"), "{html}");
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|note| note.contains("audio/wav") && note.contains("only MP3 and M4A")),
+            "{:?}",
+            report.notes
+        );
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|note| note.contains(&silent.path) && note.contains("no audio")),
+            "{:?}",
+            report.notes
+        );
+
+        // Wrong kind of file for audio/.
+        let text = dir.path().join("notes.txt");
+        std::fs::write(&text, "hi").unwrap();
+        assert!(crate::media::import(dir.path(), crate::media::Library::Audio, &text).is_err());
     }
 }

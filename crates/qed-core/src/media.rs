@@ -1,6 +1,7 @@
 //! The site's folders of files: `media/` for images, `assets/` for files to
-//! download, such as PDFs, and `static/` for files copied into the built
-//! site as they are (slide shows, `keybase.txt`).
+//! download, such as PDFs, `static/` for files copied into the built site
+//! as they are (slide shows, `keybase.txt`), and `audio/` for a podcast's
+//! episodes.
 //!
 //! Pages refer to media and assets by name: `image = "team.jpg"` and
 //! `file = "menu.pdf"` in blocks, or `![Team](/media/team.jpg)` and
@@ -34,6 +35,8 @@ pub enum Library {
     Assets,
     /// `static/`: copied into the built site at the same paths.
     Static,
+    /// `audio/`: the podcast's audio files, one per episode.
+    Audio,
 }
 
 impl Library {
@@ -42,6 +45,7 @@ impl Library {
             Library::Media => MEDIA_DIR,
             Library::Assets => ASSETS_DIR,
             Library::Static => STATIC_DIR,
+            Library::Audio => crate::podcast::AUDIO_DIR,
         }
     }
 }
@@ -52,6 +56,7 @@ impl Library {
 #[serde(rename_all = "lowercase")]
 pub enum MediaKind {
     Image,
+    Audio,
     Document,
     /// Plain text the app can show: HTML, CSS, JavaScript, `.txt`, …
     Text,
@@ -194,6 +199,17 @@ pub fn import(root: &Path, library: Library, source: &Path) -> Result<String, Si
             path: source.to_path_buf(),
             message: "isn't an image; files to download go into Assets".to_string(),
         });
+    }
+    if library == Library::Audio {
+        if kind_of(&original_name) != MediaKind::Audio {
+            return Err(SiteError::Invalid {
+                path: source.to_path_buf(),
+                message: "isn't an audio file (MP3, M4A, Ogg, Opus, …)".to_string(),
+            });
+        }
+        // Before the first file lands, so it never shows up in a version.
+        let site = site::open(root)?;
+        crate::podcast::sync_audio_ignore(root, site.config.podcast.as_ref())?;
     }
 
     let stem = source
@@ -371,7 +387,7 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
     if library == Library::Media && is_podcast_cover(site, name) {
         return Err(SiteError::Invalid {
             path: PathBuf::from(library.dir()).join(name),
-            message: "it's the podcast's cover; choose another one in Site settings first"
+            message: "it's the podcast's cover; choose another one in the Podcast tab first"
                 .to_string(),
         });
     }
@@ -427,6 +443,17 @@ fn is_site_logo(site: &Site, name: &str) -> bool {
 /// existed kept them in `media/`, so their names count there too, until
 /// [`move_documents_to_assets`] has moved them.
 pub fn references(page: &Page, library: Library) -> Vec<String> {
+    if library == Library::Audio {
+        return page
+            .content
+            .front
+            .episode
+            .as_ref()
+            .and_then(|episode| episode.local_audio())
+            .map(str::to_string)
+            .into_iter()
+            .collect();
+    }
     let mut images = Vec::new();
     let mut downloads = Vec::new();
     let mut markdown_texts: Vec<&str> = Vec::new();
@@ -702,6 +729,7 @@ fn kind_of(name: &str) -> MediaKind {
         .unwrap_or_default();
     match extension.as_str() {
         "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" | "avif" => MediaKind::Image,
+        "mp3" | "m4a" | "aac" | "ogg" | "oga" | "opus" | "flac" | "wav" => MediaKind::Audio,
         "pdf" | "zip" | "doc" | "docx" | "odt" | "xls" | "xlsx" | "ods" | "epub" => {
             MediaKind::Document
         }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AudioPreview from "$lib/AudioPreview.svelte";
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
   import { revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -124,8 +125,12 @@
     await importPaths(
       await open({
         multiple: true,
-        title: library === "media" ? "Import images" : isStatic ? "Import files to copy as they are" : "Import files to download",
-        filters: library === "media" ? [{ name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif"] }] : [],
+        title: library === "media" ? "Import images"
+          : library === "audio" ? "Import audio files"
+          : isStatic ? "Import files to copy as they are" : "Import files to download",
+        filters: library === "media" ? [{ name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif"] }]
+          : library === "audio" ? [{ name: "Audio", extensions: ["mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "wav"] }]
+          : [],
       }),
     );
   }
@@ -208,7 +213,7 @@
     {/if}
     <button type="button" id="import-{library}" class="btn btn-primary" onclick={importFiles} disabled={busy}>
       {#if busy}<span class="loading loading-spinner loading-sm"></span>{:else}<Upload class="size-4" />{/if}
-      {library === "media" ? "Import images…" : "Import files…"}
+      {library === "media" ? "Import images…" : library === "audio" ? "Import audio…" : "Import files…"}
     </button>
   </div>
 
@@ -259,6 +264,8 @@
         The media folder is empty. Import images to use them on pages.
       {:else if isStatic}
         No static files yet. Import files or whole folders.
+      {:else if library === "audio"}
+        No audio yet. Import an episode's audio file (MP3 or M4A), then choose it in the episode's settings.
       {:else}
         No files to download yet. Import PDFs or other files to offer them with a Download block.
       {/if}
@@ -302,6 +309,10 @@
           </button>
           <div class="flex flex-col gap-1 p-3">
             <span class="truncate text-sm font-medium" title={file.name}>{file.label}{file.count !== undefined ? "/" : ""}</span>
+            {#if file.kind === "audio" && !onpick}
+              <!-- Opens in the computer's audio player. -->
+              <AudioPreview {siteRoot} {library} name={file.name} />
+            {/if}
             {#if isStatic}
               <span class="truncate font-mono text-xs text-base-content/60" title="Address on the site">
                 /{file.name}{file.count !== undefined ? "/" : ""}
@@ -326,7 +337,7 @@
                 {/if}
                 <button type="button" class="btn btn-ghost btn-xs btn-square text-error" disabled={file.used_by.length > 0 || file.site_logo || file.podcast_cover}
                   title={file.site_logo || file.podcast_cover
-                    ? `The ${file.site_logo ? "site's logo" : "podcast's cover"}; choose another one in Site settings first`
+                    ? file.site_logo ? "The site's logo; choose another one in Site settings first" : "The podcast's cover; choose another one in the Podcast tab first"
                     : file.used_by.length ? "Linked from a page; remove the link there first" : "Delete"}
                   aria-label="Delete {file.name}" onclick={() => remove(file)}>
                   <Trash class="size-4" />

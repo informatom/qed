@@ -53,6 +53,7 @@ export type Podcast = Sent<Rust.Podcast>;
 export type Episode = Sent<Rust.Episode>;
 export type Chapter = Sent<Rust.Chapter>;
 export type Funding = Sent<Rust.Funding>;
+export type AudioInfo = Sent<Rust.AudioInfo>;
 export type Target = Sent<Rust.Target>;
 export type TestOutcome = Sent<Rust.TestOutcome>;
 

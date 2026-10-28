@@ -34,6 +34,7 @@ toml = "1.1.8"
 toml_edit = { version = "0.25.17", features = ["serde"] }
 # Episode guids (random, v4) and the podcast:guid (from the feed address, v5).
 uuid = { version = "1.28.0", features = ["v4", "v5"] }
+lofty = "0.25.5"
 
 [dev-dependencies]
 tempfile = "3.27.0"

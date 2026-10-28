@@ -264,9 +264,18 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     }
 
     notes.extend(cover_notes(site, &published, &media_dir));
+    notes.extend(audio_notes(site, &published));
 
     let media_files = copy_dir(&media_dir, &out_dir.join(MEDIA_DIR))?
-        + copy_dir(&site.root.join(ASSETS_DIR), &out_dir.join(ASSETS_DIR))?;
+        + copy_dir(&site.root.join(ASSETS_DIR), &out_dir.join(ASSETS_DIR))?
+        + match &site.config.podcast {
+            Some(_) => copy_or_link_dir(
+                &site.root.join(podcast::AUDIO_DIR),
+                &out_dir.join(podcast::AUDIO_URL_DIR),
+                true,
+            )?,
+            None => 0,
+        };
     let resized_images =
         images.write(&out_dir.join(MEDIA_DIR), &site.root.join(images::CACHE_DIR))?;
 
@@ -311,7 +320,7 @@ fn cover_notes(site: &Site, published: &[&Page], media_dir: &Path) -> Vec<String
                 .map(|problem| format!("The podcast cover {cover}: {problem}.")),
         ),
         None => notes.push(
-            "The podcast has no cover yet; podcast apps need one. Choose it under Site → Podcast."
+            "The podcast has no cover yet; podcast apps need one. Choose it in the Podcast tab."
                 .to_string(),
         ),
     }
@@ -333,6 +342,39 @@ fn cover_notes(site: &Site, published: &[&Page], media_dir: &Path) -> Vec<String
         );
     }
     notes
+}
+
+/// Episodes whose audio is missing: podcast apps skip an episode without
+/// audio.
+fn audio_notes(site: &Site, published: &[&Page]) -> Vec<String> {
+    if site.config.podcast.is_none() {
+        return Vec::new();
+    }
+    let audio_dir = site.root.join(podcast::AUDIO_DIR);
+    published
+        .iter()
+        .filter_map(|page| {
+            let episode = page.content.front.episode.as_ref()?;
+            match (&episode.audio, episode.local_audio()) {
+                (None, _) => Some(format!("/{}: the episode has no audio yet.", page.path)),
+                (_, Some(file)) if !audio_dir.join(file).is_file() => Some(format!(
+                    "/{}: the audio file {file} isn't in {}/.",
+                    page.path,
+                    podcast::AUDIO_DIR
+                )),
+                _ => episode
+                    .audio_type
+                    .as_deref()
+                    .filter(|kind| !podcast::PLAYS_EVERYWHERE.contains(kind))
+                    .map(|kind| {
+                        format!(
+                            "/{}: the audio is {kind}; Apple Podcasts and Spotify play only MP3 and M4A.",
+                            page.path
+                        )
+                    }),
+            }
+        })
+        .collect()
 }
 
 /// The URL path of a page that is the site's 404 page (`pages/404.md`).
@@ -625,6 +667,14 @@ fn write(path: &Path, contents: String) -> Result<(), BuildError> {
 /// Copies a folder recursively, skipping hidden files. Returns the number of
 /// files copied. A missing folder copies nothing.
 fn copy_dir(from: &Path, to: &Path) -> Result<usize, BuildError> {
+    copy_or_link_dir(from, to, false)
+}
+
+/// Like [`copy_dir`]; with `link`, files become hard links to the
+/// originals where the file system allows it: the same file under a second
+/// name, written in no time and taking no extra space. For audio files of
+/// 100 MB each, built again for every preview.
+fn copy_or_link_dir(from: &Path, to: &Path, link: bool) -> Result<usize, BuildError> {
     if !from.is_dir() {
         return Ok(0);
     }
@@ -643,9 +693,12 @@ fn copy_dir(from: &Path, to: &Path) -> Result<usize, BuildError> {
         }
         let (source, target) = (entry.path(), to.join(&name));
         if source.is_dir() {
-            count += copy_dir(&source, &target)?;
+            count += copy_or_link_dir(&source, &target, link)?;
         } else {
-            fs::copy(&source, &target).map_err(io(&target))?;
+            // Another drive (or a file system without links): copy.
+            if !link || fs::hard_link(&source, &target).is_err() {
+                fs::copy(&source, &target).map_err(io(&target))?;
+            }
             count += 1;
         }
     }
@@ -848,6 +901,8 @@ struct PageTemplate<'a> {
     chapters: Vec<ChapterEntry>,
     /// "Chapters", in the site's language.
     chapters_heading: &'static str,
+    /// An episode's audio, with a player and a download link.
+    audio: Option<AudioEntry>,
     /// Each block's HTML, from `block.html`.
     blocks: Vec<String>,
     /// The site footer's blocks, rendered for this page.
@@ -1138,6 +1193,15 @@ struct FeedLink {
     href: String,
     /// For the footer: "RSS feed", or "Blog RSS feed" when there are several.
     label: String,
+}
+
+/// The audio of an episode page.
+struct AudioEntry {
+    src: String,
+    /// "Herunterladen (MP3, 28.9 MB)".
+    download: String,
+    duration: Option<String>,
+    mime_type: Option<String>,
 }
 
 /// One chapter on an episode page.
@@ -1459,6 +1523,10 @@ fn render_page(
             })
             .collect(),
         chapters_heading: words.chapters,
+        audio: front
+            .episode
+            .as_ref()
+            .and_then(|episode| audio_entry(site, episode, &links, &words)),
         blocks: page
             .content
             .blocks
@@ -1959,6 +2027,50 @@ fn share_image(page: &Page, base_url: &str, images: &Images) -> Option<ShareImag
         width,
         height,
         alt,
+    })
+}
+
+/// The player and download link for an episode's audio, if it has some.
+fn audio_entry(
+    site: &Site,
+    episode: &podcast::Episode,
+    links: &LinkContext,
+    words: &podcast::Words,
+) -> Option<AudioEntry> {
+    let audio = episode.audio.as_deref().map(str::trim)?;
+    let (src, length) = match episode.local_audio() {
+        Some(file) => (
+            format!("{}{}/{file}", links.to_root(), podcast::AUDIO_URL_DIR),
+            // The file itself knows best.
+            fs::metadata(site.root.join(podcast::AUDIO_DIR).join(file))
+                .ok()
+                .map(|meta| meta.len())
+                .or(episode.audio_length),
+        ),
+        None => (audio.to_string(), episode.audio_length),
+    };
+    let format = audio
+        .split(['?', '#'])
+        .next()
+        .and_then(|path| path.rsplit_once('.'))
+        .map(|(_, extension)| extension.to_uppercase())
+        .filter(|extension| extension.len() <= 4);
+    let details: Vec<String> = format.into_iter().chain(length.map(format_size)).collect();
+    Some(AudioEntry {
+        src,
+        download: if details.is_empty() {
+            words.download.to_string()
+        } else {
+            format!("{} ({})", words.download, details.join(", "))
+        },
+        duration: episode.duration.as_deref().map(|d| {
+            // Without hours if there are none: 29:55, but 01:24:22.
+            let readable = podcast::readable_start(d);
+            readable
+                .strip_prefix("00:")
+                .map_or(readable.clone(), str::to_string)
+        }),
+        mime_type: episode.audio_type.clone(),
     })
 }
 

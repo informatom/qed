@@ -3,7 +3,8 @@
   import { onMount } from "svelte";
   import CoverCheck from "$lib/CoverCheck.svelte";
   import ImageField from "$lib/ImageField.svelte";
-  import { commands, pageIcons, type Episode, type EpisodeType, type FrontMatter, type Menu, type Page } from "$lib/site";
+  import MediaPicker from "$lib/MediaPicker.svelte";
+  import { commands, pageIcons, type AudioFiles, type Episode, type EpisodeType, type FrontMatter, type Menu, type Page } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -13,9 +14,13 @@
     start?: FrontMatter;
     /** Tells the parent whether there are unsaved changes. */
     dirty?: boolean;
+    /** Where the podcast keeps its audio; null for sites without one. */
+    audioFiles?: AudioFiles | null;
+    /** For audio elsewhere: the address new episodes' audio starts with. */
+    audioBaseUrl?: string | null;
   }
 
-  let { page, siteRoot, onsaved, start, dirty = $bindable(false) }: Props = $props();
+  let { page, siteRoot, onsaved, start, dirty = $bindable(false), audioFiles = null, audioBaseUrl = null }: Props = $props();
 
   // An editable copy of the settings, taken once when the form opens
   // (`untrack` says so on purpose; the parent re-creates the form for another
@@ -67,6 +72,10 @@
       // Episode 0 is common: many podcasts start counting there.
       number: counted(episode.number, 0),
       image: orNull(episode.image),
+      audio: orNull(episode.audio),
+      audio_length: counted(episode.audio_length, 0),
+      audio_type: orNull(episode.audio_type),
+      duration: orNull(episode.duration),
       chapters: episode.chapters
         .map((c) => ({ start: c.start.trim(), title: c.title.trim(), link: orNull(c.link) }))
         .filter((c) => c.start !== "" || c.title !== ""),
@@ -84,6 +93,36 @@
   $effect(() => {
     if (form.episode) form.episode.explicit = explicit === "podcast" ? null : explicit === "yes";
   });
+
+  // Audio from audio/: chosen in the library, its details read from the file.
+  let pickingAudio = $state(false);
+  let audioError = $state<string | null>(null);
+  async function useAudio(name: string) {
+    if (!form.episode) return;
+    audioError = null;
+    form.episode.audio = name;
+    try {
+      const info = await commands.audioInfo(siteRoot, name);
+      form.episode.audio_length = info.length;
+      form.episode.audio_type = info.mime_type;
+      form.episode.duration = info.duration;
+    } catch (e) {
+      audioError = String(e);
+    }
+  }
+  function clearAudio() {
+    if (!form.episode) return;
+    form.episode.audio = null;
+    form.episode.audio_length = null;
+    form.episode.audio_type = null;
+    form.episode.duration = null;
+  }
+  // The podcast's address for audio elsewhere, ending in a slash.
+  let audioBase = $derived(audioBaseUrl ? audioBaseUrl.replace(/\/*$/, "/") : null);
+
+  function megabytes(bytes: number | null): string {
+    return bytes === null ? "" : `${(bytes / 1_000_000).toFixed(1)} MB`;
+  }
 
   function addChapter() {
     if (!form.episode) return;
@@ -132,66 +171,77 @@
 
 <!-- `@container` lets the fields below arrange themselves by the panel's own
      width (`@xl:`), not the window's. -->
+{#snippet heading(text: string)}
+  <h3 class="col-span-full text-xs font-semibold tracking-wide text-base-content/60 uppercase">{text}</h3>
+{/snippet}
+
 <form id="page-settings" class="@container card border border-base-300 bg-base-100" onsubmit={save}>
-  <div class="card-body grid gap-4 @xl:grid-cols-2">
-    <label class="flex flex-col gap-1 @xl:col-span-2">
-      <span class="text-sm font-medium">Title</span>
-      <input id="setting-title" class="input w-full" bind:value={form.title} required />
-    </label>
-
-    <label class="flex flex-col gap-1 @xl:col-span-2">
-      <span class="text-sm font-medium">Description</span>
-      <textarea id="setting-description" class="textarea w-full" rows="2" bind:value={form.description}
-        placeholder="Shown by search engines"></textarea>
-    </label>
-
-    <div id="setting-image" class="flex flex-col gap-1 @xl:col-span-2">
-      <span class="text-sm font-medium">Share image <span class="font-normal text-base-content/50">· shown when someone shares a link to the page; without one, the page's first image. Needs the site's web address.</span></span>
-      <ImageField {siteRoot} bind:value={form.image} />
-    </div>
-
-    <div class="grid grid-cols-[1fr_6rem] gap-3">
-      <label class="flex flex-col gap-1">
-        <span class="text-sm font-medium">Menu</span>
-        <select id="setting-menu" class="select w-full" bind:value={form.menu}>
-          {#each MENUS as menu (menu.value)}
-            <option value={menu.value}>{menu.label}</option>
-          {/each}
-        </select>
+  <!-- Groups with a heading each, divided by thin lines, as in the Site tab. -->
+  <div class="card-body gap-6">
+    <section id="page-general" class="grid gap-4 @xl:grid-cols-2">
+      {@render heading("General")}
+      <label class="flex flex-col gap-1 @xl:col-span-2">
+        <span class="text-sm font-medium">Title</span>
+        <input id="setting-title" class="input w-full" bind:value={form.title} required />
       </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-sm font-medium">Order</span>
-        <input id="setting-weight" class="input w-full" type="number" bind:value={form.weight} />
-      </label>
-    </div>
 
-    <fieldset class="flex flex-col gap-2 @xl:col-span-2">
-      <legend class="mb-1 text-sm font-medium">Icon <span class="font-normal text-base-content/50">· shown in menus</span></legend>
-      <div class="flex flex-wrap gap-1" role="radiogroup">
-        <button type="button" role="radio" aria-checked={!form.icon} onclick={() => (form.icon = null)}
-          class={["btn btn-sm", !form.icon ? "btn-primary" : "btn-ghost"]}>No icon</button>
-        {#each icons as [name, svg] (name)}
-          <!-- The SVGs are qed's own built-in icons, so inserting them as HTML is safe. -->
-          <button type="button" role="radio" aria-checked={form.icon === name} title={name} aria-label={name}
-            onclick={() => (form.icon = name)}
-            class={["btn btn-sm btn-square", form.icon === name ? "btn-primary" : "btn-ghost"]}>{@html svg}</button>
-        {/each}
+      <label class="flex flex-col gap-1 @xl:col-span-2">
+        <span class="text-sm font-medium">Description</span>
+        <textarea id="setting-description" class="textarea w-full" rows="2" bind:value={form.description}
+          placeholder="Shown by search engines"></textarea>
+      </label>
+
+      <div id="setting-image" class="flex flex-col gap-1 @xl:col-span-2">
+        <span class="text-sm font-medium">Share image <span class="font-normal text-base-content/50">· shown when someone shares a link to the page; without one, the page's first image. Needs the site's web address.</span></span>
+        <ImageField {siteRoot} bind:value={form.image} />
       </div>
-    </fieldset>
+    </section>
 
-    <div class="flex flex-col gap-2 @xl:self-end @xl:pb-2">
-      <label class="flex items-center gap-3">
-        <input id="setting-draft" type="checkbox" class="toggle" bind:checked={form.draft} />
-        <span class="text-sm">Draft (left out of the built site)</span>
-      </label>
-      <label class="flex items-center gap-3">
-        <input id="setting-hide-title" type="checkbox" class="toggle" bind:checked={form.hide_title} />
-        <span class="text-sm">Hide the title (for pages that start with their own heading)</span>
-      </label>
-    </div>
+    <section id="page-menu" class="grid gap-4 border-t border-base-300 pt-6 @xl:grid-cols-2">
+      {@render heading("Menu and display")}
+      <div class="grid grid-cols-[1fr_6rem] gap-3">
+        <label class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Menu</span>
+          <select id="setting-menu" class="select w-full" bind:value={form.menu}>
+            {#each MENUS as menu (menu.value)}
+              <option value={menu.value}>{menu.label}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Order</span>
+          <input id="setting-weight" class="input w-full" type="number" bind:value={form.weight} />
+        </label>
+      </div>
 
-    <fieldset class="grid gap-3 rounded-box border border-base-300 p-4 @xl:col-span-2 @xl:grid-cols-2">
-      <legend class="px-1 text-sm font-medium">Blog post</legend>
+      <div class="flex flex-col gap-2 @xl:self-end @xl:pb-2">
+        <label class="flex items-center gap-3">
+          <input id="setting-draft" type="checkbox" class="toggle" bind:checked={form.draft} />
+          <span class="text-sm">Draft (left out of the built site)</span>
+        </label>
+        <label class="flex items-center gap-3">
+          <input id="setting-hide-title" type="checkbox" class="toggle" bind:checked={form.hide_title} />
+          <span class="text-sm">Hide the title (for pages that start with their own heading)</span>
+        </label>
+      </div>
+
+      <fieldset class="flex flex-col gap-2 @xl:col-span-2">
+        <legend class="mb-1 text-sm font-medium">Icon <span class="font-normal text-base-content/50">· shown in menus</span></legend>
+        <div class="flex flex-wrap gap-1" role="radiogroup">
+          <button type="button" role="radio" aria-checked={!form.icon} onclick={() => (form.icon = null)}
+            class={["btn btn-sm", !form.icon ? "btn-primary" : "btn-ghost"]}>No icon</button>
+          {#each icons as [name, svg] (name)}
+            <!-- The SVGs are qed's own built-in icons, so inserting them as HTML is safe. -->
+            <button type="button" role="radio" aria-checked={form.icon === name} title={name} aria-label={name}
+              onclick={() => (form.icon = name)}
+              class={["btn btn-sm btn-square", form.icon === name ? "btn-primary" : "btn-ghost"]}>{@html svg}</button>
+          {/each}
+        </div>
+      </fieldset>
+    </section>
+
+    <section id="page-post" class="grid gap-4 border-t border-base-300 pt-6 @xl:grid-cols-2">
+      {@render heading("Blog post")}
       <label class="flex flex-col gap-1">
         <span class="text-sm font-medium">Date</span>
         <input id="setting-date" class="input w-full" type="date" bind:value={form.date} />
@@ -208,12 +258,12 @@
         <span class="text-sm font-medium">Summary</span>
         <textarea id="setting-summary" class="textarea w-full" rows="3" bind:value={form.summary}></textarea>
       </label>
-    </fieldset>
+    </section>
 
     {#if form.episode}
       {@const episode = form.episode}
-      <fieldset id="episode-settings" class="grid gap-3 rounded-box border border-base-300 p-4 @xl:col-span-2 @xl:grid-cols-4">
-        <legend class="px-1 text-sm font-medium">Episode</legend>
+      <section id="episode-settings" class="grid gap-4 border-t border-base-300 pt-6 @xl:grid-cols-4">
+        {@render heading("Episode")}
         <label class="flex flex-col gap-1">
           <span class="text-sm font-medium">Season</span>
           <input id="episode-season" class="input w-full" type="number" min="1" bind:value={episode.season} placeholder="None" />
@@ -243,8 +293,52 @@
           <CoverCheck {siteRoot} name={episode.image} />
         </div>
 
+        <p class="text-xs text-base-content/50 @xl:col-span-4">
+          Guid <span id="episode-guid" class="font-mono">{episode.guid}</span> · podcast apps tell episodes apart by it; it never changes.
+        </p>
+      </section>
+
+      <section class="flex flex-col gap-3 border-t border-base-300 pt-6">
+        {@render heading("Audio")}
+        <div id="episode-audio" class="flex flex-col gap-2 @xl:col-span-4">
+          {#if audioFiles === "external" || (episode.audio ?? "").includes("://")}
+            <div class="grid gap-2 @xl:grid-cols-[1fr_8rem_10rem]">
+              <input id="episode-audio-url" class="input w-full" bind:value={episode.audio} aria-label="Audio address"
+                placeholder={audioBase ? `${audioBase}episode.mp3` : "https://… (the audio file's web address)"}
+                onfocus={() => {
+                  // Start from the podcast's address; only the file name is left to type.
+                  if (audioBase && !episode.audio) episode.audio = audioBase;
+                }}
+                onblur={() => {
+                  // Nothing added to it: leave the field empty again.
+                  if (episode.audio === audioBase) episode.audio = null;
+                }} />
+              <input id="episode-duration" class="input w-full font-mono" bind:value={episode.duration} placeholder="01:02:03" aria-label="Length" title="Length" />
+              <input id="episode-audio-length" class="input w-full" type="number" min="0" bind:value={episode.audio_length} placeholder="Size in bytes" aria-label="Size in bytes" title="Size in bytes, as the feed needs it" />
+            </div>
+          {:else}
+            <div class="flex flex-wrap items-center gap-3">
+              <span id="episode-audio-file" class="font-mono text-sm">{episode.audio ?? "No audio yet"}</span>
+              {#if episode.audio}
+                <span class="text-sm text-base-content/60">
+                  {[episode.duration, episode.audio_type, megabytes(episode.audio_length)].filter(Boolean).join(" · ")}
+                </span>
+              {/if}
+              <button type="button" id="episode-choose-audio" class="btn btn-sm" onclick={() => (pickingAudio = true)}>Choose…</button>
+              {#if episode.audio}
+                <button type="button" class="btn btn-ghost btn-sm" title="After replacing the file in Audio" onclick={() => episode.audio && useAudio(episode.audio)}>Read again</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick={clearAudio}>Clear</button>
+              {/if}
+            </div>
+          {/if}
+          {#if audioError}<p class="text-sm text-error">{audioError}</p>{/if}
+        </div>
+      </section>
+
+      <section class="flex flex-col gap-3 border-t border-base-300 pt-6">
+        {@render heading("Chapters")}
         <div id="episode-chapters" class="flex flex-col gap-2 @xl:col-span-4">
-          <span class="text-sm font-medium">Chapters <span class="font-normal text-base-content/50">· start as 01:02:03 or 02:03, in order</span></span>
+          <span class="text-sm text-base-content/60">Start as 01:02:03 or 02:03, in order.</span>
           {#each episode.chapters as chapter, index (index)}
             <div class="grid grid-cols-[7rem_1fr_1fr_auto] gap-2">
               <input class="input w-full font-mono" bind:value={chapter.start} placeholder="00:00:00" aria-label="Start" />
@@ -256,18 +350,15 @@
           {/each}
           <div><button type="button" id="episode-add-chapter" class="btn btn-sm" onclick={addChapter}>Add a chapter</button></div>
         </div>
-
-        <p class="text-xs text-base-content/50 @xl:col-span-4">
-          Guid <span id="episode-guid" class="font-mono">{episode.guid}</span> · podcast apps tell episodes apart by it; it never changes.
-        </p>
-      </fieldset>
+      </section>
     {/if}
 
+    <div class="flex flex-col gap-4 border-t border-base-300 pt-6">
     {#if error}
-      <div id="settings-error" role="alert" class="alert alert-error alert-soft text-sm @xl:col-span-2">{error}</div>
+      <div id="settings-error" role="alert" class="alert alert-error alert-soft text-sm">{error}</div>
     {/if}
 
-    <div class="card-actions items-center justify-end @xl:col-span-2">
+    <div class="card-actions items-center justify-end">
       {#if changed}
         <span class="text-sm text-warning">Unsaved changes</span>
       {:else if savedAt}
@@ -278,5 +369,10 @@
         Save
       </button>
     </div>
+    </div>
   </div>
 </form>
+
+{#if pickingAudio}
+  <MediaPicker {siteRoot} library="audio" only="audio" onpick={useAudio} onclose={() => (pickingAudio = false)} />
+{/if}

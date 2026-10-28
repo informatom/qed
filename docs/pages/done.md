@@ -554,7 +554,8 @@ rest is done.
   2026-10-27* (the last items: #043, #054, #026; #032, #033 and #086
   closed).
 
-- **#066 Podcast switch.** Done 2026-10-28 (`qed_core::podcast`): one
+- **#066 Podcast switch.** Done 2026-10-28 (`qed_core::podcast`, the
+  Podcast tab, moved out of Site settings the same day): one
   podcast per site, `[podcast]` in `site.toml` (having it is the switch):
   name and description (the site's if empty), author, owner name and
   email, cover, up to three of Apple's categories (`"Arts > Books"`),
@@ -562,7 +563,7 @@ rest is done.
   (`[[podcast.funding]]`), where audio files go (#023) and the
   `podcast:guid`, a UUID v5 of the feed address, made once when the site
   has a web address and then kept. Cover art is checked against Apple's
-  rules (square, 1400–3000 px, JPEG or PNG) in Site → Podcast, for
+  rules (square, 1400–3000 px, JPEG or PNG) in the Podcast tab, for
   episode covers, and in the build notes. The cover can't be deleted from
   Media while it's set.
 - **#067 Episodes.** Done 2026-10-28: episodes are dated pages below
@@ -583,6 +584,22 @@ rest is done.
   episode page's blocks (Markdown text and every other block); the
   episode fields and a chapter editor (rows of start, title, link) are in
   the page settings.
+
+- **#023 Audio file.** Done 2026-10-28: one audio file per episode
+  (`audio`, `audio_length`, `audio_type`, `duration` in `[episode]`),
+  from the new Audio tab (`audio/`, library `Library::Audio`) or a web
+  address. Size, type and length are read with `lofty` when the file is
+  chosen (MP3, M4A, Ogg Vorbis/Opus, FLAC, AAC, WAV; the build notes
+  that Apple Podcasts and Spotify play only MP3 and M4A). Where audio
+  lives is `audio_files` in `[podcast]`: `local` (default; `audio/` with
+  a `.gitignore` that keeps it out of the history), `in_history` or
+  `external` (with `audio_base_url`, the address new episodes' audio
+  addresses start with, like octopod's `download_url`). The build hard-links the files to `/episodes/<file>`,
+  octopod's addresses; episode pages get an `<audio>` player and a
+  download link; the build notes episodes without audio. The preview
+  server answers range requests, so the player can jump; the Audio
+  tab's *Listen* opens the computer's own player (the webview played
+  long episodes badly).
 
 ## Dropped
 

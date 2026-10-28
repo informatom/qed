@@ -273,6 +273,14 @@ async fn check_cover(root: PathBuf, name: String) -> Vec<String> {
     podcast::check_cover(&root.join(site::MEDIA_DIR), &name)
 }
 
+/// Size, type and length of a file in `audio/`, for an episode.
+#[tauri::command]
+#[specta::specta]
+async fn audio_info(root: PathBuf, name: String) -> Result<podcast::AudioInfo, String> {
+    let path = media::path_of(&root, Library::Audio, &name).map_err(|e| e.to_string())?;
+    podcast::audio_info(&path)
+}
+
 /// The pages that link to the page at `path`, for the delete confirmation.
 #[tauri::command]
 #[specta::specta]
@@ -705,6 +713,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             create_episode,
             podcast_categories,
             check_cover,
+            audio_info,
             pages_linking_to,
             delete_page,
             move_page,

@@ -955,6 +955,7 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
         }
     }
     write_atomically(&path, &page_writer::merge(&original, document))?;
+    crate::podcast::sync_audio_ignore(root, saved.podcast.as_ref())?;
     Ok(saved)
 }
 

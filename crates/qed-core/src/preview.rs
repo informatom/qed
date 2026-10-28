@@ -84,8 +84,12 @@ fn respond(root: &Path, request: Request) -> std::io::Result<()> {
         .to_string();
     match resolve(root, &path) {
         Target::File(file) => {
-            let response = Response::from_file(File::open(&file)?).with_header(content_type(&file));
-            request.respond(response)
+            let range = request
+                .headers()
+                .iter()
+                .find(|header| header.field.equiv("Range"))
+                .map(|header| header.value.as_str().to_string());
+            serve_file(request, &file, range.as_deref())
         }
         Target::AddSlash(location) => {
             let header = Header::from_bytes("Location", location).expect("valid header");
@@ -101,6 +105,68 @@ fn respond(root: &Path, request: Request) -> std::io::Result<()> {
             Err(_) => request.respond(Response::from_string("Not found").with_status_code(404)),
         },
     }
+}
+
+/// Sends a file, or the part of it a `Range: bytes=…` header asks for.
+/// Browsers ask for parts of audio and video, to start playing before
+/// the whole file is there and to jump to a later point; without them, an
+/// episode's player can't seek.
+fn serve_file(request: Request, file: &Path, range: Option<&str>) -> std::io::Result<()> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    let mut opened = File::open(file)?;
+    let size = opened.metadata()?.len();
+    let accept = Header::from_bytes("Accept-Ranges", "bytes").expect("valid header");
+    match range.map(|range| byte_range(range, size)) {
+        None => request.respond(
+            Response::from_file(opened)
+                .with_header(content_type(file))
+                .with_header(accept),
+        ),
+        Some(Some((start, end))) => {
+            opened.seek(SeekFrom::Start(start))?;
+            let length = end - start + 1;
+            let content_range =
+                Header::from_bytes("Content-Range", format!("bytes {start}-{end}/{size}"))
+                    .expect("valid header");
+            request.respond(Response::new(
+                206.into(),
+                vec![content_type(file), accept, content_range],
+                opened.take(length),
+                usize::try_from(length).ok(),
+                None,
+            ))
+        }
+        Some(None) => {
+            let content_range = Header::from_bytes("Content-Range", format!("bytes */{size}"))
+                .expect("valid header");
+            request.respond(Response::empty(416).with_header(content_range))
+        }
+    }
+}
+
+/// Reads a `Range` header for a file of `size` bytes into the first and
+/// last byte wanted: `bytes=100-199`, `bytes=100-` (to the end) and
+/// `bytes=-100` (the last 100). `None` if it asks for nothing the file
+/// has. Only the first range of a list is served.
+fn byte_range(header: &str, size: u64) -> Option<(u64, u64)> {
+    let spec = header
+        .trim()
+        .strip_prefix("bytes=")?
+        .split(',')
+        .next()?
+        .trim();
+    let (start, end) = spec.split_once('-')?;
+    let last = size.checked_sub(1)?;
+    let (start, end) = match (start.trim(), end.trim()) {
+        ("", suffix) => {
+            let count: u64 = suffix.parse().ok()?;
+            (size.checked_sub(count.min(size))?, last)
+        }
+        (start, "") => (start.parse().ok()?, last),
+        (start, end) => (start.parse().ok()?, end.parse::<u64>().ok()?.min(last)),
+    };
+    (start <= end && start <= last).then_some((start, end))
 }
 
 fn resolve(root: &Path, url_path: &str) -> Target {
@@ -171,6 +237,10 @@ fn content_type(file: &Path) -> Header {
         "pdf" => "application/pdf",
         "mp3" => "audio/mpeg",
         "m4a" => "audio/mp4",
+        "aac" => "audio/aac",
+        "ogg" | "oga" | "opus" => "audio/ogg",
+        "flac" => "audio/flac",
+        "wav" => "audio/wav",
         "woff2" => "font/woff2",
         _ => "application/octet-stream",
     };
@@ -228,15 +298,52 @@ mod tests {
         assert!(body.ends_with("about"), "{body}");
     }
 
+    #[test]
+    fn reads_byte_ranges() {
+        assert_eq!(byte_range("bytes=0-99", 1000), Some((0, 99)));
+        assert_eq!(byte_range("bytes=900-", 1000), Some((900, 999)));
+        assert_eq!(byte_range("bytes=-100", 1000), Some((900, 999)));
+        assert_eq!(byte_range("bytes=990-2000", 1000), Some((990, 999)));
+        assert_eq!(byte_range("bytes=1000-", 1000), None);
+        assert_eq!(byte_range("bytes=5-1", 1000), None);
+        assert_eq!(byte_range("lines=1-2", 1000), None);
+    }
+
+    #[test]
+    fn serves_parts_of_files_for_audio_players() {
+        let dir = site();
+        fs::write(dir.path().join("episode.mp3"), "0123456789").unwrap();
+        let preview = Preview::start(dir.path()).unwrap();
+        let url = format!("{}episode.mp3", preview.url());
+
+        let part = get_with(&url, "Range: bytes=2-5\r\n");
+        assert!(part.starts_with("HTTP/1.1 206"), "{part}");
+        assert!(part.contains("Content-Range: bytes 2-5/10"), "{part}");
+        assert!(part.contains("audio/mpeg"), "{part}");
+        assert!(part.ends_with("\r\n\r\n2345"), "{part}");
+
+        let whole = get(&url);
+        assert!(whole.contains("Accept-Ranges: bytes"), "{whole}");
+        assert!(whole.ends_with("0123456789"), "{whole}");
+
+        let past = get_with(&url, "Range: bytes=20-\r\n");
+        assert!(past.starts_with("HTTP/1.1 416"), "{past}");
+    }
+
     /// A minimal HTTP GET, so the test needs no HTTP client library.
     fn get(url: &str) -> String {
+        get_with(url, "")
+    }
+
+    /// A GET with more header lines, each ending in `\r\n`.
+    fn get_with(url: &str, headers: &str) -> String {
         use std::io::{Read, Write};
         let rest = url.strip_prefix("http://").unwrap();
         let (host, path) = rest.split_at(rest.find('/').unwrap());
         let mut stream = std::net::TcpStream::connect(host).unwrap();
         write!(
             stream,
-            "GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+            "GET {path} HTTP/1.1\r\nHost: {host}\r\n{headers}Connection: close\r\n\r\n"
         )
         .unwrap();
         let mut response = String::new();

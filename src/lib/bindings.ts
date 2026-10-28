@@ -119,6 +119,8 @@ export const commands = {
 	 *  it follows Apple's rules.
 	 */
 	checkCover: (root: string, name: string) => __TAURI_INVOKE<string[]>("check_cover", { root, name }),
+	/**  Size, type and length of a file in `audio/`, for an episode. */
+	audioInfo: (root: string, name: string) => __TAURI_INVOKE<AudioInfo>("audio_info", { root, name }),
 	/**  The pages that link to the page at `path`, for the delete confirmation. */
 	pagesLinkingTo: (root: string, path: string) => __TAURI_INVOKE<string[]>("pages_linking_to", { root, path }),
 	/**  Deletes a page's file. */
@@ -210,6 +212,16 @@ export type AudioFiles =
  *  a web address for their audio.
  */
 "external";
+
+/**  What the feed needs to know about an audio file. */
+export type AudioInfo = {
+	/**  Size in bytes. */
+	length: number,
+	/**  `audio/mpeg`, `audio/x-m4a`, … */
+	mime_type: string,
+	/**  `01:24:22`. */
+	duration: string,
+};
 
 /**
  *  One block of a page, in the order it appears in the file.
@@ -418,6 +430,19 @@ export type Episode = {
 	 *  moves. Made when the episode is made.
 	 */
 	guid?: string,
+	/**
+	 *  The audio: a file in `audio/` (`episode1.mp3`), or a web address
+	 *  for audio kept elsewhere.
+	 */
+	audio: string | null,
+	/**
+	 *  The audio's size in bytes, its type (`audio/mpeg`) and its length
+	 *  (`01:24:22`), as the feed needs them. Read from the file when it's
+	 *  chosen; for audio elsewhere, given by hand.
+	 */
+	audio_length: number | null,
+	audio_type: string | null,
+	duration: string | null,
 	chapters?: Chapter[],
 };
 
@@ -565,7 +590,9 @@ export type Library =
 /**  `assets/`: files to download, of any type. */
 "assets" | 
 /**  `static/`: copied into the built site at the same paths. */
-"static";
+"static" | 
+/**  `audio/`: the podcast's audio files, one per episode. */
+"audio";
 
 /**  How a Post list or Page list shows its pages. */
 export type ListLayout = 
@@ -603,7 +630,7 @@ export type MediaFile = {
 };
 
 /**  What kind of file a media file is, judged by its extension. */
-export type MediaKind = "image" | "document" | 
+export type MediaKind = "image" | "audio" | "document" | 
 /**  Plain text the app can show: HTML, CSS, JavaScript, `.txt`, … */
 "text" | "other";
 
@@ -749,6 +776,12 @@ export type Podcast = {
 	funding?: Funding[],
 	/**  Where the audio files are kept. */
 	audio_files?: AudioFiles,
+	/**
+	 *  For audio kept elsewhere: the address the files are under, such as
+	 *  `https://cdn.example.com/podcast/`. New episodes' audio addresses
+	 *  start with it.
+	 */
+	audio_base_url: string | null,
 };
 
 export type PodcastType = "episodic" | "serial";

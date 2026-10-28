@@ -21,14 +21,6 @@ Nothing open.
 
 ### Phase 2: Podcasting
 
-- **#023 Audio file.** One per episode: pick a local file or enter an external
-  URL. Read size, MIME type and duration in Rust (`symphonia` or `lofty`).
-  Decided 2026-10-28: where audio files go is a podcast setting
-  (`audio_files` in `[podcast]`, already in Site → Podcast): `local`
-  (the default: `audio/` in the site, kept out of the history with a
-  `.gitignore`), `in_history` (`audio/`, in the history) or `external`
-  (every episode gives a web address). Backups of `local` audio need
-  their own way (#109).
 - **#068 Podcast feed.** One feed per podcast with iTunes, Podcasting 2.0 and
   Podlove Simple Chapters tags, plus paged feeds. Publishers copy the audio
   (GitHub Pages: see #029). The feed keeps jekyll-octopod's addresses, so
