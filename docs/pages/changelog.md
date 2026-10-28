@@ -10,6 +10,53 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.8.0 · 2026-10-28
+
+Phase 2: q.e.d. makes podcast websites now. Everything a podcast
+needs lives in the site folder, and the site loads nothing from
+anywhere else.
+
+- **Podcast sites** (#066): a Podcast tab with the show's details, cover
+  (checked against Apple's rules), categories, support links and a
+  lasting `podcast:guid`. New sites can start as a podcast.
+- **Episodes** (#067, #022): dated pages below `/episodes` with season,
+  number, type, own cover, chapters and a stable guid. *New episode*
+  proposes the next number.
+- **Audio** (#023): a new Audio tab. Files stay out of the history by
+  default, or live elsewhere on the web. A podcast can offer several
+  formats (MP3, M4A, Ogg, Opus, FLAC), one file per format and episode;
+  publishing waits until every episode has them all.
+- **Podcast feeds** (#068): one feed per format at octopod's addresses,
+  with Apple's and Podcasting 2.0 tags and chapters.
+- **Podlove Web Player** (#049) on episode pages and in the Latest
+  episode block, self-hosted, in the theme's colors. Without JavaScript,
+  the browser's own player and a chapter list.
+- **Blocks for podcasts** (#069, #125): Latest episode (with a link to
+  the episode), Subscribe (the Podlove Subscribe Button, self-hosted)
+  and Contributors.
+- **Contributors** (#047): people entered once with photo, links and
+  bio, then picked per episode with their roles. Each gets a page
+  listing their episodes.
+- **Transcripts** (#048): one WebVTT file per episode, in the player,
+  in the feeds and, if you like, as text on the episode page.
+- **Share links** (#053): a share row for episode pages (Mastodon,
+  Bluesky, email, copy link) without share widgets. It isn't in the
+  default layout, since the player's share tab covers it.
+- **Episode layout** (#126): `episode.md` sets the order of an episode
+  page's parts (player, people, shownotes, chapters, transcript, share
+  links) and can add any block to every episode. It sits under the new
+  *Templates* heading in the page tree, next to the footer.
+- **More of the player** (#128): a playlist of all episodes, a share
+  tab (from the current playtime, with embed code) and a subscribe
+  button inside the player. It loads without the plain player flashing
+  up first and without the page jumping. The share row and the download
+  line are left out where the player has them.
+- **Video files** (#127): a Video block can play a file from Downloads
+  with the browser's own player.
+- The Assets tab is now called **Downloads**.
+- Fixed: episodes published on the same day were listed in the wrong
+  order. The higher number comes first now, in lists and feeds.
+
 ## 0.7.0 · 2026-10-27
 
 The last release of phase 1: the CMS and site generator are complete.
