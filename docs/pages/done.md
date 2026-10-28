@@ -661,7 +661,11 @@ rest is done.
   in the history; only `.vtt` files starting with `WEBVTT`), served at
   `/transcripts/…` and named in the feeds with `podcast:transcript`
   (`type="text/vtt"`, `rel="captions"`). Not shown on episode pages:
-  the web player (#049) will (user). WebVTT only, no SRT (user).
+  the web player (#049) will (user). WebVTT only, no SRT (user). After
+  0.8.0: the Transcript block (#126) splits transcripts without speakers,
+  such as Whisper's, into paragraphs at pauses over 1.5 s or after a
+  minute (measured on a whisper.cpp transcript of 3-schweinehun.de);
+  the speaker's name shows only when it changes.
 
 - **#049 Web player.** Done 2026-10-28: the Podlove Web Player 5.13.0,
   self-hosted (`crates/qed-core/assets/podlove-player/`, README with its

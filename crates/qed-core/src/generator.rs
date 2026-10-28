@@ -2158,34 +2158,55 @@ fn transcript(site: &Site, episode: &podcast::Episode) -> Vec<podcast::Cue> {
 /// A paragraph of a transcript on an episode page: what one voice says
 /// until the next one speaks.
 struct TranscriptParagraph {
-    /// When it starts, "1:02:03".
+    /// When it starts, in whole seconds, "01:02:03".
     start: String,
     /// The speaker's name, if the file names them.
     voice: Option<String>,
     text: String,
 }
 
-/// Joins the cues of one voice in a row into a paragraph.
+/// A pause longer than this starts a new paragraph of a transcript.
+/// Measured on a Whisper transcript: within a passage, cues were at most
+/// 1.3 s apart; new passages came after 1.8 s and more.
+const PARAGRAPH_PAUSE_MS: u64 = 1_500;
+/// A paragraph of a transcript ends after this long at the latest.
+const PARAGRAPH_MAX_MS: u64 = 60_000;
+
+/// Joins cues into paragraphs: a new one when the voice changes, after a
+/// pause, or after a minute. Transcripts without voices (Whisper's, say)
+/// would otherwise be one paragraph. The name shows only when the voice
+/// changes.
 fn paragraphs(cues: &[podcast::Cue]) -> Vec<TranscriptParagraph> {
     let mut out: Vec<TranscriptParagraph> = Vec::new();
-    let mut last_voice: Option<&str> = None;
+    // The voice, start and end of the paragraph being written.
+    let mut current: Option<(&str, u64, u64)> = None;
+    let mut shown_voice: Option<&str> = None;
     for cue in cues {
         let text = cue.text.trim();
         if text.is_empty() {
             continue;
         }
+        let goes_on = current.is_some_and(|(voice, start, end)| {
+            voice == cue.voice
+                && cue.start_ms.saturating_sub(end) <= PARAGRAPH_PAUSE_MS
+                && cue.start_ms.saturating_sub(start) < PARAGRAPH_MAX_MS
+        });
         match out.last_mut() {
-            Some(paragraph) if last_voice == Some(cue.voice.as_str()) => {
+            Some(paragraph) if goes_on => {
                 paragraph.text.push(' ');
                 paragraph.text.push_str(text);
+                current = current.map(|(voice, start, _)| (voice, start, cue.end_ms));
             }
             _ => {
+                let new_voice = shown_voice != Some(cue.voice.as_str());
                 out.push(TranscriptParagraph {
-                    start: podcast::readable_start(&cue.start),
-                    voice: Some(cue.voice.clone()).filter(|voice| !voice.is_empty()),
+                    // Whole seconds; the file's milliseconds say little here.
+                    start: podcast::clock(cue.start_ms / 1000),
+                    voice: Some(cue.voice.clone()).filter(|voice| new_voice && !voice.is_empty()),
                     text: text.to_string(),
                 });
-                last_voice = Some(&cue.voice);
+                shown_voice = Some(&cue.voice);
+                current = Some((&cue.voice, cue.start_ms, cue.end_ms));
             }
         }
     }
@@ -3294,6 +3315,55 @@ fn media_link(image: &str, links: &LinkContext) -> String {
 
 #[cfg(test)]
 mod tests {
+    fn cue(start_ms: u64, end_ms: u64, voice: &str, text: &str) -> podcast::Cue {
+        podcast::Cue {
+            start: podcast::clock_millis(start_ms),
+            start_ms,
+            end: podcast::clock_millis(end_ms),
+            end_ms,
+            speaker: String::new(),
+            voice: voice.to_string(),
+            text: text.to_string(),
+        }
+    }
+
+    #[test]
+    fn splits_transcripts_into_paragraphs() {
+        // Whisper's: no voices. A pause over 1.5 seconds starts a new
+        // paragraph, and a minute is the most one gets.
+        let cues = [
+            cue(1_000, 11_800, "", " Drei Schweinehunde."),
+            cue(13_640, 19_500, "", " Stefan hier."),
+            cue(19_600, 25_800, "", " Dreimal begrüßt."),
+            cue(35_260, 40_580, "", " Hallihallo."),
+            cue(40_880, 70_000, "", " Lang."),
+            cue(70_100, 99_000, "", " Noch länger."),
+            cue(99_100, 99_500, "", " Ende."),
+        ];
+        let texts: Vec<String> = paragraphs(&cues).into_iter().map(|p| p.text).collect();
+        assert_eq!(
+            texts,
+            [
+                "Drei Schweinehunde.",
+                "Stefan hier. Dreimal begrüßt.",
+                "Hallihallo. Lang. Noch länger.",
+                "Ende."
+            ]
+        );
+
+        // With voices: the name only when it changes.
+        let cues = [
+            cue(0, 1_000, "Hannah", "Hallo"),
+            cue(5_000, 6_000, "Hannah", "und weiter."),
+            cue(6_000, 7_000, "Max", "Servus!"),
+        ];
+        let voices: Vec<Option<String>> = paragraphs(&cues).into_iter().map(|p| p.voice).collect();
+        assert_eq!(
+            voices,
+            [Some("Hannah".to_string()), None, Some("Max".to_string())]
+        );
+    }
+
     use super::*;
     use crate::site;
 
