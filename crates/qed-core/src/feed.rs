@@ -367,7 +367,11 @@ pub fn feed_episodes<'a>(published: &[&'a Page], today: Date) -> Vec<&'a Page> {
             (date <= today).then_some((date, page))
         })
         .collect();
-    episodes
-        .sort_by(|(a, page_a), (b, page_b)| b.cmp(a).then_with(|| page_a.path.cmp(&page_b.path)));
+    // Episodes of one day: the higher number first.
+    episodes.sort_by(|(a, page_a), (b, page_b)| {
+        b.cmp(a)
+            .then_with(|| podcast::same_day_order(page_b).cmp(&podcast::same_day_order(page_a)))
+            .then_with(|| page_a.path.cmp(&page_b.path))
+    });
     episodes.into_iter().map(|(_, page)| page).collect()
 }

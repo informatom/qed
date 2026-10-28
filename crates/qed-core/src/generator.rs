@@ -659,6 +659,8 @@ fn posts<'a>(pages: &[&'a Page], parent: &str, today: Date) -> Vec<&'a Page> {
                 let weight = |page: &Page| page.content.front.weight;
                 weight(page_b).cmp(&weight(page_a))
             })
+            // Episodes of one day: the higher number first.
+            .then_with(|| podcast::same_day_order(page_b).cmp(&podcast::same_day_order(page_a)))
             .then_with(|| page_a.path.cmp(&page_b.path))
     });
     posts.into_iter().map(|(_, page)| page).collect()

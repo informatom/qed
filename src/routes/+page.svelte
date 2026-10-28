@@ -838,9 +838,16 @@
               </div>
               {#if !panelOpen}
                 <div class="flex flex-wrap justify-end gap-1">
-                  {#each page.blocks as block, i (i)}
-                    <span class="badge badge-soft badge-sm">{BLOCK_NAMES[block.type]}</span>
-                  {/each}
+                  {#if page.front.episode && site.config.podcast}
+                    <!-- The episode layout makes the page; its blocks are the shownotes. -->
+                    <span class="badge badge-soft badge-sm" title="Built with the episode layout (Templates); its own blocks are the shownotes">
+                      <LayoutTemplate class="size-3" />Episode
+                    </span>
+                  {:else}
+                    {#each page.blocks as block, i (i)}
+                      <span class="badge badge-soft badge-sm">{BLOCK_NAMES[block.type]}</span>
+                    {/each}
+                  {/if}
                 </div>
               {/if}
             </button>

@@ -400,7 +400,13 @@
             <span class="text-sm text-base-content/50">WebVTT, from the Transcripts tab</span>
           </div>
           {#if missing.length && !form.draft}
-            <p class="text-sm text-warning">Publish waits until this episode has {missing.map(formatLabel).join(" and ")} audio too (or is a draft): every feed needs every episode.</p>
+            <p class="text-sm text-warning">
+              {#if formats.length === 1}
+                Publish waits until this episode has its audio (or is a draft).
+              {:else}
+                Publish waits until this episode has {missing.map(formatLabel).join(" and ")} audio too (or is a draft): every feed needs every episode.
+              {/if}
+            </p>
           {/if}
           {#if audioError}<p class="text-sm text-error">{audioError}</p>{/if}
         </div>

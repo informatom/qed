@@ -542,8 +542,9 @@ pub fn is_webvtt(text: &str) -> bool {
 /// jekyll-octopod did, so the addresses in old feeds keep working.
 pub const AUDIO_URL_DIR: &str = EPISODES_PATH;
 
-/// Refuses to publish while an episode lacks a format: every feed must
-/// have every episode, or listeners of one format would miss some.
+/// Refuses to publish while an episode lacks audio, or one of several
+/// formats: every feed must have every episode, or listeners of one
+/// format would miss some.
 pub fn check_publish(site: &Site) -> Result<(), SiteError> {
     let incomplete = incomplete_episodes(site);
     if incomplete.is_empty() {
@@ -552,7 +553,17 @@ pub fn check_publish(site: &Site) -> Result<(), SiteError> {
     Err(SiteError::Invalid {
         path: PathBuf::from(site::PAGES_DIR).join(EPISODES_PATH),
         message: format!(
-            "not published, because every feed needs every episode: {}. Add the audio, or make these episodes drafts.",
+            "not published, because every episode needs its audio{}: {}. Add the audio, or make these episodes drafts.",
+            if site
+                .config
+                .podcast
+                .as_ref()
+                .is_some_and(|p| p.formats().len() > 1)
+            {
+                " in every format"
+            } else {
+                ""
+            },
             incomplete.join("; ")
         ),
     })
@@ -1095,6 +1106,17 @@ pub fn label(episode: &Episode, words: &Words) -> String {
     parts.join(" · ")
 }
 
+/// Where a page goes among episodes of the same day: by season, then
+/// number. Lists put the higher first, as they put the newer day first;
+/// pages that aren't episodes come last.
+pub fn same_day_order(page: &Page) -> (Option<u32>, Option<u32>) {
+    page.content
+        .front
+        .episode
+        .as_ref()
+        .map_or((None, None), |episode| (episode.season, episode.number))
+}
+
 /// The site's episodes: pages below `/episodes` with `[episode]` settings.
 pub fn episodes(site: &Site) -> impl Iterator<Item = &Page> {
     let prefix = format!("{EPISODES_PATH}/");
@@ -1496,6 +1518,29 @@ mod tests {
     }
 
     #[test]
+    fn lists_episodes_of_one_day_by_number() {
+        let dir = podcast_site();
+        // Same day; by file name, number 1 would come first.
+        create_episode(dir.path(), "Anfang", Some(1)).unwrap();
+        create_episode(dir.path(), "Zugabe", Some(2)).unwrap();
+        let site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        crate::generator::build_into(&site, &out).unwrap();
+
+        let list = std::fs::read_to_string(out.join("episodes/index.html")).unwrap();
+        let at =
+            |text: &str, needle: &str| text.find(needle).unwrap_or_else(|| panic!("no {needle}"));
+        assert!(at(&list, ">Zugabe<") < at(&list, ">Anfang<"), "{list}");
+        // The feeds take this order too.
+        let pages: Vec<&Page> = site.pages.iter().collect();
+        let titles: Vec<&str> = crate::feed::feed_episodes(&pages, crate::calendar::today())
+            .iter()
+            .map(|page| page.content.front.title.as_str())
+            .collect();
+        assert_eq!(titles, ["Zugabe", "Anfang"]);
+    }
+
+    #[test]
     fn builds_episode_pages_from_the_episode_layout() {
         use crate::block::{Block, DEFAULT_EPISODE_LAYOUT};
         let dir = podcast_site();
@@ -1638,8 +1683,9 @@ mod tests {
         let name = crate::media::import(dir.path(), crate::media::Library::Audio, &source).unwrap();
         assert_eq!(name, "one.mp3");
 
-        let page = create_episode(dir.path(), "Mit Ton", None).unwrap();
+        // The one with audio is the latest: the higher number on the same day.
         let silent = create_episode(dir.path(), "Ohne Ton", None).unwrap();
+        let page = create_episode(dir.path(), "Mit Ton", None).unwrap();
         let mut front = page.content.front.clone();
         if let Some(episode) = front.episode.as_mut() {
             episode.audio = vec![
@@ -1710,6 +1756,19 @@ mod tests {
         let text = dir.path().join("notes.txt");
         std::fs::write(&text, "hi").unwrap();
         assert!(crate::media::import(dir.path(), crate::media::Library::Audio, &text).is_err());
+    }
+
+    #[test]
+    fn publishes_no_episode_without_audio() {
+        // One format, the default, and an episode with no audio at all.
+        let dir = podcast_site();
+        let page = create_episode(dir.path(), "Stumm", None).unwrap();
+        let error = check_publish(&site::open(dir.path()).unwrap()).unwrap_err();
+        let message = error.to_string();
+        assert!(
+            message.contains(&format!("/{}: no MP3 audio", page.path)),
+            "{message}"
+        );
     }
 
     #[test]
