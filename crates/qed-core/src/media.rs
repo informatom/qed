@@ -509,7 +509,7 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             | Block::PageList(_)
             | Block::Shared(_)
             | Block::LatestEpisode
-            | Block::Subscribe => {}
+            | Block::Subscribe(_) => {}
         }
     }
 

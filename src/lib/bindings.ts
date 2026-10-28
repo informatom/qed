@@ -195,6 +195,9 @@ export const commands = {
 };
 
 /* Types */
+/**  Where something sits in its row. */
+export type Align = "left" | "center" | "right";
+
 /**
  *  Where a podcast's audio files are kept. Audio files are large (50–150 MB
  *  an episode), and a site's history keeps every file it ever had.
@@ -266,13 +269,9 @@ export type Block =
  *  The podcast's newest episode: title, number, date, summary and the
  *  player, for the start page. Nothing to set.
  */
-({ type: "latest-episode" }) & { markdown?: never } | 
-/**
- *  The Podlove Subscribe Button: it hands the podcast's own feeds to
- *  the listener's podcast app. Without JavaScript, links to the feeds.
- *  Nothing to set.
- */
-({ type: "subscribe" }) & { markdown?: never };
+({ type: "latest-episode" }) & { markdown?: never } | {
+	type: "subscribe",
+} & Subscribe;
 
 /**  What a build produced. */
 export type BuildReport = {
@@ -1074,6 +1073,15 @@ export type Site_Serialize = {
 };
 
 export type Stage = "connecting" | "comparing" | "uploading" | "deleting" | "done";
+
+/**
+ *  The Podlove Subscribe Button: it hands the podcast's own feeds to the
+ *  listener's podcast app. Without JavaScript, links to the feeds.
+ */
+export type Subscribe = {
+	/**  Where the button sits in its row; on the left if empty. */
+	align: Align | null,
+};
 
 /**
  *  What an area is filled with: the page background (plain), a shade

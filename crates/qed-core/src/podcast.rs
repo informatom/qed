@@ -1006,13 +1006,13 @@ pub fn start_podcast(root: &Path) -> Result<(), SiteError> {
     }
     if let Some(home) = site.pages.iter().find(|page| page.path.is_empty()) {
         let has = |wanted: &Block| home.content.blocks.iter().any(|b| b == wanted);
-        if !has(&Block::LatestEpisode) && !has(&Block::Subscribe) {
+        let subscribe = Block::Subscribe(crate::block::Subscribe {
+            align: Some(crate::block::Align::Center),
+        });
+        if !has(&Block::LatestEpisode) && !has(&subscribe) {
             let mut blocks = home.content.blocks.clone();
             let after_hero = usize::from(matches!(blocks.first(), Some(Block::Hero(_))));
-            blocks.splice(
-                after_hero..after_hero,
-                [Block::LatestEpisode, Block::Subscribe],
-            );
+            blocks.splice(after_hero..after_hero, [Block::LatestEpisode, subscribe]);
             site::save_blocks(root, &home.file, blocks)?;
         }
     }
@@ -1588,12 +1588,17 @@ mod tests {
         site::save_blocks(
             dir.path(),
             &home.file,
-            vec![Block::LatestEpisode, Block::Subscribe],
+            vec![
+                Block::LatestEpisode,
+                Block::Subscribe(crate::block::Subscribe {
+                    align: Some(crate::block::Align::Center),
+                }),
+            ],
         )
         .unwrap();
         let text = std::fs::read_to_string(dir.path().join(&home.file)).unwrap();
         assert!(
-            text.contains("::: latest-episode\n:::\n\n::: subscribe\n:::"),
+            text.contains("::: latest-episode\n:::\n\n::: subscribe\nalign = \"center\"\n:::"),
             "{text}"
         );
 
@@ -1631,7 +1636,8 @@ mod tests {
         assert!(
             html.contains(
                 r##"src="subscribe-button/javascripts/app.js" data-language="de" data-colors="#"##
-            ) && html.contains(r#"data-format="cover""#),
+            ) && html.contains(r#"data-format="cover""#)
+                && html.contains(r#"<div class="subscribe text-center">"#),
             "{html}"
         );
         assert!(
@@ -1672,7 +1678,7 @@ mod tests {
                 [
                     Block::Hero(_),
                     Block::LatestEpisode,
-                    Block::Subscribe,
+                    Block::Subscribe(_),
                     Block::Text { .. }
                 ]
             ),

@@ -51,12 +51,12 @@
   </audio>
   {%- endif %}
 </article>
-{%- when RenderedBlock::Subscribe with { script, data, language, color, format, feeds } %}
-<div class="subscribe">
+{%- when RenderedBlock::Subscribe with { script, data, language, align, color, format, feeds } %}
+<div class="subscribe {{ align }}">
   <script src="{{ data }}"></script>
   <script class="podlove-subscribe-button" src="{{ script }}" data-language="{{ language }}"{% if let Some(color) = color %} data-colors="{{ color }}"{% endif %} data-size="big" data-style="filled" data-format="{{ format }}" data-json-data="qedPodcastData"></script>
   <noscript>
-    <ul class="flex flex-col gap-1">
+    <ul class="inline-flex flex-col gap-1 text-left">
       {%- for feed in feeds %}
       <li><a href="{{ feed.href }}" class="link inline-flex items-center gap-1.5">{{ rss_icon|safe }}{{ feed.label }}</a></li>
       {%- endfor %}

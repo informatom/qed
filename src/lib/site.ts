@@ -140,16 +140,18 @@ export function newBlock(type: BlockType): Block {
     case "shared":
       return { type, name: null };
     case "latest-episode":
-    case "subscribe":
-      // Blocks without settings. bindings.ts adds `markdown?: never` to
-      // them, which `Sent` turns into a required field no value can fill;
+      // A block without settings. bindings.ts adds `markdown?: never` to
+      // it, which `Sent` turns into a required field no value can fill;
       // the cast says the block is complete as it is.
       return { type } as Block;
+    case "subscribe":
+      // Centered: it usually stands on its own.
+      return { type, align: "center" };
   }
 }
 
 /** Fields that may be empty in a file. Everything else is always text. */
-const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout", "name"]);
+const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout", "name", "align"]);
 
 /** Empty optional fields become null, so "" and "nothing" count as the same. */
 export function normalizeBlock(block: Block): Block {

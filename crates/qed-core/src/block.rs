@@ -60,10 +60,28 @@ pub enum Block {
     /// The podcast's newest episode: title, number, date, summary and the
     /// player, for the start page. Nothing to set.
     LatestEpisode,
-    /// The Podlove Subscribe Button: it hands the podcast's own feeds to
-    /// the listener's podcast app. Without JavaScript, links to the feeds.
-    /// Nothing to set.
-    Subscribe,
+    Subscribe(Subscribe),
+}
+
+/// The Podlove Subscribe Button: it hands the podcast's own feeds to the
+/// listener's podcast app. Without JavaScript, links to the feeds.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct Subscribe {
+    /// Where the button sits in its row; on the left if empty.
+    pub align: Option<Align>,
+}
+
+/// Where something sits in its row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum Align {
+    #[default]
+    Left,
+    Center,
+    Right,
 }
 
 /// A large header: optional background image, headline, text and a button.
@@ -302,7 +320,7 @@ impl Block {
             Block::Video(_) => Some("video"),
             Block::Shared(_) => Some("shared"),
             Block::LatestEpisode => Some("latest-episode"),
-            Block::Subscribe => Some("subscribe"),
+            Block::Subscribe(_) => Some("subscribe"),
         }
     }
 }
@@ -357,7 +375,7 @@ pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)
         | Block::Video(_)
         | Block::Shared(_)
         | Block::LatestEpisode
-        | Block::Subscribe => {}
+        | Block::Subscribe(_) => {}
     }
 }
 
@@ -412,7 +430,7 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
         "shared" => Ok(Block::Shared(toml::from_str(toml)?)),
         // Blocks without settings: the container must be empty.
         "latest-episode" => nothing_to_set(toml).map(|()| Block::LatestEpisode),
-        "subscribe" => nothing_to_set(toml).map(|()| Block::Subscribe),
+        "subscribe" => Ok(Block::Subscribe(toml::from_str(toml)?)),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }
 }

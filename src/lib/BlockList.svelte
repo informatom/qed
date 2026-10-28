@@ -481,10 +481,21 @@
             The newest episode: title, number and date, summary and the player. Changes by itself with every new episode.
           </p>
         {:else if block.type === "subscribe"}
-          <p class="text-sm text-base-content/60">
-            The Podlove Subscribe Button: it hands the podcast's own feeds, every format, to the listener's podcast app.
-            Without JavaScript, links to the feeds.
-          </p>
+          <div class="flex flex-col gap-2">
+            <p class="text-sm text-base-content/60">
+              The Podlove Subscribe Button: it hands the podcast's own feeds, every format, to the listener's podcast app.
+              Without JavaScript, links to the feeds.
+            </p>
+            <div class="flex items-center gap-2">
+              {@render field("Position")}
+              <div class="join">
+                {#each [["left", "Left"], ["center", "Centered"], ["right", "Right"]] as [value, label] (value)}
+                  <button type="button" class={["btn join-item btn-sm", (block.align ?? "left") === value && "btn-active"]}
+                    onclick={() => block.type === "subscribe" && (block.align = value === "left" ? null : (value as "center" | "right"))}>{label}</button>
+                {/each}
+              </div>
+            </div>
+          </div>
         {:else if block.type === "shared"}
           {@const piece = shared?.pieces.find((p) => sharedName(p) === block.name)}
           <div class="flex flex-col gap-3">

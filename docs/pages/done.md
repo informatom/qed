@@ -629,7 +629,9 @@ rest is done.
   with a README on its source and updating; the podcast's data in
   `subscribe-button/podcast-data.js`), in the theme's button color
   (`theme::color_hex` turns daisyUI's `oklch()` into hex), with the
-  podcast's cover above it, plain feed links without JavaScript. Decided with the user: the site's own feeds are the source
+  podcast's cover above it, placed left, centered or right (`align`,
+  user, 2026-10-28; new blocks start centered), plain feed links
+  without JavaScript. Decided with the user: the site's own feeds are the source
   of truth, no directory links (Apple, Spotify). Podcast blocks are only
   offered on podcast sites. New sites can start as a podcast (New site
   dialog), with both blocks on the start page.

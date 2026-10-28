@@ -710,7 +710,7 @@ fn uses_subscribe(pages: &[&Page], footer: Option<&Page>) -> bool {
     pages.iter().copied().chain(footer).any(|page| {
         block::all_blocks(&page.content.blocks)
             .iter()
-            .any(|block| matches!(block, Block::Subscribe))
+            .any(|block| matches!(block, Block::Subscribe(_)))
     })
 }
 
@@ -1472,6 +1472,9 @@ enum RenderedBlock {
         data: String,
         /// `de`, `en`, … for the button's words.
         language: String,
+        /// `text-center` and the like: the button is an inline frame, so
+        /// text alignment moves it.
+        align: &'static str,
         /// The theme's button color, `#rrggbb`; Podlove's green if none.
         color: Option<String>,
         /// `cover`: the podcast's cover with the button below it; or
@@ -2106,10 +2109,16 @@ fn render_block(
         }
         // Without feeds (no podcast, or no web address) there's nothing
         // to subscribe to.
-        Block::Subscribe if context.podcast_feeds.is_empty() => RenderedBlock::Text {
+        Block::Subscribe(_) if context.podcast_feeds.is_empty() => RenderedBlock::Text {
             html: String::new(),
         },
-        Block::Subscribe => RenderedBlock::Subscribe {
+        Block::Subscribe(subscribe) => RenderedBlock::Subscribe {
+            // Whole class names, for Tailwind's scan.
+            align: match subscribe.align.unwrap_or_default() {
+                block::Align::Left => "text-left",
+                block::Align::Center => "text-center",
+                block::Align::Right => "text-right",
+            },
             script: format!("{}{SUBSCRIBE_DIR}/javascripts/app.js", links.to_root()),
             data: format!("{}{SUBSCRIBE_DIR}/{SUBSCRIBE_DATA}", links.to_root()),
             language: context

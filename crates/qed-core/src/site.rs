@@ -1140,7 +1140,7 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             | Block::Video(_)
             | Block::Shared(_)
             | Block::LatestEpisode
-            | Block::Subscribe => {}
+            | Block::Subscribe(_) => {}
         }
     }
     for text in texts {
