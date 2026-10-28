@@ -10,6 +10,23 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.9.0 · 2026-10-28
+
+One site on two computers, without the command line.
+
+- **Push and pull** (#129): the Versions tab pushes the site with all
+  its versions to a git repository (Codeberg, GitHub, Gitea, your own
+  server) and pulls new versions back. Pull merges versions made on both
+  computers; if both changed the same page, it changes nothing and says
+  which. q.e.d. logs in with its own key, kept in the keychain, and
+  checks the server's key on first use, as when publishing. A progress
+  bar shows how far it has got. See [Backups](backups.md).
+- **Get a site from git**: in the site menu and on the start screen.
+  Copies a pushed site to this computer with its whole history.
+- **New versions on the remote**: when a site opens, q.e.d. checks its
+  remote and offers to pull.
+- **Transcripts**: paragraphs at pauses also without speaker names.
+
 ## 0.8.0 · 2026-10-28
 
 Phase 2: q.e.d. makes podcast websites now. Everything a podcast
