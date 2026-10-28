@@ -727,20 +727,23 @@
       </section>
     {/key}
 
-    {#if view === "media"}
-      <!-- Mounted on demand, so it lists the folder fresh each time. -->
-      <MediaLibrary siteRoot={site.root} editing={editorDirty} onmoved={() => site && load(site.root)} />
-    {:else if view === "assets"}
-      <MediaLibrary siteRoot={site.root} library="assets" />
-    {:else if view === "audio"}
-      <MediaLibrary siteRoot={site.root} library="audio" />
-    {:else if view === "transcripts"}
-      <MediaLibrary siteRoot={site.root} library="transcripts" />
-    {:else if view === "static"}
-      <MediaLibrary siteRoot={site.root} library="static" />
-    {:else if view === "versions"}
-      <VersionsPanel siteRoot={site.root} editing={editorDirty} onrestored={() => site && load(site.root)} />
-    {/if}
+    <!-- Mounted on demand, so they list the folder fresh each time, and
+         made again for another site (they load only when they appear). -->
+    {#key site.root}
+      {#if view === "media"}
+        <MediaLibrary siteRoot={site.root} editing={editorDirty} onmoved={() => site && load(site.root)} />
+      {:else if view === "assets"}
+        <MediaLibrary siteRoot={site.root} library="assets" />
+      {:else if view === "audio"}
+        <MediaLibrary siteRoot={site.root} library="audio" />
+      {:else if view === "transcripts"}
+        <MediaLibrary siteRoot={site.root} library="transcripts" />
+      {:else if view === "static"}
+        <MediaLibrary siteRoot={site.root} library="static" />
+      {:else if view === "versions"}
+        <VersionsPanel siteRoot={site.root} editing={editorDirty} onrestored={() => site && load(site.root)} />
+      {/if}
+    {/key}
 
     <div class={["-mb-3 flex items-center gap-3", view !== "pages" && "hidden"]}>
       <button id="new-page" class="btn btn-sm btn-primary" onclick={() => (creatingPage = true)} disabled={loading}>
