@@ -19,6 +19,22 @@ q.e.d. is open source and in early development. It's built in the open with
 [Claude Code](https://claude.com/claude-code), in Rust, Tauri, Svelte and
 TypeScript.
 
+## For podcasters
+
+q.e.d. also makes podcast websites, and keeps everything on your own
+webspace: no hosting service, no tracking, nothing loaded from anywhere
+else.
+
+- **Episodes** with season, number, chapters, people and transcripts,
+  the shownotes written like any other page.
+- **Feeds** for every audio format you offer (MP3, M4A, Ogg, Opus,
+  FLAC), with Apple's and Podcasting 2.0 tags. If your old site was made
+  with jekyll-octopod, your listeners' apps keep working.
+- **The Podlove Web Player** with chapters, transcript, playlist and
+  sharing, and the **Podlove Subscribe Button**, both self-hosted.
+- **Contributors** entered once, with a page each listing their
+  episodes.
+
 This site is a q.e.d. site itself: a `site.toml` and a `pages/` folder, in the
 `docs/` folder of the [q.e.d. repository](https://github.com/informatom/qed).
 
