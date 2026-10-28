@@ -46,10 +46,6 @@ Nothing open.
   with chapters and transcripts.
 - **#053 Share links.** Plain share links on episode pages (Mastodon, Bluesky,
   email, copy link), no third-party scripts.
-- **#034 Feed import.** Import an existing podcast from its RSS feed or from a
-  jekyll-octopod site (compare `octopod import`). Keep each episode's old
-  guid (octopod used the episode's address) and its old address as a
-  redirect.
 
 ### Phase 3: Nice to have
 
@@ -125,6 +121,10 @@ Nothing open.
   the source (Podlove's own export file, the feeds, the WordPress REST
   API, or a mix), and how much of the shownotes' HTML becomes Markdown.
   Related: #034 (import from a feed or jekyll-octopod).
+- **#034 Feed import.** Import an existing podcast from its RSS feed or from a
+  jekyll-octopod site (compare `octopod import`). Keep each episode's old
+  guid (octopod used the episode's address) and its old address as a
+  redirect. Moved to phase 4 on 2026-10-28, with #123.
 - **#124 Feed redirects.** Podlove Publisher's feeds live at other
   addresses (`/feed/mp3/`, or `/?feed=…` without pretty links) than
   q.e.d.'s (`/episodes.mp3.rss`), and subscribers must keep getting new
