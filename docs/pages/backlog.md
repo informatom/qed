@@ -27,7 +27,15 @@ Nothing open.
   with chapters and transcripts. Like the Subscribe button: in
   `crates/qed-core/assets/`, with a README on where it comes from and how
   to update it (rule in AGENTS.md).
-
+- **#126 Episode layout.** The parts of every episode page as a block list
+  in `episode.md`, like the footer (user, 2026-10-28): placeholder blocks
+  for the episode's player (#049), people, shownotes (the episode's own
+  blocks), chapters, transcript (#048) and share row, plus any normal
+  block (a Subscribe button, a Call to action) shown on every episode.
+  Edited in the page tree next to Footer. Title and byline stay fixed at
+  the top. Without the file, today's order: player, people, shownotes,
+  chapters, share. The episode parts move from `page.html` into
+  `block.html`. After #048 and #049, so their blocks are there.
 ### Phase 3: Nice to have
 
 - **#070 Code signing.** Apple developer account and notarization, Windows
