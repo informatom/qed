@@ -37,6 +37,8 @@ pub enum Library {
     Static,
     /// `audio/`: the podcast's audio files, one per episode.
     Audio,
+    /// `transcripts/`: the episodes' WebVTT transcripts.
+    Transcripts,
 }
 
 impl Library {
@@ -46,6 +48,7 @@ impl Library {
             Library::Assets => ASSETS_DIR,
             Library::Static => STATIC_DIR,
             Library::Audio => crate::podcast::AUDIO_DIR,
+            Library::Transcripts => crate::podcast::TRANSCRIPTS_DIR,
         }
     }
 }
@@ -200,6 +203,15 @@ pub fn import(root: &Path, library: Library, source: &Path) -> Result<String, Si
             path: source.to_path_buf(),
             message: "isn't an image; files to download go into Assets".to_string(),
         });
+    }
+    if library == Library::Transcripts {
+        let text = fs::read_to_string(source).unwrap_or_default();
+        if !original_name.to_lowercase().ends_with(".vtt") || !crate::podcast::is_webvtt(&text) {
+            return Err(SiteError::Invalid {
+                path: source.to_path_buf(),
+                message: "isn't a WebVTT transcript (a .vtt file starting with WEBVTT)".to_string(),
+            });
+        }
     }
     if library == Library::Audio {
         if kind_of(&original_name) != MediaKind::Audio {
@@ -479,6 +491,16 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             .iter()
             .flat_map(|episode| episode.local_audio())
             .map(str::to_string)
+            .collect();
+    }
+    if library == Library::Transcripts {
+        return page
+            .content
+            .front
+            .episode
+            .iter()
+            .filter_map(|episode| episode.transcript.as_deref())
+            .map(|file| file.trim().to_string())
             .collect();
     }
     let mut images = Vec::new();

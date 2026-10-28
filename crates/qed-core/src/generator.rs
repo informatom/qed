@@ -315,11 +315,16 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     let media_files = copy_dir(&media_dir, &out_dir.join(MEDIA_DIR))?
         + copy_dir(&site.root.join(ASSETS_DIR), &out_dir.join(ASSETS_DIR))?
         + match &site.config.podcast {
-            Some(_) => copy_or_link_dir(
-                &site.root.join(podcast::AUDIO_DIR),
-                &out_dir.join(podcast::AUDIO_URL_DIR),
-                true,
-            )?,
+            Some(_) => {
+                copy_or_link_dir(
+                    &site.root.join(podcast::AUDIO_DIR),
+                    &out_dir.join(podcast::AUDIO_URL_DIR),
+                    true,
+                )? + copy_dir(
+                    &site.root.join(podcast::TRANSCRIPTS_DIR),
+                    &out_dir.join(podcast::TRANSCRIPTS_DIR),
+                )?
+            }
             None => 0,
         };
     let resized_images =
@@ -470,6 +475,19 @@ fn audio_notes(site: &Site, published: &[&Page]) -> Vec<String> {
                 "/{}: no {} audio yet; Publish waits until every episode has every format.",
                 page.path,
                 missing.join(", ")
+            ));
+        }
+        if let Some(file) = episode.transcript.as_deref().map(str::trim)
+            && !site
+                .root
+                .join(podcast::TRANSCRIPTS_DIR)
+                .join(file)
+                .is_file()
+        {
+            notes.push(format!(
+                "/{}: the transcript {file} isn't in {}/.",
+                page.path,
+                podcast::TRANSCRIPTS_DIR
             ));
         }
         for file in episode.local_audio() {

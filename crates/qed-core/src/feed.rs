@@ -262,6 +262,21 @@ fn item(input: &FeedInput, page: &Page, format: AudioFormat) -> Option<String> {
             line(tag);
         }
     }
+    if let Some(file) = episode
+        .transcript
+        .as_deref()
+        .map(str::trim)
+        .filter(|f| !f.is_empty())
+    {
+        // WebVTT has times, so apps can show it as captions too.
+        line(format!(
+            "<podcast:transcript url=\"{}/{}/{}\" type=\"text/vtt\" language=\"{}\" rel=\"captions\"/>",
+            base,
+            podcast::TRANSCRIPTS_DIR,
+            escape(file),
+            escape(&input.config.language)
+        ));
+    }
     if !episode.chapters.is_empty() {
         let mut chapters = String::from("<psc:chapters version=\"1.2\">");
         for chapter in &episode.chapters {

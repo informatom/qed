@@ -127,9 +127,11 @@
         multiple: true,
         title: library === "media" ? "Import images"
           : library === "audio" ? "Import audio files"
+          : library === "transcripts" ? "Import transcripts"
           : isStatic ? "Import files to copy as they are" : "Import files to download",
         filters: library === "media" ? [{ name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif"] }]
           : library === "audio" ? [{ name: "Audio", extensions: ["mp3", "m4a", "ogg", "oga", "opus", "flac"] }]
+          : library === "transcripts" ? [{ name: "WebVTT", extensions: ["vtt"] }]
           : [],
       }),
     );
@@ -213,7 +215,7 @@
     {/if}
     <button type="button" id="import-{library}" class="btn btn-primary" onclick={importFiles} disabled={busy}>
       {#if busy}<span class="loading loading-spinner loading-sm"></span>{:else}<Upload class="size-4" />{/if}
-      {library === "media" ? "Import images…" : library === "audio" ? "Import audio…" : "Import files…"}
+      {library === "media" ? "Import images…" : library === "audio" ? "Import audio…" : library === "transcripts" ? "Import transcripts…" : "Import files…"}
     </button>
   </div>
 
@@ -264,6 +266,8 @@
         The media folder is empty. Import images to use them on pages.
       {:else if isStatic}
         No static files yet. Import files or whole folders.
+      {:else if library === "transcripts"}
+        No transcripts yet. Import an episode's WebVTT file (.vtt), then choose it in the episode's settings.
       {:else if library === "audio"}
         No audio yet. Import the episodes' audio files (one per format, e.g. episode1.mp3 and episode1.ogg), then choose them in the episodes' settings.
       {:else}

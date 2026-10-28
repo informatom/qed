@@ -656,6 +656,13 @@ rest is done.
   `podcast:person` into the feeds, and has a Contributors block. A
   contributor still listed, or a photo in use, can't be deleted.
 
+- **#048 Transcripts.** Done 2026-10-28: one WebVTT file per episode
+  (`transcript` in `[episode]`), from a Transcripts tab (`transcripts/`,
+  in the history; only `.vtt` files starting with `WEBVTT`), served at
+  `/transcripts/…` and named in the feeds with `podcast:transcript`
+  (`type="text/vtt"`, `rel="captions"`). Not shown on episode pages:
+  the web player (#049) will (user). WebVTT only, no SRT (user).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

@@ -491,6 +491,11 @@ export type Episode = {
 	chapters?: Chapter[],
 	/**  Who's in it and what they do; see `contributors.rs`. */
 	people?: EpisodePerson[],
+	/**
+	 *  What's said, with times: a WebVTT file in `transcripts/`. Apps
+	 *  show it (`podcast:transcript`), and so will the web player.
+	 */
+	transcript: string | null,
 };
 
 /**  One audio file of an episode, `[[episode.audio]]`. */
@@ -661,7 +666,9 @@ export type Library =
 /**  `static/`: copied into the built site at the same paths. */
 "static" | 
 /**  `audio/`: the podcast's audio files, one per episode. */
-"audio";
+"audio" | 
+/**  `transcripts/`: the episodes' WebVTT transcripts. */
+"transcripts";
 
 /**  How a Post list or Page list shows its pages. */
 export type ListLayout = 

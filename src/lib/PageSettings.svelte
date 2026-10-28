@@ -89,6 +89,7 @@
         .map((a) => ({ format: a.format, file: a.file.trim(), length: counted(a.length, 0) }))
         .filter((a) => a.file !== ""),
       duration: orNull(episode.duration),
+      transcript: orNull(episode.transcript),
       chapters: episode.chapters
         .map((c) => ({ start: c.start.trim(), title: c.title.trim(), link: orNull(c.link) }))
         .filter((c) => c.start !== "" || c.title !== ""),
@@ -111,6 +112,7 @@
   // file. Choosing one format's file also picks the others of the same
   // name (episode1.mp3, episode1.ogg), as tools like Auphonic make them.
   let pickingFor = $state<AudioFormat | null>(null);
+  let pickingTranscript = $state(false);
   let audioError = $state<string | null>(null);
   let external = $derived(podcast?.audio_files === "external");
 
@@ -388,6 +390,15 @@
             <input id="episode-duration" class="input w-32 font-mono" bind:value={episode.duration} placeholder="01:02:03"
               title="Read from the audio file; for audio elsewhere, typed in" />
           </label>
+          <div class="mt-1 flex flex-wrap items-center gap-3">
+            <span class="text-sm font-medium">Transcript</span>
+            <span id="episode-transcript" class="font-mono text-sm">{episode.transcript ?? "None"}</span>
+            <button type="button" id="episode-choose-transcript" class="btn btn-sm" onclick={() => (pickingTranscript = true)}>Choose…</button>
+            {#if episode.transcript}
+              <button type="button" class="btn btn-ghost btn-sm" onclick={() => (episode.transcript = null)}>Clear</button>
+            {/if}
+            <span class="text-sm text-base-content/50">WebVTT, from the Transcripts tab</span>
+          </div>
           {#if missing.length && !form.draft}
             <p class="text-sm text-warning">Publish waits until this episode has {missing.map(formatLabel).join(" and ")} audio too (or is a draft): every feed needs every episode.</p>
           {/if}
@@ -437,6 +448,11 @@
     </div>
   </div>
 </form>
+
+{#if pickingTranscript && form.episode}
+  {@const episode = form.episode}
+  <MediaPicker {siteRoot} library="transcripts" onpick={(name) => (episode.transcript = name)} onclose={() => (pickingTranscript = false)} />
+{/if}
 
 {#if pickingFor}
   {@const format = pickingFor}

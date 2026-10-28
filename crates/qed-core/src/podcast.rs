@@ -280,6 +280,9 @@ pub struct Episode {
     /// Who's in it and what they do; see `contributors.rs`.
     #[serde(default)]
     pub people: Vec<crate::contributors::EpisodePerson>,
+    /// What's said, with times: a WebVTT file in `transcripts/`. Apps
+    /// show it (`podcast:transcript`), and so will the web player.
+    pub transcript: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -368,6 +371,13 @@ impl Episode {
         }
         if let Some(problem) = crate::contributors::duplicate(&self.people) {
             return Some(problem);
+        }
+        if let Some(file) = self.transcript.as_deref().map(str::trim)
+            && (file.contains(['/', '\\']) || file.starts_with('.') || !file.ends_with(".vtt"))
+        {
+            return Some(format!(
+                "the transcript “{file}” must be a .vtt file in {TRANSCRIPTS_DIR}/"
+            ));
         }
         for (index, audio) in self.audio.iter().enumerate() {
             let label = audio.format.label();
@@ -458,6 +468,18 @@ pub fn incomplete_episodes(site: &Site) -> Vec<String> {
 
 /// Where the site keeps its audio files.
 pub const AUDIO_DIR: &str = "audio";
+
+/// Where the site keeps its transcripts, and where the built site serves
+/// them: `/transcripts/episode1.vtt`.
+pub const TRANSCRIPTS_DIR: &str = "transcripts";
+
+/// Whether `text` is a WebVTT file: it starts with `WEBVTT` (after a
+/// byte order mark, if any).
+pub fn is_webvtt(text: &str) -> bool {
+    let text = text.trim_start_matches('\u{feff}');
+    text.strip_prefix("WEBVTT")
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with([' ', '\t', '\n', '\r']))
+}
 
 /// Where the built site serves them: `/episodes/episode1.mp3`, as
 /// jekyll-octopod did, so the addresses in old feeds keep working.
@@ -1789,5 +1811,51 @@ mod tests {
         let again = site::open(dir.path()).unwrap();
         let home_again = again.pages.iter().find(|p| p.path.is_empty()).unwrap();
         assert_eq!(home_again.content.blocks.len(), 4);
+    }
+
+    #[test]
+    fn publishes_webvtt_transcripts_for_apps() {
+        use crate::media::{self, Library};
+        let dir = podcast_site();
+        let vtt = dir.path().join("eins.vtt");
+        std::fs::write(
+            &vtt,
+            "WEBVTT\n\n00:00.000 --> 00:02.000\n<v Stefan>Hallo!\n",
+        )
+        .unwrap();
+        assert_eq!(
+            media::import(dir.path(), Library::Transcripts, &vtt).unwrap(),
+            "eins.vtt"
+        );
+        let fake = dir.path().join("fake.vtt");
+        std::fs::write(&fake, "1\n00:00:00,000 --> 00:00:02,000\nHallo\n").unwrap();
+        assert!(media::import(dir.path(), Library::Transcripts, &fake).is_err());
+
+        let page = create_episode(dir.path(), "Eins", None).unwrap();
+        let mut front = page.content.front.clone();
+        if let Some(episode) = front.episode.as_mut() {
+            episode.transcript = Some("eins.vtt".to_string());
+            episode.audio = vec![audio(AudioFormat::Mp3, "https://cdn.example/eins.mp3")];
+        }
+        site::save_front_matter(dir.path(), &page.file, front.clone()).unwrap();
+        let site = site::open(dir.path()).unwrap();
+        assert!(media::delete(&site, Library::Transcripts, "eins.vtt").is_err());
+
+        let out = dir.path().join("_site");
+        crate::generator::build_into(&site, &out).unwrap();
+        assert!(out.join("transcripts/eins.vtt").is_file());
+        let feed = std::fs::read_to_string(out.join("episodes.mp3.rss")).unwrap();
+        assert!(
+            feed.contains(r#"<podcast:transcript url="https://pod.example/transcripts/eins.vtt" type="text/vtt" language="de-AT" rel="captions"/>"#),
+            "{feed}"
+        );
+
+        // Only .vtt files in transcripts/.
+        if let Some(episode) = front.episode.as_mut() {
+            episode.transcript = Some("eins.srt".to_string());
+        }
+        assert!(site::save_front_matter(dir.path(), &page.file, front).is_err());
+        assert!(is_webvtt("\u{feff}WEBVTT - Folge 1\n"));
+        assert!(!is_webvtt("WEBVTTX"));
     }
 }

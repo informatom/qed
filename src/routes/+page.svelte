@@ -20,6 +20,7 @@
   import History from "@lucide/svelte/icons/history";
   import FileDown from "@lucide/svelte/icons/file-down";
   import AudioLines from "@lucide/svelte/icons/audio-lines";
+  import Captions from "@lucide/svelte/icons/captions";
   import FolderTree from "@lucide/svelte/icons/folder-tree";
   import PanelBottom from "@lucide/svelte/icons/panel-bottom";
   import FooterEditor from "$lib/FooterEditor.svelte";
@@ -168,7 +169,7 @@
   let creatingEpisode = $state(false);
   let creatingSite = $state(false);
   let movingPage = $state(false);
-  let view = $state<"pages" | "media" | "assets" | "static" | "audio" | "podcast" | "contributors" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
+  let view = $state<"pages" | "media" | "assets" | "static" | "audio" | "transcripts" | "podcast" | "contributors" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -206,7 +207,7 @@
   let hasAudioLibrary = $derived(!!site?.config.podcast && site.config.podcast.audio_files !== "external");
   $effect(() => {
     if (view === "audio" && !hasAudioLibrary) view = "pages";
-    if (view === "contributors" && !site?.config.podcast) view = "pages";
+    if ((view === "contributors" || view === "transcripts") && !site?.config.podcast) view = "pages";
   });
 
   // Derived values update by themselves when `site` changes.
@@ -617,6 +618,10 @@
         <button type="button" role="tab" id="view-audio" class={["tab", view === "audio" && "tab-active"]}
           onclick={() => (view = "audio")}><AudioLines class="me-1.5 size-4" />Audio</button>
       {/if}
+      {#if site.config.podcast}
+        <button type="button" role="tab" id="view-transcripts" class={["tab", view === "transcripts" && "tab-active"]}
+          onclick={() => (view = "transcripts")}><Captions class="me-1.5 size-4" />Transcripts</button>
+      {/if}
       <button type="button" role="tab" id="view-site" class={["tab", view === "site" && "tab-active"]}
         onclick={() => (view = "site")}><Globe class="me-1.5 size-4" />Site</button>
       <button type="button" role="tab" id="view-podcast" class={["tab", view === "podcast" && "tab-active"]}
@@ -713,6 +718,8 @@
       <MediaLibrary siteRoot={site.root} library="assets" />
     {:else if view === "audio"}
       <MediaLibrary siteRoot={site.root} library="audio" />
+    {:else if view === "transcripts"}
+      <MediaLibrary siteRoot={site.root} library="transcripts" />
     {:else if view === "static"}
       <MediaLibrary siteRoot={site.root} library="static" />
     {:else if view === "versions"}

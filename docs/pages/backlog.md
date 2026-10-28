@@ -21,12 +21,12 @@ Nothing open.
 
 ### Phase 2: Podcasting
 
-- **#048 Transcripts.** WebVTT per episode. Deployed as a file, linked with
-  `podcast:transcript`, shown on the episode page and in the player.
 - **#049 Web player.** Self-hosted Podlove Web Player, copied into each site,
   with chapters and transcripts. Like the Subscribe button: in
   `crates/qed-core/assets/`, with a README on where it comes from and how
-  to update it (rule in AGENTS.md).
+  to update it (rule in AGENTS.md). The player shows the transcript
+  (#048), which episode pages don't show themselves, and replaces the
+  chapter list on episode pages (user, 2026-10-28).
 - **#126 Episode layout.** The parts of every episode page as a block list
   in `episode.md`, like the footer (user, 2026-10-28): placeholder blocks
   for the episode's player (#049), people, shownotes (the episode's own
