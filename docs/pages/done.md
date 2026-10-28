@@ -770,6 +770,19 @@ rest is done.
   Dollar signs: prices stay text unless a later `$` in the paragraph can
   close a formula; `\$` is always a dollar sign. None of the five test
   sites or the docs had a `$` turned into math.
+- **#130 Chemistry in text.** Asked for by the user after #107 and done
+  2026-10-28 (post 58: caffeine, aspirin, cholesterol, photosynthesis).
+  Decided (user): structure diagrams as a ```` ```smiles ```` block in
+  text (SMILES on the first line, an optional caption on the next), and
+  a subset of mhchem's `\ce{…}` inside math. Diagrams with chematic
+  (`chematic-smiles`, `chematic-depict`, pure Rust, MIT/Apache) as SVG
+  when the site is built, double bonds kekulized, black as the text
+  color, label boxes in the theme's background. `\ce` is translated to
+  plain LaTeX before pulldown-latex (`chem::expand_ce`): formulas,
+  coefficients, charges (also before a state), states, hydrates, arrows
+  with text, gas and precipitate. Mistakes show in red like math.
+  Not done: stereo wedges (chematic draws none for cholesterol's
+  stereocenters), reaction schemes with structures.
 
 ## Dropped
 

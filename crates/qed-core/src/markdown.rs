@@ -30,7 +30,9 @@ pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String 
     for node in root.descendants() {
         match node.data.borrow_mut().value {
             NodeValue::Math(_) => math.push(node),
-            NodeValue::CodeBlock(ref code) if code.info.trim() == "math" => math.push(node),
+            NodeValue::CodeBlock(ref code) if matches!(code.info.trim(), "math" | "smiles") => {
+                math.push(node)
+            }
             NodeValue::Link(ref mut link) => link.url = links.resolve(&link.url),
             NodeValue::Image(ref mut image) => {
                 // Only `/media/…`: a relative `photo.png` isn't in media/.
@@ -51,13 +53,21 @@ pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String 
     // each gets a placeholder now and its MathML after formatting.
     let mut formulas = Vec::new();
     for node in math {
-        let (latex, display, block) = match &node.data.borrow().value {
-            NodeValue::Math(math) => (math.literal.clone(), math.display_math, false),
-            NodeValue::CodeBlock(code) => (code.literal.clone(), true, true),
+        let (html, display, block) = match &node.data.borrow().value {
+            NodeValue::Math(math) => (
+                mathml(&math.literal, math.display_math),
+                math.display_math,
+                false,
+            ),
+            // A molecule's structure from SMILES (see `chem.rs`).
+            NodeValue::CodeBlock(code) if code.info.trim() == "smiles" => {
+                (crate::chem::molecule(&code.literal), true, true)
+            }
+            NodeValue::CodeBlock(code) => (mathml(&code.literal, true), true, true),
             _ => continue,
         };
         let token = format!("{MATH_MARK}{}{MATH_MARK}", formulas.len());
-        formulas.push((token.clone(), mathml(&latex, display), display));
+        formulas.push((token.clone(), html, display));
         if block {
             // A ```math block: a paragraph holding the placeholder.
             node.data.borrow_mut().value = NodeValue::Paragraph;
@@ -327,8 +337,10 @@ fn mathml(latex: &str, display: bool) -> String {
     use pulldown_latex::config::DisplayMode;
     use pulldown_latex::{Parser, RenderConfig, Storage, push_mathml};
     let latex = latex.trim();
+    // Chemistry (`\ce{H2O}`) becomes ordinary LaTeX first.
+    let expanded = crate::chem::expand_ce(latex);
     let storage = Storage::new();
-    let events: Vec<_> = Parser::new(latex, &storage).collect();
+    let events: Vec<_> = Parser::new(&expanded, &storage).collect();
     if let Some(Err(error)) = events.iter().find(|event| event.is_err()) {
         // The parser's message spans lines and points at the spot with
         // ASCII art; the first line says what's wrong.

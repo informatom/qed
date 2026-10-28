@@ -166,6 +166,25 @@
 }
 
 /* A formula with a mistake (#107): its LaTeX, in red. */
-.prose code.math-error {
+.prose code.math-error,
+.prose code.chem-error {
   color: var(--color-error);
+}
+
+/* A molecule from SMILES (#130): centered, in the text color; the boxes
+   behind atom labels in the page color, so bonds stop short of them. */
+.prose .molecule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.molecule svg {
+  max-width: 100%;
+  height: auto;
+}
+.molecule rect {
+  fill: var(--color-base-100);
+}
+.prose .molecule figcaption {
+  margin-top: 0.25rem;
 }
