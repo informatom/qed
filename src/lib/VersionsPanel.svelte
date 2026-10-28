@@ -4,6 +4,7 @@
   import Save from "@lucide/svelte/icons/save";
   import Undo from "@lucide/svelte/icons/undo-2";
   import { ask } from "@tauri-apps/plugin-dialog";
+  import RemotePanel from "$lib/RemotePanel.svelte";
   import { commands, formatTime, type DeletedPage, type HistoryStatus, type Version } from "$lib/site";
 
   interface Props {
@@ -158,6 +159,23 @@
           Every save in q.e.d. goes into the open version, so nothing saved is lost. Publishing asks what's new, closes it
           with that note and marks it with the target's name.
         </p>
+
+        {#if status.shared_with}
+          <h2 class="mt-4 text-lg font-semibold">Push and pull</h2>
+          <p class="text-sm text-base-content/60">
+            q.e.d. pushes and pulls only sites that are a git repository of their own. This one is part of
+            <code class="font-mono">{status.shared_with}</code>; push and pull that repository with git.
+          </p>
+        {:else}
+          <div class="mt-4">
+            <RemotePanel {siteRoot} {note} {editing}
+              ondone={() => {
+                note = "";
+                refresh();
+              }}
+              onpulled={() => onrestored?.()} />
+          </div>
+        {/if}
       </section>
 
       <section class="flex min-w-0 flex-col gap-3">

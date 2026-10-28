@@ -58,7 +58,7 @@ impl SftpError {
 }
 
 /// Checks the server's key during the connection handshake.
-struct HostKeyCheck {
+pub(crate) struct HostKeyCheck {
     expected: Option<String>,
     /// The fingerprint the server presented, for the error message.
     seen: Arc<Mutex<Option<String>>>,
@@ -91,6 +91,75 @@ fn fingerprint(key: &PublicKeyOrCertificate) -> String {
     }
 }
 
+/// An SSH session, logged in as `user`, with the server's key checked
+/// against `host_key`. Fails with [`SftpError::UnknownHostKey`] if there's
+/// no trusted fingerprint yet. Used for SFTP and for git remotes.
+pub(crate) async fn login(
+    host: &str,
+    port: u16,
+    user: &str,
+    host_key: Option<&str>,
+    credentials: &Credentials,
+) -> Result<client::Handle<HostKeyCheck>, SftpError> {
+    let seen = Arc::new(Mutex::new(None));
+    let check = HostKeyCheck {
+        expected: host_key.map(str::to_string),
+        seen: Arc::clone(&seen),
+    };
+    let config = Arc::new(client::Config::default());
+    let connected = client::connect(config, (host, port), check).await;
+
+    let mut session = match connected {
+        Ok(session) => session,
+        Err(error) => {
+            let seen = seen.lock().ok().and_then(|seen| seen.clone());
+            return Err(match (seen, host_key) {
+                (Some(found), None) => SftpError::UnknownHostKey { fingerprint: found },
+                (Some(found), Some(expected)) if found != expected => SftpError::HostKeyChanged {
+                    expected: expected.to_string(),
+                    found,
+                },
+                _ => SftpError::Connect {
+                    host: host.to_string(),
+                    port,
+                    message: error.to_string(),
+                },
+            });
+        }
+    };
+
+    let accepted = match credentials {
+        Credentials::Password(password) => session
+            .authenticate_password(user, password)
+            .await
+            .map_err(|e| SftpError::failed("logging in", e))?
+            .success(),
+        Credentials::Key(pem) => {
+            let key = PrivateKey::from_openssh(pem)
+                .map_err(|e| SftpError::failed("reading the key", e))?;
+            let hash = session
+                .best_supported_rsa_hash()
+                .await
+                .map_err(|e| SftpError::failed("logging in", e))?
+                .flatten();
+            session
+                .authenticate_publickey(user, PrivateKeyWithHashAlg::new(Arc::new(key), hash))
+                .await
+                .map_err(|e| SftpError::failed("logging in", e))?
+                .success()
+        }
+    };
+    if !accepted {
+        let what = match credentials {
+            Credentials::Password(_) => "password",
+            Credentials::Key(_) => "key (is the public key in the server's authorized_keys?)",
+        };
+        return Err(SftpError::AuthFailed { what });
+    }
+
+    Ok(session)
+}
+
 /// An open SFTP connection, with the target's folder as its base.
 pub struct Connection {
     session: client::Handle<HostKeyCheck>,
@@ -104,64 +173,14 @@ pub async fn connect(
     target: &SftpTarget,
     credentials: &Credentials,
 ) -> Result<Connection, SftpError> {
-    let seen = Arc::new(Mutex::new(None));
-    let check = HostKeyCheck {
-        expected: target.host_key.clone(),
-        seen: Arc::clone(&seen),
-    };
-    let config = Arc::new(client::Config::default());
-    let connected = client::connect(config, (target.host.as_str(), target.port), check).await;
-
-    let mut session = match connected {
-        Ok(session) => session,
-        Err(error) => {
-            let seen = seen.lock().ok().and_then(|seen| seen.clone());
-            return Err(match (seen, &target.host_key) {
-                (Some(found), None) => SftpError::UnknownHostKey { fingerprint: found },
-                (Some(found), Some(expected)) if &found != expected => SftpError::HostKeyChanged {
-                    expected: expected.clone(),
-                    found,
-                },
-                _ => SftpError::Connect {
-                    host: target.host.clone(),
-                    port: target.port,
-                    message: error.to_string(),
-                },
-            });
-        }
-    };
-
-    let accepted = match credentials {
-        Credentials::Password(password) => session
-            .authenticate_password(&target.user, password)
-            .await
-            .map_err(|e| SftpError::failed("logging in", e))?
-            .success(),
-        Credentials::Key(pem) => {
-            let key = PrivateKey::from_openssh(pem)
-                .map_err(|e| SftpError::failed("reading the key", e))?;
-            let hash = session
-                .best_supported_rsa_hash()
-                .await
-                .map_err(|e| SftpError::failed("logging in", e))?
-                .flatten();
-            session
-                .authenticate_publickey(
-                    &target.user,
-                    PrivateKeyWithHashAlg::new(Arc::new(key), hash),
-                )
-                .await
-                .map_err(|e| SftpError::failed("logging in", e))?
-                .success()
-        }
-    };
-    if !accepted {
-        let what = match credentials {
-            Credentials::Password(_) => "password",
-            Credentials::Key(_) => "key (is the public key in the server's authorized_keys?)",
-        };
-        return Err(SftpError::AuthFailed { what });
-    }
+    let session = login(
+        &target.host,
+        target.port,
+        &target.user,
+        target.host_key.as_deref(),
+        credentials,
+    )
+    .await?;
 
     let channel = session
         .channel_open_session()

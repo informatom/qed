@@ -15,6 +15,7 @@
   import Files from "@lucide/svelte/icons/files";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
+  import GitBranch from "@lucide/svelte/icons/git-branch";
   import Globe from "@lucide/svelte/icons/globe";
   import Hammer from "@lucide/svelte/icons/hammer";
   import History from "@lucide/svelte/icons/history";
@@ -45,6 +46,8 @@
   import VersionsPanel from "$lib/VersionsPanel.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
   import NewSiteDialog from "$lib/NewSiteDialog.svelte";
+  import CloneSiteDialog from "$lib/CloneSiteDialog.svelte";
+  import PullBar from "$lib/PullBar.svelte";
   import MovePageDialog from "$lib/MovePageDialog.svelte";
   import PublishPanel from "$lib/PublishPanel.svelte";
   import PageEditor from "$lib/PageEditor.svelte";
@@ -174,6 +177,7 @@
   let creatingPage = $state(false);
   let creatingEpisode = $state(false);
   let creatingSite = $state(false);
+  let cloningSite = $state(false);
   let movingPage = $state(false);
   let view = $state<"pages" | "media" | "assets" | "static" | "audio" | "transcripts" | "podcast" | "contributors" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
 
@@ -519,6 +523,9 @@
 
 <main class="flex min-h-screen flex-col gap-8 p-8">
   <UpdateBar />
+  {#if site}
+    <PullBar siteRoot={site.root} editing={editorDirty} onpulled={() => site && load(site.root)} />
+  {/if}
   <header class="flex flex-wrap items-start justify-between gap-4">
     {#if site}
       <div class="flex min-w-0 items-center gap-4">
@@ -540,6 +547,7 @@
                 onopen={switchTo}
                 onchoose={chooseFolder}
                 onnew={() => (creatingSite = true)}
+                onclone={() => (cloningSite = true)}
                 onforget={(path) => (recent = forgetSite(path))}
               onclose={closeSite}
               />
@@ -1001,6 +1009,9 @@
       <button id="new-site" class="btn" onclick={() => (creatingSite = true)} disabled={loading}>
         <FolderPlus class="size-4" /> New site…
       </button>
+      <button id="clone-site-start" class="btn btn-ghost" onclick={() => (cloningSite = true)} disabled={loading}>
+        <GitBranch class="size-4" /> Get a site from git…
+      </button>
       <p class="text-sm text-base-content/60">
         A site folder has a <code>site.toml</code> and a <code>pages/</code> folder. Try
         <code>examples/demo-site</code> in the q.e.d. repository.
@@ -1037,6 +1048,16 @@
 
 {#if site && selected && movingPage}
   <MovePageDialog {site} page={selected} onmoved={pageMoved} onclose={() => (movingPage = false)} />
+{/if}
+
+{#if cloningSite}
+  <CloneSiteDialog
+    oncreated={(path) => {
+      view = "pages";
+      switchTo(path);
+    }}
+    onclose={() => (cloningSite = false)}
+  />
 {/if}
 
 {#if creatingSite}

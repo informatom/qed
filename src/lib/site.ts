@@ -37,6 +37,10 @@ export type DeletedPage = Sent<Rust.DeletedPage>;
 export type DiffLine = Sent<Rust.DiffLine>;
 export type HistoryStatus = Sent<Rust.HistoryStatus>;
 export type SincePublish = Sent<Rust.SincePublish>;
+export type RemoteInfo = Sent<Rust.RemoteInfo>;
+export type RemoteReport = Sent<Rust.RemoteReport>;
+export type RemoteOutcome = Sent<Rust.RemoteOutcome>;
+export type Transfer = Sent<Rust.Transfer>;
 export type PageContent = Sent<Rust.PageContent>;
 export type Version = Sent<Rust.Version>;
 export type FrontMatter = Sent<Rust.FrontMatter>;
@@ -285,6 +289,13 @@ export function publishSite(
   const channel = new Channel<Progress>();
   channel.onmessage = onProgress;
   return commands.publishSite(root, targetName, note, channel);
+}
+
+/** A channel for push, pull and "get a site" progress; `onProgress` gets each step. */
+export function transferChannel(onProgress: (t: Transfer) => void = () => {}): Channel<Transfer> {
+  const channel = new Channel<Transfer>();
+  channel.onmessage = onProgress;
+  return channel;
 }
 
 let iconCache: Promise<Map<string, string>> | null = null;

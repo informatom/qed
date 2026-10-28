@@ -29,7 +29,7 @@ sha2 = "0.11.1"
 specta = { version = "=2.0.0-rc.25", features = ["derive"], optional = true }
 thiserror = "2.0.21"
 tiny_http = "0.12.0"
-tokio = { version = "1.54.0", features = ["rt", "macros", "fs", "io-util", "sync"] }
+tokio = { version = "1.54.0", features = ["rt", "macros", "fs", "io-util", "sync", "net", "time"] }
 toml = "1.1.8"
 toml_edit = { version = "0.25.17", features = ["serde"] }
 # Episode guids (random, v4) and the podcast:guid (from the feed address, v5).

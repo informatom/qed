@@ -45,3 +45,23 @@ pub fn credentials(target: &SftpTarget) -> Result<Credentials, String> {
         SftpAuth::Key => Credentials::Key(secret),
     })
 }
+
+/// The private key q.e.d. made for a git remote, by
+/// `qed_core::remote::key_account`.
+fn remote_entry(account: &str) -> Result<Entry, String> {
+    Entry::new(SERVICE, &format!("{account}#key")).map_err(|e| e.to_string())
+}
+
+pub fn store_remote_key(account: &str, private_pem: &str) -> Result<(), String> {
+    remote_entry(account)?
+        .set_password(private_pem)
+        .map_err(|e| format!("can't save to the keychain: {e}"))
+}
+
+pub fn load_remote_key(account: &str) -> Result<Option<String>, String> {
+    match remote_entry(account)?.get_password() {
+        Ok(secret) => Ok(Some(secret)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(format!("can't read the keychain: {error}")),
+    }
+}

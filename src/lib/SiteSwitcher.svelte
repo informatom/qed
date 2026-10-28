@@ -4,6 +4,7 @@
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
   import FolderX from "@lucide/svelte/icons/folder-x";
+  import GitBranch from "@lucide/svelte/icons/git-branch";
   import X from "@lucide/svelte/icons/x";
   import type { RecentSite } from "$lib/recentSites";
 
@@ -15,11 +16,12 @@
     onopen: (path: string) => void;
     onchoose: () => void;
     onnew: () => void;
+    onclone: () => void;
     onforget: (path: string) => void;
     onclose: () => void;
   }
 
-  let { title, root, recent, onopen, onchoose, onnew, onforget, onclose }: Props = $props();
+  let { title, root, recent, onopen, onchoose, onnew, onclone, onforget, onclose }: Props = $props();
 
   let menu: HTMLDetailsElement;
 
@@ -68,6 +70,11 @@
     <li>
       <button type="button" id="switcher-new" onclick={() => pick(onnew)}>
         <FolderPlus class="size-4" /> New site…
+      </button>
+    </li>
+    <li>
+      <button type="button" id="switcher-clone" onclick={() => pick(onclone)}>
+        <GitBranch class="size-4" /> Get a site from git…
       </button>
     </li>
     <li>

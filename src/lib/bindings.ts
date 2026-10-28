@@ -200,6 +200,35 @@ export const commands = {
 	pageVersion: (root: string, file: string, version: string) => __TAURI_INVOKE<PageContent>("page_version", { root, file, version }),
 	/**  The lines a version changed in a file. */
 	versionChanges: (root: string, file: string, version: string) => __TAURI_INVOKE<DiffLine[]>("version_changes", { root, file, version }),
+	/**  The site's git remotes. */
+	listRemotes: (root: string) => __TAURI_INVOKE<RemoteInfo[]>("list_remotes", { root }),
+	/**  Adds a git remote (an SSH address) to the site's repository. */
+	addRemote: (root: string, name: string, url: string) => __TAURI_INVOKE<RemoteInfo>("add_remote", { root, name, url }),
+	/**  Removes a git remote from the site's repository; the server keeps it. */
+	removeRemote: (root: string, name: string) => __TAURI_INVOKE<null>("remove_remote", { root, name }),
+	/**  Trusts the remote server's key from now on. */
+	trustRemote: (root: string, name: string, fingerprint: string) => __TAURI_INVOKE<RemoteInfo>("trust_remote", { root, name, fingerprint }),
+	/**  The public key q.e.d. logs in to `url` with, if it made one. */
+	remoteKey: (url: string) => __TAURI_INVOKE<string | null>("remote_key", { url }),
+	/**
+	 *  Makes a key pair for `url`, keeps the private key in the keychain and
+	 *  returns the public key, to add on the server.
+	 */
+	generateRemoteKey: (url: string) => __TAURI_INVOKE<string>("generate_remote_key", { url }),
+	/**  Asks the remote whether it has versions this computer doesn't. */
+	checkRemote: (root: string, name: string, onProgress: Channel<Transfer>) => __TAURI_INVOKE<RemoteOutcome>("check_remote", { root, name, onProgress }),
+	/**
+	 *  Pushes the site's versions to the remote (closing the open version
+	 *  with `note` first).
+	 */
+	pushSite: (root: string, name: string, note: string | null, onProgress: Channel<Transfer>) => __TAURI_INVOKE<RemoteOutcome>("push_site", { root, name, note, onProgress }),
+	/**
+	 *  Pulls the remote's versions into the site (closing the open version
+	 *  with `note` first).
+	 */
+	pullSite: (root: string, name: string, note: string | null, onProgress: Channel<Transfer>) => __TAURI_INVOKE<RemoteOutcome>("pull_site", { root, name, note, onProgress }),
+	/**  Gets a site from a git remote into a new folder, with its history. */
+	cloneSite: (url: string, folder: string, hostKey: string | null, onProgress: Channel<Transfer>) => __TAURI_INVOKE<RemoteOutcome>("clone_site", { url, folder, hostKey, onProgress }),
 	/**  Builds the site at `path` into its `_site` folder. */
 	buildSite: (path: string) => __TAURI_INVOKE<BuildReport>("build_site", { path }),
 	/**  Builds the site and serves it locally. */
@@ -947,6 +976,48 @@ export type PublishReport = {
 	bytes: number,
 };
 
+/**  A remote of the site's repository, as the Versions tab shows it. */
+export type RemoteInfo = {
+	name: string,
+	url: string,
+	/**  The keychain account of q.e.d.'s key for this address. */
+	key_account: string,
+	/**  The server's trusted key fingerprint, once the user trusted it. */
+	host_key: string | null,
+	/**  The current branch pushes to and pulls from this remote. */
+	upstream: boolean,
+	/**
+	 *  Versions here that the remote doesn't have, as far as this computer
+	 *  knows (from the last push, pull or check).
+	 */
+	ahead: number,
+	/**  Versions on the remote that aren't here yet, as of the last check. */
+	behind: number,
+	/**
+	 *  The remote has the current branch at all (known since the last
+	 *  push, pull or check).
+	 */
+	has_branch: boolean,
+};
+
+/**  How a push, pull, check or "get a site from git" went. */
+export type RemoteOutcome = { outcome: "done"; report: RemoteReport } | 
+/**  The server's key isn't trusted yet; the user decides. */
+{ outcome: "untrusted"; fingerprint: string };
+
+/**  What a push, pull or check did. */
+export type RemoteReport = {
+	/**  One sentence for the user. */
+	message: string,
+	/**
+	 *  The site's files changed (a pull brought something), so the app
+	 *  should load the site again.
+	 */
+	changed: boolean,
+	/**  The remote afterwards. */
+	remote: RemoteInfo,
+};
+
 /**
  *  What someone does in an episode. The names and groups are the
  *  Podcasting 2.0 taxonomy's, which apps read from `podcast:person`:
@@ -1238,6 +1309,22 @@ export type ThemeVariable = {
 	name: string,
 	value: string,
 };
+
+/**  How far a push, pull or "get a site" has got, for a progress bar. */
+export type Transfer = {
+	stage: TransferStage,
+	/**  Objects (files and versions, as git counts them) done so far. */
+	done: number,
+	total: number,
+	/**  Bytes sent or received so far. */
+	bytes: number,
+};
+
+export type TransferStage = 
+/**  Push: collecting what the remote lacks. */
+"packing" | "sending" | "receiving" | 
+/**  Pull: unpacking what arrived. */
+"resolving";
 
 /**  One saved version. */
 export type Version = {

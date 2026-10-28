@@ -16,6 +16,7 @@ use qed_core::moving;
 use qed_core::page::{FrontMatter, PageContent, PageDate};
 use qed_core::podcast;
 use qed_core::preview::Preview;
+use qed_core::remote::{self, RemoteError, RemoteInfo, RemoteReport, Transfer};
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
 use qed_core::shared;
 use qed_core::site::{self, Page, Site, SiteConfig};
@@ -714,6 +715,176 @@ async fn version_changes(
     history::changes_in(&root, &file, &version).map_err(|error| error.to_string())
 }
 
+/// How a push, pull, check or "get a site from git" went.
+#[derive(serde::Serialize, specta::Type)]
+#[serde(tag = "outcome", rename_all = "lowercase")]
+enum RemoteOutcome {
+    Done {
+        report: RemoteReport,
+    },
+    /// The server's key isn't trusted yet; the user decides.
+    Untrusted {
+        fingerprint: String,
+    },
+}
+
+/// Runs a git network operation off the async threads (it blocks while
+/// it talks to the server), with q.e.d.'s key for `url`.
+async fn over_ssh(
+    url: String,
+    on_progress: Channel<Transfer>,
+    operation: impl FnOnce(&str, &dyn Fn(Transfer)) -> Result<RemoteReport, RemoteError>
+    + Send
+    + 'static,
+) -> Result<RemoteOutcome, String> {
+    let account = remote::key_account(&url);
+    let key = secrets::load_remote_key(&account)?
+        .ok_or_else(|| format!("q.e.d. has no key for {url} yet; make one first"))?;
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        // A closed window can't receive progress; the operation goes on.
+        operation(&key, &|transfer| {
+            let _ = on_progress.send(transfer);
+        })
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    match result {
+        Ok(report) => Ok(RemoteOutcome::Done { report }),
+        Err(RemoteError::UnknownHostKey { fingerprint }) => {
+            Ok(RemoteOutcome::Untrusted { fingerprint })
+        }
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+fn remote_url(root: &std::path::Path, name: &str) -> Result<String, String> {
+    remote::remotes(root)
+        .map_err(|error| error.to_string())?
+        .into_iter()
+        .find(|remote| remote.name == name)
+        .map(|remote| remote.url)
+        .ok_or_else(|| format!("there is no remote called {name}"))
+}
+
+/// The site's git remotes.
+#[tauri::command]
+#[specta::specta]
+async fn list_remotes(root: PathBuf) -> Result<Vec<RemoteInfo>, String> {
+    remote::remotes(&root).map_err(|error| error.to_string())
+}
+
+/// Adds a git remote (an SSH address) to the site's repository.
+#[tauri::command]
+#[specta::specta]
+async fn add_remote(root: PathBuf, name: String, url: String) -> Result<RemoteInfo, String> {
+    remote::add_remote(&root, &name, &url).map_err(|error| error.to_string())
+}
+
+/// Removes a git remote from the site's repository; the server keeps it.
+#[tauri::command]
+#[specta::specta]
+async fn remove_remote(root: PathBuf, name: String) -> Result<(), String> {
+    remote::remove_remote(&root, &name).map_err(|error| error.to_string())
+}
+
+/// Trusts the remote server's key from now on.
+#[tauri::command]
+#[specta::specta]
+async fn trust_remote(
+    root: PathBuf,
+    name: String,
+    fingerprint: String,
+) -> Result<RemoteInfo, String> {
+    remote::trust(&root, &name, &fingerprint).map_err(|error| error.to_string())
+}
+
+/// The public key q.e.d. logs in to `url` with, if it made one.
+#[tauri::command]
+#[specta::specta]
+async fn remote_key(url: String) -> Result<Option<String>, String> {
+    match secrets::load_remote_key(&remote::key_account(&url))? {
+        Some(pem) => Ok(Some(sftp::public_key_of(&pem).map_err(|e| e.to_string())?)),
+        None => Ok(None),
+    }
+}
+
+/// Makes a key pair for `url`, keeps the private key in the keychain and
+/// returns the public key, to add on the server.
+#[tauri::command]
+#[specta::specta]
+async fn generate_remote_key(url: String) -> Result<String, String> {
+    let account = remote::key_account(&url);
+    let comment = format!("qed {account}");
+    let (private, public) = sftp::generate_key(&comment).map_err(|e| e.to_string())?;
+    secrets::store_remote_key(&account, &private)?;
+    Ok(public)
+}
+
+/// Asks the remote whether it has versions this computer doesn't.
+#[tauri::command]
+#[specta::specta]
+async fn check_remote(
+    root: PathBuf,
+    name: String,
+    on_progress: Channel<Transfer>,
+) -> Result<RemoteOutcome, String> {
+    let url = remote_url(&root, &name)?;
+    over_ssh(url, on_progress, move |key, progress| {
+        remote::check(&root, &name, key, progress)
+    })
+    .await
+}
+
+/// Pushes the site's versions to the remote (closing the open version
+/// with `note` first).
+#[tauri::command]
+#[specta::specta]
+async fn push_site(
+    root: PathBuf,
+    name: String,
+    note: Option<String>,
+    on_progress: Channel<Transfer>,
+) -> Result<RemoteOutcome, String> {
+    let url = remote_url(&root, &name)?;
+    over_ssh(url, on_progress, move |key, progress| {
+        remote::push(&root, &name, key, note.as_deref(), progress)
+    })
+    .await
+}
+
+/// Pulls the remote's versions into the site (closing the open version
+/// with `note` first).
+#[tauri::command]
+#[specta::specta]
+async fn pull_site(
+    root: PathBuf,
+    name: String,
+    note: Option<String>,
+    on_progress: Channel<Transfer>,
+) -> Result<RemoteOutcome, String> {
+    let url = remote_url(&root, &name)?;
+    over_ssh(url, on_progress, move |key, progress| {
+        remote::pull(&root, &name, key, note.as_deref(), progress)
+    })
+    .await
+}
+
+/// Gets a site from a git remote into a new folder, with its history.
+#[tauri::command]
+#[specta::specta]
+async fn clone_site(
+    url: String,
+    folder: PathBuf,
+    host_key: Option<String>,
+    on_progress: Channel<Transfer>,
+) -> Result<RemoteOutcome, String> {
+    let address = url.clone();
+    over_ssh(url, on_progress, move |key, progress| {
+        remote::clone_site(&address, &folder, key, host_key.as_deref(), progress)
+    })
+    .await
+}
+
 fn build(path: &std::path::Path) -> Result<BuildReport, String> {
     let site = site::open(path).map_err(|error| error.to_string())?;
     generator::build(&site).map_err(|error| error.to_string())
@@ -777,6 +948,16 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             list_versions,
             page_version,
             version_changes,
+            list_remotes,
+            add_remote,
+            remove_remote,
+            trust_remote,
+            remote_key,
+            generate_remote_key,
+            check_remote,
+            push_site,
+            pull_site,
+            clone_site,
             build_site,
             preview_site,
         ])
