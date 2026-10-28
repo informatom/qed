@@ -730,6 +730,21 @@ rest is done.
   #023, #068, #069, #125, #053, #047, #048, #049, #126, #128; tested by
   moving stefan-wills-wissen and 3-schweinehun.de over from
   jekyll-octopod, which brought #127).
+- **#129 Push and pull with git.** Replaces #109 (a *Back up*
+  button). Done 2026-10-28, released in 0.9.0, tested with
+  waldgruber.at on two computers (push, get a site from git, edit
+  there, push, pull back). *Push and pull* in the Versions tab, *Get a
+  site from git…* in the site menu and on the start screen, a bar
+  offering a pull when a site opens and its remote has new versions,
+  and a progress bar (`qed_core::remote`, post 55).
+  Decided (user): for two computers; git's own remotes; q.e.d.'s own
+  Ed25519 key per remote address and computer, in the keychain; pull
+  merges when different files changed and changes nothing when both
+  changed the same file; only sites that are their own repository.
+  Built on russh instead of git2's `ssh` feature: a libgit2 transport
+  runs `git-upload-pack`/`git-receive-pack` over the SFTP login
+  (`sftp::login`); the server's fingerprint per remote in
+  `remote.<name>.qedhostkey`. A manual page follows with #110.
 
 ## Dropped
 

@@ -41,28 +41,6 @@ Nothing open.
   automatic note after a while without saves (from #073).
 - **#084 Signed commits.** libgit2 doesn't sign, so q.e.d.'s versions are
   unsigned (from #073).
-- **#129 Push and pull with git.** Replaces #109 (the *Back up*
-  button). *Built 2026-10-28, to test with waldgruber.at*
-  (`git@code.informatom.com:Ponysee/waldgruber.at.git`): *Push and pull*
-  in the Versions tab, *Get a site from git…* (clone) in the site menu
-  and on the start screen, and a bar offering a pull when a site opens
-  and its remote has new versions (`qed_core::remote`).
-  - Decided (user): two computers; git's own remotes; q.e.d.'s own
-    Ed25519 key per remote address in the keychain; pull merges when
-    different files changed and changes nothing when the same file
-    changed on both sides; only sites that are their own repository
-    (`docs/` is a development edge case); offer a pull on open.
-  - Built on russh, not git2's `ssh` feature: a libgit2 transport
-    (`SshTransport`) runs `git-upload-pack`/`git-receive-pack` over
-    the SFTP login (`sftp::login`). Server fingerprint per remote in
-    `remote.<name>.qedhostkey`. Push closes the open version (note from
-    *Save a version*, else "Saved before pushing") and pushes the branch
-    and tags; pull closes it too, then fast-forwards or merges.
-  - First push of waldgruber.at (87 MB) worked, 2026-10-28; it took
-    about 80 s with only a spinner, so push, pull and "get a site" now
-    show a progress bar (packing, sending, receiving, unpacking).
-  - Still open: test pull, merge and "get a site" over SSH; a manual
-    page (#110).
 - **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
   view, also reachable from where a topic comes up, e.g. the Versions tab
   for backups), and the same pages on the docs site. Written for site
