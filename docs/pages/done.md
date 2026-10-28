@@ -719,6 +719,14 @@ rest is done.
   per chapter, since the chapters tab opens with it), so the page doesn't
   jump (user).
 
+- **Phase 2: Podcasting.** Podcast websites on top of phase 1: podcast
+  settings, episodes, audio in several formats, feeds, the Podlove Web
+  Player and Subscribe Button, contributors, transcripts, the episode
+  layout. *All done 2026-10-28*, released as 0.8.0 (#066, #067, #022,
+  #023, #068, #069, #125, #053, #047, #048, #049, #126, #128; tested by
+  moving stefan-wills-wissen and 3-schweinehun.de over from
+  jekyll-octopod, which brought #127).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

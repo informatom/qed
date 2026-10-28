@@ -19,10 +19,6 @@ Nothing open.
 
 ## To build
 
-### Phase 2: Podcasting
-
-Done 2026-10-28, see [Done](done.md) (#046 – #053, #126).
-
 ### Phase 3: Nice to have
 
 - **#070 Code signing.** Apple developer account and notarization, Windows
