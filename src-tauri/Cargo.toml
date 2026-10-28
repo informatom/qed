@@ -1,6 +1,6 @@
 [package]
 name = "qed"
-description = "Desktop app that turns a folder of pages and posts into a static website and publishes it"
+description = "Desktop app for your own website or podcast site, made without programming and published to your own webspace"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

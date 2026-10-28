@@ -1,8 +1,9 @@
 # q.e.d.
 
-A desktop app that turns a folder of pages and posts into a static website and
-publishes it to your own webspace, via SFTP, GitHub Pages or a ZIP download.
-Built for people who want their own site (and later, their own podcast)
+A desktop app for your own website or podcast site, made entirely in the
+app, without programming: write pages, add pictures and episodes, choose
+colors and fonts, and q.e.d. builds a fast static website and publishes it
+to your own webspace. Built for people who want their own site or podcast
 without learning a static site generator.
 
 Status: early development. The plan lives in the

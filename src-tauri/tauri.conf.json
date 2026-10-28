@@ -37,7 +37,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "shortDescription": "Static websites from a folder of pages",
+    "shortDescription": "Websites and podcast sites, without programming",
     "license": "GPL-3.0-or-later",
     "category": "Productivity",
     "linux": {

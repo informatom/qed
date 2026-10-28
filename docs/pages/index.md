@@ -1,6 +1,6 @@
 +++
 title = "q.e.d."
-description = "A desktop app that turns a folder of pages into a website, and publishes it to your own webspace."
+description = "A desktop app for your own website or podcast site: made entirely in the app, without programming, and published to your own webspace."
 +++
 
 ::: image
@@ -9,8 +9,8 @@ alt = "The q.e.d. robot at a desk, holding a microphone and a tablet with a webs
 :::
 
 ::: hero
-headline = "Your website, from a folder of pages"
-text = "q.e.d. is a desktop app that turns Markdown pages into a static website and publishes it to your own webspace. No server, no subscription, no static site generator to learn."
+headline = "Your website, without programming"
+text = "Write your pages, add pictures and episodes, choose colors and fonts: all in the app. q.e.d. turns it into a fast website and publishes it to your own webspace. No code, no server, no subscription."
 button_label = "Read the blog"
 button_link = "/blog"
 :::
