@@ -19,6 +19,8 @@ image = { version = "0.25.10", default-features = false, features = ["jpeg", "pn
 # reqwest as Tauri's updater, with rustls on ring (no second TLS stack).
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "json"] }
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+# Charts in text: SVG from a JSON description (pure Rust).
+charts-rs = "2.3.0"
 # Chemistry in text: structure diagrams from SMILES, as SVG (pure Rust).
 chematic-depict = { version = "1.2.1", default-features = false }
 chematic-smiles = "1.2.1"

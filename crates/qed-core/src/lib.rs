@@ -3,6 +3,7 @@
 
 pub mod block;
 pub mod calendar;
+pub mod chart;
 pub mod chem;
 pub mod contributors;
 pub mod deploy;
@@ -26,6 +27,7 @@ pub mod sftp;
 pub mod shared;
 pub mod site;
 pub mod slug;
+pub mod strata;
 pub mod target;
 pub mod theme;
 pub mod video;

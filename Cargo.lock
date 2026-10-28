@@ -167,6 +167,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "arc-swap"
+version = "1.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "380962b3d93b99642e50b9febf72c071e97e8b32d86eae9cf4ef582bb960ae6e"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "argon2"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -802,6 +811,18 @@ dependencies = [
  "cpufeatures 0.3.1",
  "rand_core",
  "zeroize",
+]
+
+[[package]]
+name = "charts-rs"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4442ac5e9a767aef75fb46e5fd14e67e1ddb7a905f33a1bca6f316a49285a9f"
+dependencies = [
+ "arc-swap",
+ "serde",
+ "serde_json",
+ "ttf-parser",
 ]
 
 [[package]]
@@ -4740,6 +4761,7 @@ name = "qed-core"
 version = "0.9.0"
 dependencies = [
  "askama",
+ "charts-rs",
  "chematic-depict",
  "chematic-smiles",
  "comrak",
@@ -6994,6 +7016,12 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "ttf-parser"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 
 [[package]]
 name = "twelf"

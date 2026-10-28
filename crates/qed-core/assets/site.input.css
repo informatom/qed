@@ -167,7 +167,8 @@
 
 /* A formula with a mistake (#107): its LaTeX, in red. */
 .prose code.math-error,
-.prose code.chem-error {
+.prose code.chem-error,
+.prose pre.chart-error code {
   color: var(--color-error);
 }
 
@@ -187,4 +188,44 @@
 }
 .prose .molecule figcaption {
   margin-top: 0.25rem;
+}
+
+/* Charts (#131) from charts-rs: its fixed colors and font replaced by
+   the theme's (a CSS rule beats an SVG attribute). Series keep their
+   colors. Stratigraphic columns (strata.rs) draw in the text color. */
+.prose .chart,
+.prose .strata {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.chart svg,
+.strata svg {
+  max-width: 100%;
+  height: auto;
+}
+.chart text,
+.strata text {
+  font-family: inherit;
+}
+.chart > svg > rect:first-child {
+  fill: transparent;
+}
+.chart [fill="#FFFFFF"] {
+  fill: var(--color-base-100);
+}
+.chart [fill="#464646"] {
+  fill: var(--color-base-content);
+}
+.chart [fill="#6E7079"] {
+  fill: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+}
+.chart [stroke="#6E7079"] {
+  stroke: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+.chart [stroke="#E0E6F2"] {
+  stroke: var(--color-base-300);
+}
+.prose pre.chart-error {
+  white-space: pre-wrap;
 }

@@ -783,6 +783,19 @@ rest is done.
   with text, gas and precipitate. Mistakes show in red like math.
   Not done: stereo wedges (chematic draws none for cholesterol's
   stereocenters), reaction schemes with structures.
+- **#131 Charts and stratigraphic columns.** Asked for by the user on
+  2026-10-28 (charming would have needed V8 for SVG; charts-rs draws it
+  in pure Rust, about 1.7 MB in a test program). Done the same day, post
+  59: a ```` ```chart ```` block with charts-rs's JSON and `"type"`
+  (bar by default, 17 types; pie without the "rose"), drawn as SVG when
+  the site is built, the theme's colors and font by attribute selectors
+  in `site.input.css`. Geology, for a possible power user: a Harker
+  diagram as a scatter chart, and a ```` ```strata ```` block drawn by
+  q.e.d. itself (`strata.rs`): one layer per line (thickness, rock,
+  name), 17 rocks with their patterns and German names, width by grain
+  size, scale from the base, labels pushed apart, legend. Ideas not
+  built: ternary diagrams (QAPF, soil texture), rose diagrams,
+  stereonets.
 
 ## Dropped
 

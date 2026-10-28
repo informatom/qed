@@ -30,7 +30,9 @@ pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String 
     for node in root.descendants() {
         match node.data.borrow_mut().value {
             NodeValue::Math(_) => math.push(node),
-            NodeValue::CodeBlock(ref code) if matches!(code.info.trim(), "math" | "smiles") => {
+            NodeValue::CodeBlock(ref code)
+                if matches!(code.info.trim(), "math" | "smiles" | "chart" | "strata") =>
+            {
                 math.push(node)
             }
             NodeValue::Link(ref mut link) => link.url = links.resolve(&link.url),
@@ -62,6 +64,13 @@ pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String 
             // A molecule's structure from SMILES (see `chem.rs`).
             NodeValue::CodeBlock(code) if code.info.trim() == "smiles" => {
                 (crate::chem::molecule(&code.literal), true, true)
+            }
+            // Charts (`chart.rs`) and stratigraphic columns (`strata.rs`).
+            NodeValue::CodeBlock(code) if code.info.trim() == "chart" => {
+                (crate::chart::chart(&code.literal), true, true)
+            }
+            NodeValue::CodeBlock(code) if code.info.trim() == "strata" => {
+                (crate::strata::column(&code.literal), true, true)
             }
             NodeValue::CodeBlock(code) => (mathml(&code.literal, true), true, true),
             _ => continue,
