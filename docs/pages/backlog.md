@@ -113,7 +113,28 @@ Nothing open.
   2026-10-27: Pagefind rather than lunr.js, MiniSearch or Fuse.js, which
   load the whole index at once.
 
-### Phase 4: Open to AI assistants
+### Phase 4: Moving in, open to AI assistants
+
+- **#123 Import from Podlove Publisher.** Bring a podcast over from
+  WordPress with the [Podlove Publisher](https://podlove.org/podlove-podcast-publisher/)
+  plugin, mostly to archive it without having to keep WordPress running
+  (user, 2026-10-28): podcast settings, episodes with shownotes,
+  chapters, contributors (#047), transcripts (#048), cover art and the
+  audio in every format, the old episode guids (so apps don't show
+  everything again) and the old addresses as redirects. To decide:
+  the source (Podlove's own export file, the feeds, the WordPress REST
+  API, or a mix), and how much of the shownotes' HTML becomes Markdown.
+  Related: #034 (import from a feed or jekyll-octopod).
+- **#124 Feed redirects.** Podlove Publisher's feeds live at other
+  addresses (`/feed/mp3/`, or `/?feed=…` without pretty links) than
+  q.e.d.'s (`/episodes.mp3.rss`), and subscribers must keep getting new
+  episodes after the move (from #123). A static site can't answer with
+  an HTTP 301 by itself. To decide, per target: a `<itunes:new-feed-url>`
+  feed at the old address (Apple and most apps then switch for good; works
+  on any host, also GitHub Pages, but not for `?feed=` addresses), an
+  `.htaccess` with `Redirect 301` rules for Apache hosts (handles query
+  strings too), or both. Old feed addresses per format would be a
+  podcast setting, filled in by the import.
 
 - **#105 MCP server.** A second thin shell around qed-core next to the
   Tauri app, so AI assistants (Claude Code, Claude Desktop) can work on a
