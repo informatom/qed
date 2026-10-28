@@ -663,6 +663,18 @@ rest is done.
   (`type="text/vtt"`, `rel="captions"`). Not shown on episode pages:
   the web player (#049) will (user). WebVTT only, no SRT (user).
 
+- **#049 Web player.** Done 2026-10-28: the Podlove Web Player 5.13.0,
+  self-hosted (`crates/qed-core/assets/podlove-player/`, README with its
+  origin and how to update), on every episode page with audio. Each
+  episode gets `player.json` next to its page (audio and downloads per
+  format, chapters, contributors with photos, the transcript's cues read
+  from its WebVTT file, speakers matched to contributors); the site gets
+  `podlove-player/config.json` (the theme's button color as the player's
+  colors) and `player.js`, q.e.d.'s own script that starts it without
+  inline scripts. With the player running, the plain `<audio>` player and
+  the chapter list are hidden (user); without JavaScript they stay. The
+  player's share tab is left off: the site has its own share row.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

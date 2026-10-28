@@ -234,6 +234,22 @@ pub fn color_hex(
     Some(format!("#{r:02x}{g:02x}{b:02x}"))
 }
 
+/// `hex` mixed with `other` (`#rrggbb` both), `amount` of `other` from 0
+/// to 1: shades of a theme color for code that needs several, like the
+/// Podlove Web Player. `None` if either isn't a hex color.
+pub fn mix_hex(hex: &str, other: &str, amount: f64) -> Option<String> {
+    let (a, b) = (parse_hex(hex)?, parse_hex(other)?);
+    let mixed: Vec<String> = a
+        .iter()
+        .zip(b.iter())
+        .map(|(x, y)| {
+            let value = f64::from(*x) * (1.0 - amount) + f64::from(*y) * amount;
+            format!("{:02x}", value.round().clamp(0.0, 255.0) as u8)
+        })
+        .collect();
+    Some(format!("#{}", mixed.concat()))
+}
+
 /// `oklch(45% .24 277.023)` (lightness, chroma, hue in degrees) as sRGB.
 /// The formulas are Björn Ottosson's, who made OKLab:
 /// <https://bottosson.github.io/posts/oklab/>.
@@ -355,6 +371,15 @@ mod tests {
             color_hex(css, "light", Some(&custom), "--color-primary").as_deref(),
             Some("#123456")
         );
+        assert_eq!(
+            mix_hex("#ff0000", "#000000", 0.5).as_deref(),
+            Some("#800000")
+        );
+        assert_eq!(
+            mix_hex("#ff0000", "#ffffff", 1.0).as_deref(),
+            Some("#ffffff")
+        );
+        assert_eq!(mix_hex("red", "#ffffff", 0.5), None);
         // The real stylesheet has every theme.
         let site_css = include_str!("../assets/site.css");
         assert!(color_hex(site_css, "nord", None, "--color-primary").is_some());

@@ -473,6 +473,63 @@ pub const AUDIO_DIR: &str = "audio";
 /// them: `/transcripts/episode1.vtt`.
 pub const TRANSCRIPTS_DIR: &str = "transcripts";
 
+/// One line of a transcript, in the Podlove Web Player's format.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Cue {
+    pub start: String,
+    pub start_ms: u64,
+    pub end: String,
+    pub end_ms: u64,
+    /// The contributor's id, when the voice is one of them; the player
+    /// shows their photo.
+    pub speaker: String,
+    /// The speaker's name as the file has it (`<v Hannah>`).
+    pub voice: String,
+    pub text: String,
+}
+
+/// The cues of a WebVTT file: each block with a `start --> end` line
+/// becomes one, a `<v Name>` voice tag its speaker. Not all of WebVTT
+/// (no styling, regions or nested tags), just what transcripts use.
+/// `speaker` turns a name into a contributor's id, if they're one.
+pub fn transcript_cues(text: &str, speaker: impl Fn(&str) -> Option<String>) -> Vec<Cue> {
+    let text = text.trim_start_matches('\u{feff}').replace("\r\n", "\n");
+    text.split("\n\n")
+        .filter_map(|block| {
+            let mut lines = block.lines().skip_while(|line| !line.contains("-->"));
+            let timing = lines.next()?;
+            let (start, end) = timing.split_once("-->")?;
+            // Settings after the end time (`align:start`) aren't times.
+            let start = start.trim();
+            let end = end.split_whitespace().next()?;
+            let (start_ms, end_ms) = (start_millis(start)?, start_millis(end)?);
+            let words = lines.collect::<Vec<_>>().join(" ");
+            let (voice, words) = match words
+                .trim()
+                .strip_prefix("<v")
+                .and_then(|rest| rest.split_once('>'))
+            {
+                Some((name, rest)) => (name.trim().to_string(), rest.replace("</v>", "")),
+                None => (String::new(), words.trim().to_string()),
+            };
+            Some(Cue {
+                start: clock_millis(start_ms),
+                start_ms,
+                end: clock_millis(end_ms),
+                end_ms,
+                speaker: speaker(&voice).unwrap_or_default(),
+                voice,
+                text: words.trim().to_string(),
+            })
+        })
+        .collect()
+}
+
+/// Milliseconds as `01:02:03.500`.
+pub fn clock_millis(millis: u64) -> String {
+    format!("{}.{:03}", clock(millis / 1000), millis % 1000)
+}
+
 /// Whether `text` is a WebVTT file: it starts with `WEBVTT` (after a
 /// byte order mark, if any).
 pub fn is_webvtt(text: &str) -> bool {
@@ -1857,5 +1914,121 @@ mod tests {
         assert!(site::save_front_matter(dir.path(), &page.file, front).is_err());
         assert!(is_webvtt("\u{feff}WEBVTT - Folge 1\n"));
         assert!(!is_webvtt("WEBVTTX"));
+    }
+
+    #[test]
+    fn reads_the_cues_of_a_webvtt_transcript() {
+        let vtt = "WEBVTT - Folge 1\n\nNOTE\nnur ein Test\n\n1\n00:00:01.500 --> 00:00:04.000 align:start\n<v Hannah>Hallo,\nStefan!</v>\n\n00:05.000 --> 00:06.000\nOhne Stimme\n";
+        let cues = transcript_cues(vtt, |name| (name == "Hannah").then(|| "hannah".to_string()));
+        assert_eq!(cues.len(), 2, "{cues:?}");
+        assert_eq!(cues[0].start, "00:00:01.500");
+        assert_eq!(cues[0].end_ms, 4000);
+        assert_eq!(cues[0].voice, "Hannah");
+        assert_eq!(cues[0].speaker, "hannah");
+        assert_eq!(cues[0].text, "Hallo, Stefan!");
+        assert_eq!(cues[1].start, "00:00:05.000");
+        assert_eq!(cues[1].voice, "");
+    }
+
+    #[test]
+    fn hands_the_web_player_everything_about_an_episode() {
+        use crate::media::{self, Library};
+        let dir = podcast_site();
+        let vtt = dir.path().join("eins.vtt");
+        std::fs::write(
+            &vtt,
+            "WEBVTT\n\n00:00.000 --> 00:02.000\n<v Stefan Haslinger>Hallo!\n",
+        )
+        .unwrap();
+        media::import(dir.path(), Library::Transcripts, &vtt).unwrap();
+        let stefan = crate::contributors::save(
+            dir.path(),
+            &crate::contributors::Contributor {
+                id: String::new(),
+                name: "Stefan Haslinger".to_string(),
+                photo: Some("stefan.jpg".to_string()),
+                links: Vec::new(),
+                bio: String::new(),
+            },
+        )
+        .unwrap();
+        std::fs::write(dir.path().join("one.mp3"), mp3()).unwrap();
+        media::import(dir.path(), Library::Audio, &dir.path().join("one.mp3")).unwrap();
+
+        let page = create_episode(dir.path(), "Eins", None).unwrap();
+        let mut front = page.content.front.clone();
+        if let Some(episode) = front.episode.as_mut() {
+            episode.audio = vec![audio(AudioFormat::Mp3, "one.mp3")];
+            episode.duration = Some("00:00:01".to_string());
+            episode.transcript = Some("eins.vtt".to_string());
+            episode.chapters = vec![Chapter {
+                start: "00:00".to_string(),
+                title: "Anfang".to_string(),
+                link: None,
+            }];
+            episode.people = vec![crate::contributors::EpisodePerson {
+                contributor: stefan.id.clone(),
+                role: crate::contributors::Role::Host,
+            }];
+        }
+        site::save_front_matter(dir.path(), &page.file, front).unwrap();
+
+        let site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        crate::generator::build_into(&site, &out).unwrap();
+
+        let json: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(out.join(&page.path).join("player.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(json["version"], 5);
+        assert_eq!(json["title"], "Eins");
+        assert_eq!(json["duration"], "00:00:01.000");
+        assert_eq!(json["audio"][0]["url"], "../../episodes/one.mp3");
+        assert_eq!(json["audio"][0]["mimeType"], "audio/mpeg");
+        assert_eq!(json["audio"][0]["size"], 39 * 417);
+        assert_eq!(json["chapters"][0]["start"], "00:00:00.000");
+        assert_eq!(json["contributors"][0]["avatar"], "../../media/stefan.jpg");
+        assert_eq!(json["transcripts"][0]["speaker"], "stefan-haslinger");
+        assert_eq!(json["transcripts"][0]["text"], "Hallo!");
+
+        assert!(out.join("podlove-player/embed.js").is_file());
+        assert!(
+            out.join("podlove-player/5.13.0/player/bootstrap.js")
+                .is_file()
+        );
+        assert!(!out.join("podlove-player/README.md").exists());
+        assert!(out.join("player.js").is_file());
+        let config: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(out.join("podlove-player/config.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(config["version"], 5);
+        assert!(
+            config["theme"]["tokens"]["brand"]
+                .as_str()
+                .unwrap()
+                .starts_with('#')
+        );
+
+        let html = std::fs::read_to_string(out.join(&page.path).join("index.html")).unwrap();
+        assert!(
+            html.contains(r#"<div data-podlove-player data-episode="player.json"></div>"#),
+            "{html}"
+        );
+        assert!(
+            html.contains(r#"<script src="../../podlove-player/embed.js" defer></script>"#),
+            "{html}"
+        );
+        assert!(
+            html.contains(r#"class="w-full" data-player-fallback>"#),
+            "{html}"
+        );
+        assert!(
+            html.contains(
+                r#"<section id="chapters" class="prose max-w-none" data-player-fallback>"#
+            ),
+            "{html}"
+        );
     }
 }

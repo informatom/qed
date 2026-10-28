@@ -238,9 +238,26 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         footer: false,
     };
 
+    let mut players = 0;
     for page in &published {
         let html = render_page(site, &context, page, &main_menu, &footer_menu, &feeds)?;
         write(&page_file(out_dir, &page.path), html)?;
+        // The player's data for an episode with audio, next to its page.
+        if let Some(episode) = page.content.front.episode.as_ref()
+            && site.config.podcast.is_some()
+            && !episode.audio.is_empty()
+        {
+            let links = LinkContext::new(&page.path, &page.file);
+            let data = player_episode(site, page, episode, &links);
+            write(
+                &out_dir.join(&page.path).join(PLAYER_EPISODE),
+                data.to_string(),
+            )?;
+            players += 1;
+        }
+    }
+    if players > 0 {
+        write_player(out_dir, button_color.as_deref())?;
     }
 
     let not_found = not_found_page(site);
@@ -1146,6 +1163,8 @@ struct PageTemplate<'a> {
     chapters_heading: &'static str,
     /// Share links on episode pages; only with the site's web address.
     share: Option<ShareEntry>,
+    /// The Podlove Web Player, for an episode with audio.
+    player: Option<PlayerEntry>,
     /// The people in an episode, each once with all their roles.
     people: Vec<PersonEntry>,
     /// "Mitwirkende", in the site's language.
@@ -1459,6 +1478,194 @@ struct AudioSource {
     mime_type: &'static str,
     /// "MP3, 28.9 MB", for the download link.
     label: String,
+}
+
+/// What an episode page needs for the Podlove Web Player: its data next
+/// to the page, and the scripts.
+struct PlayerEntry {
+    episode: &'static str,
+    embed: String,
+    script: String,
+}
+
+/// The Podlove Web Player, built into q.e.d. Where this copy comes from
+/// and how to update it: `assets/podlove-player/README.md`.
+static PODLOVE_PLAYER: include_dir::Dir<'_> =
+    include_dir::include_dir!("$CARGO_MANIFEST_DIR/assets/podlove-player");
+
+/// Where the player goes in the built site, its episode data next to each
+/// episode page, and q.e.d.'s script that starts it.
+const PLAYER_DIR: &str = "podlove-player";
+const PLAYER_EPISODE: &str = "player.json";
+const PLAYER_SCRIPT: &str = include_str!("../assets/player.js");
+const PLAYER_FILE: &str = "player.js";
+
+/// Writes the player, its settings for the whole site and the script that
+/// starts it into the built site. The theme tokens are shades of the
+/// theme's button color.
+fn write_player(out_dir: &Path, button_color: Option<&str>) -> Result<(), BuildError> {
+    write_embedded(&PODLOVE_PLAYER, &out_dir.join(PLAYER_DIR))?;
+    let mut config = serde_json::json!({
+        "version": 5,
+        "activeTab": "chapters",
+    });
+    if let Some(brand) = button_color {
+        let shade = |other: &str, amount: f64| {
+            crate::theme::mix_hex(brand, other, amount).unwrap_or_else(|| brand.to_string())
+        };
+        config["theme"] = serde_json::json!({
+            "tokens": {
+                "brand": brand,
+                "brandDark": shade("#000000", 0.25),
+                "brandDarkest": shade("#000000", 0.6),
+                "brandLightest": shade("#ffffff", 0.9),
+                "shadeDark": "#807e7c",
+                "shadeBase": "#807e7c",
+                "contrast": "#000000",
+                "alt": "#ffffff",
+            }
+        });
+    }
+    write(
+        &out_dir.join(PLAYER_DIR).join("config.json"),
+        config.to_string(),
+    )?;
+    write(&out_dir.join(PLAYER_FILE), PLAYER_SCRIPT.to_string())
+}
+
+/// An episode in the Podlove Web Player's format (version 5), with
+/// addresses relative to its page, where it's written next to.
+fn player_episode(
+    site: &Site,
+    page: &Page,
+    episode: &podcast::Episode,
+    links: &LinkContext,
+) -> serde_json::Value {
+    let config = &site.config;
+    let front = &page.content.front;
+    let podcast = config.podcast.as_ref();
+    let language = config.language.as_str();
+    let cover = podcast
+        .and_then(|p| p.cover.as_deref())
+        .map(|c| media_link(c, links));
+    let poster = episode
+        .image
+        .as_deref()
+        .map(|image| media_link(image, links))
+        .or_else(|| cover.clone());
+    let order = podcast.map(|p| p.formats()).unwrap_or_default();
+    let mut audio: Vec<&podcast::EpisodeAudio> = episode.audio.iter().collect();
+    audio.sort_by_key(|a| {
+        order
+            .iter()
+            .position(|f| *f == a.format)
+            .unwrap_or(usize::MAX)
+    });
+    let files: Vec<serde_json::Value> = audio
+        .iter()
+        .map(|a| {
+            let (url, size) = match a.local() {
+                Some(file) => (
+                    format!("{}{}/{file}", links.to_root(), podcast::AUDIO_URL_DIR),
+                    fs::metadata(site.root.join(podcast::AUDIO_DIR).join(file))
+                        .ok()
+                        .map(|meta| meta.len())
+                        .or(a.length),
+                ),
+                None => (a.file.trim().to_string(), a.length),
+            };
+            serde_json::json!({
+                "url": url,
+                "size": size.unwrap_or(0),
+                "title": a.format.label(),
+                "mimeType": a.format.mime_type(),
+            })
+        })
+        .collect();
+    let chapters: Vec<serde_json::Value> = episode
+        .chapters
+        .iter()
+        .filter_map(|chapter| {
+            let mut entry = serde_json::json!({
+                "start": podcast::clock_millis(podcast::start_millis(&chapter.start)?),
+                "title": chapter.title.trim(),
+            });
+            if let Some(link) = chapter
+                .link
+                .as_deref()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+            {
+                entry["href"] = links.resolve(link).into();
+            }
+            Some(entry)
+        })
+        .collect();
+    // Each person once, with their first role.
+    let mut people: Vec<&crate::contributors::EpisodePerson> = Vec::new();
+    for person in &episode.people {
+        if !people.iter().any(|p| p.contributor == person.contributor) {
+            people.push(person);
+        }
+    }
+    let contributors: Vec<serde_json::Value> = people
+        .iter()
+        .filter_map(|person| {
+            let contributor = site
+                .contributors
+                .iter()
+                .find(|c| c.id == person.contributor)?;
+            let (role, group) = person.role.taxonomy();
+            Some(serde_json::json!({
+                "id": contributor.id,
+                "name": contributor.name,
+                "avatar": contributor.photo.as_deref().map(|photo| media_link(photo, links)),
+                "role": { "id": role, "slug": role, "title": person.role.label(language) },
+                "group": { "id": group, "slug": group, "title": group },
+            }))
+        })
+        .collect();
+    let transcripts: Vec<podcast::Cue> = episode
+        .transcript
+        .as_deref()
+        .and_then(|file| {
+            fs::read_to_string(site.root.join(podcast::TRANSCRIPTS_DIR).join(file.trim())).ok()
+        })
+        .map(|text| {
+            podcast::transcript_cues(&text, |voice| {
+                site.contributors
+                    .iter()
+                    .find(|c| !voice.is_empty() && c.name == voice)
+                    .map(|c| c.id.clone())
+            })
+        })
+        .unwrap_or_default();
+    serde_json::json!({
+        "version": 5,
+        "show": {
+            "title": podcast.and_then(|p| p.title.as_deref()).unwrap_or(&config.title),
+            "subtitle": podcast.and_then(|p| p.author.as_deref()).unwrap_or(""),
+            "summary": podcast.and_then(|p| p.description.as_deref()).or(config.description.as_deref()).unwrap_or(""),
+            "poster": cover,
+            "link": links.page(""),
+        },
+        "title": front.title,
+        "subtitle": front.summary.as_deref().unwrap_or(""),
+        "summary": front.summary.as_deref().or(front.description.as_deref()).unwrap_or(""),
+        "publicationDate": front.date.as_ref().map(|d| format!("{d}T00:00:00Z")),
+        "poster": poster,
+        "duration": episode
+            .duration
+            .as_deref()
+            .and_then(podcast::start_millis)
+            .map(podcast::clock_millis),
+        "link": links.page(&page.path),
+        "audio": files,
+        "files": files,
+        "chapters": chapters,
+        "contributors": contributors,
+        "transcripts": transcripts,
+    })
 }
 
 /// Someone in an episode, on its page.
@@ -1934,6 +2141,15 @@ fn render_page(
             .collect(),
         chapters_heading: words.chapters,
         people_heading: words.contributors,
+        player: front
+            .episode
+            .as_ref()
+            .filter(|episode| config.podcast.is_some() && !episode.audio.is_empty() && !not_found)
+            .map(|_| PlayerEntry {
+                episode: PLAYER_EPISODE,
+                embed: format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
+                script: format!("{}{PLAYER_FILE}", links.to_root()),
+            }),
         people: front
             .episode
             .iter()

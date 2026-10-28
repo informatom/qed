@@ -143,7 +143,12 @@
     <div class="flex flex-col gap-12">
       {%- if let Some(audio) = audio %}
       <section id="episode-audio" class="flex flex-col gap-2">
-        <audio controls preload="none" class="w-full">
+        {%- if let Some(player) = player %}
+        <div data-podlove-player data-episode="{{ player.episode }}"></div>
+        <script src="{{ player.embed }}" defer></script>
+        <script src="{{ player.script }}" defer></script>
+        {%- endif %}
+        <audio controls preload="none" class="w-full" data-player-fallback>
           {%- for source in audio.sources %}
           <source src="{{ source.src }}" type="{{ source.mime_type }}">
           {%- endfor %}
@@ -181,7 +186,7 @@
       {{ html|safe }}
       {%- endfor %}
       {%- if !chapters.is_empty() %}
-      <section id="chapters" class="prose max-w-none">
+      <section id="chapters" class="prose max-w-none" data-player-fallback>
         <h2>{{ chapters_heading }}</h2>
         <ol class="chapters list-none ps-0">
           {%- for chapter in chapters %}
