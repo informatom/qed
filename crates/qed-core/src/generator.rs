@@ -159,7 +159,12 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     let main_menu = menu(&published, Menu::Main);
     let footer_menu = menu(&published, Menu::Footer);
     // Feeds need full addresses, so only a site with a web address gets them.
-    let sources = feed_sources(&published, today);
+    // A podcast's episodes get podcast feeds instead (see `feed.rs`).
+    let podcast = site.config.podcast.as_ref();
+    let sources: Vec<&Page> = feed_sources(&published, today)
+        .into_iter()
+        .filter(|page| podcast.is_none() || page.path != podcast::EPISODES_PATH)
+        .collect();
     let feeds: Vec<Feed> = match &site.config.base_url {
         Some(_) => sources
             .iter()
@@ -179,8 +184,32 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             Vec::new()
         }
     };
+    // The podcast feeds, one per format, the main one first.
+    let podcast_feeds: Vec<PodcastFeed> = match (podcast, &site.config.base_url) {
+        (Some(podcast), Some(_)) => podcast
+            .formats()
+            .into_iter()
+            .map(|format| PodcastFeed {
+                file: podcast::feed_file(format),
+                label: if podcast.formats().len() > 1 {
+                    format!("Podcast feed ({})", format.label())
+                } else {
+                    "Podcast feed".to_string()
+                },
+            })
+            .collect(),
+        (Some(_), None) => {
+            notes.push(
+                "No podcast feed: feeds need the site's web address, under Site → Settings."
+                    .to_string(),
+            );
+            Vec::new()
+        }
+        _ => Vec::new(),
+    };
     let colors = color_classes(&site.config.colors);
     let context = Context {
+        podcast_feeds: &podcast_feeds,
         colors: &colors,
         root: &site.root,
         images: &images,
@@ -279,6 +308,41 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     let resized_images =
         images.write(&out_dir.join(MEDIA_DIR), &site.root.join(images::CACHE_DIR))?;
 
+    let mut podcast_feed_count = 0;
+    if let (Some(podcast), Some(base_url)) = (podcast, &site.config.base_url) {
+        let base = base_url.trim_end_matches('/');
+        let episodes = crate::feed::feed_episodes(&published, today);
+        let audio_dir = site.root.join(podcast::AUDIO_DIR);
+        let shownotes = |page: &Page| {
+            // Text only, with full links: feed readers show plain HTML.
+            let links =
+                LinkContext::rooted(&format!("{base}/"), &page.file).with_own_site(Some(base_url));
+            block::all_blocks(&page.content.blocks)
+                .into_iter()
+                .filter_map(|block| match block {
+                    Block::Text { markdown } => {
+                        Some(markdown::render(markdown, &links, &context.text_media()))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let local_length = |file: &str| fs::metadata(audio_dir.join(file)).ok().map(|m| m.len());
+        let input = crate::feed::FeedInput {
+            config: &site.config,
+            podcast,
+            base,
+            episodes: &episodes,
+            shownotes: &shownotes,
+            local_length: &local_length,
+        };
+        for feed in crate::feed::podcast_feeds(&input) {
+            write(&out_dir.join(&feed.file), feed.xml)?;
+            podcast_feed_count += 1;
+        }
+    }
+
     if let Some(base_url) = &site.config.base_url {
         write(&out_dir.join("sitemap.xml"), sitemap(base_url, &published))?;
         for feed in &feeds {
@@ -300,7 +364,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         redirects,
         media_files,
         resized_images,
-        feeds: feeds.len(),
+        feeds: feeds.len() + podcast_feed_count,
         static_files,
         notes,
     })
@@ -476,6 +540,8 @@ struct Context<'a> {
     pages: &'a [&'a Page],
     /// The feeds being written, so a Post list can link its own.
     feeds: &'a [Feed<'a>],
+    /// The podcast's feeds, the main format's first.
+    podcast_feeds: &'a [PodcastFeed],
     today: Date,
     /// The site's language, for dates.
     language: &'a str,
@@ -525,6 +591,14 @@ fn posts<'a>(pages: &[&'a Page], parent: &str, today: Date) -> Vec<&'a Page> {
             .then_with(|| page_a.path.cmp(&page_b.path))
     });
     posts.into_iter().map(|(_, page)| page).collect()
+}
+
+/// One of the podcast's feeds, for links to it.
+struct PodcastFeed {
+    /// In the built site: `episodes.mp3.rss`.
+    file: String,
+    /// "Podcast feed (MP3)".
+    label: String,
 }
 
 /// One RSS feed: the posts below `page`.
@@ -1498,9 +1572,15 @@ fn render_page(
                 .and_then(|name| picture(name, None, &links, context.images))
                 .map(|logo| logo.src)
         },
-        feeds: feeds
+        feeds: context
+            .podcast_feeds
             .iter()
             .map(|feed| FeedLink {
+                title: format!("{} · {}", feed.label, config.title),
+                href: format!("{}{}", links.to_root(), feed.file),
+                label: feed.label.clone(),
+            })
+            .chain(feeds.iter().map(|feed| FeedLink {
                 title: feed.title.clone(),
                 href: format!("{}{}", links.to_root(), feed.file),
                 label: if feeds.len() == 1 {
@@ -1508,7 +1588,7 @@ fn render_page(
                 } else {
                     format!("{} RSS feed", feed.page.content.front.title)
                 },
-            })
+            }))
             .collect(),
         rss_icon: RSS_ICON,
         is_home: page.path.is_empty(),
@@ -1801,7 +1881,16 @@ fn render_block(
                     .feeds
                     .iter()
                     .find(|feed| feed.page.path == from)
-                    .map(|feed| format!("{}{}", links.to_root(), feed.file)),
+                    .map(|feed| feed.file.as_str())
+                    // The episodes' list links the main podcast feed.
+                    .or_else(|| {
+                        context
+                            .podcast_feeds
+                            .first()
+                            .filter(|_| from == podcast::EPISODES_PATH)
+                            .map(|feed| feed.file.as_str())
+                    })
+                    .map(|file| format!("{}{file}", links.to_root())),
                 posts: posts
                     .iter()
                     .map(|post| {

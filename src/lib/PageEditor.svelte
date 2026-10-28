@@ -2,6 +2,9 @@
   import { ask, message } from "@tauri-apps/plugin-dialog";
   import FolderInput from "@lucide/svelte/icons/folder-input";
   import Trash from "@lucide/svelte/icons/trash";
+  import History from "@lucide/svelte/icons/history";
+  import LayoutList from "@lucide/svelte/icons/layout-list";
+  import Settings from "@lucide/svelte/icons/settings";
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import PageVersions from "$lib/PageVersions.svelte";
@@ -93,15 +96,15 @@
     <div role="tablist" class="tabs tabs-box tabs-sm">
       <button type="button" role="tab" id="tab-content" class={["tab", tab === "content" && "tab-active"]}
         onclick={() => (tab = "content")}>
-        Content{#if contentDirty}<span class="ms-1 text-warning">•</span>{/if}
+        <LayoutList class="me-1.5 size-4" />Content{#if contentDirty}<span class="ms-1 text-warning">•</span>{/if}
       </button>
       <button type="button" role="tab" id="tab-versions" class={["tab", tab === "versions" && "tab-active"]}
         onclick={() => (tab = "versions")}>
-        Versions
+        <History class="me-1.5 size-4" />Versions
       </button>
       <button type="button" role="tab" id="tab-settings" class={["tab", tab === "settings" && "tab-active"]}
         onclick={() => (tab = "settings")}>
-        Settings{#if settingsDirty}<span class="ms-1 text-warning">•</span>{/if}
+        <Settings class="me-1.5 size-4" />Settings{#if settingsDirty}<span class="ms-1 text-warning">•</span>{/if}
       </button>
     </div>
     <button type="button" id="move-page-open" class="btn btn-ghost btn-sm btn-square" onclick={onmove}

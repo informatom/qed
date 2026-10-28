@@ -611,6 +611,17 @@ rest is done.
   the page tree, the episode's settings and the build notes say which.
   No converting: every format is imported (decided with the user).
 
+- **#068 Podcast feeds.** Done 2026-10-28 (`qed_core::feed`): one feed per
+  audio format at octopod's addresses (`/episodes.mp3.rss`), with RSS,
+  `itunes:` (owner, cover, categories, explicit, type, season, episode
+  above 0, duration, episode type and cover), Podcasting 2.0 (`guid`,
+  `funding`, `season`, `episode` including 0) and Podlove Simple
+  Chapters; the shownotes' text as `content:encoded` with full links.
+  With several formats, the feed titles name the format. Every page
+  links the feeds; the episodes' Post list subscribes to the main one;
+  the plain blog feed of `/episodes` is gone. No paged feeds (user,
+  2026-10-28): Apple and most apps read only the first page.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

@@ -4,6 +4,7 @@
 pub mod block;
 pub mod calendar;
 pub mod deploy;
+pub mod feed;
 pub mod fonts;
 pub mod generator;
 pub mod history;

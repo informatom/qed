@@ -1448,4 +1448,97 @@ mod tests {
         }
         assert!(site::save_front_matter(dir.path(), &page.file, front).is_err());
     }
+
+    #[test]
+    fn writes_a_feed_per_format_with_what_apps_read() {
+        let dir = podcast_site();
+        let mut config = site::open(dir.path()).unwrap().config;
+        if let Some(podcast) = config.podcast.as_mut() {
+            podcast.formats = vec![AudioFormat::Mp3, AudioFormat::Ogg];
+            podcast.categories = vec!["Society & Culture > Documentary".to_string()];
+            podcast.owner_email = Some("pod@example.com".to_string());
+            podcast.cover = Some("cover.jpg".to_string());
+            podcast.funding = vec![Funding {
+                url: "https://liberapay.com/pod".to_string(),
+                title: "Unterstützen".to_string(),
+            }];
+        }
+        site::save_config(dir.path(), &config).unwrap();
+        std::fs::write(dir.path().join("one.mp3"), mp3()).unwrap();
+        crate::media::import(
+            dir.path(),
+            crate::media::Library::Audio,
+            &dir.path().join("one.mp3"),
+        )
+        .unwrap();
+
+        let zero = create_episode(dir.path(), "Null & Nichts", Some(0)).unwrap();
+        let mut front = zero.content.front.clone();
+        front.summary = Some("Wie alles <begann>".to_string());
+        if let Some(episode) = front.episode.as_mut() {
+            episode.season = Some(1);
+            episode.duration = Some("01:02:03".to_string());
+            episode.audio = vec![
+                audio(AudioFormat::Mp3, "one.mp3"),
+                audio(AudioFormat::Ogg, "https://cdn.example/one.ogg"),
+            ];
+            episode.chapters = vec![Chapter {
+                start: "00:00:00".to_string(),
+                title: "Intro".to_string(),
+                link: None,
+            }];
+        }
+        site::save_front_matter(dir.path(), &zero.file, front).unwrap();
+        site::save_blocks(
+            dir.path(),
+            &zero.file,
+            vec![crate::block::Block::Text {
+                markdown: "Siehe [Impressum](/impressum) und ![Bild](/media/a.png)".to_string(),
+            }],
+        )
+        .unwrap();
+
+        let site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        crate::generator::build_into(&site, &out).unwrap();
+        let mp3 = std::fs::read_to_string(out.join("episodes.mp3.rss")).unwrap();
+        let ogg = std::fs::read_to_string(out.join("episodes.ogg.rss")).unwrap();
+        for expected in [
+            "<title>Pod (MP3)</title>",
+            r#"<atom:link href="https://pod.example/episodes.mp3.rss" rel="self""#,
+            r#"<itunes:category text="Society &amp; Culture"><itunes:category text="Documentary"/></itunes:category>"#,
+            "<itunes:email>pod@example.com</itunes:email>",
+            r#"<itunes:image href="https://pod.example/media/cover.jpg"/>"#,
+            "<itunes:explicit>false</itunes:explicit>",
+            "<podcast:guid>",
+            r#"<podcast:funding url="https://liberapay.com/pod">Unterstützen</podcast:funding>"#,
+            "<title>Null &amp; Nichts</title>",
+            "<description>Wie alles &lt;begann&gt;</description>",
+            r#"<enclosure url="https://pod.example/episodes/one.mp3" length="16263" type="audio/mpeg"/>"#,
+            "<itunes:duration>3723</itunes:duration>",
+            "<podcast:episode>0</podcast:episode>",
+            "<itunes:season>1</itunes:season>",
+            r#"<psc:chapter start="00:00:00" title="Intro"/>"#,
+            r#"href="https://pod.example/impressum/""#,
+            r#"src="https://pod.example/media/a.png""#,
+        ] {
+            assert!(mp3.contains(expected), "{expected} missing in\n{mp3}");
+        }
+        // Episode 0: Apple only takes numbers above 0.
+        assert!(!mp3.contains("<itunes:episode>"), "{mp3}");
+        assert!(
+            ogg.contains(
+                r#"<enclosure url="https://cdn.example/one.ogg" length="0" type="audio/ogg"/>"#
+            ),
+            "{ogg}"
+        );
+        assert!(ogg.contains("<title>Pod (Ogg)</title>"), "{ogg}");
+
+        // No plain blog feed for the episodes any more, and every page
+        // links the podcast feeds.
+        assert!(!out.join("episodes/feed.xml").exists());
+        let page = std::fs::read_to_string(out.join("index.html")).unwrap();
+        assert!(page.contains(r#"href="episodes.mp3.rss""#), "{page}");
+        assert!(page.contains("Podcast feed (Ogg)"), "{page}");
+    }
 }
