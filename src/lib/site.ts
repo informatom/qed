@@ -24,7 +24,7 @@ export const commands = rustCommands as {
   ) => Promise<Sent<Awaited<ReturnType<RustCommands[K]>>>>;
 };
 
-export type { AudioFiles, EpisodeType, PodcastType, Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage, Surface, ThemeColor } from "./bindings";
+export type { AudioFiles, AudioFormat, EpisodeType, PodcastType, Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage, Surface, ThemeColor } from "./bindings";
 export type Colors = Sent<Rust.Colors>;
 export type Block = Sent<Rust.Block>;
 export type CustomTheme = Sent<Rust.CustomTheme>;
@@ -54,6 +54,7 @@ export type Episode = Sent<Rust.Episode>;
 export type Chapter = Sent<Rust.Chapter>;
 export type Funding = Sent<Rust.Funding>;
 export type AudioInfo = Sent<Rust.AudioInfo>;
+export type EpisodeAudio = Sent<Rust.EpisodeAudio>;
 export type Target = Sent<Rust.Target>;
 export type TestOutcome = Sent<Rust.TestOutcome>;
 
@@ -225,4 +226,22 @@ let iconCache: Promise<Map<string, string>> | null = null;
 export function pageIcons(): Promise<Map<string, string>> {
   iconCache ??= commands.listIcons().then((list) => new Map(list));
   return iconCache;
+}
+
+/** How people call an audio format, in the order the Podcast tab offers them. */
+export const AUDIO_FORMATS: { value: Rust.AudioFormat; label: string; everywhere: boolean }[] = [
+  { value: "mp3", label: "MP3", everywhere: true },
+  { value: "m4a", label: "M4A", everywhere: true },
+  { value: "ogg", label: "Ogg", everywhere: false },
+  { value: "opus", label: "Opus", everywhere: false },
+  { value: "flac", label: "FLAC", everywhere: false },
+];
+
+export function formatLabel(format: Rust.AudioFormat): string {
+  return AUDIO_FORMATS.find((f) => f.value === format)?.label ?? format;
+}
+
+/** The podcast's formats, the main one first; MP3 if none are set (as Rust has it). */
+export function podcastFormats(podcast: { formats?: Rust.AudioFormat[] } | null): Rust.AudioFormat[] {
+  return podcast?.formats?.length ? podcast.formats : ["mp3"];
 }

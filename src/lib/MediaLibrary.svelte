@@ -129,7 +129,7 @@
           : library === "audio" ? "Import audio files"
           : isStatic ? "Import files to copy as they are" : "Import files to download",
         filters: library === "media" ? [{ name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif"] }]
-          : library === "audio" ? [{ name: "Audio", extensions: ["mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "wav"] }]
+          : library === "audio" ? [{ name: "Audio", extensions: ["mp3", "m4a", "ogg", "oga", "opus", "flac"] }]
           : [],
       }),
     );
@@ -265,7 +265,7 @@
       {:else if isStatic}
         No static files yet. Import files or whole folders.
       {:else if library === "audio"}
-        No audio yet. Import an episode's audio file (MP3 or M4A), then choose it in the episode's settings.
+        No audio yet. Import the episodes' audio files (one per format, e.g. episode1.mp3 and episode1.ogg), then choose them in the episodes' settings.
       {:else}
         No files to download yet. Import PDFs or other files to offer them with a Download block.
       {/if}

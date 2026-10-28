@@ -601,6 +601,16 @@ rest is done.
   tab's *Listen* opens the computer's own player (the webview played
   long episodes badly).
 
+- **Several audio formats.** Done 2026-10-28 (user: support them, for
+  listeners of Ogg and FLAC, which Apple and Spotify don't play): the
+  podcast lists its formats (MP3, M4A, Ogg, Opus, FLAC; the first is the
+  main one, which the build notes if Apple can't play it), every episode
+  has one file per format (`[[episode.audio]]` with `format`, `file`,
+  `length`; one `duration`). Choosing one file picks the others of the
+  same name. Publish refuses while a published episode lacks a format;
+  the page tree, the episode's settings and the build notes say which.
+  No converting: every format is imported (decided with the user).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

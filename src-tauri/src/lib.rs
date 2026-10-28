@@ -572,6 +572,7 @@ async fn publish_site(
     on_progress: Channel<Progress>,
 ) -> Result<PublishReport, String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
+    podcast::check_publish(&site).map_err(|error| error.to_string())?;
     let target = site
         .targets
         .iter()

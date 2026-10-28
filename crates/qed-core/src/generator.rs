@@ -344,37 +344,53 @@ fn cover_notes(site: &Site, published: &[&Page], media_dir: &Path) -> Vec<String
     notes
 }
 
-/// Episodes whose audio is missing: podcast apps skip an episode without
-/// audio.
+/// What's missing or doubtful about the episodes' audio: podcast apps
+/// skip an episode without audio, and Publish waits until every episode
+/// has every format.
 fn audio_notes(site: &Site, published: &[&Page]) -> Vec<String> {
-    if site.config.podcast.is_none() {
+    let Some(podcast) = &site.config.podcast else {
         return Vec::new();
+    };
+    let mut notes = Vec::new();
+    let main = podcast.main_format();
+    if !main.plays_everywhere() {
+        notes.push(format!(
+            "The main format is {}; Apple Podcasts and Spotify play only MP3 and M4A. Put one of them first in the Podcast tab.",
+            main.label()
+        ));
     }
     let audio_dir = site.root.join(podcast::AUDIO_DIR);
-    published
-        .iter()
-        .filter_map(|page| {
-            let episode = page.content.front.episode.as_ref()?;
-            match (&episode.audio, episode.local_audio()) {
-                (None, _) => Some(format!("/{}: the episode has no audio yet.", page.path)),
-                (_, Some(file)) if !audio_dir.join(file).is_file() => Some(format!(
+    for page in published {
+        let Some(episode) = page.content.front.episode.as_ref() else {
+            continue;
+        };
+        if episode.audio.is_empty() {
+            notes.push(format!("/{}: the episode has no audio yet.", page.path));
+            continue;
+        }
+        let missing: Vec<&str> = episode
+            .missing_formats(podcast)
+            .iter()
+            .map(|format| format.label())
+            .collect();
+        if !missing.is_empty() {
+            notes.push(format!(
+                "/{}: no {} audio yet; Publish waits until every episode has every format.",
+                page.path,
+                missing.join(", ")
+            ));
+        }
+        for file in episode.local_audio() {
+            if !audio_dir.join(file).is_file() {
+                notes.push(format!(
                     "/{}: the audio file {file} isn't in {}/.",
                     page.path,
                     podcast::AUDIO_DIR
-                )),
-                _ => episode
-                    .audio_type
-                    .as_deref()
-                    .filter(|kind| !podcast::PLAYS_EVERYWHERE.contains(kind))
-                    .map(|kind| {
-                        format!(
-                            "/{}: the audio is {kind}; Apple Podcasts and Spotify play only MP3 and M4A.",
-                            page.path
-                        )
-                    }),
+                ));
             }
-        })
-        .collect()
+        }
+    }
+    notes
 }
 
 /// The URL path of a page that is the site's 404 page (`pages/404.md`).
@@ -1197,11 +1213,19 @@ struct FeedLink {
 
 /// The audio of an episode page.
 struct AudioEntry {
-    src: String,
-    /// "Herunterladen (MP3, 28.9 MB)".
-    download: String,
+    /// One per format, the podcast's main format first; the browser plays
+    /// the first it can.
+    sources: Vec<AudioSource>,
+    /// "Herunterladen".
+    download: &'static str,
     duration: Option<String>,
-    mime_type: Option<String>,
+}
+
+struct AudioSource {
+    src: String,
+    mime_type: &'static str,
+    /// "MP3, 28.9 MB", for the download link.
+    label: String,
 }
 
 /// One chapter on an episode page.
@@ -2030,39 +2054,57 @@ fn share_image(page: &Page, base_url: &str, images: &Images) -> Option<ShareImag
     })
 }
 
-/// The player and download link for an episode's audio, if it has some.
+/// The player and download links for an episode's audio, if it has some.
 fn audio_entry(
     site: &Site,
     episode: &podcast::Episode,
     links: &LinkContext,
     words: &podcast::Words,
 ) -> Option<AudioEntry> {
-    let audio = episode.audio.as_deref().map(str::trim)?;
-    let (src, length) = match episode.local_audio() {
-        Some(file) => (
-            format!("{}{}/{file}", links.to_root(), podcast::AUDIO_URL_DIR),
-            // The file itself knows best.
-            fs::metadata(site.root.join(podcast::AUDIO_DIR).join(file))
-                .ok()
-                .map(|meta| meta.len())
-                .or(episode.audio_length),
-        ),
-        None => (audio.to_string(), episode.audio_length),
-    };
-    let format = audio
-        .split(['?', '#'])
-        .next()
-        .and_then(|path| path.rsplit_once('.'))
-        .map(|(_, extension)| extension.to_uppercase())
-        .filter(|extension| extension.len() <= 4);
-    let details: Vec<String> = format.into_iter().chain(length.map(format_size)).collect();
+    // The podcast's order of formats, then any others the episode has.
+    let mut audio: Vec<&podcast::EpisodeAudio> = episode.audio.iter().collect();
+    let order = site
+        .config
+        .podcast
+        .as_ref()
+        .map(|podcast| podcast.formats())
+        .unwrap_or_default();
+    audio.sort_by_key(|a| {
+        order
+            .iter()
+            .position(|f| *f == a.format)
+            .unwrap_or(usize::MAX)
+    });
+    let sources: Vec<AudioSource> = audio
+        .into_iter()
+        .map(|a| {
+            let (src, length) = match a.local() {
+                Some(file) => (
+                    format!("{}{}/{file}", links.to_root(), podcast::AUDIO_URL_DIR),
+                    // The file itself knows best.
+                    fs::metadata(site.root.join(podcast::AUDIO_DIR).join(file))
+                        .ok()
+                        .map(|meta| meta.len())
+                        .or(a.length),
+                ),
+                None => (a.file.trim().to_string(), a.length),
+            };
+            AudioSource {
+                src,
+                mime_type: a.format.mime_type(),
+                label: match length {
+                    Some(length) => format!("{}, {}", a.format.label(), format_size(length)),
+                    None => a.format.label().to_string(),
+                },
+            }
+        })
+        .collect();
+    if sources.is_empty() {
+        return None;
+    }
     Some(AudioEntry {
-        src,
-        download: if details.is_empty() {
-            words.download.to_string()
-        } else {
-            format!("{} ({})", words.download, details.join(", "))
-        },
+        sources,
+        download: words.download,
         duration: episode.duration.as_deref().map(|d| {
             // Without hours if there are none: 29:55, but 01:24:22.
             let readable = podcast::readable_start(d);
@@ -2070,7 +2112,6 @@ fn audio_entry(
                 .strip_prefix("00:")
                 .map_or(readable.clone(), str::to_string)
         }),
-        mime_type: episode.audio_type.clone(),
     })
 }
 

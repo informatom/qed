@@ -21,17 +21,19 @@ Nothing open.
 
 ### Phase 2: Podcasting
 
-- **#068 Podcast feed.** One feed per podcast with iTunes, Podcasting 2.0 and
-  Podlove Simple Chapters tags, plus paged feeds. Publishers copy the audio
-  (GitHub Pages: see #029). The feed keeps jekyll-octopod's addresses, so
-  moved podcasts need no redirect (user, 2026-10-28):
-  `/episodes.<format>.rss` (e.g. `/episodes.mp3.rss`, the format from the
-  audio files), paged as `/episodes1.mp3.rss`, `/episodes2.mp3.rss`, …
-  with `first`/`last`/`next`/`prev` `atom:link`s. `podcast::FEED_FILE`
-  names the mp3 one; the `podcast:guid` is made from it. The `/episodes`
-  page also gets the plain blog feed of its posts today; the podcast feed
-  replaces it. Episode 0 is allowed (many podcasts start there), but
-  Apple's `itunes:episode` takes only numbers above 0: leave it out for
+- **#068 Podcast feeds.** One feed per audio format (`[podcast] formats`,
+  the main one first) with iTunes, Podcasting 2.0 and Podlove Simple
+  Chapters tags, plus paged feeds. Publishers copy the audio (GitHub
+  Pages: see #029). The feeds keep jekyll-octopod's addresses, so moved
+  podcasts need no redirect (user, 2026-10-28):
+  `/episodes.<format>.rss` (`podcast::feed_file`), paged as
+  `/episodes1.mp3.rss`, `/episodes2.mp3.rss`, … with
+  `first`/`last`/`next`/`prev` `atom:link`s. The `podcast:guid` is made
+  from the main format's feed. Every feed has every episode: Publish
+  already refuses while one lacks a format (`podcast::check_publish`).
+  The `/episodes` page also gets the plain blog feed of its posts today;
+  the podcast feeds replace it. Episode 0 is allowed, but Apple's
+  `itunes:episode` takes only numbers above 0: leave it out for
   episode 0 and keep `podcast:episode`.
 - **#069 Podcast blocks.** Latest episodes and Subscribe blocks; seed them on
   the `home` page of new podcast sites.

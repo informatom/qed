@@ -5,7 +5,7 @@
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import PageVersions from "$lib/PageVersions.svelte";
-  import { commands, pageLabel, type AudioFiles, type Page, type PageContent, type Version } from "$lib/site";
+  import { commands, pageLabel, type Page, type Podcast, type PageContent, type Version } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -18,13 +18,11 @@
     onmove: () => void;
     /** True while either tab has unsaved changes. */
     dirty?: boolean;
-    /** Where the podcast keeps its audio; null for sites without one. */
-    audioFiles?: AudioFiles | null;
-    /** For audio elsewhere: the address new episodes' audio starts with. */
-    audioBaseUrl?: string | null;
+    /** The site's podcast settings; null for sites without one. */
+    podcast?: Podcast | null;
   }
 
-  let { page, siteRoot, onsaved, onclose, ondeleted, onmove, dirty = $bindable(false), audioFiles = null, audioBaseUrl = null }: Props = $props();
+  let { page, siteRoot, onsaved, onclose, ondeleted, onmove, dirty = $bindable(false), podcast = null }: Props = $props();
 
   let tab = $state<"content" | "versions" | "settings">("content");
   let contentDirty = $state(false);
@@ -139,7 +137,7 @@
         }} />
     </div>
     <div class={[tab !== "settings" && "hidden"]}>
-      <PageSettings {page} {siteRoot} {onsaved} {audioFiles} {audioBaseUrl} start={restored?.front} bind:dirty={settingsDirty} />
+      <PageSettings {page} {siteRoot} {onsaved} {podcast} start={restored?.front} bind:dirty={settingsDirty} />
     </div>
   {/key}
   {#if tab === "versions"}

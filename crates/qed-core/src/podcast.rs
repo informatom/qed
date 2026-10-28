@@ -33,9 +33,12 @@ use crate::site::{self, Page, Site, SiteError};
 /// The page the episodes live below, and the address of the archive.
 pub const EPISODES_PATH: &str = "episodes";
 
-/// The podcast feed, at the address jekyll-octopod gave it, so podcasts
-/// that move over keep their subscribers without a redirect.
-pub const FEED_FILE: &str = "episodes.mp3.rss";
+/// The feed of one audio format, at the address jekyll-octopod gave it
+/// (`episodes.mp3.rss`), so podcasts that move over keep their
+/// subscribers without a redirect.
+pub fn feed_file(format: AudioFormat) -> String {
+    format!("{EPISODES_PATH}.{}.rss", format.extension())
+}
 
 /// The settings of the site's podcast. Having them turns on episodes and
 /// the feed.
@@ -77,6 +80,11 @@ pub struct Podcast {
     /// Ways to support the podcast (`podcast:funding`).
     #[serde(default)]
     pub funding: Vec<Funding>,
+    /// The audio formats every episode comes in, each with a feed of its
+    /// own; the first is the main one, whose feed goes to Apple and the
+    /// directories. MP3 if empty.
+    #[serde(default = "default_formats")]
+    pub formats: Vec<AudioFormat>,
     /// Where the audio files are kept.
     #[serde(default)]
     pub audio_files: AudioFiles,
@@ -93,6 +101,119 @@ pub enum PodcastType {
     #[default]
     Episodic,
     Serial,
+}
+
+fn default_formats() -> Vec<AudioFormat> {
+    vec![AudioFormat::Mp3]
+}
+
+impl Podcast {
+    /// The formats, the main one first; MP3 if none are set.
+    pub fn formats(&self) -> Vec<AudioFormat> {
+        if self.formats.is_empty() {
+            default_formats()
+        } else {
+            self.formats.clone()
+        }
+    }
+
+    /// The main format: its feed is the one for Apple and the directories.
+    pub fn main_format(&self) -> AudioFormat {
+        self.formats.first().copied().unwrap_or(AudioFormat::Mp3)
+    }
+}
+
+/// The audio formats a podcast can offer. MP3 and M4A play everywhere;
+/// Ogg (Vorbis), Opus and FLAC in many open apps and in browsers, but not
+/// in Apple Podcasts or Spotify.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum AudioFormat {
+    Mp3,
+    M4a,
+    Ogg,
+    Opus,
+    Flac,
+}
+
+impl AudioFormat {
+    pub const ALL: [AudioFormat; 5] = [
+        AudioFormat::Mp3,
+        AudioFormat::M4a,
+        AudioFormat::Ogg,
+        AudioFormat::Opus,
+        AudioFormat::Flac,
+    ];
+
+    /// The file extension, also used in the feed's name.
+    pub fn extension(self) -> &'static str {
+        match self {
+            AudioFormat::Mp3 => "mp3",
+            AudioFormat::M4a => "m4a",
+            AudioFormat::Ogg => "ogg",
+            AudioFormat::Opus => "opus",
+            AudioFormat::Flac => "flac",
+        }
+    }
+
+    /// How people call it: "MP3", "Ogg".
+    pub fn label(self) -> &'static str {
+        match self {
+            AudioFormat::Mp3 => "MP3",
+            AudioFormat::M4a => "M4A",
+            AudioFormat::Ogg => "Ogg",
+            AudioFormat::Opus => "Opus",
+            AudioFormat::Flac => "FLAC",
+        }
+    }
+
+    /// The MIME type for feeds and players.
+    pub fn mime_type(self) -> &'static str {
+        match self {
+            AudioFormat::Mp3 => "audio/mpeg",
+            // Apple's name for it; podcast apps all know it.
+            AudioFormat::M4a => "audio/x-m4a",
+            AudioFormat::Ogg | AudioFormat::Opus => "audio/ogg",
+            AudioFormat::Flac => "audio/flac",
+        }
+    }
+
+    /// Whether every podcast app plays it, Apple Podcasts and Spotify
+    /// included.
+    pub fn plays_everywhere(self) -> bool {
+        matches!(self, AudioFormat::Mp3 | AudioFormat::M4a)
+    }
+
+    /// The format a file name or address ends in, if it's one of these.
+    pub fn of(name: &str) -> Option<AudioFormat> {
+        let path = name.split(['?', '#']).next().unwrap_or_default();
+        let extension = path.rsplit_once('.')?.1.to_lowercase();
+        AudioFormat::ALL.into_iter().find(|format| {
+            format.extension() == extension || (extension == "oga" && *format == AudioFormat::Ogg)
+        })
+    }
+}
+
+/// One audio file of an episode, `[[episode.audio]]`.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct EpisodeAudio {
+    pub format: AudioFormat,
+    /// A file in `audio/` (`episode1.mp3`), or a web address for audio
+    /// kept elsewhere.
+    pub file: String,
+    /// Size in bytes, as the feed needs it. Read from the file when it's
+    /// chosen; for audio elsewhere, given by hand.
+    pub length: Option<u64>,
+}
+
+impl EpisodeAudio {
+    /// The file's name in `audio/`, if it's one (and not a web address).
+    pub fn local(&self) -> Option<&str> {
+        Some(self.file.trim()).filter(|file| !file.is_empty() && !file.contains("://"))
+    }
 }
 
 /// A link to support the podcast, such as a Patreon or Liberapay page.
@@ -142,14 +263,12 @@ pub struct Episode {
     /// moves. Made when the episode is made.
     #[serde(default)]
     pub guid: String,
-    /// The audio: a file in `audio/` (`episode1.mp3`), or a web address
-    /// for audio kept elsewhere.
-    pub audio: Option<String>,
-    /// The audio's size in bytes, its type (`audio/mpeg`) and its length
-    /// (`01:24:22`), as the feed needs them. Read from the file when it's
-    /// chosen; for audio elsewhere, given by hand.
-    pub audio_length: Option<u64>,
-    pub audio_type: Option<String>,
+    /// The audio, one file per format of the podcast.
+    #[serde(default)]
+    pub audio: Vec<EpisodeAudio>,
+    /// How long the episode is (`01:24:22`), the same in every format.
+    /// Read from the first audio file chosen; for audio elsewhere, given
+    /// by hand.
     pub duration: Option<String>,
     #[serde(default)]
     pub chapters: Vec<Chapter>,
@@ -239,12 +358,24 @@ impl Episode {
                 "the length “{duration}” isn't a time like 01:24:22 or 29:55"
             ));
         }
-        if let Some(audio) = self.local_audio()
-            && (audio.contains('/') || audio.contains('\\') || audio.starts_with('.'))
-        {
-            return Some(format!(
-                "the audio “{audio}” must be a file in {AUDIO_DIR}/ or a web address"
-            ));
+        for (index, audio) in self.audio.iter().enumerate() {
+            let label = audio.format.label();
+            if self.audio[..index].iter().any(|a| a.format == audio.format) {
+                return Some(format!("the episode has two {label} files; one is enough"));
+            }
+            if audio.file.trim().is_empty() {
+                return Some(format!("the {label} audio needs a file or a web address"));
+            }
+            if let Some(file) = audio.local() {
+                if file.contains('/') || file.contains('\\') || file.starts_with('.') {
+                    return Some(format!(
+                        "the audio “{file}” must be a file in {AUDIO_DIR}/ or a web address"
+                    ));
+                }
+                if AudioFormat::of(file) != Some(audio.format) {
+                    return Some(format!("{file} isn't a {label} file"));
+                }
+            }
         }
         let mut last = None;
         for chapter in &self.chapters {
@@ -270,14 +401,48 @@ impl Episode {
 }
 
 impl Episode {
-    /// The audio file's name in `audio/`, if the audio is one (and not a
-    /// web address).
-    pub fn local_audio(&self) -> Option<&str> {
-        self.audio
-            .as_deref()
-            .map(str::trim)
-            .filter(|audio| !audio.is_empty() && !audio.contains("://"))
+    /// The episode's audio in `format`, if it has one.
+    pub fn audio_in(&self, format: AudioFormat) -> Option<&EpisodeAudio> {
+        self.audio.iter().find(|audio| audio.format == format)
     }
+
+    /// The names of its audio files in `audio/`.
+    pub fn local_audio(&self) -> impl Iterator<Item = &str> {
+        self.audio.iter().filter_map(EpisodeAudio::local)
+    }
+
+    /// The podcast's formats this episode has no audio for yet.
+    pub fn missing_formats(&self, podcast: &Podcast) -> Vec<AudioFormat> {
+        podcast
+            .formats()
+            .into_iter()
+            .filter(|format| self.audio_in(*format).is_none())
+            .collect()
+    }
+}
+
+/// The published episodes that lack audio in one of the podcast's
+/// formats, as "/episodes/x: Ogg" lines; publishing waits until there
+/// are none, so every feed has every episode. Drafts don't count.
+pub fn incomplete_episodes(site: &Site) -> Vec<String> {
+    let Some(podcast) = &site.config.podcast else {
+        return Vec::new();
+    };
+    episodes(site)
+        .filter(|page| !page.content.front.draft)
+        .filter_map(|page| {
+            let missing = page
+                .content
+                .front
+                .episode
+                .as_ref()?
+                .missing_formats(podcast);
+            (!missing.is_empty()).then(|| {
+                let labels: Vec<&str> = missing.iter().map(|f| f.label()).collect();
+                format!("/{}: no {} audio", page.path, labels.join(", "))
+            })
+        })
+        .collect()
 }
 
 /// Where the site keeps its audio files.
@@ -287,14 +452,29 @@ pub const AUDIO_DIR: &str = "audio";
 /// jekyll-octopod did, so the addresses in old feeds keep working.
 pub const AUDIO_URL_DIR: &str = EPISODES_PATH;
 
+/// Refuses to publish while an episode lacks a format: every feed must
+/// have every episode, or listeners of one format would miss some.
+pub fn check_publish(site: &Site) -> Result<(), SiteError> {
+    let incomplete = incomplete_episodes(site);
+    if incomplete.is_empty() {
+        return Ok(());
+    }
+    Err(SiteError::Invalid {
+        path: PathBuf::from(site::PAGES_DIR).join(EPISODES_PATH),
+        message: format!(
+            "not published, because every feed needs every episode: {}. Add the audio, or make these episodes drafts.",
+            incomplete.join("; ")
+        ),
+    })
+}
+
 /// What the feed needs to know about an audio file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct AudioInfo {
     /// Size in bytes.
     pub length: u64,
-    /// `audio/mpeg`, `audio/x-m4a`, …
-    pub mime_type: String,
+    pub format: AudioFormat,
     /// `01:24:22`.
     pub duration: String,
 }
@@ -312,33 +492,40 @@ pub fn audio_info(path: &Path) -> Result<AudioInfo, String> {
     let length = std::fs::metadata(path)
         .map_err(|e| format!("can't read {name}: {e}"))?
         .len();
-    let file = lofty::read_from_path(path)
-        .map_err(|e| format!("{name} isn't an audio file q.e.d. can read ({e})"))?;
-    let mime_type = match file.file_type() {
-        FileType::Mpeg => "audio/mpeg",
-        // Apple's name for it; podcast apps all know it.
-        FileType::Mp4 => "audio/x-m4a",
-        FileType::Vorbis | FileType::Opus | FileType::Speex => "audio/ogg",
-        FileType::Flac => "audio/flac",
-        FileType::Aac => "audio/aac",
-        FileType::Wav => "audio/wav",
+    let unreadable =
+        |e: &dyn std::fmt::Display| format!("{name} isn't an audio file q.e.d. can read ({e})");
+    // By its content, not its name, so a misnamed file is caught below.
+    let file = lofty::probe::Probe::open(path)
+        .map_err(|e| unreadable(&e))?
+        .guess_file_type()
+        .map_err(|e| unreadable(&e))?
+        .read()
+        .map_err(|e| unreadable(&e))?;
+    let format = match file.file_type() {
+        FileType::Mpeg => AudioFormat::Mp3,
+        FileType::Mp4 => AudioFormat::M4a,
+        FileType::Vorbis => AudioFormat::Ogg,
+        FileType::Opus => AudioFormat::Opus,
+        FileType::Flac => AudioFormat::Flac,
         _ => {
             return Err(format!(
-                "{name}: podcast apps don't play this kind of audio"
+                "{name}: podcasts use MP3, M4A, Ogg, Opus or FLAC; this is none of them"
             ));
         }
     };
+    if AudioFormat::of(&name) != Some(format) {
+        return Err(format!(
+            "{name} is {} audio; rename it to end in .{}",
+            format.label(),
+            format.extension()
+        ));
+    }
     Ok(AudioInfo {
         length,
-        mime_type: mime_type.to_string(),
+        format,
         duration: clock(file.properties().duration().as_secs()),
     })
 }
-
-/// The audio types every podcast app plays. Ogg (Vorbis, Opus) and FLAC
-/// work in many open apps and in browsers, but not in Apple Podcasts or
-/// Spotify.
-pub const PLAYS_EVERYWHERE: [&str; 2] = ["audio/mpeg", "audio/x-m4a"];
 
 /// Seconds as `01:02:03`.
 pub fn clock(seconds: u64) -> String {
@@ -1086,39 +1273,36 @@ mod tests {
         assert!(out.join("episodes/index.html").is_file());
     }
 
-    /// One second of silence as a WAV file: 8000 samples of 8 bits.
-    fn wav() -> Vec<u8> {
-        let samples = 8000u32;
-        let mut bytes = Vec::new();
-        bytes.extend(b"RIFF");
-        bytes.extend((36 + samples).to_le_bytes());
-        bytes.extend(b"WAVEfmt ");
-        bytes.extend(16u32.to_le_bytes());
-        bytes.extend(1u16.to_le_bytes()); // PCM
-        bytes.extend(1u16.to_le_bytes()); // mono
-        bytes.extend(8000u32.to_le_bytes()); // samples per second
-        bytes.extend(8000u32.to_le_bytes()); // bytes per second
-        bytes.extend(1u16.to_le_bytes()); // bytes per sample
-        bytes.extend(8u16.to_le_bytes()); // bits per sample
-        bytes.extend(b"data");
-        bytes.extend(samples.to_le_bytes());
-        bytes.extend(std::iter::repeat_n(128u8, samples as usize));
-        bytes
+    /// About one second of silent MP3: 39 frames (MPEG-1 Layer III,
+    /// 128 kbit/s, 44.1 kHz) of 417 bytes, each a 4-byte header and zeros.
+    fn mp3() -> Vec<u8> {
+        let mut frame = vec![0xFF, 0xFB, 0x90, 0x64];
+        frame.resize(417, 0);
+        frame.repeat(39)
     }
 
     #[test]
-    fn reads_size_type_and_length_of_audio() {
+    fn reads_size_format_and_length_of_audio() {
         let dir = tempfile::tempdir().unwrap();
-        let file = dir.path().join("one.wav");
-        std::fs::write(&file, wav()).unwrap();
+        let file = dir.path().join("one.mp3");
+        std::fs::write(&file, mp3()).unwrap();
         let info = audio_info(&file).unwrap();
-        assert_eq!(info.length, 8044);
-        assert_eq!(info.mime_type, "audio/wav");
+        assert_eq!(info.length, 39 * 417);
+        assert_eq!(info.format, AudioFormat::Mp3);
         assert_eq!(info.duration, "00:00:01");
 
+        // The name must say what it is.
+        std::fs::write(dir.path().join("one.ogg"), mp3()).unwrap();
+        let error = audio_info(&dir.path().join("one.ogg")).unwrap_err();
+        assert!(error.contains("rename it to end in .mp3"), "{error}");
         std::fs::write(dir.path().join("fake.mp3"), b"not audio").unwrap();
         assert!(audio_info(&dir.path().join("fake.mp3")).is_err());
         assert_eq!(clock(5062), "01:24:22");
+        assert_eq!(
+            AudioFormat::of("https://cdn.example/e1.OGG?x=1"),
+            Some(AudioFormat::Ogg)
+        );
+        assert_eq!(feed_file(AudioFormat::Flac), "episodes.flac.rss");
     }
 
     #[test]
@@ -1144,23 +1328,38 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&ignore).unwrap(), "*.wav\n");
     }
 
+    fn audio(format: AudioFormat, file: &str) -> EpisodeAudio {
+        EpisodeAudio {
+            format,
+            file: file.to_string(),
+            length: None,
+        }
+    }
+
     #[test]
     fn puts_audio_on_episode_pages_at_octopods_addresses() {
         let dir = podcast_site();
-        let source = dir.path().join("one.wav");
-        std::fs::write(&source, wav()).unwrap();
+        let source = dir.path().join("one.mp3");
+        std::fs::write(&source, mp3()).unwrap();
         let name = crate::media::import(dir.path(), crate::media::Library::Audio, &source).unwrap();
-        assert_eq!(name, "one.wav");
+        assert_eq!(name, "one.mp3");
 
         let page = create_episode(dir.path(), "Mit Ton", None).unwrap();
         let silent = create_episode(dir.path(), "Ohne Ton", None).unwrap();
         let mut front = page.content.front.clone();
         if let Some(episode) = front.episode.as_mut() {
-            episode.audio = Some(name.clone());
+            episode.audio = vec![
+                audio(AudioFormat::Ogg, "https://cdn.example/one.ogg"),
+                audio(AudioFormat::Mp3, &name),
+            ];
             episode.duration = Some("00:00:01".to_string());
-            episode.audio_type = Some("audio/wav".to_string());
         }
         site::save_front_matter(dir.path(), &page.file, front).unwrap();
+        let text = std::fs::read_to_string(dir.path().join(&page.file)).unwrap();
+        assert!(
+            text.contains("[[episode.audio]]\nformat = \"ogg\""),
+            "{text}"
+        );
 
         let site = site::open(dir.path()).unwrap();
         // The episode uses the file, so it can't be deleted.
@@ -1168,23 +1367,18 @@ mod tests {
 
         let out = dir.path().join("_site");
         let report = crate::generator::build_into(&site, &out).unwrap();
-        assert!(out.join("episodes/one.wav").is_file());
+        assert!(out.join("episodes/one.mp3").is_file());
         assert!(!out.join("episodes/.gitignore").exists());
         let html = std::fs::read_to_string(out.join(&page.path).join("index.html")).unwrap();
+        // The podcast's main format (MP3) first, whatever the file's order.
+        let mp3_at = html.find(r#"<source src="../../episodes/one.mp3" type="audio/mpeg">"#);
+        let ogg_at = html.find(r#"<source src="https://cdn.example/one.ogg" type="audio/ogg">"#);
         assert!(
-            html.contains(r#"<source src="../../episodes/one.wav" type="audio/wav">"#),
+            mp3_at.is_some() && ogg_at.is_some() && mp3_at < ogg_at,
             "{html}"
         );
-        assert!(html.contains("Herunterladen (WAV, 8 KB)"), "{html}");
+        assert!(html.contains("MP3, 16 KB</a>"), "{html}");
         assert!(html.contains("<span>00:01</span>"), "{html}");
-        assert!(
-            report
-                .notes
-                .iter()
-                .any(|note| note.contains("audio/wav") && note.contains("only MP3 and M4A")),
-            "{:?}",
-            report.notes
-        );
         assert!(
             report
                 .notes
@@ -1198,5 +1392,60 @@ mod tests {
         let text = dir.path().join("notes.txt");
         std::fs::write(&text, "hi").unwrap();
         assert!(crate::media::import(dir.path(), crate::media::Library::Audio, &text).is_err());
+    }
+
+    #[test]
+    fn publishes_only_when_every_episode_has_every_format() {
+        let dir = podcast_site();
+        let mut config = site::open(dir.path()).unwrap().config;
+        if let Some(podcast) = config.podcast.as_mut() {
+            podcast.formats = vec![AudioFormat::Mp3, AudioFormat::Ogg];
+        }
+        site::save_config(dir.path(), &config).unwrap();
+        let toml = std::fs::read_to_string(dir.path().join(site::CONFIG_FILE)).unwrap();
+        assert!(toml.contains(r#"formats = ["mp3", "ogg"]"#), "{toml}");
+
+        let page = create_episode(dir.path(), "Halb", None).unwrap();
+        let mut front = page.content.front.clone();
+        if let Some(episode) = front.episode.as_mut() {
+            episode.audio = vec![audio(AudioFormat::Mp3, "https://cdn.example/halb.mp3")];
+        }
+        site::save_front_matter(dir.path(), &page.file, front.clone()).unwrap();
+
+        let error = check_publish(&site::open(dir.path()).unwrap()).unwrap_err();
+        assert!(error.to_string().contains("no Ogg audio"), "{error}");
+        let report = crate::generator::build(&site::open(dir.path()).unwrap()).unwrap();
+        assert!(
+            report.notes.iter().any(|n| n.contains("no Ogg audio yet")),
+            "{:?}",
+            report.notes
+        );
+
+        // A draft doesn't hold publishing up.
+        front.draft = true;
+        site::save_front_matter(dir.path(), &page.file, front.clone()).unwrap();
+        assert!(check_publish(&site::open(dir.path()).unwrap()).is_ok());
+
+        // With both formats it's complete.
+        front.draft = false;
+        if let Some(episode) = front.episode.as_mut() {
+            episode
+                .audio
+                .push(audio(AudioFormat::Ogg, "https://cdn.example/halb.ogg"));
+        }
+        site::save_front_matter(dir.path(), &page.file, front.clone()).unwrap();
+        assert!(check_publish(&site::open(dir.path()).unwrap()).is_ok());
+
+        // Two files of one format, or a file of the wrong one, are refused.
+        if let Some(episode) = front.episode.as_mut() {
+            episode
+                .audio
+                .push(audio(AudioFormat::Ogg, "https://cdn.example/b.ogg"));
+        }
+        assert!(site::save_front_matter(dir.path(), &page.file, front.clone()).is_err());
+        if let Some(episode) = front.episode.as_mut() {
+            episode.audio = vec![audio(AudioFormat::Ogg, "halb.mp3")];
+        }
+        assert!(site::save_front_matter(dir.path(), &page.file, front).is_err());
     }
 }

@@ -61,6 +61,9 @@
     pageIcons,
     sharedName,
     pageLabel,
+    formatLabel,
+    podcastFormats,
+    type AudioFormat,
     type BuildReport,
     type Page,
     type Site,
@@ -199,6 +202,13 @@
 
   // Derived values update by themselves when `site` changes.
   let draftCount = $derived(site ? site.pages.filter((p) => p.front.draft).length : 0);
+
+  /** The podcast's formats a published episode has no audio for; Publish waits for them. */
+  function missingAudio(page: Page): AudioFormat[] {
+    const episode = page.front.episode;
+    if (!site?.config.podcast || !episode || page.front.draft || !page.path.startsWith("episodes/")) return [];
+    return podcastFormats(site.config.podcast).filter((f) => !episode.audio.some((a) => a.format === f));
+  }
 
   async function load(path: string) {
     loading = true;
@@ -777,6 +787,11 @@
                   {/if}
                   {page.front.title}
                   {#if page.front.draft}<span class="badge badge-ghost badge-sm">draft</span>{/if}
+                  {#if missingAudio(page).length}
+                    <span class="badge badge-soft badge-warning badge-sm" title="Publish waits for this episode's audio">
+                      no {missingAudio(page).map(formatLabel).join(", ")}
+                    </span>
+                  {/if}
                   {#if page.front.menu !== "none"}
                     <span class="badge badge-outline badge-sm">{page.front.menu} menu</span>
                   {/if}
@@ -895,8 +910,7 @@
             onclose={() => select(null)}
             ondeleted={pageDeleted}
             onmove={() => (movingPage = true)}
-            audioFiles={site.config.podcast?.audio_files ?? null}
-            audioBaseUrl={site.config.podcast?.audio_base_url ?? null}
+            podcast={site.config.podcast}
             bind:dirty={editorDirty}
           />
         {/key}

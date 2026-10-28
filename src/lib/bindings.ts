@@ -213,12 +213,18 @@ export type AudioFiles =
  */
 "external";
 
+/**
+ *  The audio formats a podcast can offer. MP3 and M4A play everywhere;
+ *  Ogg (Vorbis), Opus and FLAC in many open apps and in browsers, but not
+ *  in Apple Podcasts or Spotify.
+ */
+export type AudioFormat = "mp3" | "m4a" | "ogg" | "opus" | "flac";
+
 /**  What the feed needs to know about an audio file. */
 export type AudioInfo = {
 	/**  Size in bytes. */
 	length: number,
-	/**  `audio/mpeg`, `audio/x-m4a`, … */
-	mime_type: string,
+	format: AudioFormat,
 	/**  `01:24:22`. */
 	duration: string,
 };
@@ -430,20 +436,30 @@ export type Episode = {
 	 *  moves. Made when the episode is made.
 	 */
 	guid?: string,
+	/**  The audio, one file per format of the podcast. */
+	audio?: EpisodeAudio[],
 	/**
-	 *  The audio: a file in `audio/` (`episode1.mp3`), or a web address
-	 *  for audio kept elsewhere.
+	 *  How long the episode is (`01:24:22`), the same in every format.
+	 *  Read from the first audio file chosen; for audio elsewhere, given
+	 *  by hand.
 	 */
-	audio: string | null,
-	/**
-	 *  The audio's size in bytes, its type (`audio/mpeg`) and its length
-	 *  (`01:24:22`), as the feed needs them. Read from the file when it's
-	 *  chosen; for audio elsewhere, given by hand.
-	 */
-	audio_length: number | null,
-	audio_type: string | null,
 	duration: string | null,
 	chapters?: Chapter[],
+};
+
+/**  One audio file of an episode, `[[episode.audio]]`. */
+export type EpisodeAudio = {
+	format: AudioFormat,
+	/**
+	 *  A file in `audio/` (`episode1.mp3`), or a web address for audio
+	 *  kept elsewhere.
+	 */
+	file: string,
+	/**
+	 *  Size in bytes, as the feed needs it. Read from the file when it's
+	 *  chosen; for audio elsewhere, given by hand.
+	 */
+	length: number | null,
 };
 
 export type EpisodeType = "full" | "trailer" | "bonus";
@@ -774,6 +790,12 @@ export type Podcast = {
 	copyright: string | null,
 	/**  Ways to support the podcast (`podcast:funding`). */
 	funding?: Funding[],
+	/**
+	 *  The audio formats every episode comes in, each with a feed of its
+	 *  own; the first is the main one, whose feed goes to Apple and the
+	 *  directories. MP3 if empty.
+	 */
+	formats?: AudioFormat[],
 	/**  Where the audio files are kept. */
 	audio_files?: AudioFiles,
 	/**

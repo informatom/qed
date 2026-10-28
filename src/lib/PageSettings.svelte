@@ -4,7 +4,10 @@
   import CoverCheck from "$lib/CoverCheck.svelte";
   import ImageField from "$lib/ImageField.svelte";
   import MediaPicker from "$lib/MediaPicker.svelte";
-  import { commands, pageIcons, type AudioFiles, type Episode, type EpisodeType, type FrontMatter, type Menu, type Page } from "$lib/site";
+  import {
+    commands, formatLabel, pageIcons, podcastFormats,
+    type AudioFormat, type Episode, type EpisodeAudio, type EpisodeType, type FrontMatter, type Menu, type Page, type Podcast,
+  } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -14,19 +17,27 @@
     start?: FrontMatter;
     /** Tells the parent whether there are unsaved changes. */
     dirty?: boolean;
-    /** Where the podcast keeps its audio; null for sites without one. */
-    audioFiles?: AudioFiles | null;
-    /** For audio elsewhere: the address new episodes' audio starts with. */
-    audioBaseUrl?: string | null;
+    /** The site's podcast settings; null for sites without one. */
+    podcast?: Podcast | null;
   }
 
-  let { page, siteRoot, onsaved, start, dirty = $bindable(false), audioFiles = null, audioBaseUrl = null }: Props = $props();
+  let { page, siteRoot, onsaved, start, dirty = $bindable(false), podcast = null }: Props = $props();
 
   // An editable copy of the settings, taken once when the form opens
   // (`untrack` says so on purpose; the parent re-creates the form for another
   // page). `$state.snapshot` makes a plain copy, so typing here doesn't change
   // the page list until we save.
   const initial = untrack(() => $state.snapshot(start ?? page.front));
+  // The podcast's formats, the main one first; each gets a row for its file.
+  const formats: AudioFormat[] = untrack(() => podcastFormats(podcast));
+  if (initial.episode) {
+    for (const format of formats) {
+      // Empty rows to fill in; empty ones are left out when saving.
+      if (!initial.episode.audio.some((a) => a.format === format)) {
+        initial.episode.audio.push({ format, file: "", length: null });
+      }
+    }
+  }
   let form = $state(initial);
   // Lists are edited as comma-separated text.
   let authors = $state(initial.authors.join(", "));
@@ -72,9 +83,9 @@
       // Episode 0 is common: many podcasts start counting there.
       number: counted(episode.number, 0),
       image: orNull(episode.image),
-      audio: orNull(episode.audio),
-      audio_length: counted(episode.audio_length, 0),
-      audio_type: orNull(episode.audio_type),
+      audio: episode.audio
+        .map((a) => ({ format: a.format, file: a.file.trim(), length: counted(a.length, 0) }))
+        .filter((a) => a.file !== ""),
       duration: orNull(episode.duration),
       chapters: episode.chapters
         .map((c) => ({ start: c.start.trim(), title: c.title.trim(), link: orNull(c.link) }))
@@ -94,31 +105,64 @@
     if (form.episode) form.episode.explicit = explicit === "podcast" ? null : explicit === "yes";
   });
 
-  // Audio from audio/: chosen in the library, its details read from the file.
-  let pickingAudio = $state(false);
+  // Audio from audio/: chosen in the library, its details read from the
+  // file. Choosing one format's file also picks the others of the same
+  // name (episode1.mp3, episode1.ogg), as tools like Auphonic make them.
+  let pickingFor = $state<AudioFormat | null>(null);
   let audioError = $state<string | null>(null);
-  async function useAudio(name: string) {
-    if (!form.episode) return;
+  let external = $derived(podcast?.audio_files === "external");
+
+  function entry(format: AudioFormat): EpisodeAudio | undefined {
+    return form.episode?.audio.find((a) => a.format === format);
+  }
+
+  async function useAudio(format: AudioFormat, name: string, siblings = true) {
+    const target = entry(format);
+    if (!target || !form.episode) return;
     audioError = null;
-    form.episode.audio = name;
     try {
       const info = await commands.audioInfo(siteRoot, name);
-      form.episode.audio_length = info.length;
-      form.episode.audio_type = info.mime_type;
-      form.episode.duration = info.duration;
+      if (info.format !== format) {
+        audioError = `${name} is ${formatLabel(info.format)} audio, not ${formatLabel(format)}.`;
+        return;
+      }
+      target.file = name;
+      target.length = info.length;
+      // The length is the same in every format; the main one's counts.
+      if (!form.episode.duration || format === formats[0]) form.episode.duration = info.duration;
     } catch (e) {
       audioError = String(e);
+      return;
+    }
+    if (!siblings) return;
+    const stem = name.replace(/\.[^.]+$/, "");
+    const files = (await commands.listMedia(siteRoot, "audio")).map((f) => f.name);
+    for (const other of formats) {
+      const candidate = `${stem}.${other}`;
+      if (other !== format && !entry(other)?.file && files.includes(candidate)) {
+        await useAudio(other, candidate, false);
+      }
     }
   }
-  function clearAudio() {
-    if (!form.episode) return;
-    form.episode.audio = null;
-    form.episode.audio_length = null;
-    form.episode.audio_type = null;
-    form.episode.duration = null;
+
+  function clearAudio(format: AudioFormat) {
+    const target = entry(format);
+    if (!target) return;
+    target.file = "";
+    target.length = null;
   }
+
   // The podcast's address for audio elsewhere, ending in a slash.
-  let audioBase = $derived(audioBaseUrl ? audioBaseUrl.replace(/\/*$/, "/") : null);
+  let audioBase = $derived(podcast?.audio_base_url ? podcast.audio_base_url.replace(/\/*$/, "/") : null);
+
+  /** A start for an empty address: another format's, with this extension, or the podcast's address. */
+  function suggestion(format: AudioFormat): string | null {
+    const other = form.episode?.audio.find((a) => a.format !== format && a.file.includes("://"));
+    if (other) return other.file.replace(/\.[a-z0-9]+(\?.*)?$/i, `.${format}`);
+    return audioBase;
+  }
+
+  let missing = $derived(form.episode ? formats.filter((f) => !entry(f)?.file.trim()) : []);
 
   function megabytes(bytes: number | null): string {
     return bytes === null ? "" : `${(bytes / 1_000_000).toFixed(1)} MB`;
@@ -300,36 +344,50 @@
 
       <section class="flex flex-col gap-3 border-t border-base-300 pt-6">
         {@render heading("Audio")}
-        <div id="episode-audio" class="flex flex-col gap-2 @xl:col-span-4">
-          {#if audioFiles === "external" || (episode.audio ?? "").includes("://")}
-            <div class="grid gap-2 @xl:grid-cols-[1fr_8rem_10rem]">
-              <input id="episode-audio-url" class="input w-full" bind:value={episode.audio} aria-label="Audio address"
-                placeholder={audioBase ? `${audioBase}episode.mp3` : "https://… (the audio file's web address)"}
-                onfocus={() => {
-                  // Start from the podcast's address; only the file name is left to type.
-                  if (audioBase && !episode.audio) episode.audio = audioBase;
-                }}
-                onblur={() => {
-                  // Nothing added to it: leave the field empty again.
-                  if (episode.audio === audioBase) episode.audio = null;
-                }} />
-              <input id="episode-duration" class="input w-full font-mono" bind:value={episode.duration} placeholder="01:02:03" aria-label="Length" title="Length" />
-              <input id="episode-audio-length" class="input w-full" type="number" min="0" bind:value={episode.audio_length} placeholder="Size in bytes" aria-label="Size in bytes" title="Size in bytes, as the feed needs it" />
-            </div>
-          {:else}
-            <div class="flex flex-wrap items-center gap-3">
-              <span id="episode-audio-file" class="font-mono text-sm">{episode.audio ?? "No audio yet"}</span>
-              {#if episode.audio}
-                <span class="text-sm text-base-content/60">
-                  {[episode.duration, episode.audio_type, megabytes(episode.audio_length)].filter(Boolean).join(" · ")}
-                </span>
+        <div id="episode-audio" class="flex flex-col gap-2">
+          {#each episode.audio.filter((a) => formats.includes(a.format)) as audio (audio.format)}
+            <div class="grid items-center gap-2 @xl:grid-cols-[4rem_1fr]">
+              <span class="badge badge-sm badge-ghost font-mono">{formatLabel(audio.format)}</span>
+              {#if external || audio.file.includes("://")}
+                <div class="grid gap-2 @xl:grid-cols-[1fr_10rem]">
+                  <input id="episode-audio-{audio.format}" class="input w-full" bind:value={audio.file}
+                    aria-label="{formatLabel(audio.format)} address"
+                    placeholder={audioBase ? `${audioBase}episode.${audio.format}` : `https://… (the ${formatLabel(audio.format)} file's web address)`}
+                    onfocus={() => {
+                      // A start, so only the file name is left to type.
+                      const start = suggestion(audio.format);
+                      if (start && !audio.file) audio.file = start;
+                    }}
+                    onblur={() => {
+                      // Nothing added to the podcast's address: empty again.
+                      if (audio.file === audioBase) audio.file = "";
+                    }} />
+                  <input class="input w-full" type="number" min="0" bind:value={audio.length} placeholder="Size in bytes"
+                    aria-label="{formatLabel(audio.format)} size in bytes" title="Size in bytes, as the feed needs it" />
+                </div>
+              {:else}
+                <div class="flex flex-wrap items-center gap-3">
+                  {#if audio.file}
+                    <span class="font-mono text-sm">{audio.file}</span>
+                    {#if audio.length !== null}<span class="text-sm text-base-content/60">{megabytes(audio.length)}</span>{/if}
+                  {:else}
+                    <span class="text-sm text-warning">No {formatLabel(audio.format)} file yet</span>
+                  {/if}
+                  <button type="button" id="episode-choose-{audio.format}" class="btn btn-sm" onclick={() => (pickingFor = audio.format)}>Choose…</button>
+                  {#if audio.file}
+                    <button type="button" class="btn btn-ghost btn-sm" onclick={() => clearAudio(audio.format)}>Clear</button>
+                  {/if}
+                </div>
               {/if}
-              <button type="button" id="episode-choose-audio" class="btn btn-sm" onclick={() => (pickingAudio = true)}>Choose…</button>
-              {#if episode.audio}
-                <button type="button" class="btn btn-ghost btn-sm" title="After replacing the file in Audio" onclick={() => episode.audio && useAudio(episode.audio)}>Read again</button>
-                <button type="button" class="btn btn-ghost btn-sm" onclick={clearAudio}>Clear</button>
-              {/if}
             </div>
+          {/each}
+          <label class="mt-1 flex items-center gap-3">
+            <span class="text-sm font-medium">Length</span>
+            <input id="episode-duration" class="input w-32 font-mono" bind:value={episode.duration} placeholder="01:02:03"
+              title="Read from the audio file; for audio elsewhere, typed in" />
+          </label>
+          {#if missing.length && !form.draft}
+            <p class="text-sm text-warning">Publish waits until this episode has {missing.map(formatLabel).join(" and ")} audio too (or is a draft): every feed needs every episode.</p>
           {/if}
           {#if audioError}<p class="text-sm text-error">{audioError}</p>{/if}
         </div>
@@ -373,6 +431,7 @@
   </div>
 </form>
 
-{#if pickingAudio}
-  <MediaPicker {siteRoot} library="audio" only="audio" onpick={useAudio} onclose={() => (pickingAudio = false)} />
+{#if pickingFor}
+  {@const format = pickingFor}
+  <MediaPicker {siteRoot} library="audio" only="audio" onpick={(name) => useAudio(format, name)} onclose={() => (pickingFor = null)} />
 {/if}

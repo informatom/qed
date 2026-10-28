@@ -977,10 +977,11 @@ fn with_podcast_guid(config: &SiteConfig) -> SiteConfig {
             .as_deref()
             .is_none_or(|guid| guid.trim().is_empty())
     {
+        // The main format's feed: the one Apple and the directories know.
         let feed = format!(
             "{}/{}",
             base_url.trim_end_matches('/'),
-            crate::podcast::FEED_FILE
+            crate::podcast::feed_file(podcast.main_format())
         );
         podcast.guid = Some(crate::podcast::podcast_guid(&feed));
     }
@@ -990,10 +991,15 @@ fn with_podcast_guid(config: &SiteConfig) -> SiteConfig {
 /// Leaves the podcast settings at their defaults out of `[podcast]`, as
 /// for the site's own settings.
 fn podcast_without_defaults(podcast: &mut toml_edit::Table) {
-    let defaults: [page_writer::DefaultCheck; 5] = [
+    let defaults: [page_writer::DefaultCheck; 6] = [
         ("explicit", |item| item.as_bool() == Some(false)),
         ("type", |item| item.as_str() == Some("episodic")),
         ("audio_files", |item| item.as_str() == Some("local")),
+        ("formats", |item| {
+            item.as_array().is_some_and(|array| {
+                array.len() == 1 && array.get(0).and_then(|v| v.as_str()) == Some("mp3")
+            })
+        }),
         ("categories", |item| {
             item.as_array().is_some_and(|array| array.is_empty())
         }),

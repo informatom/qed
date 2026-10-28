@@ -144,11 +144,16 @@
       {%- if let Some(audio) = audio %}
       <section id="episode-audio" class="flex flex-col gap-2">
         <audio controls preload="none" class="w-full">
-          <source src="{{ audio.src }}"{% if let Some(mime_type) = audio.mime_type %} type="{{ mime_type }}"{% endif %}>
+          {%- for source in audio.sources %}
+          <source src="{{ source.src }}" type="{{ source.mime_type }}">
+          {%- endfor %}
         </audio>
         <p class="flex flex-wrap gap-x-3 text-sm text-base-content/60">
           {%- if let Some(duration) = audio.duration %}<span>{{ duration }}</span>{% endif %}
-          <a href="{{ audio.src }}" download class="link link-hover">{{ audio.download }}</a>
+          <span>{{ audio.download }}:</span>
+          {%- for source in audio.sources %}
+          <a href="{{ source.src }}" download class="link link-hover">{{ source.label }}</a>
+          {%- endfor %}
         </p>
       </section>
       {%- endif %}

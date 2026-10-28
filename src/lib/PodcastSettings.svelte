@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import CoverCheck from "$lib/CoverCheck.svelte";
   import ImageField from "$lib/ImageField.svelte";
-  import { commands, type AudioFiles, type Podcast } from "$lib/site";
+  import { AUDIO_FORMATS, commands, podcastFormats, type AudioFiles, type AudioFormat, type Podcast } from "$lib/site";
 
   interface Props {
     siteRoot: string;
@@ -35,6 +35,7 @@
       guid: null,
       copyright: null,
       funding: [],
+      formats: ["mp3"],
       audio_files: "local",
       audio_base_url: null,
     };
@@ -61,6 +62,22 @@
     const list = [...podcast.categories];
     list[index] = name;
     podcast.categories = list.filter((item, i) => item !== "" && list.indexOf(item) === i);
+  }
+
+  // The formats: the main one first, the others in the usual order.
+  let formats = $derived(podcastFormats(podcast));
+  function toggleFormat(format: AudioFormat) {
+    if (!podcast) return;
+    if (formats.includes(format)) {
+      // At least one is needed.
+      if (formats.length > 1) podcast.formats = formats.filter((f) => f !== format);
+    } else {
+      podcast.formats = [formats[0], ...AUDIO_FORMATS.map((f) => f.value).filter((f) => f === format || formats.slice(1).includes(f))];
+    }
+  }
+  function setMain(format: AudioFormat) {
+    if (!podcast) return;
+    podcast.formats = [format, ...AUDIO_FORMATS.map((f) => f.value).filter((f) => f !== format && formats.includes(f))];
   }
 
   const AUDIO: { value: AudioFiles; label: string; hint: string }[] = [
@@ -170,6 +187,33 @@
 
   <section id="podcast-audio" class="flex flex-col gap-3 border-t border-base-300 pt-6">
     {@render heading("Audio files")}
+    <div id="podcast-formats" class="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+      <div class="flex items-center gap-2">
+        <span class="font-medium">Formats</span>
+        <div class="join">
+          {#each AUDIO_FORMATS as format (format.value)}
+            <button type="button" id="podcast-format-{format.value}" aria-pressed={formats.includes(format.value)}
+              class={["btn join-item btn-sm", formats.includes(format.value) && "btn-active"]}
+              onclick={() => toggleFormat(format.value)}>{format.label}</button>
+          {/each}
+        </div>
+      </div>
+      {#if formats.length > 1}
+        <label class="flex items-center gap-2">
+          <span class="font-medium">Main format</span>
+          <select id="podcast-main-format" class="select select-sm w-28" value={formats[0]}
+            onchange={(event) => setMain(event.currentTarget.value as AudioFormat)}>
+            {#each AUDIO_FORMATS.filter((f) => formats.includes(f.value)) as format (format.value)}
+              <option value={format.value}>{format.label}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
+    </div>
+    <p class="text-sm text-base-content/60">
+      Every episode comes in each format, with a feed per format ({formats.map((f) => `episodes.${f}.rss`).join(", ")}).
+      The main format's feed goes to Apple and the directories{#if !AUDIO_FORMATS.find((f) => f.value === formats[0])?.everywhere}<span class="text-warning">; Apple Podcasts and Spotify play only MP3 and M4A, so make one of those the main format</span>{/if}.
+    </p>
     <fieldset id="podcast-audio-files" class="flex flex-col gap-2 @3xl:col-span-2">
             {#each AUDIO as option (option.value)}
         <label class="flex items-start gap-3">

@@ -206,8 +206,9 @@ fn front_document(front: &FrontMatter, original: Option<&str>) -> DocumentMut {
         .and_then(|item| item.as_inline_table_mut())
     {
         let mut table = std::mem::take(inline).into_table();
-        let defaults: [DefaultCheck; 2] = [
+        let defaults: [DefaultCheck; 3] = [
             ("type", |item| item.as_str() == Some("full")),
+            ("audio", is_empty_array),
             ("chapters", is_empty_array),
         ];
         for (key, is_default) in defaults {

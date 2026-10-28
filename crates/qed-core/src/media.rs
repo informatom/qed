@@ -204,7 +204,7 @@ pub fn import(root: &Path, library: Library, source: &Path) -> Result<String, Si
         if kind_of(&original_name) != MediaKind::Audio {
             return Err(SiteError::Invalid {
                 path: source.to_path_buf(),
-                message: "isn't an audio file (MP3, M4A, Ogg, Opus, …)".to_string(),
+                message: "isn't a podcast audio file (MP3, M4A, Ogg, Opus or FLAC)".to_string(),
             });
         }
         // Before the first file lands, so it never shows up in a version.
@@ -448,10 +448,9 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             .content
             .front
             .episode
-            .as_ref()
-            .and_then(|episode| episode.local_audio())
+            .iter()
+            .flat_map(|episode| episode.local_audio())
             .map(str::to_string)
-            .into_iter()
             .collect();
     }
     let mut images = Vec::new();
@@ -729,7 +728,7 @@ fn kind_of(name: &str) -> MediaKind {
         .unwrap_or_default();
     match extension.as_str() {
         "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" | "avif" => MediaKind::Image,
-        "mp3" | "m4a" | "aac" | "ogg" | "oga" | "opus" | "flac" | "wav" => MediaKind::Audio,
+        "mp3" | "m4a" | "ogg" | "oga" | "opus" | "flac" => MediaKind::Audio,
         "pdf" | "zip" | "doc" | "docx" | "odt" | "xls" | "xlsx" | "ods" | "epub" => {
             MediaKind::Document
         }
