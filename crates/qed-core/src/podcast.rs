@@ -951,6 +951,8 @@ pub struct Words {
     pub contributors: &'static str,
     /// The heading of the transcript on an episode page.
     pub transcript: &'static str,
+    /// The Latest episode block's link to the episode page.
+    pub to_episode: &'static str,
     /// The share row (#053): its label, the email link, the copy
     /// button before and after copying, the device's share menu, and the
     /// question for the reader's Mastodon server.
@@ -977,6 +979,7 @@ impl Words {
                 download: "Herunterladen",
                 contributors: "Mitwirkende",
                 transcript: "Transkript",
+                to_episode: "Zur Episode",
                 share: "Teilen",
                 email: "E-Mail",
                 copy_link: "Link kopieren",
@@ -994,6 +997,7 @@ impl Words {
                 download: "Télécharger",
                 contributors: "Contributeurs",
                 transcript: "Transcription",
+                to_episode: "Voir l’épisode",
                 share: "Partager",
                 email: "E-mail",
                 copy_link: "Copier le lien",
@@ -1011,6 +1015,7 @@ impl Words {
                 download: "Descargar",
                 contributors: "Participantes",
                 transcript: "Transcripción",
+                to_episode: "Ver el episodio",
                 share: "Compartir",
                 email: "Correo",
                 copy_link: "Copiar enlace",
@@ -1028,6 +1033,7 @@ impl Words {
                 download: "Scarica",
                 contributors: "Partecipanti",
                 transcript: "Trascrizione",
+                to_episode: "Vai all’episodio",
                 share: "Condividi",
                 email: "E-mail",
                 copy_link: "Copia link",
@@ -1045,6 +1051,7 @@ impl Words {
                 download: "Downloaden",
                 contributors: "Medewerkers",
                 transcript: "Transcript",
+                to_episode: "Naar de aflevering",
                 share: "Delen",
                 email: "E-mail",
                 copy_link: "Link kopiëren",
@@ -1062,6 +1069,7 @@ impl Words {
                 download: "Download",
                 contributors: "Contributors",
                 transcript: "Transcript",
+                to_episode: "Go to the episode",
                 share: "Share",
                 email: "Email",
                 copy_link: "Copy link",
@@ -1647,6 +1655,12 @@ mod tests {
             "{text}"
         );
 
+        site::save_blocks(
+            dir.path(),
+            std::path::Path::new("pages/index.md"),
+            vec![crate::block::Block::LatestEpisode],
+        )
+        .unwrap();
         let site = site::open(dir.path()).unwrap();
         // The episode uses the file, so it can't be deleted.
         assert!(crate::media::delete(&site, crate::media::Library::Audio, &name).is_err());
@@ -1665,6 +1679,24 @@ mod tests {
         );
         assert!(html.contains("MP3, 16 KB</a>"), "{html}");
         assert!(html.contains("<span>00:01</span>"), "{html}");
+        // The start page's Latest episode gets the Podlove Web Player too,
+        // with the episode's data from next to its page.
+        let home = std::fs::read_to_string(out.join("index.html")).unwrap();
+        assert!(
+            home.contains(&format!(
+                r#"<div data-podlove-player data-episode="{}/player.json"></div>"#,
+                page.path
+            )),
+            "{home}"
+        );
+        assert!(
+            home.contains(r#"<script src="player.js" defer></script>"#),
+            "{home}"
+        );
+        assert!(
+            home.contains(r#"class="w-full" data-player-fallback>"#),
+            "{home}"
+        );
         assert!(
             report
                 .notes

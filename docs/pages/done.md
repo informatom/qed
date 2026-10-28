@@ -688,6 +688,18 @@ rest is done.
   on podcast sites only. Each part can be added once; the parts aren't
   offered on pages, in columns or for "Make shared".
 
+- **#127 Video files.** Done 2026-10-28 (user, from converting
+  3-schweinehun.de, whose episodes 23 and 35 had `<video>` tags): the
+  Video block's new `file`, a video in `assets/` (Downloads), wins over
+  its platform address. The site plays it with the browser's own
+  `<video>` player (no JavaScript, nothing from elsewhere), the block's
+  image as poster, its title below; tall phone videos stay within the
+  window. The block editor switches between "On a platform" and "File in
+  Downloads". A shown file can't be deleted. Same day, a bug the user
+  found: the Latest episode block now has the Podlove Web Player too, not
+  only the plain `<audio>` player, and an explicit "Zur Episode →" link
+  below it, so nobody thinks there are no shownotes (user).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

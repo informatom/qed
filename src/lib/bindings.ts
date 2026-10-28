@@ -1256,13 +1256,19 @@ export type Version = {
 
 /**
  *  A video on YouTube, Vimeo or PeerTube, shown as its thumbnail with a
- *  play mark and linked to the video (see `video.rs`).
+ *  play mark and linked to the video (see `video.rs`); or a video file of
+ *  the site, played by the browser itself (#127).
  */
 export type Video = {
 	/**  The video's address on its platform. */
 	url: string | null,
+	/**  A video file in `assets/`; wins over `url`. */
+	file: string | null,
 	title: string | null,
-	/**  The thumbnail's name in `media/`, fetched once. */
+	/**
+	 *  The thumbnail's name in `media/`, fetched once; for a file, the
+	 *  picture shown before it plays.
+	 */
 	image: string | null,
 };
 

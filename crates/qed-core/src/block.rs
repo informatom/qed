@@ -303,15 +303,19 @@ pub struct PageList {
 }
 
 /// A video on YouTube, Vimeo or PeerTube, shown as its thumbnail with a
-/// play mark and linked to the video (see `video.rs`).
+/// play mark and linked to the video (see `video.rs`); or a video file of
+/// the site, played by the browser itself (#127).
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(deny_unknown_fields)]
 pub struct Video {
     /// The video's address on its platform.
     pub url: Option<String>,
+    /// A video file in `assets/`; wins over `url`.
+    pub file: Option<String>,
     pub title: Option<String>,
-    /// The thumbnail's name in `media/`, fetched once.
+    /// The thumbnail's name in `media/`, fetched once; for a file, the
+    /// picture shown before it plays.
     pub image: Option<String>,
 }
 

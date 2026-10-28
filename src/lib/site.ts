@@ -179,7 +179,7 @@ export function newBlock(type: BlockType): Block {
     case "page-list":
       return { type, from: null, layout: null };
     case "video":
-      return { type, url: null, title: null, image: null };
+      return { type, url: null, file: null, title: null, image: null };
     case "shared":
       return { type, name: null };
     case "latest-episode":

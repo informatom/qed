@@ -34,7 +34,7 @@
 {%- match block %}
 {%- when RenderedBlock::Text with { html } %}
 <div class="prose max-w-none">{{ html|safe }}</div>
-{%- when RenderedBlock::LatestEpisode with { title, href, label, summary_html, audio } %}
+{%- when RenderedBlock::LatestEpisode with { title, href, label, summary_html, audio, player, more } %}
 <article class="latest-episode flex flex-col gap-3 rounded-box border border-base-300 p-6">
   <h2 class="text-2xl font-semibold tracking-tight"><a href="{{ href }}" class="link link-hover">{{ title }}</a></h2>
   {%- if !label.is_empty() %}
@@ -43,13 +43,19 @@
   {%- if let Some(summary_html) = summary_html %}
   <div class="prose max-w-none">{{ summary_html|safe }}</div>
   {%- endif %}
+  {%- if let Some(player) = player %}
+  <div data-podlove-player data-episode="{{ player.episode }}"></div>
+  <script src="{{ player.embed }}" defer></script>
+  <script src="{{ player.script }}" defer></script>
+  {%- endif %}
   {%- if let Some(audio) = audio %}
-  <audio controls preload="none" class="w-full">
+  <audio controls preload="none" class="w-full" data-player-fallback>
     {%- for source in audio.sources %}
     <source src="{{ source.src }}" type="{{ source.mime_type }}">
     {%- endfor %}
   </audio>
   {%- endif %}
+  <p><a href="{{ href }}" class="link font-medium">{{ more }} →</a></p>
 </article>
 {#- The parts of an episode page (see the episode layout, `episode.md`). #}
 {%- when RenderedBlock::EpisodePlayer with { audio, player } %}
@@ -377,6 +383,21 @@
     {%- if title.is_some() && platform.is_some() %} · {% endif %}
     {%- if let Some(platform) = platform %}{{ platform }}{% endif %}
   </figcaption>
+  {%- endif %}
+</figure>
+{#- The browser's own player: no JavaScript, nothing from elsewhere.
+    `preload="none"` loads nothing until a click; without a poster, the
+    first frame needs `metadata`. Tall phone videos stay within the
+    window. #}
+{%- when RenderedBlock::VideoFile with { src, poster, title } %}
+<figure class="flex flex-col gap-2">
+  <video controls playsinline preload="{% if poster.is_some() %}none{% else %}metadata{% endif %}" src="{{ src }}"
+    {%- if let Some(poster) = poster %} poster="{{ poster }}"{% endif %}
+    {%- if let Some(title) = title %} aria-label="{{ title }}"{% endif %} class="mx-auto max-h-[80vh] max-w-full rounded-box bg-neutral">
+    <a href="{{ src }}">{% if let Some(title) = title %}{{ title }}{% else %}Video{% endif %}</a>
+  </video>
+  {%- if let Some(title) = title %}
+  <figcaption class="text-center text-sm font-medium">{{ title }}</figcaption>
   {%- endif %}
 </figure>
 {%- endmatch %}

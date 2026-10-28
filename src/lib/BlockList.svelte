@@ -82,6 +82,18 @@
 
   // Asks the platform once for title and thumbnail; the thumbnail lands in
   // Media. A title typed by hand stays.
+  /** Where a video comes from, as picked; a block with a file is a file. */
+  const videoSources = new SvelteMap<VideoBlock, "platform" | "file">();
+  function videoSource(block: VideoBlock): "platform" | "file" {
+    return videoSources.get(block) ?? (block.file ? "file" : "platform");
+  }
+  function setVideoSource(block: VideoBlock, source: "platform" | "file") {
+    videoSources.set(block, source);
+    // One source at a time: the other's value goes.
+    if (source === "platform") block.file = null;
+    else block.url = null;
+  }
+
   async function fetchVideo(block: VideoBlock) {
     if (!block.url) return;
     fetching.add(block);
@@ -444,7 +456,22 @@
             </p>
           </div>
         {:else if block.type === "video"}
+          {@const source = videoSource(block)}
           <div class="flex flex-col gap-3">
+            <div class="join" role="radiogroup" aria-label="Where the video is">
+              <button type="button" role="radio" aria-checked={source === "platform"}
+                class={["btn join-item btn-sm", source === "platform" && "btn-active"]}
+                onclick={() => block.type === "video" && setVideoSource(block, "platform")}>On a platform</button>
+              <button type="button" role="radio" aria-checked={source === "file"}
+                class={["btn join-item btn-sm", source === "file" && "btn-active"]}
+                onclick={() => block.type === "video" && setVideoSource(block, "file")}>File in Downloads</button>
+            </div>
+            {#if source === "file"}
+              <div class="flex flex-col gap-1">
+                {@render field("Video file", "MP4 or WebM plays everywhere")}
+                <ImageField {siteRoot} accept="file" bind:value={block.file} />
+              </div>
+            {:else}
             <div class="flex flex-wrap items-end gap-2">
               <label class="flex min-w-64 flex-1 flex-col gap-1">
                 {@render field("Video address", "on YouTube, Vimeo or PeerTube")}
@@ -460,17 +487,23 @@
             {#if videoErrors.get(block)}
               <div role="alert" class="alert alert-error alert-soft text-sm">{videoErrors.get(block)}</div>
             {/if}
+            {/if}
             <label class="flex flex-col gap-1">
               {@render field("Title", "shown below the video")}
               <input class="input w-full" bind:value={block.title} />
             </label>
             <div class="flex flex-col gap-1">
-              {@render field("Thumbnail", "fetched once and kept in Media; any image works")}
+              {@render field("Thumbnail", source === "file" ? "shown before it plays; the first frame if empty" : "fetched once and kept in Media; any image works")}
               <ImageField {siteRoot} bind:value={block.image} />
             </div>
             <p class="text-sm text-base-content/60">
-              Works with YouTube, Vimeo and PeerTube (any instance). The website shows the thumbnail with a play mark and
-              links to the video: no embedded player, nothing loaded from the platform until a visitor clicks.
+              {#if source === "file"}
+                The website plays the file with the browser's own player: no JavaScript, nothing loaded from elsewhere.
+                Large files cost your web space and your visitors' data; a few minutes of video are fine.
+              {:else}
+                Works with YouTube, Vimeo and PeerTube (any instance). The website shows the thumbnail with a play mark and
+                links to the video: no embedded player, nothing loaded from the platform until a visitor clicks.
+              {/if}
             </p>
           </div>
         {:else if block.type === "page-list"}

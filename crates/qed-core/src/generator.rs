@@ -1471,7 +1471,8 @@ struct AudioSource {
 /// What an episode page needs for the Podlove Web Player: its data next
 /// to the page, and the scripts.
 struct PlayerEntry {
-    episode: &'static str,
+    /// The episode's `player.json`, relative to the page.
+    episode: String,
     embed: String,
     script: String,
 }
@@ -1826,6 +1827,10 @@ enum RenderedBlock {
         label: String,
         summary_html: Option<String>,
         audio: Option<AudioEntry>,
+        /// The Podlove Web Player for it, as on its own page.
+        player: Option<PlayerEntry>,
+        /// "Zur Episode": the shownotes are on its page.
+        more: &'static str,
     },
     Subscribe {
         /// The button's script, and the file with the podcast's data it
@@ -1909,6 +1914,13 @@ enum RenderedBlock {
         title: Option<String>,
         /// `YouTube`, `Vimeo`, or a PeerTube instance's host.
         platform: Option<String>,
+    },
+    /// A video file of the site, in the browser's own player.
+    VideoFile {
+        src: String,
+        /// Shown before the video plays.
+        poster: Option<String>,
+        title: Option<String>,
     },
 }
 
@@ -2062,7 +2074,7 @@ impl EpisodePage<'_> {
                 Some(RenderedBlock::EpisodePlayer {
                     audio,
                     player: config.podcast.as_ref().map(|_| PlayerEntry {
-                        episode: PLAYER_EPISODE,
+                        episode: PLAYER_EPISODE.to_string(),
                         embed: format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
                         script: format!("{}{PLAYER_FILE}", links.to_root()),
                     }),
@@ -2692,14 +2704,21 @@ fn render_block(
                                 .map(|day| calendar::long_date(day, context.language)),
                         )
                         .collect();
+                    let audio = episode
+                        .and_then(|e| audio_entry(context.root, context.podcast, e, links, &words));
                     RenderedBlock::LatestEpisode {
                         title: front.title.clone(),
                         href: links.page(&page.path),
                         label: label.join(" · "),
                         summary_html: markdown(&front.summary),
-                        audio: episode.and_then(|e| {
-                            audio_entry(context.root, context.podcast, e, links, &words)
+                        // The episode's player data sits next to its page.
+                        player: audio.as_ref().and(context.podcast).map(|_| PlayerEntry {
+                            episode: format!("{}{PLAYER_EPISODE}", links.page(&page.path)),
+                            embed: format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
+                            script: format!("{}{PLAYER_FILE}", links.to_root()),
                         }),
+                        audio,
+                        more: words.to_episode,
                     }
                 }
             }
@@ -2744,6 +2763,23 @@ fn render_block(
                 })
                 .collect(),
         },
+        Block::Video(video)
+            if let Some(file) = video
+                .file
+                .as_deref()
+                .map(str::trim)
+                .filter(|f| !f.is_empty()) =>
+        {
+            RenderedBlock::VideoFile {
+                src: download_location(file, links, root).0,
+                poster: video
+                    .image
+                    .as_deref()
+                    .and_then(|image| picture(image, None, links, images))
+                    .map(|picture| picture.src),
+                title: video.title.clone().filter(|t| !t.trim().is_empty()),
+            }
+        }
         Block::Video(video) => match video
             .url
             .as_deref()

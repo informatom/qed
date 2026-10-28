@@ -554,7 +554,10 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
                 markdown_texts.extend(cta.text.as_deref());
                 buttons.extend(cta.button_link.as_deref());
             }
-            Block::Video(video) => images.extend(video.image.as_deref().and_then(media_name)),
+            Block::Video(video) => {
+                images.extend(video.image.as_deref().and_then(media_name));
+                downloads.extend(video.file.as_deref().and_then(media_name));
+            }
             // The piece's own file counts its files.
             Block::PostList(_)
             | Block::PageList(_)
@@ -1120,6 +1123,36 @@ answer = "See [the menu](/media/menu.pdf)."
         );
         assert!(html.contains(r#"href="../assets/flyer.pdf""#), "{html}");
         assert!(out.path().join("assets/price-list.pdf").is_file());
+    }
+
+    #[test]
+    fn plays_video_files_from_assets() {
+        let dir = site_dir();
+        fs::create_dir_all(dir.path().join("assets")).unwrap();
+        fs::write(dir.path().join("assets/finish.mp4"), "mp4").unwrap();
+        fs::write(
+            dir.path().join("pages/race.md"),
+            "+++\ntitle = \"Race\"\n+++\n\n::: video\nfile = \"finish.mp4\"\ntitle = \"Ins Ziel\"\n:::\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+        // Shown, so it stays.
+        assert!(delete(&site, Library::Assets, "finish.mp4").is_err());
+
+        let out = tempfile::tempdir().unwrap();
+        crate::generator::build_into(&site, out.path()).unwrap();
+        let html = fs::read_to_string(out.path().join("race/index.html")).unwrap();
+        assert!(
+            html.contains(r#"<video controls playsinline preload="metadata" src="../assets/finish.mp4" aria-label="Ins Ziel""#),
+            "{html}"
+        );
+        assert!(
+            html.contains(
+                r#"<figcaption class="text-center text-sm font-medium">Ins Ziel</figcaption>"#
+            ),
+            "{html}"
+        );
+        assert!(out.path().join("assets/finish.mp4").is_file());
     }
 
     #[test]

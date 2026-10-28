@@ -8,7 +8,10 @@
 (function () {
   "use strict";
   var script = document.currentScript;
-  if (!script) return;
+  // A page with two players (the Latest episode block on an episode page)
+  // loads this twice; one start finds both.
+  if (!script || window.qedPlayerStarting) return;
+  window.qedPlayerStarting = true;
   var root = new URL("./", script.src);
 
   function start() {
