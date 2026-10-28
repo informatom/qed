@@ -21,19 +21,26 @@ Nothing open.
 
 ### Phase 2: Podcasting
 
-- **#066 Podcast switch.** Per site; turns on episodes, feed, contributors and
-  the podcast fields: type, owner name + email, cover, categories, explicit,
-  `podcast:guid`, funding. The cover and episode images (#067) are checked
-  against Apple's rules: square, 1400–3000 px, JPEG or PNG (from #033).
-- **#067 Episodes.** Season, number, type, image, explicit, guid generated
-  once, Markdown shownotes, chapters. Episode pages and the archive at
-  `/episodes`.
-- **#022 Episode editor.** Markdown shownotes (#060) and a chapter editor.
 - **#023 Audio file.** One per episode: pick a local file or enter an external
   URL. Read size, MIME type and duration in Rust (`symphonia` or `lofty`).
+  Decided 2026-10-28: where audio files go is a podcast setting
+  (`audio_files` in `[podcast]`, already in Site → Podcast): `local`
+  (the default: `audio/` in the site, kept out of the history with a
+  `.gitignore`), `in_history` (`audio/`, in the history) or `external`
+  (every episode gives a web address). Backups of `local` audio need
+  their own way (#109).
 - **#068 Podcast feed.** One feed per podcast with iTunes, Podcasting 2.0 and
   Podlove Simple Chapters tags, plus paged feeds. Publishers copy the audio
-  (GitHub Pages: see #029).
+  (GitHub Pages: see #029). The feed keeps jekyll-octopod's addresses, so
+  moved podcasts need no redirect (user, 2026-10-28):
+  `/episodes.<format>.rss` (e.g. `/episodes.mp3.rss`, the format from the
+  audio files), paged as `/episodes1.mp3.rss`, `/episodes2.mp3.rss`, …
+  with `first`/`last`/`next`/`prev` `atom:link`s. `podcast::FEED_FILE`
+  names the mp3 one; the `podcast:guid` is made from it. The `/episodes`
+  page also gets the plain blog feed of its posts today; the podcast feed
+  replaces it. Episode 0 is allowed (many podcasts start there), but
+  Apple's `itunes:episode` takes only numbers above 0: leave it out for
+  episode 0 and keep `podcast:episode`.
 - **#069 Podcast blocks.** Latest episodes and Subscribe blocks; seed them on
   the `home` page of new podcast sites.
 - **#047 Contributors.** Contributors per site (name, photo, Markdown bio,
@@ -45,12 +52,16 @@ Nothing open.
   with chapters and transcripts.
 - **#053 Share links.** Plain share links on episode pages (Mastodon, Bluesky,
   email, copy link), no third-party scripts.
-- **#070 Code signing.** Before a public 1.0: Apple developer account and
-  notarization, Windows signing (e.g. Azure Trusted Signing).
 - **#034 Feed import.** Import an existing podcast from its RSS feed or from a
-  jekyll-octopod site (compare `octopod import`).
+  jekyll-octopod site (compare `octopod import`). Keep each episode's old
+  guid (octopod used the episode's address) and its old address as a
+  redirect.
 
 ### Phase 3: Nice to have
+
+- **#070 Code signing.** Apple developer account and notarization, Windows
+  signing (e.g. Azure Trusted Signing). Decided 2026-10-28: moved from
+  phase 2; not needed for 1.0.
 
 - **#029 Publisher: GitHub Pages.** Push the built site to the configured
   branch with a deploy key. Needs a second `Target` kind, its own key

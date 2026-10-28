@@ -158,7 +158,7 @@
     </a>
     <div class="card-body gap-2 p-4">
       <a href="{{ post.href }}" class="link link-hover text-lg font-semibold leading-snug">{{ post.title }}</a>
-      <time datetime="{{ post.date }}" class="badge badge-secondary badge-sm">{{ post.date_text }}</time>
+      <span class="badge badge-secondary badge-sm">{% if let Some(episode) = post.episode %}<span>{{ episode }}</span><span aria-hidden="true">·</span>{% endif %}<time datetime="{{ post.date }}">{{ post.date_text }}</time></span>
       {%- if let Some(summary_html) = post.summary_html %}
       <div class="prose prose-sm max-w-none">{{ summary_html|safe }}</div>
       {%- endif %}
@@ -179,7 +179,7 @@
       {%- endif %}
     </a>
     <a href="{{ post.href }}" class="link link-hover font-medium leading-snug">{{ post.title }}</a>
-    <time datetime="{{ post.date }}" class="text-xs text-base-content/60">{{ post.date_text }}</time>
+    <span class="text-xs text-base-content/60">{% if let Some(episode) = post.episode %}{{ episode }} · {% endif %}<time datetime="{{ post.date }}">{{ post.date_text }}</time></span>
   </li>
   {%- endfor %}
 </ul>
@@ -189,7 +189,7 @@
   {%- for post in posts %}
   <li class="flex flex-col gap-1">
     <a href="{{ post.href }}" class="link link-hover text-xl font-semibold">{{ post.title }}</a>
-    <time datetime="{{ post.date }}" class="badge badge-secondary badge-sm self-start">{{ post.date_text }}</time>
+    <span class="badge badge-secondary badge-sm self-start">{% if let Some(episode) = post.episode %}<span>{{ episode }}</span><span aria-hidden="true">·</span>{% endif %}<time datetime="{{ post.date }}">{{ post.date_text }}</time></span>
     {%- if let Some(summary_html) = post.summary_html %}
     <div class="prose max-w-none">{{ summary_html|safe }}</div>
     {%- endif %}

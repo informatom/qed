@@ -8,6 +8,7 @@
   import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
   import Eye from "@lucide/svelte/icons/eye";
   import FilePlus from "@lucide/svelte/icons/file-plus";
+  import Mic from "@lucide/svelte/icons/mic";
   import Files from "@lucide/svelte/icons/files";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
@@ -150,6 +151,7 @@
   }
 
   let creatingPage = $state(false);
+  let creatingEpisode = $state(false);
   let creatingSite = $state(false);
   let movingPage = $state(false);
   let view = $state<"pages" | "media" | "assets" | "static" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
@@ -222,6 +224,15 @@
     }
   }
 
+  // What the preview opens: the page selected in the Pages tab, else the
+  // start page. Drafts aren't built, so they open the start page too.
+  let previewPage = $derived(
+    view === "pages" && selected && !selected.front.draft ? selected : null,
+  );
+  let previewTip = $derived(
+    previewPage ? `Preview “${previewPage.front.title}” in browser` : "Preview in browser",
+  );
+
   async function preview() {
     if (!site) return;
     building = true;
@@ -230,7 +241,8 @@
       const info = await commands.previewSite(site.root);
       report = info.report;
       previewUrl = info.url;
-      await openUrl(info.url);
+      const path = previewPage?.path ?? "";
+      await openUrl(path ? `${info.url.replace(/\/$/, "")}/${path}/` : info.url);
     } catch (e) {
       error = String(e);
     } finally {
@@ -505,12 +517,16 @@
         <img id="app-logo" src={logoMark} alt="" class="size-12" /> q.e.d.
       </h1>
     {/if}
-    <div class="flex gap-2">
+    <!-- Keeps the room the preview button had in the header; the button
+         itself floats in the window's corner, so it stays in reach while
+         scrolling. -->
+    <div class="size-10 shrink-0" aria-hidden="true"></div>
+    <div class="fixed top-8 right-8 z-40 flex gap-2">
       {#if site}
         <!-- An icon is enough here; the tooltip and aria-label say what it does. -->
-        <div class="tooltip tooltip-left" data-tip="Preview in browser">
-          <button id="preview-site" class="btn btn-circle btn-secondary" onclick={preview} disabled={loading || building}
-            aria-label="Preview in browser">
+        <div class="tooltip tooltip-left" data-tip={previewTip}>
+          <button id="preview-site" class="btn btn-circle btn-secondary shadow-lg" onclick={preview} disabled={loading || building}
+            aria-label={previewTip}>
             {#if building}
               <span class="loading loading-spinner loading-sm"></span>
             {:else}
@@ -650,6 +666,11 @@
       <button id="new-page" class="btn btn-sm btn-primary" onclick={() => (creatingPage = true)} disabled={loading}>
         <FilePlus class="size-4" /> New page
       </button>
+      {#if site.config.podcast}
+        <button id="new-episode" class="btn btn-sm" onclick={() => (creatingEpisode = true)} disabled={loading}>
+          <Mic class="size-4" /> New episode
+        </button>
+      {/if}
       <span class="text-sm text-base-content/60">
         {site.pages.length} pages{draftCount ? `, ${draftCount} drafts` : ""}
       </span>
@@ -888,6 +909,10 @@
 
 {#if site && creatingPage}
   <NewPageDialog {site} oncreated={pageCreated} onclose={() => (creatingPage = false)} />
+{/if}
+
+{#if site && creatingEpisode}
+  <NewPageDialog {site} episode oncreated={pageCreated} onclose={() => (creatingEpisode = false)} />
 {/if}
 
 {#if site && selected && movingPage}

@@ -554,6 +554,36 @@ rest is done.
   2026-10-27* (the last items: #043, #054, #026; #032, #033 and #086
   closed).
 
+- **#066 Podcast switch.** Done 2026-10-28 (`qed_core::podcast`): one
+  podcast per site, `[podcast]` in `site.toml` (having it is the switch):
+  name and description (the site's if empty), author, owner name and
+  email, cover, up to three of Apple's categories (`"Arts > Books"`),
+  explicit, type (episodic/serial), copyright, support links
+  (`[[podcast.funding]]`), where audio files go (#023) and the
+  `podcast:guid`, a UUID v5 of the feed address, made once when the site
+  has a web address and then kept. Cover art is checked against Apple's
+  rules (square, 1400–3000 px, JPEG or PNG) in Site → Podcast, for
+  episode covers, and in the build notes. The cover can't be deleted from
+  Media while it's set.
+- **#067 Episodes.** Done 2026-10-28: episodes are dated pages below
+  `/episodes` with an `[episode]` section: season, number, type
+  (full/trailer/bonus), own cover, explicit (the podcast's if empty), a
+  guid made once (UUID v4) and chapters (`[[episode.chapters]]`, start,
+  title, optional link; checked for format and order). *New episode* in
+  the Pages tab dates it today and gives it the next number and the
+  latest season; the first one makes `/episodes`, the archive (main menu,
+  Post list). The number may be 0; the New episode dialog proposes the
+  one after the highest, to be changed (user, 2026-10-28). Post lists
+  show "Folge 5" next to an episode's date. Episode pages show season,
+  number and type in the byline
+  and a chapter list below the shownotes, in the site's language. The
+  page writer now merges into nested sections, so comments inside
+  `[episode]` or `[podcast]` survive a save.
+- **#022 Episode editor.** Done 2026-10-28 with #067: shownotes are the
+  episode page's blocks (Markdown text and every other block); the
+  episode fields and a chapter editor (rows of start, title, link) are in
+  the page settings.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

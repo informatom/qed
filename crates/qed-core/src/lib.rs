@@ -15,6 +15,7 @@ pub mod media;
 pub mod moving;
 pub mod page;
 pub mod page_writer;
+pub mod podcast;
 pub mod preview;
 pub mod sftp;
 pub mod shared;

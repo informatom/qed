@@ -22,6 +22,7 @@ use crate::links::LinkContext;
 use crate::markdown;
 use crate::page::{self, FrontMatter, PageContent, PageDate};
 use crate::page_writer;
+use crate::podcast::Podcast;
 use crate::slug::slugify;
 use crate::target::Target;
 use crate::theme::CustomTheme;
@@ -99,6 +100,8 @@ pub struct SiteConfig {
     /// Empty means the automatic menu from the pages' Menu setting.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub main_menu: Vec<MenuItem>,
+    /// The site's podcast, if it has one; see `podcast.rs`.
+    pub podcast: Option<Podcast>,
 }
 
 /// One entry of a hand-made main menu: a page, a link, a group of entries
@@ -822,8 +825,9 @@ pub(crate) fn write_new(path: &Path, contents: &str) -> Result<(), SiteError> {
 
 /// Saves the site's settings into `site.toml`, keeping comments and the
 /// formatting of everything that didn't change. Default values are left
-/// out, as in page files.
-pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
+/// out, as in page files. Returns the settings as saved, which may have
+/// gained a `podcast:guid`.
+pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteError> {
     let path = root.join(CONFIG_FILE);
     let invalid = |message: String| SiteError::Invalid {
         path: PathBuf::from(CONFIG_FILE),
@@ -862,12 +866,17 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
     if let Some(problem) = config.main_menu.iter().find_map(|item| item.problem(true)) {
         return Err(invalid(format!("menu: {problem}")));
     }
+    if let Some(problem) = config.podcast.as_ref().and_then(Podcast::problem) {
+        return Err(invalid(format!("podcast: {problem}")));
+    }
+    let saved = with_podcast_guid(config);
+    let config = &saved;
 
     let original = read(&path)?;
     let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
-    // `[custom_theme]`, `[fonts]` and `[colors]` as their own sections, easier to read
-    // than one long line.
-    for key in ["custom_theme", "fonts", "colors"] {
+    // `[custom_theme]`, `[fonts]`, `[colors]` and `[podcast]` as their own sections, easier
+    // to read than one long line.
+    for key in ["custom_theme", "fonts", "colors", "podcast"] {
         if let Some(inline) = document
             .get_mut(key)
             .and_then(|item| item.as_inline_table_mut())
@@ -880,6 +889,15 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
     // `[[main_menu.items]]` below it.
     if let Some(item) = document.get_mut("main_menu") {
         tables_from_inline(item);
+    }
+    if let Some(podcast) = document
+        .get_mut("podcast")
+        .and_then(|item| item.as_table_mut())
+    {
+        podcast_without_defaults(podcast);
+        if let Some(item) = podcast.get_mut("funding") {
+            tables_from_inline(item);
+        }
     }
     // And each saved set as a `[[saved_themes]]` section.
     if let Some(array) = document
@@ -936,7 +954,57 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<(), SiteError> {
             document.remove(key);
         }
     }
-    write_atomically(&path, &page_writer::merge(&original, document))
+    write_atomically(&path, &page_writer::merge(&original, document))?;
+    Ok(saved)
+}
+
+/// The settings with a `podcast:guid`, made from the feed address once
+/// the podcast and the site's web address are both there. A guid the
+/// podcast has stays as it is, even if the address changes later: it's
+/// what keeps the podcast the same podcast for apps when it moves.
+fn with_podcast_guid(config: &SiteConfig) -> SiteConfig {
+    let mut config = config.clone();
+    let base_url = config
+        .base_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|url| !url.is_empty())
+        .map(str::to_string);
+    if let (Some(podcast), Some(base_url)) = (config.podcast.as_mut(), base_url)
+        && podcast
+            .guid
+            .as_deref()
+            .is_none_or(|guid| guid.trim().is_empty())
+    {
+        let feed = format!(
+            "{}/{}",
+            base_url.trim_end_matches('/'),
+            crate::podcast::FEED_FILE
+        );
+        podcast.guid = Some(crate::podcast::podcast_guid(&feed));
+    }
+    config
+}
+
+/// Leaves the podcast settings at their defaults out of `[podcast]`, as
+/// for the site's own settings.
+fn podcast_without_defaults(podcast: &mut toml_edit::Table) {
+    let defaults: [page_writer::DefaultCheck; 5] = [
+        ("explicit", |item| item.as_bool() == Some(false)),
+        ("type", |item| item.as_str() == Some("episodic")),
+        ("audio_files", |item| item.as_str() == Some("local")),
+        ("categories", |item| {
+            item.as_array().is_some_and(|array| array.is_empty())
+        }),
+        ("funding", |item| {
+            item.as_array().is_some_and(|array| array.is_empty())
+        }),
+    ];
+    for (key, is_default) in defaults {
+        if podcast.get(key).is_some_and(is_default) {
+            podcast.remove(key);
+        }
+    }
 }
 
 /// Saves new settings for a page and returns the page as saved.
@@ -950,6 +1018,19 @@ pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result
             path: file.to_path_buf(),
             message: "a page needs a title".to_string(),
         });
+    }
+    let mut front = front;
+    if let Some(episode) = front.episode.as_mut() {
+        if let Some(problem) = episode.problem() {
+            return Err(SiteError::Invalid {
+                path: file.to_path_buf(),
+                message: problem,
+            });
+        }
+        // An episode written by hand may come without one.
+        if episode.guid.trim().is_empty() {
+            episode.guid = crate::podcast::new_guid();
+        }
     }
     update_page(root, file, |content| content.front = front)
 }

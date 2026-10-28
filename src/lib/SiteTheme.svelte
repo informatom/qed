@@ -177,8 +177,7 @@
   async function save(config: SiteConfig) {
     error = null;
     try {
-      await commands.saveSiteConfig(site.root, config);
-      onsaved(config);
+      onsaved(await commands.saveSiteConfig(site.root, config));
     } catch (e) {
       error = String(e);
     }

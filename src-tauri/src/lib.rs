@@ -13,6 +13,7 @@ use qed_core::history::{self, DeletedPage, DiffLine, HistoryStatus, SincePublish
 use qed_core::media::{self, Library, MediaFile};
 use qed_core::moving;
 use qed_core::page::{FrontMatter, PageContent, PageDate};
+use qed_core::podcast;
 use qed_core::preview::Preview;
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
 use qed_core::shared;
@@ -246,6 +247,32 @@ async fn create_page(
     Ok(page)
 }
 
+/// Makes a new episode below `/episodes`, dated today, with `number` or
+/// else the next one; the first one also makes the `/episodes` page.
+#[tauri::command]
+#[specta::specta]
+async fn create_episode(root: PathBuf, title: String, number: Option<u32>) -> Result<Page, String> {
+    let page = podcast::create_episode(&root, &title, number).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(page)
+}
+
+/// Apple's podcast categories as they're written in `site.toml`:
+/// `"Arts"`, `"Arts > Books"`, …
+#[tauri::command]
+#[specta::specta]
+fn podcast_categories() -> Vec<String> {
+    podcast::category_names()
+}
+
+/// What's wrong with an image in `media/` as podcast cover art; empty if
+/// it follows Apple's rules.
+#[tauri::command]
+#[specta::specta]
+async fn check_cover(root: PathBuf, name: String) -> Vec<String> {
+    podcast::check_cover(&root.join(site::MEDIA_DIR), &name)
+}
+
 /// The pages that link to the page at `path`, for the delete confirmation.
 #[tauri::command]
 #[specta::specta]
@@ -387,13 +414,14 @@ fn sftp_part(target: Target) -> SftpTarget {
     sftp
 }
 
-/// Saves the site's settings into site.toml.
+/// Saves the site's settings into site.toml and returns them as saved
+/// (a new podcast gets its `podcast:guid` here).
 #[tauri::command]
 #[specta::specta]
-async fn save_site_config(root: PathBuf, config: SiteConfig) -> Result<(), String> {
-    site::save_config(&root, &config).map_err(|error| error.to_string())?;
+async fn save_site_config(root: PathBuf, config: SiteConfig) -> Result<SiteConfig, String> {
+    let saved = site::save_config(&root, &config).map_err(|error| error.to_string())?;
     record(&root);
-    Ok(())
+    Ok(saved)
 }
 
 /// The page icons: names and SVG markup, from qed's built-in set.
@@ -674,6 +702,9 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             test_target,
             publish_site,
             create_page,
+            create_episode,
+            podcast_categories,
+            check_cover,
             pages_linking_to,
             delete_page,
             move_page,

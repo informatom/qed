@@ -1,8 +1,9 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { onMount } from "svelte";
+  import CoverCheck from "$lib/CoverCheck.svelte";
   import ImageField from "$lib/ImageField.svelte";
-  import { commands, pageIcons, type FrontMatter, type Menu, type Page } from "$lib/site";
+  import { commands, pageIcons, type Episode, type EpisodeType, type FrontMatter, type Menu, type Page } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -52,6 +53,45 @@
     return text && text.trim() !== "" ? text.trim() : null;
   }
 
+  /** A whole number from `min` up, or null: number fields give "" when empty. */
+  function counted(value: unknown, min: number): number | null {
+    const n = Number(value);
+    return value !== null && value !== "" && Number.isInteger(n) && n >= min ? n : null;
+  }
+
+  function cleanEpisode(episode: Episode | null): Episode | null {
+    if (!episode) return null;
+    return {
+      ...episode,
+      season: counted(episode.season, 1),
+      // Episode 0 is common: many podcasts start counting there.
+      number: counted(episode.number, 0),
+      image: orNull(episode.image),
+      chapters: episode.chapters
+        .map((c) => ({ start: c.start.trim(), title: c.title.trim(), link: orNull(c.link) }))
+        .filter((c) => c.start !== "" || c.title !== ""),
+    };
+  }
+
+  const EPISODE_TYPES: { value: EpisodeType; label: string }[] = [
+    { value: "full", label: "Episode" },
+    { value: "trailer", label: "Trailer" },
+    { value: "bonus", label: "Bonus" },
+  ];
+
+  // Explicit content: the podcast's setting, or the episode's own.
+  let explicit = $state(initial.episode?.explicit == null ? "podcast" : initial.episode.explicit ? "yes" : "no");
+  $effect(() => {
+    if (form.episode) form.episode.explicit = explicit === "podcast" ? null : explicit === "yes";
+  });
+
+  function addChapter() {
+    if (!form.episode) return;
+    // Starts where the last one left off, to be corrected by hand.
+    const last = form.episode.chapters.at(-1)?.start ?? "";
+    form.episode.chapters = [...form.episode.chapters, { start: last === "" ? "00:00:00" : last, title: "", link: null }];
+  }
+
   // What would be saved, recomputed whenever a field changes.
   let edited: FrontMatter = $derived({
     ...form,
@@ -64,6 +104,7 @@
     weight: Number(form.weight) || 0,
     authors: list(authors),
     tags: list(tags),
+    episode: cleanEpisode(form.episode),
   });
 
   let changed = $derived(JSON.stringify(edited) !== JSON.stringify(page.front));
@@ -168,6 +209,59 @@
         <textarea id="setting-summary" class="textarea w-full" rows="3" bind:value={form.summary}></textarea>
       </label>
     </fieldset>
+
+    {#if form.episode}
+      {@const episode = form.episode}
+      <fieldset id="episode-settings" class="grid gap-3 rounded-box border border-base-300 p-4 @xl:col-span-2 @xl:grid-cols-4">
+        <legend class="px-1 text-sm font-medium">Episode</legend>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Season</span>
+          <input id="episode-season" class="input w-full" type="number" min="1" bind:value={episode.season} placeholder="None" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Number</span>
+          <input id="episode-number" class="input w-full" type="number" min="0" bind:value={episode.number} placeholder="None" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Type</span>
+          <select id="episode-type" class="select w-full" bind:value={episode.type}>
+            {#each EPISODE_TYPES as type (type.value)}<option value={type.value}>{type.label}</option>{/each}
+          </select>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Explicit</span>
+          <select id="episode-explicit" class="select w-full" bind:value={explicit}>
+            <option value="podcast">As the podcast</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </label>
+
+        <div id="episode-image" class="flex flex-col gap-2 @xl:col-span-4">
+          <span class="text-sm font-medium">Episode cover <span class="font-normal text-base-content/50">· the podcast's cover if empty</span></span>
+          <ImageField {siteRoot} bind:value={episode.image} />
+          <CoverCheck {siteRoot} name={episode.image} />
+        </div>
+
+        <div id="episode-chapters" class="flex flex-col gap-2 @xl:col-span-4">
+          <span class="text-sm font-medium">Chapters <span class="font-normal text-base-content/50">· start as 01:02:03 or 02:03, in order</span></span>
+          {#each episode.chapters as chapter, index (index)}
+            <div class="grid grid-cols-[7rem_1fr_1fr_auto] gap-2">
+              <input class="input w-full font-mono" bind:value={chapter.start} placeholder="00:00:00" aria-label="Start" />
+              <input class="input w-full" bind:value={chapter.title} placeholder="Title" aria-label="Title" />
+              <input class="input w-full" bind:value={chapter.link} placeholder="Link (optional)" aria-label="Link" />
+              <button type="button" class="btn btn-ghost" aria-label="Remove chapter"
+                onclick={() => (episode.chapters = episode.chapters.filter((_, i) => i !== index))}>Remove</button>
+            </div>
+          {/each}
+          <div><button type="button" id="episode-add-chapter" class="btn btn-sm" onclick={addChapter}>Add a chapter</button></div>
+        </div>
+
+        <p class="text-xs text-base-content/50 @xl:col-span-4">
+          Guid <span id="episode-guid" class="font-mono">{episode.guid}</span> · podcast apps tell episodes apart by it; it never changes.
+        </p>
+      </fieldset>
+    {/if}
 
     {#if error}
       <div id="settings-error" role="alert" class="alert alert-error alert-soft text-sm @xl:col-span-2">{error}</div>

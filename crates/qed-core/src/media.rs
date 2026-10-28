@@ -73,6 +73,8 @@ pub struct MediaFile {
     pub used_by: Vec<String>,
     /// The site's logo (Site settings).
     pub site_logo: bool,
+    /// The podcast's cover art (Site settings).
+    pub podcast_cover: bool,
 }
 
 /// Lists every file in one of the folders, sorted by name.
@@ -112,9 +114,11 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
                 .map(|(page, _)| page.to_string())
                 .collect();
             let site_logo = library == Library::Media && is_site_logo(site, &name);
+            let podcast_cover = library == Library::Media && is_podcast_cover(site, &name);
             Ok(MediaFile {
                 name,
                 site_logo,
+                podcast_cover,
                 size,
                 kind,
                 width,
@@ -364,6 +368,13 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
             message: "it's the site's logo; choose another one in Site settings first".to_string(),
         });
     }
+    if library == Library::Media && is_podcast_cover(site, name) {
+        return Err(SiteError::Invalid {
+            path: PathBuf::from(library.dir()).join(name),
+            message: "it's the podcast's cover; choose another one in Site settings first"
+                .to_string(),
+        });
+    }
     if !used_by.is_empty() {
         return Err(SiteError::Invalid {
             path: PathBuf::from(library.dir()).join(name),
@@ -391,6 +402,16 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
     Ok(())
 }
 
+/// Whether `name` in `media/` is the podcast's cover art.
+fn is_podcast_cover(site: &Site, name: &str) -> bool {
+    site.config
+        .podcast
+        .as_ref()
+        .and_then(|podcast| podcast.cover.as_deref())
+        .and_then(media_name)
+        .is_some_and(|cover| cover == name)
+}
+
 /// Whether `name` in `media/` is the logo set in Site settings.
 fn is_site_logo(site: &Site, name: &str) -> bool {
     site.config
@@ -411,6 +432,14 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
     let mut markdown_texts: Vec<&str> = Vec::new();
     let mut buttons: Vec<&str> = Vec::new();
     images.extend(page.content.front.image.as_deref().and_then(media_name));
+    images.extend(
+        page.content
+            .front
+            .episode
+            .as_ref()
+            .and_then(|episode| episode.image.as_deref())
+            .and_then(media_name),
+    );
 
     for block in block::all_blocks(&page.content.blocks) {
         match block {

@@ -33,6 +33,7 @@ use crate::markdown;
 use crate::markdown::TextMedia;
 use crate::media::CLUTTER;
 use crate::page::Menu;
+use crate::podcast;
 use crate::site::{
     ASSETS_DIR, Colors, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
     Surface, ThemeColor,
@@ -262,6 +263,8 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
     }
 
+    notes.extend(cover_notes(site, &published, &media_dir));
+
     let media_files = copy_dir(&media_dir, &out_dir.join(MEDIA_DIR))?
         + copy_dir(&site.root.join(ASSETS_DIR), &out_dir.join(ASSETS_DIR))?;
     let resized_images =
@@ -292,6 +295,44 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         static_files,
         notes,
     })
+}
+
+/// What's wrong with the podcast's cover and the episodes' own covers by
+/// Apple's rules. Apps show them anyway, but Apple may refuse the podcast.
+fn cover_notes(site: &Site, published: &[&Page], media_dir: &Path) -> Vec<String> {
+    let Some(podcast) = &site.config.podcast else {
+        return Vec::new();
+    };
+    let mut notes = Vec::new();
+    match podcast.cover.as_deref().and_then(media_name) {
+        Some(cover) => notes.extend(
+            podcast::check_cover(media_dir, cover)
+                .into_iter()
+                .map(|problem| format!("The podcast cover {cover}: {problem}.")),
+        ),
+        None => notes.push(
+            "The podcast has no cover yet; podcast apps need one. Choose it under Site → Podcast."
+                .to_string(),
+        ),
+    }
+    for page in published {
+        let Some(image) = page
+            .content
+            .front
+            .episode
+            .as_ref()
+            .and_then(|episode| episode.image.as_deref())
+            .and_then(media_name)
+        else {
+            continue;
+        };
+        notes.extend(
+            podcast::check_cover(media_dir, image)
+                .into_iter()
+                .map(|problem| format!("/{}: the episode cover {image}: {problem}.", page.path)),
+        );
+    }
+    notes
 }
 
 /// The URL path of a page that is the site's 404 page (`pages/404.md`).
@@ -800,8 +841,13 @@ struct PageTemplate<'a> {
     /// The site title next to the logo; without it, the logo's alt text
     /// carries the title.
     show_site_title: bool,
-    /// Date and authors, e.g. "2026-10-21 · Claude".
+    /// Date and authors, e.g. "2026-10-21 · Claude"; for an episode,
+    /// season and number first.
     byline: String,
+    /// An episode's chapters, below its shownotes.
+    chapters: Vec<ChapterEntry>,
+    /// "Chapters", in the site's language.
+    chapters_heading: &'static str,
     /// Each block's HTML, from `block.html`.
     blocks: Vec<String>,
     /// The site footer's blocks, rendered for this page.
@@ -1094,6 +1140,13 @@ struct FeedLink {
     label: String,
 }
 
+/// One chapter on an episode page.
+struct ChapterEntry {
+    start: String,
+    title: String,
+    href: Option<String>,
+}
+
 struct PostEntry {
     title: String,
     href: String,
@@ -1101,6 +1154,8 @@ struct PostEntry {
     date: String,
     /// `24. Februar 2017`, in the site's language.
     date_text: String,
+    /// For an episode: "Folge 5", see [`podcast::label`].
+    episode: Option<String>,
     summary_html: Option<String>,
     /// For cards and tiles; see [`list_picture`].
     picture: Option<Picture>,
@@ -1290,7 +1345,15 @@ fn render_page(
             .collect()
     };
 
+    let words = podcast::Words::for_language(&config.language);
     let mut byline: Vec<String> = Vec::new();
+    byline.extend(
+        front
+            .episode
+            .as_ref()
+            .map(|episode| podcast::label(episode, &words))
+            .filter(|label| !label.is_empty()),
+    );
     if let Some(date) = &front.date {
         byline.push(date.date().map_or_else(
             || date.to_string(),
@@ -1380,6 +1443,22 @@ fn render_page(
         // Without a logo, the title is all the header has.
         show_site_title: config.title_in_header || config.logo.is_none(),
         byline: byline.join(" · "),
+        chapters: front
+            .episode
+            .iter()
+            .flat_map(|episode| &episode.chapters)
+            .map(|chapter| ChapterEntry {
+                start: podcast::readable_start(&chapter.start),
+                title: chapter.title.clone(),
+                href: chapter
+                    .link
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|link| !link.is_empty())
+                    .map(|link| links.resolve(link)),
+            })
+            .collect(),
+        chapters_heading: words.chapters,
         blocks: page
             .content
             .blocks
@@ -1619,6 +1698,7 @@ fn render_block(
         Block::PostList(list) => {
             let from = list_source(&list.from, links);
             let mut posts = posts(context.pages, from, context.today);
+            let words = podcast::Words::for_language(context.language);
             if let Some(limit) = list.limit.and_then(|limit| usize::try_from(limit).ok()) {
                 posts.truncate(limit);
             }
@@ -1642,6 +1722,13 @@ fn render_block(
                                 .and_then(|date| date.date())
                                 .map(|day| calendar::long_date(day, context.language))
                                 .unwrap_or_default(),
+                            episode: post
+                                .content
+                                .front
+                                .episode
+                                .as_ref()
+                                .map(|episode| podcast::label(episode, &words))
+                                .filter(|label| !label.is_empty()),
                             summary_html: markdown(&post.content.front.summary),
                             picture: list_picture(post, links, context.images),
                         }
@@ -1699,7 +1786,7 @@ fn layout_name(layout: Option<ListLayout>) -> &'static str {
 /// A listed page's picture: its share image (`image` in its settings), or
 /// else the first image on it, as link previews choose.
 fn list_picture(page: &Page, links: &LinkContext, images: &Images) -> Option<Picture> {
-    let (name, alt) = match page.content.front.image.as_deref() {
+    let (name, alt) = match own_image(page) {
         Some(name) => (name, None),
         None => first_image(&page.content.blocks)?,
     };
@@ -1828,7 +1915,7 @@ const SHARE_IMAGE_WIDTH: u32 = 1200;
 /// [`SHARE_IMAGE_WIDTH`] wide, or else the original: a smaller copy would
 /// look blurry on a large preview card.
 fn share_image(page: &Page, base_url: &str, images: &Images) -> Option<ShareImage> {
-    let (name, alt) = match page.content.front.image.as_deref() {
+    let (name, alt) = match own_image(page) {
         Some(name) => (name, None),
         None => first_image(&page.content.blocks)?,
     };
@@ -1872,6 +1959,18 @@ fn share_image(page: &Page, base_url: &str, images: &Images) -> Option<ShareImag
         width,
         height,
         alt,
+    })
+}
+
+/// The image a page names for itself: its share image, or an episode's
+/// cover.
+fn own_image(page: &Page) -> Option<&str> {
+    let front = &page.content.front;
+    front.image.as_deref().or_else(|| {
+        front
+            .episode
+            .as_ref()
+            .and_then(|episode| episode.image.as_deref())
     })
 }
 
@@ -2685,7 +2784,7 @@ mod tests {
 
         let list = read(out.path().join("blog/index.html"));
         assert!(
-            list.contains(r#"<time datetime="2026-01-05" class="badge badge-secondary badge-sm self-start">5. Jänner 2026</time>"#),
+            list.contains(r#"<span class="badge badge-secondary badge-sm self-start"><time datetime="2026-01-05">5. Jänner 2026</time></span>"#),
             "{list}"
         );
         let post = read(out.path().join("blog/2026-01-05-old/index.html"));

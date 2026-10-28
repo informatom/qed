@@ -58,6 +58,8 @@ pub struct FrontMatter {
     pub tags: Vec<String>,
     /// A short teaser for post lists and feeds. Markdown.
     pub summary: Option<String>,
+    /// Makes the page a podcast episode; see `podcast.rs`.
+    pub episode: Option<crate::podcast::Episode>,
 }
 
 /// A TOML date such as `2026-10-21`, written without quotes in the file.
@@ -93,6 +95,14 @@ impl Serialize for PageDate {
 }
 
 impl PageDate {
+    /// A calendar date as a page date: `2026-10-28`.
+    pub fn on(date: crate::calendar::Date) -> Option<PageDate> {
+        format!("{:04}-{:02}-{:02}", date.year, date.month, date.day)
+            .parse()
+            .ok()
+            .map(PageDate)
+    }
+
     /// The calendar date, without a time of day; `None` for a bare time.
     pub fn date(&self) -> Option<crate::calendar::Date> {
         self.0.date.map(|date| crate::calendar::Date {

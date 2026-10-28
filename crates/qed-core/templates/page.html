@@ -144,6 +144,17 @@
       {%- for html in blocks %}
       {{ html|safe }}
       {%- endfor %}
+      {%- if !chapters.is_empty() %}
+      <section id="chapters" class="prose max-w-none">
+        <h2>{{ chapters_heading }}</h2>
+        <ol class="chapters list-none ps-0">
+          {%- for chapter in chapters %}
+          <li class="flex items-baseline gap-4 ps-0"><span class="font-mono text-sm text-base-content/60 tabular-nums">{{ chapter.start }}</span>
+            {%- if let Some(href) = chapter.href %}<a href="{{ href }}">{{ chapter.title }}</a>{% else %}<span>{{ chapter.title }}</span>{% endif %}</li>
+          {%- endfor %}
+        </ol>
+      </section>
+      {%- endif %}
     </div>
   </main>
   {%- if sidebar %}

@@ -92,8 +92,7 @@
     error = null;
     const config = { ...$state.snapshot(site.config), main_menu: clean(entries) };
     try {
-      await commands.saveSiteConfig(site.root, config);
-      onsaved(config);
+      onsaved(await commands.saveSiteConfig(site.root, config));
     } catch (e) {
       error = String(e);
     } finally {
@@ -107,8 +106,7 @@
     error = null;
     const config = { ...$state.snapshot(site.config), navigation: sidebar ? ("sidebar" as const) : ("top" as const) };
     try {
-      await commands.saveSiteConfig(site.root, config);
-      onsaved(config);
+      onsaved(await commands.saveSiteConfig(site.root, config));
     } catch (e) {
       error = String(e);
     } finally {

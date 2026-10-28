@@ -1,8 +1,9 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import ImageField from "$lib/ImageField.svelte";
+  import PodcastSettings from "$lib/PodcastSettings.svelte";
   import { trackUnsaved } from "$lib/unsaved.svelte";
-  import { commands, type Site, type SiteConfig } from "$lib/site";
+  import { commands, type Podcast, type Site, type SiteConfig } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -18,6 +19,24 @@
 
   function orNull(text: string | null): string | null {
     return text && text.trim() !== "" ? text.trim() : null;
+  }
+
+  // Empty fields as Rust keeps them: null, and no half-filled support links.
+  function cleanPodcast(podcast: Podcast | null): Podcast | null {
+    if (!podcast) return null;
+    return {
+      ...podcast,
+      title: orNull(podcast.title),
+      description: orNull(podcast.description),
+      author: orNull(podcast.author),
+      owner_name: orNull(podcast.owner_name),
+      owner_email: orNull(podcast.owner_email),
+      cover: orNull(podcast.cover),
+      copyright: orNull(podcast.copyright),
+      funding: podcast.funding
+        .map((f) => ({ url: f.url.trim(), title: f.title.trim() }))
+        .filter((f) => f.url !== "" || f.title !== ""),
+    };
   }
 
   // What would be saved, and whether it differs from the file. Theme and
@@ -38,6 +57,7 @@
     description: orNull(form.description),
     logo: orNull(form.logo),
     base_url: orNull(form.base_url),
+    podcast: cleanPodcast(form.podcast),
   });
   let changed = $derived(JSON.stringify(edited) !== JSON.stringify(site.config));
   trackUnsaved(() => "Site settings", () => changed);
@@ -47,8 +67,10 @@
     saving = true;
     error = null;
     try {
-      await commands.saveSiteConfig(site.root, edited);
-      onsaved(edited);
+      const saved = await commands.saveSiteConfig(site.root, edited);
+      onsaved(saved);
+      // The podcast guid is made while saving.
+      form.podcast = $state.snapshot(saved.podcast);
       savedAt = new Date();
     } catch (e) {
       error = String(e);
@@ -136,6 +158,12 @@
       </div>
       <span class="text-base-content/60">Normal suits text; Wide gives columns room; Full uses the whole window.</span>
     </div>
+  </section>
+
+  <section id="site-podcast-settings" class="flex flex-col gap-3 border-t border-base-300 pt-6">
+    {@render heading("Podcast")}
+    <PodcastSettings siteRoot={site.root} bind:podcast={form.podcast} siteTitle={form.title}
+      siteDescription={orNull(form.description)} hasBaseUrl={!!orNull(form.base_url)} />
   </section>
 
   {#if error}

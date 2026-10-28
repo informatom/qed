@@ -24,7 +24,7 @@ export const commands = rustCommands as {
   ) => Promise<Sent<Awaited<ReturnType<RustCommands[K]>>>>;
 };
 
-export type { Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage, Surface, ThemeColor } from "./bindings";
+export type { AudioFiles, EpisodeType, PodcastType, Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage, Surface, ThemeColor } from "./bindings";
 export type Colors = Sent<Rust.Colors>;
 export type Block = Sent<Rust.Block>;
 export type CustomTheme = Sent<Rust.CustomTheme>;
@@ -49,6 +49,10 @@ export type PublishReport = Sent<Rust.PublishReport>;
 export type SecretStatus = Sent<Rust.SecretStatus>;
 export type Site = Sent<Rust.Site>;
 export type SiteConfig = Sent<Rust.SiteConfig>;
+export type Podcast = Sent<Rust.Podcast>;
+export type Episode = Sent<Rust.Episode>;
+export type Chapter = Sent<Rust.Chapter>;
+export type Funding = Sent<Rust.Funding>;
 export type Target = Sent<Rust.Target>;
 export type TestOutcome = Sent<Rust.TestOutcome>;
 

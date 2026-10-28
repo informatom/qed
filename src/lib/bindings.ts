@@ -64,8 +64,11 @@ export const commands = {
 	renameShared: (root: string, name: string, title: string) => __TAURI_INVOKE<Page>("rename_shared", { root, name, title }),
 	/**  Deletes a shared piece no page uses any more. */
 	deleteShared: (root: string, name: string) => __TAURI_INVOKE<null>("delete_shared", { root, name }),
-	/**  Saves the site's settings into site.toml. */
-	saveSiteConfig: (root: string, config: SiteConfig_Deserialize) => __TAURI_INVOKE<null>("save_site_config", { root, config }),
+	/**
+	 *  Saves the site's settings into site.toml and returns them as saved
+	 *  (a new podcast gets its `podcast:guid` here).
+	 */
+	saveSiteConfig: (root: string, config: SiteConfig_Deserialize) => __TAURI_INVOKE<SiteConfig_Serialize>("save_site_config", { root, config }),
 	/**  The daisyUI theme names the app and generated sites can use. */
 	listThemes: () => __TAURI_INVOKE<string[]>("list_themes"),
 	/**  The CSS variables a custom theme sets, for previews in the app. */
@@ -101,6 +104,21 @@ export const commands = {
 	publishSite: (root: string, targetName: string, note: string | null, onProgress: Channel<Progress>) => __TAURI_INVOKE<PublishReport>("publish_site", { root, targetName, note, onProgress }),
 	/**  Creates an empty page below `parent` (a URL path, `""` for the top level). */
 	createPage: (root: string, parent: string, title: string, date: string | null) => __TAURI_INVOKE<Page>("create_page", { root, parent, title, date }),
+	/**
+	 *  Makes a new episode below `/episodes`, dated today, with `number` or
+	 *  else the next one; the first one also makes the `/episodes` page.
+	 */
+	createEpisode: (root: string, title: string, number: number | null) => __TAURI_INVOKE<Page>("create_episode", { root, title, number }),
+	/**
+	 *  Apple's podcast categories as they're written in `site.toml`:
+	 *  `"Arts"`, `"Arts > Books"`, …
+	 */
+	podcastCategories: () => __TAURI_INVOKE<string[]>("podcast_categories"),
+	/**
+	 *  What's wrong with an image in `media/` as podcast cover art; empty if
+	 *  it follows Apple's rules.
+	 */
+	checkCover: (root: string, name: string) => __TAURI_INVOKE<string[]>("check_cover", { root, name }),
 	/**  The pages that link to the page at `path`, for the delete confirmation. */
 	pagesLinkingTo: (root: string, path: string) => __TAURI_INVOKE<string[]>("pages_linking_to", { root, path }),
 	/**  Deletes a page's file. */
@@ -176,6 +194,24 @@ export const commands = {
 
 /* Types */
 /**
+ *  Where a podcast's audio files are kept. Audio files are large (50–150 MB
+ *  an episode), and a site's history keeps every file it ever had.
+ */
+export type AudioFiles = 
+/**
+ *  In the site's `audio/` folder, left out of its history: versions
+ *  stay small, but backups of the history don't hold the audio.
+ */
+"local" | 
+/**  In `audio/`, and in the history like every other file. */
+"in_history" | 
+/**
+ *  Somewhere else (a podcast host, a storage service); episodes give
+ *  a web address for their audio.
+ */
+"external";
+
+/**
  *  One block of a page, in the order it appears in the file.
  * 
  *  Serialized for the UI with a `type` field, e.g.
@@ -237,6 +273,18 @@ export type CallToAction = {
 	text: string | null,
 	button_label: string | null,
 	button_link: string | null,
+};
+
+/**  A chapter mark: where it starts in the audio and what it's called. */
+export type Chapter = {
+	/**
+	 *  `"01:02:03"`, `"02:03"`, with milliseconds if needed
+	 *  (`"00:00:01.500"`), as Podlove Simple Chapters write it.
+	 */
+	start: string,
+	title: string,
+	/**  A web page about the chapter's topic. */
+	link: string | null,
 };
 
 /**
@@ -351,6 +399,30 @@ export type Download = {
 	label: string | null,
 };
 
+/**  The settings of one episode, `[episode]` in its page's front matter. */
+export type Episode = {
+	season: number | null,
+	number: number | null,
+	/**  A full episode, a trailer or a bonus. */
+	type?: EpisodeType,
+	/**
+	 *  The episode's own cover in `media/`; the podcast's if empty. The
+	 *  same rules apply as for the podcast's cover.
+	 */
+	image: string | null,
+	/**  Explicit content; the podcast's setting if empty. */
+	explicit: boolean | null,
+	/**
+	 *  The episode's lasting identity in the feed. Podcast apps use it to
+	 *  tell episodes apart, so it never changes, not even when the page
+	 *  moves. Made when the episode is made.
+	 */
+	guid?: string,
+	chapters?: Chapter[],
+};
+
+export type EpisodeType = "full" | "trailer" | "bonus";
+
 /**  Questions and answers that open on click. */
 export type Faq = {
 	heading: string | null,
@@ -426,6 +498,15 @@ export type FrontMatter = {
 	tags?: string[],
 	/**  A short teaser for post lists and feeds. Markdown. */
 	summary: string | null,
+	/**  Makes the page a podcast episode; see `podcast.rs`. */
+	episode: Episode | null,
+};
+
+/**  A link to support the podcast, such as a Patreon or Liberapay page. */
+export type Funding = {
+	url: string,
+	/**  The link text, e.g. "Support us on Liberapay". */
+	title: string,
 };
 
 /**  Several images in a grid; each links to its full size. */
@@ -517,6 +598,8 @@ export type MediaFile = {
 	used_by: string[],
 	/**  The site's logo (Site settings). */
 	site_logo: boolean,
+	/**  The podcast's cover art (Site settings). */
+	podcast_cover: boolean,
 };
 
 /**  What kind of file a media file is, judged by its extension. */
@@ -618,6 +701,57 @@ export type PageList = {
  *  (72rem, for columns) or the full window.
  */
 export type PageWidth = "normal" | "wide" | "full";
+
+/**
+ *  The settings of the site's podcast. Having them turns on episodes and
+ *  the feed.
+ */
+export type Podcast = {
+	/**  The name in podcast apps; the site's title if empty. */
+	title: string | null,
+	/**  What the podcast is about; the site's description if empty. */
+	description: string | null,
+	/**  Who makes it, shown below the name in podcast apps. */
+	author: string | null,
+	/**
+	 *  Who podcast directories write to, e.g. to confirm the podcast is
+	 *  yours. Not shown to listeners by most apps.
+	 */
+	owner_name: string | null,
+	owner_email: string | null,
+	/**  The cover art: a square image in `media/`, see [`check_cover`]. */
+	cover: string | null,
+	/**
+	 *  Apple's categories ([`CATEGORIES`]): `"Technology"`, or a
+	 *  subcategory as `"Society & Culture > Documentary"`. The first one
+	 *  counts most.
+	 */
+	categories?: string[],
+	/**
+	 *  Whether the podcast has explicit content; episodes can say so
+	 *  themselves.
+	 */
+	explicit?: boolean,
+	/**
+	 *  Episodic (newest first, the usual) or serial (in order, like a
+	 *  story told in parts).
+	 */
+	type?: PodcastType,
+	/**
+	 *  `podcast:guid`: the podcast's lasting identity, which stays when the
+	 *  feed moves. Made once from the feed address when the site has a web
+	 *  address, then never changed.
+	 */
+	guid: string | null,
+	/**  A copyright or license line, e.g. `"CC BY 4.0"`. */
+	copyright: string | null,
+	/**  Ways to support the podcast (`podcast:funding`). */
+	funding?: Funding[],
+	/**  Where the audio files are kept. */
+	audio_files?: AudioFiles,
+};
+
+export type PodcastType = "episodic" | "serial";
 
 /**
  *  The posts below a page, newest first, each with its date and summary.
@@ -778,6 +912,8 @@ export type SiteConfig_Deserialize = {
 	 *  Empty means the automatic menu from the pages' Menu setting.
 	 */
 	main_menu?: MenuItem_Deserialize[],
+	/**  The site's podcast, if it has one; see `podcast.rs`. */
+	podcast: Podcast | null,
 };
 
 /**  Settings from `site.toml`. */
@@ -833,6 +969,8 @@ export type SiteConfig_Serialize = {
 	 *  Empty means the automatic menu from the pages' Menu setting.
 	 */
 	main_menu?: MenuItem_Serialize[],
+	/**  The site's podcast, if it has one; see `podcast.rs`. */
+	podcast: Podcast | null,
 };
 
 /**  A site folder, read into memory. */

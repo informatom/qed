@@ -199,12 +199,31 @@ fn front_document(front: &FrontMatter, original: Option<&str>) -> DocumentMut {
         document["date"] = toml_edit::value(date);
     }
 
+    // `[episode]` as a section of its own, without its defaults; its
+    // chapters become `[[episode.chapters]]` below.
+    if let Some(inline) = document
+        .get_mut("episode")
+        .and_then(|item| item.as_inline_table_mut())
+    {
+        let mut table = std::mem::take(inline).into_table();
+        let defaults: [DefaultCheck; 2] = [
+            ("type", |item| item.as_str() == Some("full")),
+            ("chapters", is_empty_array),
+        ];
+        for (key, is_default) in defaults {
+            if table.get(key).is_some_and(is_default) {
+                table.remove(key);
+            }
+        }
+        document["episode"] = Item::Table(table);
+    }
+
     use_multiline_strings(&mut document);
     document
 }
 
 /// A setting's name and a test for whether it holds its default value.
-type DefaultCheck = (&'static str, fn(&Item) -> bool);
+pub(crate) type DefaultCheck = (&'static str, fn(&Item) -> bool);
 
 /// Whether the TOML text `original` sets `key` to the string `value`, to
 /// tell a default someone wrote from one they didn't.
@@ -281,18 +300,30 @@ pub(crate) fn merge(original: &str, new: DocumentMut) -> String {
     let Ok(mut document) = original.parse::<DocumentMut>() else {
         return new.to_string();
     };
+    merge_table(document.as_table_mut(), new.as_table());
+    document.to_string()
+}
 
-    let removed: Vec<String> = document
+/// Puts the values of `new` into `table`, keeping how unchanged values are
+/// written. Sections inside (`[podcast]`, `[episode]`) are merged the same
+/// way, so a comment in them stays too.
+fn merge_table(table: &mut toml_edit::Table, new: &toml_edit::Table) {
+    let removed: Vec<String> = table
         .iter()
         .map(|(key, _)| key.to_string())
         .filter(|key| !new.contains_key(key))
         .collect();
     for key in removed {
-        document.remove(&key);
+        table.remove(&key);
     }
 
     for (key, item) in new.iter() {
-        match document.get_mut(key) {
+        match table.get_mut(key) {
+            Some(Item::Table(existing)) if item.is_table() => {
+                if let Some(inner) = item.as_table() {
+                    merge_table(existing, inner);
+                }
+            }
             Some(existing) if same_item(existing, item) => {}
             Some(existing) => {
                 // Keep the comment and spacing around the old value.
@@ -305,11 +336,10 @@ pub(crate) fn merge(original: &str, new: DocumentMut) -> String {
                 }
             }
             None => {
-                document.insert(key, item.clone());
+                table.insert(key, item.clone());
             }
         }
     }
-    document.to_string()
 }
 
 /// Whether two items hold the same data, however they're written: `'a'` and

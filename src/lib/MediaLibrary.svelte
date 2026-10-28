@@ -312,8 +312,8 @@
             </span>
             {#if !onpick}
               <div class="mt-1 flex items-center justify-between gap-2">
-                {#if file.site_logo}
-                  <span class="truncate text-xs text-base-content/60">Site logo{file.used_by.length ? ", used on pages" : ""}</span>
+                {#if file.site_logo || file.podcast_cover}
+                  <span class="truncate text-xs text-base-content/60">{file.site_logo ? "Site logo" : "Podcast cover"}{file.used_by.length ? ", used on pages" : ""}</span>
                 {:else if file.used_by.length}
                   <span class="truncate text-xs text-base-content/60" title={file.used_by.map(pageLabel).join(", ")}>
                     Used on {file.used_by.length === 1 ? pageLabel(file.used_by[0]) : `${file.used_by.length} pages`}
@@ -324,9 +324,9 @@
                 {:else}
                   <span class="text-xs text-warning">Not used</span>
                 {/if}
-                <button type="button" class="btn btn-ghost btn-xs btn-square text-error" disabled={file.used_by.length > 0 || file.site_logo}
-                  title={file.site_logo
-                    ? "The site's logo; choose another one in Site settings first"
+                <button type="button" class="btn btn-ghost btn-xs btn-square text-error" disabled={file.used_by.length > 0 || file.site_logo || file.podcast_cover}
+                  title={file.site_logo || file.podcast_cover
+                    ? `The ${file.site_logo ? "site's logo" : "podcast's cover"}; choose another one in Site settings first`
                     : file.used_by.length ? "Linked from a page; remove the link there first" : "Delete"}
                   aria-label="Delete {file.name}" onclick={() => remove(file)}>
                   <Trash class="size-4" />
