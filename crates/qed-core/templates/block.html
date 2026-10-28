@@ -35,7 +35,8 @@
 {%- when RenderedBlock::Text with { html } %}
 <div class="prose max-w-none">{{ html|safe }}</div>
 {%- when RenderedBlock::LatestEpisode with { title, href, label, summary_html, audio, player, more } %}
-<article class="latest-episode flex flex-col gap-3 rounded-box border border-base-300 p-6">
+{#- `@container`: the player's room decides the height kept for it. #}
+<article class="latest-episode @container flex flex-col gap-3 rounded-box border border-base-300 p-6">
   <h2 class="text-2xl font-semibold tracking-tight"><a href="{{ href }}" class="link link-hover">{{ title }}</a></h2>
   {%- if !label.is_empty() %}
   <p class="text-sm text-base-content/60">{{ label }}</p>
@@ -44,9 +45,8 @@
   <div class="prose max-w-none">{{ summary_html|safe }}</div>
   {%- endif %}
   {%- if let Some(player) = player %}
-  <div data-podlove-player data-episode="{{ player.episode }}"></div>
+  <div data-podlove-player data-episode="{{ player.episode }}" style="--player-narrow: {{ player.narrow }}px; --player-wide: {{ player.wide }}px"></div>
   <script src="{{ player.embed }}" defer></script>
-  <script src="{{ player.script }}" defer></script>
   {%- endif %}
   {%- if let Some(audio) = audio %}
   <audio controls preload="none" class="w-full" data-player-fallback>
@@ -59,18 +59,18 @@
 </article>
 {#- The parts of an episode page (see the episode layout, `episode.md`). #}
 {%- when RenderedBlock::EpisodePlayer with { audio, player } %}
-<section id="episode-audio" class="flex flex-col gap-2">
+<section id="episode-audio" class="@container flex flex-col gap-2">
   {%- if let Some(player) = player %}
-  <div data-podlove-player data-episode="{{ player.episode }}"></div>
+  <div data-podlove-player data-episode="{{ player.episode }}" style="--player-narrow: {{ player.narrow }}px; --player-wide: {{ player.wide }}px"></div>
   <script src="{{ player.embed }}" defer></script>
-  <script src="{{ player.script }}" defer></script>
   {%- endif %}
   <audio controls preload="none" class="w-full" data-player-fallback>
     {%- for source in audio.sources %}
     <source src="{{ source.src }}" type="{{ source.mime_type }}">
     {%- endfor %}
   </audio>
-  <p class="flex flex-wrap gap-x-3 text-sm text-base-content/60">
+  {#- The player shows duration and downloads itself. #}
+  <p class="flex flex-wrap gap-x-3 text-sm text-base-content/60" data-player-fallback>
     {%- if let Some(duration) = audio.duration %}<span>{{ duration }}</span>{% endif %}
     <span>{{ audio.download }}:</span>
     {%- for source in audio.sources %}

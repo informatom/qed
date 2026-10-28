@@ -95,6 +95,9 @@ pub const DEFAULT_EPISODE_LAYOUT: [Block; 5] = [
 ];
 ```
 
+(Later that day, Share links left the default and the array became
+`[Block; 4]`: the Podlove Web Player got a share tab of its own.)
+
 A `const` must be computable while the program compiles. `Block` holds
 `String`s elsewhere, which need memory at run time, so you might expect
 this to fail. It doesn't: a unit variant has no string inside, and Rust

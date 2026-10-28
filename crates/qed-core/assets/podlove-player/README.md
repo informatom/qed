@@ -6,8 +6,8 @@ The [Podlove Web Player](https://github.com/podlove/podlove-ui/tree/development/
 `*.LICENSE.txt` files say). q.e.d. copies this folder into a built site
 that has episodes with audio, at `podlove-player/`, so nothing loads
 from podlove.org. The player itself loads nothing from other servers;
-the only outside addresses in it are its share tab's links, and q.e.d.
-leaves that tab off.
+the only outside addresses in it are links a visitor may click: the
+share tab's networks and the subscribe button's app stores.
 
 ## Where this copy comes from
 
@@ -17,6 +17,15 @@ Taken on 2026-10-28 from jekyll-octopod-bulma
 vendored the player's built files. Changed on the way in: the `.gz` and
 `.map` files are left out. The `*.LICENSE.txt` files stay: they hold the
 licenses of the libraries bundled into the scripts.
+
+Added on 2026-10-28 (#128) from the npm package `@podlove/web-player`
+5.13.0 itself (`npm pack @podlove/web-player@5.13.0`; its player files
+are byte for byte the ones above): `share.html` and `share.js`, the
+embedded player, and `5.13.0/button/`, the subscribe button's list of
+podcast apps. Left out again: `.gz`, `.map` and `report.html`. Changed:
+`share.html` set `window.resourceBaseUrl` in an inline script; it loads
+`qed-share.js` instead (q.e.d.'s, from `assets/player-share.js`), which
+does that and more, see below.
 
 ## How q.e.d. uses it
 
@@ -30,13 +39,28 @@ licenses of the libraries bundled into the scripts.
   downloads per format, chapters, contributors, and the transcript's
   cues, which q.e.d. reads from the episode's WebVTT file; see
   `podcast::transcript_cues`).
-- `assets/player.js` (q.e.d.'s own, in the folder above) finds
+- `assets/player.js` (q.e.d.'s own, in the folder above, loaded in the
+  page's `<head>` so the plain player is hidden before it shows) finds
   `[data-podlove-player]` on the page, reads `config.json`, sets `base`
   to this folder's full address, and calls
   `window.podlovePlayer(element, episodeUrl, config)`. Once the player is
   there, it hides everything marked `data-player-fallback`: the plain
   `<audio>` player and the chapter list, which are what readers without
   JavaScript get.
+- `config.json` also turns on, when the site has a web address, the
+  share tab (link, email and the networks the player knows, sharing
+  from the current playtime, embed code whose iframe shows
+  `share.html`) and the subscribe button (the main feed, for the podcast
+  apps that take a feed's address). With more than one episode it names
+  `playlist.json`, every episode with audio, newest first: the playlist
+  tab.
+- `player.json` addresses start at the site root (`/episodes/…`), so
+  the file works from `share.html` too; the episode's `link` is its full
+  address, since the share tab hands it out.
+- `share.html` (embedded elsewhere as an iframe) loads `qed-share.js`
+  before Podlove's `share.js`: it accepts only this site's episode and
+  settings in the address (`?episode=…&config=…&t=…`) and adds the
+  site's `config.json` when the embed code names none.
 - `embed.js` loads the rest (`5.13.0/player/…`, `variant-*.js`) itself,
   relative to `base`, so the folder must stay together.
 
@@ -53,5 +77,9 @@ The data formats are documented at
    version and "Where this copy comes from" above.
 3. Check the episode and config formats in `generator.rs` against the
    new version's documentation.
-4. `cargo test -p qed-core`, then build a podcast site and play an
-   episode in a browser: audio, chapters, transcript, the theme's colors.
+4. Keep `share.html`'s change (above) and check the subscribe button's
+   client ids (`PLAYER_SUBSCRIBE_CLIENTS` in `generator.rs`) and share
+   channels against the new version.
+5. `cargo test -p qed-core`, then build a podcast site and play an
+   episode in a browser: audio, chapters, transcript, the theme's colors,
+   the playlist, share and subscribe, and `share.html?episode=…`.

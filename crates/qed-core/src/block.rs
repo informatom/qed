@@ -374,13 +374,13 @@ impl Block {
 }
 
 /// The episode layout without `episode.md`: the order episode pages had
-/// before there was a layout.
-pub const DEFAULT_EPISODE_LAYOUT: [Block; 5] = [
+/// before there was a layout, without the share row, since the Podlove
+/// Web Player shares (user, 2026-10-28).
+pub const DEFAULT_EPISODE_LAYOUT: [Block; 4] = [
     Block::EpisodePlayer,
     Block::EpisodePeople,
     Block::EpisodeShownotes,
     Block::EpisodeChapters,
-    Block::EpisodeShare,
 ];
 
 /// The container names, as written after `:::` in a page file.

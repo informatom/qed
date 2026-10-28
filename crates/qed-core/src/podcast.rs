@@ -1477,6 +1477,10 @@ mod tests {
             }];
         }
         site::save_front_matter(dir.path(), &page.file, front).unwrap();
+        // The share row isn't in the default layout (the player shares).
+        let mut layout = crate::block::DEFAULT_EPISODE_LAYOUT.to_vec();
+        layout.push(crate::block::Block::EpisodeShare);
+        site::save_episode_layout(dir.path(), layout).unwrap();
 
         let site = site::open(dir.path()).unwrap();
         let out = dir.path().join("_site");
@@ -1730,13 +1734,13 @@ mod tests {
         let home = std::fs::read_to_string(out.join("index.html")).unwrap();
         assert!(
             home.contains(&format!(
-                r#"<div data-podlove-player data-episode="{}/player.json"></div>"#,
+                r#"<div data-podlove-player data-episode="{}/player.json" style="--player-narrow: 534px; --player-wide: 290px"></div>"#,
                 page.path
             )),
             "{home}"
         );
         assert!(
-            home.contains(r#"<script src="player.js" defer></script>"#),
+            home.contains(r#"<script src="player.js"></script>"#),
             "{home}"
         );
         assert!(
@@ -2155,11 +2159,13 @@ mod tests {
         assert_eq!(json["version"], 5);
         assert_eq!(json["title"], "Eins");
         assert_eq!(json["duration"], "00:00:01.000");
-        assert_eq!(json["audio"][0]["url"], "../../episodes/one.mp3");
+        // From the site root, for the embedded player; the link in full.
+        assert_eq!(json["audio"][0]["url"], "/episodes/one.mp3");
+        assert_eq!(json["link"], format!("https://pod.example/{}/", page.path));
         assert_eq!(json["audio"][0]["mimeType"], "audio/mpeg");
         assert_eq!(json["audio"][0]["size"], 39 * 417);
         assert_eq!(json["chapters"][0]["start"], "00:00:00.000");
-        assert_eq!(json["contributors"][0]["avatar"], "../../media/stefan.jpg");
+        assert_eq!(json["contributors"][0]["avatar"], "/media/stefan.jpg");
         assert_eq!(json["transcripts"][0]["speaker"], "stefan-haslinger");
         assert_eq!(json["transcripts"][0]["text"], "Hallo!");
 
@@ -2175,6 +2181,30 @@ mod tests {
         )
         .unwrap();
         assert_eq!(config["version"], 5);
+        // Share tab, embedding, subscribing.
+        assert_eq!(
+            config["share"]["outlet"],
+            "https://pod.example/podlove-player/share.html"
+        );
+        assert_eq!(config["share"]["sharePlaytime"], true);
+        assert_eq!(config["share"]["channels"][0], "link");
+        assert_eq!(
+            config["subscribe-button"]["feed"],
+            "https://pod.example/episodes.mp3.rss"
+        );
+        assert_eq!(
+            config["subscribe-button"]["clients"][0]["id"],
+            "apple-podcasts"
+        );
+        let share = std::fs::read_to_string(out.join("podlove-player/share.html")).unwrap();
+        assert!(
+            share.contains(r#"<script src="qed-share.js"></script>"#),
+            "{share}"
+        );
+        assert!(out.join("podlove-player/qed-share.js").is_file());
+        assert!(out.join("podlove-player/5.13.0/button/embed.js").is_file());
+        // One episode: no playlist.
+        assert!(config.get("playlist").is_none(), "{config}");
         assert!(
             config["theme"]["tokens"]["brand"]
                 .as_str()
@@ -2184,7 +2214,8 @@ mod tests {
 
         let html = std::fs::read_to_string(out.join(&page.path).join("index.html")).unwrap();
         assert!(
-            html.contains(r#"<div data-podlove-player data-episode="player.json"></div>"#),
+            // The room the player takes, kept while it loads: one chapter.
+            html.contains(r#"<div data-podlove-player data-episode="player.json" style="--player-narrow: 678px; --player-wide: 450px"></div>"#),
             "{html}"
         );
         assert!(

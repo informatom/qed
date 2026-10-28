@@ -120,7 +120,7 @@ export const EPISODE_PART_NOTES: Partial<Record<BlockType, string>> = {
 
 /** The episode layout without `episode.md` (DEFAULT_EPISODE_LAYOUT in block.rs). */
 export function defaultEpisodeLayout(): Block[] {
-  return (["episode-player", "episode-people", "episode-shownotes", "episode-chapters", "episode-share"] as const).map(
+  return (["episode-player", "episode-people", "episode-shownotes", "episode-chapters"] as const).map(
     (type) => newBlock(type),
   );
 }

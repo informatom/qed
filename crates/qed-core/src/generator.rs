@@ -247,7 +247,9 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             && site.config.podcast.is_some()
             && !episode.audio.is_empty()
         {
-            let links = LinkContext::new(&page.path, &page.file);
+            // Addresses from the site root, not the page: the embedded
+            // player (share.html) reads this file from elsewhere.
+            let links = LinkContext::rooted(&site_root_path(&site.config), &page.file);
             let data = player_episode(site, page, episode, &links);
             write(
                 &out_dir.join(&page.path).join(PLAYER_EPISODE),
@@ -257,7 +259,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
     }
     if players > 0 {
-        write_player(out_dir, button_color.as_deref())?;
+        write_player(out_dir, site, &published, today, button_color.as_deref())?;
     }
 
     let not_found = not_found_page(site);
@@ -381,9 +383,15 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             write(&out_dir.join(&feed.file), feed.xml)?;
             podcast_feed_count += 1;
         }
-        if published
-            .iter()
-            .any(|page| page.content.front.episode.is_some())
+        // The share row's script, if the episode layout has the row.
+        let shares = site
+            .episode_layout
+            .as_ref()
+            .is_some_and(|layout| layout.content.blocks.contains(&Block::EpisodeShare));
+        if shares
+            && published
+                .iter()
+                .any(|page| page.content.front.episode.is_some())
         {
             write(&out_dir.join(SHARE_FILE), SHARE_SCRIPT.to_string())?;
         }
@@ -1163,6 +1171,9 @@ struct PageTemplate<'a> {
     /// Each block's HTML, from `block.html`; for an episode, the episode
     /// layout's blocks with the page's own as its shownotes.
     blocks: Vec<String>,
+    /// `player.js`, when a block has the Podlove Web Player: loaded in
+    /// `<head>`, so it hides the plain player before it shows.
+    player_script: Option<String>,
     /// The site footer's blocks, rendered for this page.
     footer_blocks: Vec<String>,
 }
@@ -1476,7 +1487,36 @@ struct PlayerEntry {
     /// The episode's `player.json`, relative to the page.
     episode: String,
     embed: String,
-    script: String,
+    /// The player's height in pixels once it's there, narrow (below
+    /// 600 px wide) and wide; kept free while it loads, so the page
+    /// doesn't jump. See [`PlayerEntry::new`].
+    narrow: u32,
+    wide: u32,
+}
+
+impl PlayerEntry {
+    /// The player for `episode`, its data at `data`. The heights were
+    /// measured in Chrome with Podlove Web Player 5.13.0 (2026-10-28, 0 to
+    /// 17 chapters, 305 to 856 px wide): the chapters tab opens with the
+    /// player and adds 40 px per chapter. Long chapter titles on phones
+    /// wrap and make it a little taller.
+    fn new(data: String, embed: String, episode: &podcast::Episode) -> Self {
+        let chapters = episode
+            .chapters
+            .iter()
+            .filter(|chapter| podcast::start_millis(&chapter.start).is_some())
+            .count() as u32;
+        let (narrow, wide) = match chapters {
+            0 => (534, 290),
+            n => (638 + 40 * n, 410 + 40 * n),
+        };
+        PlayerEntry {
+            episode: data,
+            embed,
+            narrow,
+            wide,
+        }
+    }
 }
 
 /// The Podlove Web Player, built into q.e.d. Where this copy comes from
@@ -1490,16 +1530,110 @@ const PLAYER_DIR: &str = "podlove-player";
 const PLAYER_EPISODE: &str = "player.json";
 const PLAYER_SCRIPT: &str = include_str!("../assets/player.js");
 const PLAYER_FILE: &str = "player.js";
+/// The playlist tab's episodes, in the player's folder.
+const PLAYER_PLAYLIST: &str = "playlist.json";
+/// q.e.d.'s script for the embedded player, which `share.html` in the
+/// player's folder loads; see the file.
+const PLAYER_SHARE_SCRIPT: &str = include_str!("../assets/player-share.js");
+const PLAYER_SHARE_FILE: &str = "qed-share.js";
+/// The share tab's channels: a link, email, then the networks the player
+/// knows (no Mastodon or Bluesky; the page's share row has those).
+const PLAYER_SHARE_CHANNELS: [&str; 8] = [
+    "link",
+    "mail",
+    "facebook",
+    "twitter",
+    "whats-app",
+    "linkedin",
+    "pinterest",
+    "xing",
+];
+/// The podcast apps the player's subscribe button offers, the ones that
+/// take the feed's address (no directories, which need the show's id
+/// there); each shows only on its platforms.
+const PLAYER_SUBSCRIBE_CLIENTS: [&str; 10] = [
+    "apple-podcasts",
+    "overcast",
+    "pocket-casts",
+    "castro",
+    "downcast",
+    "antenna-pod",
+    "podcast-addict",
+    "podcast-republic",
+    "gpodder",
+    "rss",
+];
 
 /// Writes the player, its settings for the whole site and the script that
 /// starts it into the built site. The theme tokens are shades of the
 /// theme's button color.
-fn write_player(out_dir: &Path, button_color: Option<&str>) -> Result<(), BuildError> {
+fn write_player(
+    out_dir: &Path,
+    site: &Site,
+    published: &[&Page],
+    today: Date,
+    button_color: Option<&str>,
+) -> Result<(), BuildError> {
     write_embedded(&PODLOVE_PLAYER, &out_dir.join(PLAYER_DIR))?;
+    write(
+        &out_dir.join(PLAYER_DIR).join(PLAYER_SHARE_FILE),
+        PLAYER_SHARE_SCRIPT.to_string(),
+    )?;
     let mut config = serde_json::json!({
         "version": 5,
         "activeTab": "chapters",
     });
+    let root = site_root_path(&site.config);
+    // Sharing and subscribing hand out full addresses.
+    if let Some(base) = site.config.base_url.as_deref() {
+        let base = base.trim_end_matches('/');
+        config["share"] = serde_json::json!({
+            "channels": PLAYER_SHARE_CHANNELS,
+            "sharePlaytime": true,
+            // The embed code's iframe shows this page.
+            "outlet": format!("{base}/{PLAYER_DIR}/share.html"),
+        });
+        if let Some(podcast) = &site.config.podcast {
+            let clients: Vec<serde_json::Value> = PLAYER_SUBSCRIBE_CLIENTS
+                .iter()
+                .map(|id| serde_json::json!({ "id": id }))
+                .collect();
+            config["subscribe-button"] = serde_json::json!({
+                "feed": format!("{base}/{}", podcast::feed_file(podcast.main_format())),
+                "clients": clients,
+            });
+        }
+    }
+    // The playlist tab: every episode with audio, newest first, each
+    // played from its player.json.
+    let playlist: Vec<serde_json::Value> = crate::feed::feed_episodes(published, today)
+        .into_iter()
+        .filter(|page| {
+            page.content
+                .front
+                .episode
+                .as_ref()
+                .is_some_and(|episode| !episode.audio.is_empty())
+        })
+        .map(|page| {
+            let episode = page.content.front.episode.as_ref();
+            serde_json::json!({
+                "title": page.content.front.title,
+                "config": format!("{root}{}/{PLAYER_EPISODE}", page.path),
+                "duration": episode
+                    .and_then(|e| e.duration.as_deref())
+                    .and_then(podcast::start_millis)
+                    .map(podcast::clock_millis),
+            })
+        })
+        .collect();
+    if playlist.len() > 1 {
+        write(
+            &out_dir.join(PLAYER_DIR).join(PLAYER_PLAYLIST),
+            serde_json::Value::from(playlist).to_string(),
+        )?;
+        config["playlist"] = format!("{root}{PLAYER_DIR}/{PLAYER_PLAYLIST}").into();
+    }
     if let Some(brand) = button_color {
         let shade = |other: &str, amount: f64| {
             crate::theme::mix_hex(brand, other, amount).unwrap_or_else(|| brand.to_string())
@@ -1524,8 +1658,10 @@ fn write_player(out_dir: &Path, button_color: Option<&str>) -> Result<(), BuildE
     write(&out_dir.join(PLAYER_FILE), PLAYER_SCRIPT.to_string())
 }
 
-/// An episode in the Podlove Web Player's format (version 5), with
-/// addresses relative to its page, where it's written next to.
+/// An episode in the Podlove Web Player's format (version 5), written
+/// next to its page. `links` start at the site root, so the file works
+/// from the embedded player too; the episode's own link is its full
+/// address, as shared.
 fn player_episode(
     site: &Site,
     page: &Page,
@@ -1636,7 +1772,11 @@ fn player_episode(
             .as_deref()
             .and_then(podcast::start_millis)
             .map(podcast::clock_millis),
-        "link": links.page(&page.path),
+        // Shared as it is, so the full address when the site has one.
+        "link": config
+            .base_url
+            .as_deref()
+            .map_or_else(|| links.page(&page.path), |base| absolute(base, &page.path)),
         "audio": files,
         "files": files,
         "chapters": chapters,
@@ -2075,10 +2215,12 @@ impl EpisodePage<'_> {
                     audio_entry(&site.root, config.podcast.as_ref(), episode, links, &words)?;
                 Some(RenderedBlock::EpisodePlayer {
                     audio,
-                    player: config.podcast.as_ref().map(|_| PlayerEntry {
-                        episode: PLAYER_EPISODE.to_string(),
-                        embed: format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
-                        script: format!("{}{PLAYER_FILE}", links.to_root()),
+                    player: config.podcast.as_ref().map(|_| {
+                        PlayerEntry::new(
+                            PLAYER_EPISODE.to_string(),
+                            format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
+                            episode,
+                        )
                     }),
                 })
             }
@@ -2293,7 +2435,12 @@ fn render_page(
             blocks
         }
     };
+    let player_script = blocks
+        .iter()
+        .any(|html| html.contains("data-podlove-player"))
+        .then(|| format!("{}{PLAYER_FILE}", links.to_root()));
     let template = PageTemplate {
+        player_script,
         colors: context.colors,
         site: config,
         title: &front.title,
@@ -2714,11 +2861,15 @@ fn render_block(
                         label: label.join(" · "),
                         summary_html: markdown(&front.summary),
                         // The episode's player data sits next to its page.
-                        player: audio.as_ref().and(context.podcast).map(|_| PlayerEntry {
-                            episode: format!("{}{PLAYER_EPISODE}", links.page(&page.path)),
-                            embed: format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
-                            script: format!("{}{PLAYER_FILE}", links.to_root()),
-                        }),
+                        player: audio.as_ref().and(context.podcast).zip(episode).map(
+                            |(_, episode)| {
+                                PlayerEntry::new(
+                                    format!("{}{PLAYER_EPISODE}", links.page(&page.path)),
+                                    format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
+                                    episode,
+                                )
+                            },
+                        ),
                         audio,
                         more: words.to_episode,
                     }

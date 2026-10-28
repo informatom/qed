@@ -23,7 +23,8 @@
         What every episode page shows below its title, in this order: the parts of the episode (Player, People,
         Shownotes, …) and any other block, such as a Subscribe button, on every episode. Shownotes are the episode's own
         blocks. Link pages as <code>/about</code>, since the layout is on every episode. Saved in
-        <code>episode.md</code>; the order Player, People, Shownotes, Chapters, Share links needs no file.
+        <code>episode.md</code>; the order Player, People, Shownotes, Chapters needs no file. Share links are
+        mostly not needed: the player has a share tab.
       </p>
     </div>
     <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Close" onclick={onclose}><X class="size-4" /></button>

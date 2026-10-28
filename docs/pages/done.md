@@ -683,8 +683,9 @@ rest is done.
   `<details>`) and Share links; any other block (a Subscribe button, a
   Call to action) may go between them. The parts render in `block.html`
   now, no longer in `page.html`. Without the file, the old order: Player,
-  People, Shownotes, Chapters, Share links; saving that order removes the
-  file. Edited under "Templates" in the page tree, next to Footer (user),
+  People, Shownotes, Chapters; saving that order removes the file. Share
+  links left the default the same day, after #128: the player's share
+  tab does it (user). Edited under "Templates" in the page tree, next to Footer (user),
   on podcast sites only. Each part can be added once; the parts aren't
   offered on pages, in columns or for "Make shared".
 
@@ -699,6 +700,24 @@ rest is done.
   found: the Latest episode block now has the Podlove Web Player too, not
   only the plain `<audio>` player, and an explicit "Zur Episode →" link
   below it, so nobody thinks there are no shownotes (user).
+
+- **#128 More of the Podlove Web Player.** Done 2026-10-28 (user: all
+  of it): the player's playlist tab (every episode, played without
+  leaving the page), its share tab (link, email, Facebook, Twitter/X,
+  LinkedIn, Pinterest, Xing, WhatsApp; sharing from the current
+  playtime, which the player reads back from `?t=`; embed code) and its
+  subscribe button (the podcast apps that take the feed's address, no
+  directories). Embedding needed `share.html` and the subscribe button's
+  app list from the npm package; `qed-share.js` lets the embedded player
+  show only this site's episodes, in its colors. `player.json` now uses
+  addresses from the site root. The line below the player (duration,
+  download links) now hides while the player runs, like the plain
+  player and the chapter list: the player shows both (user). The plain
+  player no longer flashes up first: `player.js` loads in `<head>` and
+  hides it at once, and keeps the room the player will take (measured:
+  290 px wide or 534 px narrow without chapters, 410 or 638 px plus 40 px
+  per chapter, since the chapters tab opens with it), so the page doesn't
+  jump (user).
 
 ## Dropped
 
