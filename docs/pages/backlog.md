@@ -30,8 +30,6 @@ Nothing open.
   with chapters and transcripts. Like the Subscribe button: in
   `crates/qed-core/assets/`, with a README on where it comes from and how
   to update it (rule in AGENTS.md).
-- **#053 Share links.** Plain share links on episode pages (Mastodon, Bluesky,
-  email, copy link), no third-party scripts.
 
 ### Phase 3: Nice to have
 

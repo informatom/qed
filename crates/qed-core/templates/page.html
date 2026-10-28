@@ -171,6 +171,17 @@
         </ol>
       </section>
       {%- endif %}
+      {%- if let Some(share) = share %}
+      <nav id="share" aria-label="{{ share.words.share }}" class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        <span class="font-medium">{{ share.words.share }}:</span>
+        <button type="button" class="link link-hover" hidden data-share="mastodon" data-url="{{ share.url }}" data-text="{{ share.text }}" data-ask="{{ share.words.mastodon_server }}">Mastodon</button>
+        <a href="{{ share.bluesky }}" class="link link-hover" target="_blank" rel="noopener">Bluesky</a>
+        <a href="{{ share.email }}" class="link link-hover">{{ share.words.email }}</a>
+        <button type="button" class="link link-hover" hidden data-share="copy" data-url="{{ share.url }}" data-done="{{ share.words.copied }}">{{ share.words.copy_link }}</button>
+        <button type="button" class="link link-hover" hidden data-share="native" data-url="{{ share.url }}" data-text="{{ share.text }}">{{ share.words.more }}</button>
+      </nav>
+      <script src="{{ share.script }}" defer></script>
+      {%- endif %}
     </div>
   </main>
   {%- if sidebar %}

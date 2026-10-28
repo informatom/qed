@@ -854,6 +854,15 @@ pub struct Words {
     pub bonus: &'static str,
     pub chapters: &'static str,
     pub download: &'static str,
+    /// The share row (#053): its label, the email link, the copy
+    /// button before and after copying, the device's share menu, and the
+    /// question for the reader's Mastodon server.
+    pub share: &'static str,
+    pub email: &'static str,
+    pub copy_link: &'static str,
+    pub copied: &'static str,
+    pub more: &'static str,
+    pub mastodon_server: &'static str,
 }
 
 impl Words {
@@ -869,6 +878,12 @@ impl Words {
                 bonus: "Bonus",
                 chapters: "Kapitel",
                 download: "Herunterladen",
+                share: "Teilen",
+                email: "E-Mail",
+                copy_link: "Link kopieren",
+                copied: "Kopiert",
+                more: "Mehr …",
+                mastodon_server: "Dein Mastodon-Server, z. B. mastodon.social",
             },
             "fr" => Words {
                 episodes: "Épisodes",
@@ -878,6 +893,12 @@ impl Words {
                 bonus: "Bonus",
                 chapters: "Chapitres",
                 download: "Télécharger",
+                share: "Partager",
+                email: "E-mail",
+                copy_link: "Copier le lien",
+                copied: "Copié",
+                more: "Plus …",
+                mastodon_server: "Votre serveur Mastodon, p. ex. mastodon.social",
             },
             "es" => Words {
                 episodes: "Episodios",
@@ -887,6 +908,12 @@ impl Words {
                 bonus: "Extra",
                 chapters: "Capítulos",
                 download: "Descargar",
+                share: "Compartir",
+                email: "Correo",
+                copy_link: "Copiar enlace",
+                copied: "Copiado",
+                more: "Más …",
+                mastodon_server: "Tu servidor de Mastodon, p. ej. mastodon.social",
             },
             "it" => Words {
                 episodes: "Episodi",
@@ -896,6 +923,12 @@ impl Words {
                 bonus: "Extra",
                 chapters: "Capitoli",
                 download: "Scarica",
+                share: "Condividi",
+                email: "E-mail",
+                copy_link: "Copia link",
+                copied: "Copiato",
+                more: "Altro …",
+                mastodon_server: "Il tuo server Mastodon, ad es. mastodon.social",
             },
             "nl" => Words {
                 episodes: "Afleveringen",
@@ -905,6 +938,12 @@ impl Words {
                 bonus: "Bonus",
                 chapters: "Hoofdstukken",
                 download: "Downloaden",
+                share: "Delen",
+                email: "E-mail",
+                copy_link: "Link kopiëren",
+                copied: "Gekopieerd",
+                more: "Meer …",
+                mastodon_server: "Je Mastodon-server, bijv. mastodon.social",
             },
             _ => Words {
                 episodes: "Episodes",
@@ -914,6 +953,12 @@ impl Words {
                 bonus: "Bonus",
                 chapters: "Chapters",
                 download: "Download",
+                share: "Share",
+                email: "Email",
+                copy_link: "Copy link",
+                copied: "Copied",
+                more: "More …",
+                mastodon_server: "Your Mastodon server, e.g. mastodon.social",
             },
         }
     }
@@ -1299,6 +1344,30 @@ mod tests {
             report.notes
         );
         assert!(out.join("episodes/index.html").is_file());
+
+        // Share links, with the page's full address.
+        let url = format!("https://pod.example/{}/", page.path);
+        assert!(
+            html.contains(r#"<nav id="share" aria-label="Teilen""#),
+            "{html}"
+        );
+        assert!(
+            html.contains(&format!(
+                "https://bsky.app/intent/compose?text=Kapitel%20{}",
+                url.replace(':', "%3A").replace('/', "%2F")
+            )),
+            "{html}"
+        );
+        assert!(
+            html.contains(r#"href="mailto:?subject=Kapitel&#38;body=https%3A%2F%2Fpod.example%2F"#),
+            "{html}"
+        );
+        assert!(html.contains(r#"hidden data-share="copy""#), "{html}");
+        assert!(
+            html.contains(r#"<script src="../../share.js" defer></script>"#),
+            "{html}"
+        );
+        assert!(out.join("share.js").is_file());
     }
 
     /// About one second of silent MP3: 39 frames (MPEG-1 Layer III,

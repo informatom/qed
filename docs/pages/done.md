@@ -636,6 +636,13 @@ rest is done.
   offered on podcast sites. New sites can start as a podcast (New site
   dialog), with both blocks on the start page.
 
+- **#053 Share links.** Done 2026-10-28: a share row on episode pages
+  (with the site's web address): Bluesky and email as plain links;
+  Mastodon (asks for the reader's server once, remembers it, opens that
+  server's share page), copy link and the device's share menu as
+  buttons that `share.js` (q.e.d.'s own, copied into the site) shows
+  only where they work. Nothing from third parties.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

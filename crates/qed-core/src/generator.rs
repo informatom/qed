@@ -354,6 +354,12 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             write(&out_dir.join(&feed.file), feed.xml)?;
             podcast_feed_count += 1;
         }
+        if published
+            .iter()
+            .any(|page| page.content.front.episode.is_some())
+        {
+            write(&out_dir.join(SHARE_FILE), SHARE_SCRIPT.to_string())?;
+        }
         if uses_subscribe(&published, site.footer.as_ref()) {
             write_subscribe_button(out_dir, &site.config, podcast, base)?;
         }
@@ -1112,6 +1118,8 @@ struct PageTemplate<'a> {
     chapters: Vec<ChapterEntry>,
     /// "Chapters", in the site's language.
     chapters_heading: &'static str,
+    /// Share links on episode pages; only with the site's web address.
+    share: Option<ShareEntry>,
     /// An episode's audio, with a player and a download link.
     audio: Option<AudioEntry>,
     /// Each block's HTML, from `block.html`.
@@ -1422,6 +1430,36 @@ struct AudioSource {
     /// "MP3, 28.9 MB", for the download link.
     label: String,
 }
+
+/// The share row of an episode page (#053): plain links for Bluesky and
+/// email, and buttons `share.js` brings to life.
+struct ShareEntry {
+    /// The page's full address.
+    url: String,
+    /// The episode's title, to share with the address.
+    text: String,
+    bluesky: String,
+    email: String,
+    script: String,
+    words: podcast::Words,
+}
+
+/// Text for a web address or a `mailto:` link: everything but letters,
+/// digits and `-_.~` as `%XX`.
+fn url_encode(text: &str) -> String {
+    text.bytes()
+        .map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (byte as char).to_string()
+            }
+            _ => format!("%{byte:02X}"),
+        })
+        .collect()
+}
+
+/// q.e.d.'s own script for the share buttons; see the file.
+const SHARE_SCRIPT: &str = include_str!("../assets/share.js");
+const SHARE_FILE: &str = "share.js";
 
 /// One chapter on an episode page.
 struct ChapterEntry {
@@ -1774,6 +1812,25 @@ fn render_page(
             })
             .collect(),
         chapters_heading: words.chapters,
+        share: match (&front.episode, &config.base_url) {
+            (Some(_), Some(base)) if config.podcast.is_some() && !not_found => {
+                let url = absolute(base, &page.path);
+                let both = format!("{} {url}", front.title);
+                Some(ShareEntry {
+                    bluesky: format!("https://bsky.app/intent/compose?text={}", url_encode(&both)),
+                    email: format!(
+                        "mailto:?subject={}&body={}",
+                        url_encode(&front.title),
+                        url_encode(&url)
+                    ),
+                    script: format!("{}{SHARE_FILE}", links.to_root()),
+                    text: front.title.clone(),
+                    url,
+                    words: podcast::Words::for_language(&config.language),
+                })
+            }
+            _ => None,
+        },
         audio: front.episode.as_ref().and_then(|episode| {
             audio_entry(
                 &site.root,
