@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-use comrak::nodes::NodeValue;
+use comrak::nodes::{AstNode, NodeValue};
 use comrak::options::Plugins;
 use comrak::plugins::syntect::{SyntectAdapter, SyntectAdapterBuilder};
 use comrak::{Arena, Options, format_html_with_plugins, parse_document};
@@ -26,8 +26,11 @@ pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String 
 
     // What each image from `media/` gets added to its `<img src="…"`.
     let mut image_attributes: BTreeMap<String, String> = BTreeMap::new();
+    let mut math: Vec<&AstNode> = Vec::new();
     for node in root.descendants() {
         match node.data.borrow_mut().value {
+            NodeValue::Math(_) => math.push(node),
+            NodeValue::CodeBlock(ref code) if code.info.trim() == "math" => math.push(node),
             NodeValue::Link(ref mut link) => link.url = links.resolve(&link.url),
             NodeValue::Image(ref mut image) => {
                 // Only `/media/…`: a relative `photo.png` isn't in media/.
@@ -44,11 +47,39 @@ pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String 
         }
     }
 
+    // Formulas become MathML. Raw HTML in the tree would be escaped, so
+    // each gets a placeholder now and its MathML after formatting.
+    let mut formulas = Vec::new();
+    for node in math {
+        let (latex, display, block) = match &node.data.borrow().value {
+            NodeValue::Math(math) => (math.literal.clone(), math.display_math, false),
+            NodeValue::CodeBlock(code) => (code.literal.clone(), true, true),
+            _ => continue,
+        };
+        let token = format!("{MATH_MARK}{}{MATH_MARK}", formulas.len());
+        formulas.push((token.clone(), mathml(&latex, display), display));
+        if block {
+            // A ```math block: a paragraph holding the placeholder.
+            node.data.borrow_mut().value = NodeValue::Paragraph;
+            node.append(arena.alloc(NodeValue::Text(token.into()).into()));
+        } else {
+            node.data.borrow_mut().value = NodeValue::Text(token.into());
+        }
+    }
+
     let mut plugins = Plugins::default();
     plugins.render.codefence_syntax_highlighter = Some(highlighter());
     let mut html = String::new();
     // Writing into a String can't fail.
     let _ = format_html_with_plugins(root, &options, &mut html, &plugins);
+    // A display formula alone in its paragraph stands on its own, like a
+    // ```math block; anything else stays where it is in the text.
+    for (token, mathml, display) in &formulas {
+        if *display {
+            html = html.replace(&format!("<p>{token}</p>"), mathml);
+        }
+        html = html.replace(token, mathml);
+    }
     for (src, attributes) in &image_attributes {
         let tag = format!("<img src=\"{src}\"");
         html = html.replace(&tag, &format!("{tag}{attributes}"));
@@ -284,6 +315,54 @@ fn definition(line: &str) -> Option<usize> {
     Some(after + spaces)
 }
 
+/// Marks a formula's placeholder: a character from Unicode's private use
+/// area, which no text has by accident.
+const MATH_MARK: char = '\u{E000}';
+
+/// A LaTeX formula as MathML. The LaTeX goes along as an annotation, so
+/// copying the formula gives its source. A formula with a mistake shows
+/// as its LaTeX in red, with the problem on hover, instead of stopping
+/// the build.
+fn mathml(latex: &str, display: bool) -> String {
+    use pulldown_latex::config::DisplayMode;
+    use pulldown_latex::{Parser, RenderConfig, Storage, push_mathml};
+    let latex = latex.trim();
+    let storage = Storage::new();
+    let events: Vec<_> = Parser::new(latex, &storage).collect();
+    if let Some(Err(error)) = events.iter().find(|event| event.is_err()) {
+        // The parser's message spans lines and points at the spot with
+        // ASCII art; the first line says what's wrong.
+        let problem = error.to_string();
+        let problem = problem.lines().next().unwrap_or_default();
+        return format!(
+            "<code class=\"math-error\" title=\"{}\">{}</code>",
+            escape(problem).replace('"', "&quot;"),
+            escape(latex)
+        );
+    }
+    let config = RenderConfig {
+        display_mode: if display {
+            DisplayMode::Block
+        } else {
+            DisplayMode::Inline
+        },
+        annotation: Some(latex),
+        ..RenderConfig::default()
+    };
+    let mut html = String::new();
+    match push_mathml(&mut html, events.into_iter(), config) {
+        Ok(()) => html,
+        // Only writing can fail, and writing into a String doesn't.
+        Err(_) => format!("<code>{}</code>", escape(latex)),
+    }
+}
+
+fn escape(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
 fn options() -> Options<'static> {
     let mut options = Options::default();
     options.extension.strikethrough = true;
@@ -291,6 +370,9 @@ fn options() -> Options<'static> {
     options.extension.autolink = true;
     options.extension.tasklist = true;
     options.extension.footnotes = true;
+    // `$x^2$`, `$$ … $$`, $`x^2`$ and ```math blocks (see `mathml`).
+    options.extension.math_dollars = true;
+    options.extension.math_code = true;
     options.render.escape = true;
     options
 }
@@ -402,6 +484,48 @@ mod tests {
         );
         assert!(html.contains(r#"src="../media/icons/phone.png""#), "{html}");
         assert_eq!(html.matches("<svg").count(), 1, "mail is q.e.d.'s: {html}");
+    }
+
+    #[test]
+    fn turns_latex_into_mathml() {
+        let html = render_on(
+            "",
+            "pages/index.md",
+            "Inline $x^2$ and code math $`\\sqrt{2}`$.\n\n$$\\frac{a}{b}$$\n\n```math\n\\sum_{i=1}^n i\n```\n",
+        );
+        assert!(html.contains("<p>Inline <math"), "{html}");
+        assert!(html.contains("<msup><mi>x</mi><mn>2</mn></msup>"), "{html}");
+        assert!(html.contains("<msqrt>"), "{html}");
+        assert!(html.contains("<mfrac>"), "{html}");
+        assert!(
+            html.contains("<munderover>") || html.contains("<msubsup>"),
+            "{html}"
+        );
+        // The ```math block is a formula on its own, not in a paragraph.
+        assert!(!html.contains("<p><math display=\"block\""), "{html}");
+        assert_eq!(html.matches("display=\"block\"").count(), 2, "{html}");
+        // The source comes along, for copying.
+        assert!(html.contains("application/x-tex"), "{html}");
+        assert!(!html.contains(MATH_MARK), "{html}");
+        assert!(!html.contains("language-math"), "{html}");
+    }
+
+    #[test]
+    fn leaves_prices_alone() {
+        let html = render_on("", "pages/index.md", "Tickets cost $5 and $10, or $ 20.");
+        assert!(!html.contains("<math"), "{html}");
+        assert!(html.contains("$5 and $10, or $ 20."), "{html}");
+    }
+
+    #[test]
+    fn shows_latex_mistakes_in_place() {
+        let html = render_on("", "pages/index.md", "Oops: $\\frac{1}$ and on.");
+        assert!(!html.contains("<math"), "{html}");
+        assert!(
+            html.contains(r#"<code class="math-error" title=""#),
+            "{html}"
+        );
+        assert!(html.contains(r"\frac{1}</code> and on."), "{html}");
     }
 
     #[test]

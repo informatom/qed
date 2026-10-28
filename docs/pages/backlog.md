@@ -59,12 +59,6 @@ Nothing open.
   (the grammars of `bat`, some 200 languages) plugs into the same
   highlighter; it costs a few MB in the app and a slower first build per
   run.
-- **#107 Math formulas.** LaTeX math in Markdown (`$x^2$`, `$$ … $$`, a
-  ```` ```math ```` block), which comrak already recognizes, turned into
-  MathML when the site is built (e.g. with the pure-Rust `pulldown-latex`).
-  Browsers draw MathML themselves (Chrome, Edge, Firefox, Safari since
-  2023): no JavaScript and no extra files, unlike KaTeX in the browser.
-  Optionally a math font such as STIX Two Math, self-hosted via #102.
 
 ### Phase 4: Moving in, open to AI assistants
 

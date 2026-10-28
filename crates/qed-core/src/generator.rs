@@ -48,6 +48,10 @@ const MARKER: &str = ".qed-build";
 
 /// The stylesheet, compiled by `npm run build:site-css` and built into qed.
 const STYLESHEET: &str = include_str!("../assets/site.css");
+/// For sites with formulas: pulldown-latex's stylesheet and the Latin
+/// Modern Math font; see `assets/pulldown-latex/README.md`.
+const MATH_CSS: &str = include_str!("../assets/pulldown-latex/math.css");
+const MATH_FONT: &[u8] = include_bytes!("../assets/pulldown-latex/latinmodern-math.woff2");
 
 /// What a build produced.
 #[derive(Debug, Clone, Serialize)]
@@ -244,8 +248,11 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     };
 
     let mut players = 0;
+    // Whether any page has a formula, for the math font (see below).
+    let mut uses_math = false;
     for page in &published {
         let html = render_page(site, &context, page, &main_menu, &footer_menu, &feeds)?;
+        uses_math |= html.contains("<math");
         write(&page_file(out_dir, &page.path), html)?;
         // The player's data for an episode with audio, next to its page.
         if let Some(episode) = page.content.front.episode.as_ref()
@@ -309,10 +316,17 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     // fonts in use are copied next to it.
     let custom_css = site.config.custom().map(|c| c.css()).unwrap_or_default();
     let fonts_css = fonts::css(&site.root, &site.config.fonts);
+    // Formulas get LaTeX's look, on sites that have any.
+    let math_css = if uses_math {
+        write(&out_dir.join("math/latinmodern-math.woff2"), MATH_FONT)?;
+        MATH_CSS
+    } else {
+        ""
+    };
     write(
         &out_dir.join("style.css"),
         format!(
-            "{STYLESHEET}{}{custom_css}{fonts_css}",
+            "{STYLESHEET}{}{custom_css}{fonts_css}{math_css}",
             markdown::code_css()
         ),
     )?;
@@ -398,7 +412,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
                 .iter()
                 .any(|page| page.content.front.episode.is_some())
         {
-            write(&out_dir.join(SHARE_FILE), SHARE_SCRIPT.to_string())?;
+            write(&out_dir.join(SHARE_FILE), SHARE_SCRIPT)?;
         }
         let parts = site.footer.iter().chain(&site.episode_layout);
         if uses_subscribe(published.iter().copied().chain(parts)) {
@@ -936,7 +950,7 @@ fn page_file(out_dir: &Path, path: &str) -> PathBuf {
     }
 }
 
-fn write(path: &Path, contents: String) -> Result<(), BuildError> {
+fn write(path: &Path, contents: impl AsRef<[u8]>) -> Result<(), BuildError> {
     let io = |source| BuildError::Io {
         path: path.to_path_buf(),
         source,
@@ -1591,7 +1605,7 @@ fn write_player(
     write_embedded(&PODLOVE_PLAYER, &out_dir.join(PLAYER_DIR))?;
     write(
         &out_dir.join(PLAYER_DIR).join(PLAYER_SHARE_FILE),
-        PLAYER_SHARE_SCRIPT.to_string(),
+        PLAYER_SHARE_SCRIPT,
     )?;
     let mut config = serde_json::json!({
         "version": 5,
@@ -1669,7 +1683,7 @@ fn write_player(
         &out_dir.join(PLAYER_DIR).join("config.json"),
         config.to_string(),
     )?;
-    write(&out_dir.join(PLAYER_FILE), PLAYER_SCRIPT.to_string())
+    write(&out_dir.join(PLAYER_FILE), PLAYER_SCRIPT)
 }
 
 /// An episode in the Podlove Web Player's format (version 5), written

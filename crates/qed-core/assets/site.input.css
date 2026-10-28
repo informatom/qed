@@ -164,3 +164,8 @@
   --pf-border-radius: var(--radius-field);
   --pf-font: inherit;
 }
+
+/* A formula with a mistake (#107): its LaTeX, in red. */
+.prose code.math-error {
+  color: var(--color-error);
+}

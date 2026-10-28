@@ -758,6 +758,18 @@ rest is done.
   pages and the episode player are left out. Colors from the theme
   (`--pf-*` in `site.input.css`). Pagefind's files come from the crate
   (`assets/pagefind/README.md`). Post 56.
+- **#107 Math formulas.** Done 2026-10-28 (user's test: Euclid's proof
+  of infinitely many primes, in post 57). `$…$`, `$$…$$`, $`…`$ and
+  ```` ```math ```` blocks (comrak's `math_dollars` and `math_code`)
+  become MathML when the site is built, with `pulldown-latex`; no
+  JavaScript. Placeholders through the Markdown tree, since raw HTML is
+  escaped. A mistake shows as red LaTeX with the problem on hover. Sites
+  with a formula get Latin Modern Math and pulldown-latex's stylesheet
+  (`assets/pulldown-latex/`, 388 KB font, loaded only on pages with
+  math). Only formulas are LaTeX, not whole documents (`\begin{proof}`).
+  Dollar signs: prices stay text unless a later `$` in the paragraph can
+  close a formula; `\$` is always a dollar sign. None of the five test
+  sites or the docs had a `$` turned into math.
 
 ## Dropped
 
