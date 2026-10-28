@@ -745,6 +745,19 @@ rest is done.
   runs `git-upload-pack`/`git-receive-pack` over the SFTP login
   (`sftp::login`); the server's fingerprint per remote in
   `remote.<name>.qedhostkey`. A manual page follows with #110.
+- **#108 Site search with Pagefind.** Done 2026-10-28, tested by the
+  user on several sites and on the docs site (62 pages: 936 KB in
+  `pagefind/`, indexing about 0.1 s in a release build). Decided (user):
+  a search button in the header that opens Pagefind's Component UI
+  dialog (`<pagefind-modal>`, also Ctrl+K); without JavaScript no search
+  at all, instead of the planned search engine form (that would send
+  visitors to a third party); `search = true` in `site.toml` by default,
+  a switch in the Site tab. `qed_core::search` indexes the built site on
+  a thread with its own runtime; only `<main>` is indexed
+  (`data-pagefind-body`, title from `data-pagefind-meta`), lists of
+  pages and the episode player are left out. Colors from the theme
+  (`--pf-*` in `site.input.css`). Pagefind's files come from the crate
+  (`assets/pagefind/README.md`). Post 56.
 
 ## Dropped
 

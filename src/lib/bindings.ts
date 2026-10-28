@@ -355,6 +355,8 @@ export type BuildReport = {
 	feeds: number,
 	/**  Files from `static/`, copied as they are. */
 	static_files: number,
+	/**  Pages in the search index; 0 with search switched off. */
+	searchable_pages: number,
 	/**
 	 *  Things worth knowing that didn't stop the build, such as a feed
 	 *  left out.
@@ -1136,6 +1138,11 @@ export type SiteConfig_Deserialize = {
 	 *  Off for sites from before it existed; new sites start with it on.
 	 */
 	mark_external_links?: boolean,
+	/**
+	 *  Site search (Pagefind): a search button in the header, for
+	 *  visitors with JavaScript. On unless switched off.
+	 */
+	search?: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 	/**
@@ -1193,6 +1200,11 @@ export type SiteConfig_Serialize = {
 	 *  Off for sites from before it existed; new sites start with it on.
 	 */
 	mark_external_links: boolean,
+	/**
+	 *  Site search (Pagefind): a search button in the header, for
+	 *  visitors with JavaScript. On unless switched off.
+	 */
+	search: boolean,
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 	/**

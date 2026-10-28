@@ -65,6 +65,8 @@ pub struct BuildReport {
     pub feeds: usize,
     /// Files from `static/`, copied as they are.
     pub static_files: usize,
+    /// Pages in the search index; 0 with search switched off.
+    pub searchable_pages: usize,
     /// Things worth knowing that didn't stop the build, such as a feed
     /// left out.
     pub notes: Vec<String>,
@@ -72,6 +74,9 @@ pub struct BuildReport {
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
+    #[error(transparent)]
+    Search(#[from] crate::search::SearchError),
+
     #[error("can't write {}: {source}", path.display())]
     Io {
         path: PathBuf,
@@ -415,6 +420,12 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     // Last, so a static file can't hide something q.e.d. built.
     let static_files = copy_static(&site.root.join(STATIC_DIR), out_dir, "")?;
 
+    // The search index reads the finished pages, so it comes after them.
+    let searchable_pages = match site.config.search {
+        true => crate::search::index(out_dir)?,
+        false => 0,
+    };
+
     Ok(BuildReport {
         out_dir: out_dir.to_path_buf(),
         pages: published.len(),
@@ -425,6 +436,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         resized_images,
         feeds: feeds.len() + podcast_feed_count,
         static_files,
+        searchable_pages,
         notes,
     })
 }
@@ -1174,6 +1186,8 @@ struct PageTemplate<'a> {
     /// `player.js`, when a block has the Podlove Web Player: loaded in
     /// `<head>`, so it hides the plain player before it shows.
     player_script: Option<String>,
+    /// The page's content goes into the search index (not the 404 page).
+    searchable: bool,
     /// The site footer's blocks, rendered for this page.
     footer_blocks: Vec<String>,
 }
@@ -2462,6 +2476,7 @@ fn render_page(
         .then(|| format!("{}{PLAYER_FILE}", links.to_root()));
     let template = PageTemplate {
         player_script,
+        searchable: config.search && !not_found,
         colors: context.colors,
         site: config,
         title: &front.title,
@@ -2597,7 +2612,7 @@ fn block_html(
             "(min-width: 48rem) 28rem, 100vw",
         )
     };
-    BlockTemplate {
+    let html = BlockTemplate {
         block: rendered,
         full_sizes,
         half_sizes,
@@ -2605,7 +2620,17 @@ fn block_html(
         close: close_label(context.language),
         colors: context.colors,
     }
-    .render()
+    .render()?;
+    // Lists of other pages stay out of the search index: results should
+    // lead to the posts, not to every list that mentions them. So does the
+    // player, whose plain version (length, download) would be the excerpt.
+    Ok(match rendered {
+        RenderedBlock::PostList { .. }
+        | RenderedBlock::PageList { .. }
+        | RenderedBlock::LatestEpisode { .. }
+        | RenderedBlock::EpisodePlayer { .. } => format!("<div data-pagefind-ignore>{html}</div>"),
+        _ => html,
+    })
 }
 
 /// A menu entry is current on its own page and on the pages below it, except
@@ -4165,10 +4190,12 @@ mod tests {
         assert!(home.contains(r#"<a href="https://youtu.be/abc""#), "{home}");
         assert!(home.contains(r#"src="media/video-a-talk.jpg""#), "{home}");
         assert!(home.contains("A talk</span> · YouTube"), "{home}");
+        // The only script is the site's own search.
         assert!(
-            !home.contains("<iframe") && !home.contains("<script"),
+            !home.contains("<iframe") && home.matches("<script").count() == 1,
             "{home}"
         );
+        assert!(home.contains(r#"<script src="pagefind/pagefind-component-ui.js" defer>"#));
     }
 
     #[test]

@@ -146,3 +146,21 @@
   object-fit: contain;
   border-radius: var(--radius-box);
 }
+
+/* Site search (#108): Pagefind's dialog and button in the theme's colors.
+   Loaded after Pagefind's own stylesheet, so these win. */
+:root {
+  --pf-text: var(--color-base-content);
+  --pf-text-secondary: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+  --pf-text-muted: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+  --pf-background: var(--color-base-100);
+  --pf-border: var(--color-base-300);
+  --pf-border-focus: var(--color-primary);
+  --pf-outline-focus: var(--color-primary);
+  --pf-hover: var(--color-base-200);
+  --pf-skeleton: var(--color-base-200);
+  --pf-skeleton-shine: var(--color-base-300);
+  --pf-mark: var(--color-base-content);
+  --pf-border-radius: var(--radius-field);
+  --pf-font: inherit;
+}

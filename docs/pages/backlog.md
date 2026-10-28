@@ -65,15 +65,6 @@ Nothing open.
   Browsers draw MathML themselves (Chrome, Edge, Firefox, Safari since
   2023): no JavaScript and no extra files, unlike KaTeX in the browser.
   Optionally a math font such as STIX Two Math, self-hosted via #102.
-- **#108 Site search with Pagefind.** [Pagefind](https://pagefind.app)
-  (written in Rust, usable as a library) builds a search index from the
-  finished pages during the normal build, split into small chunks; the
-  browser loads only what a search needs, from the site itself, nothing
-  from third parties. A search box that works without JavaScript as a
-  plain form to a search engine limited to the site (`site:…`), and with
-  JavaScript Pagefind takes over and shows results on the site. Decided
-  2026-10-27: Pagefind rather than lunr.js, MiniSearch or Fuse.js, which
-  load the whole index at once.
 
 ### Phase 4: Moving in, open to AI assistants
 

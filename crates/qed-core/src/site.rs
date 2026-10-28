@@ -99,6 +99,10 @@ pub struct SiteConfig {
     /// Off for sites from before it existed; new sites start with it on.
     #[serde(default)]
     pub mark_external_links: bool,
+    /// Site search (Pagefind): a search button in the header, for
+    /// visitors with JavaScript. On unless switched off.
+    #[serde(default = "yes")]
+    pub search: bool,
     /// Self-hosted fonts in `fonts/`; empty keeps the system's.
     #[serde(default, skip_serializing_if = "is_default_fonts")]
     pub fonts: Fonts,
@@ -1015,6 +1019,7 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
             &config.mark_external_links.to_string(),
             "false".to_string(),
         ),
+        ("search", &config.search.to_string(), "true".to_string()),
     ] {
         if *value == default && !page_writer::writes_string(&original, key, &default) {
             document.remove(key);

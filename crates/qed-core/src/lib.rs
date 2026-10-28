@@ -20,6 +20,7 @@ pub mod page_writer;
 pub mod podcast;
 pub mod preview;
 pub mod remote;
+pub mod search;
 pub mod sftp;
 pub mod shared;
 pub mod site;

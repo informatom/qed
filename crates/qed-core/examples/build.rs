@@ -29,6 +29,9 @@ fn main() -> ExitCode {
                 report.feeds,
                 report.out_dir.display()
             );
+            if report.searchable_pages > 0 {
+                println!("{} pages can be searched", report.searchable_pages);
+            }
             for note in &report.notes {
                 println!("{note}");
             }

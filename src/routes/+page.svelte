@@ -599,7 +599,9 @@
             ? `, ${report.static_files} static files`
             : ""}{report.feeds
             ? ` and ${report.feeds === 1 ? "1 feed" : `${report.feeds} feeds`}`
-            : ""}.
+            : ""}.{report.searchable_pages
+            ? ` ${report.searchable_pages === 1 ? "1 page" : `${report.searchable_pages} pages`} can be searched.`
+            : ""}
         </span>
         <span>
           Into <code class="font-mono text-sm">{report.out_dir}</code> ·

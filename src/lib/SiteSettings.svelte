@@ -125,6 +125,21 @@
     </label>
   </section>
 
+  <section id="site-search" class="flex flex-col gap-3 border-t border-base-300 pt-6">
+    {@render heading("Search")}
+    <label class="flex items-start gap-3">
+      <input id="site-search-toggle" type="checkbox" class="toggle mt-0.5" bind:checked={form.search} />
+      <span class="text-sm">
+        Site search
+        <span class="block text-base-content/60">
+          A search button in the header (and Ctrl+K) finds words in all pages, posts and episodes. The search runs in
+          the visitor's browser, from files on the site itself; nothing goes to other services. Visitors without
+          JavaScript don't see the button.
+        </span>
+      </span>
+    </label>
+  </section>
+
   <section id="site-layout" class="flex flex-col gap-3 border-t border-base-300 pt-6">
     {@render heading("Layout")}
     <div class="flex flex-wrap items-center gap-3 text-sm">
