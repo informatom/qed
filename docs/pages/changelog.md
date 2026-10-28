@@ -10,6 +10,28 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.10.0 · 2026-10-28
+
+Search, and science on the page: formulas, molecules, charts and rock
+columns, all drawn when the site is built, without JavaScript.
+
+- **Site search** (#108): a search button in the header (and Ctrl+K)
+  finds words in all pages, posts and episodes, with Pagefind. The
+  search runs in the visitor's browser from files on the site itself.
+  On by default; a switch in the Site tab.
+- **Math formulas** (#107): LaTeX in Text blocks, `$…$` in the line and
+  `$$…$$` or a ```` ```math ```` block on its own, drawn as MathML in
+  Latin Modern Math. See [Math formulas](blog/2026-10-28-math-formulas.md).
+- **Chemistry** (#130): a ```` ```smiles ```` block draws a molecule's
+  structure; `\ce{…}` writes chemical formulas and reaction equations.
+  See [Chemistry](blog/2026-10-28-chemistry.md).
+- **Charts and stratigraphic columns** (#131): a ```` ```chart ```` block
+  draws bar, line, pie, scatter and more from a short description; a
+  ```` ```strata ```` block draws the layers of an outcrop or borehole.
+  See [Charts and strata](blog/2026-10-28-charts.md).
+- Fixed: after switching sites, Versions and the media tabs showed the
+  old site.
+
 ## 0.9.0 · 2026-10-28
 
 One site on two computers, without the command line.
