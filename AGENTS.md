@@ -44,6 +44,11 @@ Secrets (SSH keys, tokens) live in the OS keychain, never in the site folder.
 - Svelte 5 runes only (`$state`, `$derived`, `$effect`, `$props`); no legacy
   `export let` or stores for component state.
 - Give key UI elements stable `id`s.
+- Front-end code from others that generated sites use (the Podlove
+  Subscribe Button, later the Podlove Web Player) is copied into
+  `crates/qed-core/assets/<name>/` with a `README.md` that says where the
+  copy comes from (project, version or commit, date), what was changed,
+  how q.e.d. uses it and how to update it.
 - Don't write inline `<script>` tags into generated sites without need.
   Content must be readable without JavaScript; JavaScript is only for
   optional features that degrade gracefully, such as the player and site

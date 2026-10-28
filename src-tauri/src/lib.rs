@@ -58,8 +58,16 @@ async fn open_site(app: AppHandle, path: PathBuf) -> Result<Site, String> {
 /// history. The UI opens it afterwards with `open_site`.
 #[tauri::command]
 #[specta::specta]
-async fn create_site(path: PathBuf, title: String, language: String) -> Result<(), String> {
+async fn create_site(
+    path: PathBuf,
+    title: String,
+    language: String,
+    podcast: bool,
+) -> Result<(), String> {
     site::create_site(&path, &title, &language).map_err(|error| error.to_string())?;
+    if podcast {
+        podcast::start_podcast(&path).map_err(|error| error.to_string())?;
+    }
     // The site is there either way; without history the Versions tab
     // offers to start it.
     if let Err(error) = history::start(&path) {

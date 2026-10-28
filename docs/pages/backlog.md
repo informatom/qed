@@ -21,15 +21,15 @@ Nothing open.
 
 ### Phase 2: Podcasting
 
-- **#069 Podcast blocks.** Latest episodes and Subscribe blocks; seed them on
-  the `home` page of new podcast sites.
 - **#047 Contributors.** Contributors per site (name, photo, Markdown bio,
   links), linked to episodes with a role. `podcast:person` in the feed,
   people on episode pages, a Contributors block.
 - **#048 Transcripts.** WebVTT per episode. Deployed as a file, linked with
   `podcast:transcript`, shown on the episode page and in the player.
 - **#049 Web player.** Self-hosted Podlove Web Player, copied into each site,
-  with chapters and transcripts.
+  with chapters and transcripts. Like the Subscribe button: in
+  `crates/qed-core/assets/`, with a README on where it comes from and how
+  to update it (rule in AGENTS.md).
 - **#053 Share links.** Plain share links on episode pages (Mastodon, Bluesky,
   email, copy link), no third-party scripts.
 

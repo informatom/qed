@@ -1138,7 +1138,9 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             | Block::Download(_)
             | Block::Columns(_)
             | Block::Video(_)
-            | Block::Shared(_) => {}
+            | Block::Shared(_)
+            | Block::LatestEpisode
+            | Block::Subscribe => {}
         }
     }
     for text in texts {

@@ -208,8 +208,21 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         _ => Vec::new(),
     };
     let colors = color_classes(&site.config.colors);
+    let button_color = crate::theme::color_hex(
+        STYLESHEET,
+        site.config.page_theme(),
+        site.config.custom(),
+        match site.config.colors.buttons.unwrap_or(ThemeColor::Primary) {
+            ThemeColor::Primary => "--color-primary",
+            ThemeColor::Secondary => "--color-secondary",
+            ThemeColor::Accent => "--color-accent",
+            ThemeColor::Neutral => "--color-neutral",
+        },
+    );
     let context = Context {
         podcast_feeds: &podcast_feeds,
+        podcast,
+        button_color: button_color.as_deref(),
         colors: &colors,
         root: &site.root,
         images: &images,
@@ -340,6 +353,9 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         for feed in crate::feed::podcast_feeds(&input) {
             write(&out_dir.join(&feed.file), feed.xml)?;
             podcast_feed_count += 1;
+        }
+        if uses_subscribe(&published, site.footer.as_ref()) {
+            write_subscribe_button(out_dir, &site.config, podcast, base)?;
         }
     }
 
@@ -542,6 +558,11 @@ struct Context<'a> {
     feeds: &'a [Feed<'a>],
     /// The podcast's feeds, the main format's first.
     podcast_feeds: &'a [PodcastFeed],
+    /// The podcast's settings, for episode blocks.
+    podcast: Option<&'a podcast::Podcast>,
+    /// The buttons' theme color as `#rrggbb`, for the Subscribe button,
+    /// which can't read the stylesheet's variables.
+    button_color: Option<&'a str>,
     today: Date,
     /// The site's language, for dates.
     language: &'a str,
@@ -591,6 +612,106 @@ fn posts<'a>(pages: &[&'a Page], parent: &str, today: Date) -> Vec<&'a Page> {
             .then_with(|| page_a.path.cmp(&page_b.path))
     });
     posts.into_iter().map(|(_, page)| page).collect()
+}
+
+/// The Podlove Subscribe Button, built into q.e.d. Where this copy comes
+/// from and how to update it: `assets/subscribe-button/README.md`.
+static SUBSCRIBE_BUTTON: include_dir::Dir<'_> =
+    include_dir::include_dir!("$CARGO_MANIFEST_DIR/assets/subscribe-button");
+
+/// Where the button goes in the built site.
+const SUBSCRIBE_DIR: &str = "subscribe-button";
+
+/// The file with the podcast's data the button reads, next to it.
+const SUBSCRIBE_DATA: &str = "podcast-data.js";
+
+/// Writes the Subscribe button and the podcast's data for it into the
+/// built site. The data goes into a file of its own rather than a
+/// `<script>` in every page: `window.qedPodcastData = {…}`, the title,
+/// cover and every feed, which the button hands to the listener's app.
+fn write_subscribe_button(
+    out_dir: &Path,
+    config: &SiteConfig,
+    podcast: &podcast::Podcast,
+    base: &str,
+) -> Result<(), BuildError> {
+    let target = out_dir.join(SUBSCRIBE_DIR);
+    write_embedded(&SUBSCRIBE_BUTTON, &target)?;
+    let title = podcast.title.as_deref().unwrap_or(&config.title);
+    let data = serde_json::json!({
+        "title": title,
+        "subtitle": podcast.author.as_deref().unwrap_or(""),
+        "description": podcast.description.as_deref().or(config.description.as_deref()).unwrap_or(""),
+        // A cover elsewhere as it is; one in media/ is set below.
+        "cover": podcast.cover.as_deref().map(str::trim).filter(|c| c.contains("://")),
+        "feeds": podcast.formats().iter().map(|format| serde_json::json!({
+            "type": "audio",
+            // The button's name for M4A is "aac".
+            "format": match format {
+                podcast::AudioFormat::M4a => "aac",
+                other => other.extension(),
+            },
+            "url": format!("{base}/{}", podcast::feed_file(*format)),
+            "variant": "high",
+        })).collect::<Vec<_>>(),
+    });
+    let mut script = format!("window.qedPodcastData = {data};\n");
+    // The cover's address from where this file is, so it works in the
+    // preview as well as on the published site: `../media/cover.jpg`
+    // from `subscribe-button/`, made a full address for the button's
+    // pop-up.
+    if let Some(cover) = podcast
+        .cover
+        .as_deref()
+        .map(str::trim)
+        .filter(|c| !c.is_empty() && !c.contains("://"))
+    {
+        let name = cover.trim_start_matches('/');
+        let name = name.strip_prefix("media/").unwrap_or(name);
+        let relative = serde_json::Value::from(format!("../{MEDIA_DIR}/{name}"));
+        script.push_str(&format!(
+            "window.qedPodcastData.cover = new URL({relative}, document.currentScript.src).href;\n"
+        ));
+    }
+    write(&target.join(SUBSCRIBE_DATA), script)
+}
+
+/// Writes a folder built into the program into `target`, with the
+/// folders inside it; READMEs stay out of the built site.
+fn write_embedded(dir: &include_dir::Dir, target: &Path) -> Result<(), BuildError> {
+    for entry in dir.entries() {
+        match entry {
+            include_dir::DirEntry::Dir(inner) => write_embedded(inner, target)?,
+            include_dir::DirEntry::File(file) => {
+                if file
+                    .path()
+                    .file_name()
+                    .is_some_and(|name| name == "README.md")
+                {
+                    continue;
+                }
+                let path = target.join(file.path());
+                if let Some(folder) = path.parent() {
+                    fs::create_dir_all(folder).map_err(|source| BuildError::Io {
+                        path: folder.to_path_buf(),
+                        source,
+                    })?;
+                }
+                fs::write(&path, file.contents())
+                    .map_err(|source| BuildError::Io { path, source })?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Whether any block in `pages` or the footer is a Subscribe block.
+fn uses_subscribe(pages: &[&Page], footer: Option<&Page>) -> bool {
+    pages.iter().copied().chain(footer).any(|page| {
+        block::all_blocks(&page.content.blocks)
+            .iter()
+            .any(|block| matches!(block, Block::Subscribe))
+    })
 }
 
 /// One of the podcast's feeds, for links to it.
@@ -1336,6 +1457,29 @@ enum RenderedBlock {
     Text {
         html: String,
     },
+    LatestEpisode {
+        title: String,
+        href: String,
+        /// "Folge 5 · 28. Oktober 2026".
+        label: String,
+        summary_html: Option<String>,
+        audio: Option<AudioEntry>,
+    },
+    Subscribe {
+        /// The button's script, and the file with the podcast's data it
+        /// reads.
+        script: String,
+        data: String,
+        /// `de`, `en`, … for the button's words.
+        language: String,
+        /// The theme's button color, `#rrggbb`; Podlove's green if none.
+        color: Option<String>,
+        /// `cover`: the podcast's cover with the button below it; or
+        /// `rectangle`, the button alone, for a podcast without a cover.
+        format: &'static str,
+        /// For readers without JavaScript: links to the feeds.
+        feeds: Vec<FeedLink>,
+    },
     Hero {
         /// A background photo; decorative, so its `alt` is empty.
         image: Option<Picture>,
@@ -1627,10 +1771,15 @@ fn render_page(
             })
             .collect(),
         chapters_heading: words.chapters,
-        audio: front
-            .episode
-            .as_ref()
-            .and_then(|episode| audio_entry(site, episode, &links, &words)),
+        audio: front.episode.as_ref().and_then(|episode| {
+            audio_entry(
+                &site.root,
+                site.config.podcast.as_ref(),
+                episode,
+                &links,
+                &words,
+            )
+        }),
         blocks: page
             .content
             .blocks
@@ -1921,6 +2070,74 @@ fn render_block(
         Block::Shared(_) => RenderedBlock::Text {
             html: String::new(),
         },
+        Block::LatestEpisode => {
+            let words = podcast::Words::for_language(context.language);
+            match crate::feed::feed_episodes(context.pages, context.today).first() {
+                // No episode yet: nothing to show.
+                None => RenderedBlock::Text {
+                    html: String::new(),
+                },
+                Some(page) => {
+                    let front = &page.content.front;
+                    let episode = front.episode.as_ref();
+                    let label: Vec<String> = episode
+                        .map(|e| podcast::label(e, &words))
+                        .filter(|l| !l.is_empty())
+                        .into_iter()
+                        .chain(
+                            front
+                                .date
+                                .as_ref()
+                                .and_then(|d| d.date())
+                                .map(|day| calendar::long_date(day, context.language)),
+                        )
+                        .collect();
+                    RenderedBlock::LatestEpisode {
+                        title: front.title.clone(),
+                        href: links.page(&page.path),
+                        label: label.join(" · "),
+                        summary_html: markdown(&front.summary),
+                        audio: episode.and_then(|e| {
+                            audio_entry(context.root, context.podcast, e, links, &words)
+                        }),
+                    }
+                }
+            }
+        }
+        // Without feeds (no podcast, or no web address) there's nothing
+        // to subscribe to.
+        Block::Subscribe if context.podcast_feeds.is_empty() => RenderedBlock::Text {
+            html: String::new(),
+        },
+        Block::Subscribe => RenderedBlock::Subscribe {
+            script: format!("{}{SUBSCRIBE_DIR}/javascripts/app.js", links.to_root()),
+            data: format!("{}{SUBSCRIBE_DIR}/{SUBSCRIBE_DATA}", links.to_root()),
+            language: context
+                .language
+                .split(['-', '_'])
+                .next()
+                .unwrap_or("en")
+                .to_lowercase(),
+            color: context.button_color.map(str::to_string),
+            format: if context
+                .podcast
+                .and_then(|p| p.cover.as_deref())
+                .is_some_and(|c| !c.trim().is_empty())
+            {
+                "cover"
+            } else {
+                "rectangle"
+            },
+            feeds: context
+                .podcast_feeds
+                .iter()
+                .map(|feed| FeedLink {
+                    title: feed.label.clone(),
+                    href: format!("{}{}", links.to_root(), feed.file),
+                    label: feed.label.clone(),
+                })
+                .collect(),
+        },
         Block::Video(video) => match video
             .url
             .as_deref()
@@ -2145,19 +2362,15 @@ fn share_image(page: &Page, base_url: &str, images: &Images) -> Option<ShareImag
 
 /// The player and download links for an episode's audio, if it has some.
 fn audio_entry(
-    site: &Site,
+    root: &Path,
+    podcast: Option<&podcast::Podcast>,
     episode: &podcast::Episode,
     links: &LinkContext,
     words: &podcast::Words,
 ) -> Option<AudioEntry> {
     // The podcast's order of formats, then any others the episode has.
     let mut audio: Vec<&podcast::EpisodeAudio> = episode.audio.iter().collect();
-    let order = site
-        .config
-        .podcast
-        .as_ref()
-        .map(|podcast| podcast.formats())
-        .unwrap_or_default();
+    let order = podcast.map(|podcast| podcast.formats()).unwrap_or_default();
     audio.sort_by_key(|a| {
         order
             .iter()
@@ -2171,7 +2384,7 @@ fn audio_entry(
                 Some(file) => (
                     format!("{}{}/{file}", links.to_root(), podcast::AUDIO_URL_DIR),
                     // The file itself knows best.
-                    fs::metadata(site.root.join(podcast::AUDIO_DIR).join(file))
+                    fs::metadata(root.join(podcast::AUDIO_DIR).join(file))
                         .ok()
                         .map(|meta| meta.len())
                         .or(a.length),

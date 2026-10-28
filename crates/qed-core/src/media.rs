@@ -505,7 +505,11 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             }
             Block::Video(video) => images.extend(video.image.as_deref().and_then(media_name)),
             // The piece's own file counts its files.
-            Block::PostList(_) | Block::PageList(_) | Block::Shared(_) => {}
+            Block::PostList(_)
+            | Block::PageList(_)
+            | Block::Shared(_)
+            | Block::LatestEpisode
+            | Block::Subscribe => {}
         }
     }
 

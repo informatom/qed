@@ -157,6 +157,7 @@ fn block_document(block: &Block) -> DocumentMut {
         Block::PageList(list) => toml_edit::ser::to_document(list),
         Block::Video(video) => toml_edit::ser::to_document(video),
         Block::Shared(shared) => toml_edit::ser::to_document(shared),
+        Block::LatestEpisode | Block::Subscribe => Ok(DocumentMut::new()),
     };
     // Structs of strings always serialize; an empty document is a safe fallback.
     let mut document = document.unwrap_or_default();

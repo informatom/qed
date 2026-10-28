@@ -10,6 +10,8 @@ export interface SharedBlocks {
   readonly pieces: Page[];
   /** True while editing a shared block itself: it can't hold another one. */
   readonly insidePiece: boolean;
+  /** Whether the site has a podcast: only then are the podcast blocks offered. */
+  readonly podcast: boolean;
   /** Opens a shared block in the editor panel. */
   open(name: string): void;
   /** Makes a new shared block holding `block`; resolves to its name. */

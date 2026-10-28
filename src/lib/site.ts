@@ -81,7 +81,12 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   "page-list": "Page list",
   video: "Video",
   shared: "Shared block",
+  "latest-episode": "Latest episode",
+  subscribe: "Subscribe",
 };
+
+/** Blocks only podcast sites offer. */
+export const PODCAST_BLOCK_TYPES: BlockType[] = ["latest-episode", "subscribe"];
 
 /** The blocks a column can hold (see COLUMN_TYPES in block.rs). */
 export const COLUMN_BLOCK_TYPES: BlockType[] = [
@@ -95,6 +100,8 @@ export const COLUMN_BLOCK_TYPES: BlockType[] = [
   "page-list",
   "video",
   "shared",
+  "latest-episode",
+  "subscribe",
 ];
 
 /** A new, empty block of the given type. */
@@ -132,6 +139,12 @@ export function newBlock(type: BlockType): Block {
       return { type, url: null, title: null, image: null };
     case "shared":
       return { type, name: null };
+    case "latest-episode":
+    case "subscribe":
+      // Blocks without settings. bindings.ts adds `markdown?: never` to
+      // them, which `Sent` turns into a required field no value can fill;
+      // the cast says the block is complete as it is.
+      return { type } as Block;
   }
 }
 

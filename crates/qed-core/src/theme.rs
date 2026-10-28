@@ -197,6 +197,85 @@ impl CustomTheme {
     }
 }
 
+/// A theme color as `#rrggbb`, for code that can't use the stylesheet's
+/// variables, such as the Podlove Subscribe Button (it gets its color as
+/// text and works out its hover shade itself). `variable` is e.g.
+/// `--color-primary`; a custom theme's own color wins over its starting
+/// theme's, which comes from `stylesheet`, daisyUI's CSS.
+pub fn color_hex(
+    stylesheet: &str,
+    theme: &str,
+    custom: Option<&CustomTheme>,
+    variable: &str,
+) -> Option<String> {
+    if let Some(value) = custom.and_then(|custom| {
+        custom
+            .variables()
+            .into_iter()
+            .find(|var| var.name == variable)
+            .map(|var| var.value)
+    }) && let Some([r, g, b]) = parse_hex(&value)
+    {
+        return Some(format!("#{r:02x}{g:02x}{b:02x}"));
+    }
+    // The theme's rule: `…,[data-theme=nord]{color-scheme:light;--color-primary:oklch(…);…}`.
+    let selector = format!("[data-theme={theme}]");
+    let start = stylesheet.find(&selector)?;
+    let open = start + stylesheet[start..].find('{')? + 1;
+    let close = open + stylesheet[open..].find('}')?;
+    let value = stylesheet[open..close].split(';').find_map(|declaration| {
+        let (name, value) = declaration.split_once(':')?;
+        (name.trim() == variable).then(|| value.trim())
+    })?;
+    if let Some([r, g, b]) = parse_hex(value) {
+        return Some(format!("#{r:02x}{g:02x}{b:02x}"));
+    }
+    let [r, g, b] = oklch_to_rgb(value)?;
+    Some(format!("#{r:02x}{g:02x}{b:02x}"))
+}
+
+/// `oklch(45% .24 277.023)` (lightness, chroma, hue in degrees) as sRGB.
+/// The formulas are Björn Ottosson's, who made OKLab:
+/// <https://bottosson.github.io/posts/oklab/>.
+fn oklch_to_rgb(value: &str) -> Option<[u8; 3]> {
+    let inner = value.trim().strip_prefix("oklch(")?.strip_suffix(')')?;
+    let parts: Vec<&str> = inner.split_whitespace().collect();
+    let [lightness, chroma, hue] = parts[..] else {
+        return None;
+    };
+    let lightness = match lightness.strip_suffix('%') {
+        Some(percent) => percent.parse::<f64>().ok()? / 100.0,
+        None => lightness.parse::<f64>().ok()?,
+    };
+    let chroma: f64 = chroma.parse().ok()?;
+    let hue = hue
+        .trim_end_matches("deg")
+        .parse::<f64>()
+        .ok()?
+        .to_radians();
+    let (a, b) = (chroma * hue.cos(), chroma * hue.sin());
+
+    // OKLab to linear sRGB.
+    let l = (lightness + 0.396_337_777_4 * a + 0.215_803_757_3 * b).powi(3);
+    let m = (lightness - 0.105_561_345_8 * a - 0.063_854_172_8 * b).powi(3);
+    let s = (lightness - 0.089_484_177_5 * a - 1.291_485_548_0 * b).powi(3);
+    let linear = [
+        4.076_741_662_1 * l - 3.307_711_591_3 * m + 0.230_969_929_2 * s,
+        -1.268_438_004_6 * l + 2.609_757_401_1 * m - 0.341_319_396_5 * s,
+        -0.004_196_086_3 * l - 0.703_418_614_7 * m + 1.707_614_701_0 * s,
+    ];
+    // Linear light to the sRGB curve, then to 0–255.
+    Some(linear.map(|channel| {
+        let channel = channel.clamp(0.0, 1.0);
+        let curved = if channel <= 0.003_130_8 {
+            12.92 * channel
+        } else {
+            1.055 * channel.powf(1.0 / 2.4) - 0.055
+        };
+        (curved * 255.0).round() as u8
+    }))
+}
+
 /// `#rgb` or `#rrggbb` as red, green, blue.
 fn parse_hex(value: &str) -> Option<[u8; 3]> {
     let hex = value.trim().strip_prefix('#')?;
@@ -239,6 +318,48 @@ fn readable_on(rgb: [u8; 3]) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn turns_theme_colors_into_hex() {
+        assert_eq!(oklch_to_rgb("oklch(100% 0 0)"), Some([255, 255, 255]));
+        assert_eq!(oklch_to_rgb("oklch(0% 0 0)"), Some([0, 0, 0]));
+        // Pure red, as OKLCH.
+        assert_eq!(oklch_to_rgb("oklch(62.8% 0.2577 29.23)"), Some([255, 0, 0]));
+        assert_eq!(oklch_to_rgb("rgb(1 2 3)"), None);
+
+        let css = ":root,[data-theme=light]{--color-primary:oklch(0% 0 0);--color-secondary:#ff6600}\
+                   [data-theme=dark]{--color-primary:oklch(100% 0 0)}";
+        assert_eq!(
+            color_hex(css, "light", None, "--color-primary").as_deref(),
+            Some("#000000")
+        );
+        assert_eq!(
+            color_hex(css, "light", None, "--color-secondary").as_deref(),
+            Some("#ff6600")
+        );
+        assert_eq!(
+            color_hex(css, "dark", None, "--color-primary").as_deref(),
+            Some("#ffffff")
+        );
+        let custom = CustomTheme {
+            name: None,
+            from: "light".to_string(),
+            background: None,
+            primary: Some("#123456".to_string()),
+            secondary: None,
+            accent: None,
+            neutral: None,
+            corners: None,
+        };
+        assert_eq!(
+            color_hex(css, "light", Some(&custom), "--color-primary").as_deref(),
+            Some("#123456")
+        );
+        // The real stylesheet has every theme.
+        let site_css = include_str!("../assets/site.css");
+        assert!(color_hex(site_css, "nord", None, "--color-primary").is_some());
+    }
+
     use super::*;
 
     fn custom() -> CustomTheme {

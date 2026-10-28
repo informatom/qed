@@ -17,7 +17,7 @@
   import MediaPicker from "$lib/MediaPicker.svelte";
   import { edgeScroll, scrollParent } from "$lib/dragScroll";
   import { sharedBlocks } from "$lib/sharedBlocks";
-  import { BLOCK_NAMES, COLUMN_BLOCK_TYPES, commands, mediaUrl, newBlock, sharedName, type Block, type BlockType, type Gallery } from "$lib/site";
+  import { BLOCK_NAMES, COLUMN_BLOCK_TYPES, PODCAST_BLOCK_TYPES, commands, mediaUrl, newBlock, sharedName, type Block, type BlockType, type Gallery } from "$lib/site";
 
   interface Props {
     /** The blocks being edited; changed in place. */
@@ -33,7 +33,14 @@
 
   const shared = sharedBlocks();
   // A shared block can't hold another one.
-  let offered = $derived(shared?.insidePiece ? types.filter((type) => type !== "shared") : types);
+  // A shared block can't hold another one; podcast blocks need a podcast.
+  let offered = $derived(
+    types.filter(
+      (type) =>
+        !(shared?.insidePiece && type === "shared") &&
+        (shared?.podcast !== false || !PODCAST_BLOCK_TYPES.includes(type)),
+    ),
+  );
   let canShare = $derived(shared !== undefined && !shared.insidePiece);
 
   /** The block "Make shared" was clicked on, its new name, and what went wrong. */
@@ -469,6 +476,15 @@
               that page). Pages with a date are posts and left out; a Post list shows those.
             </p>
           </div>
+        {:else if block.type === "latest-episode"}
+          <p class="text-sm text-base-content/60">
+            The newest episode: title, number and date, summary and the player. Changes by itself with every new episode.
+          </p>
+        {:else if block.type === "subscribe"}
+          <p class="text-sm text-base-content/60">
+            The Podlove Subscribe Button: it hands the podcast's own feeds, every format, to the listener's podcast app.
+            Without JavaScript, links to the feeds.
+          </p>
         {:else if block.type === "shared"}
           {@const piece = shared?.pieces.find((p) => sharedName(p) === block.name)}
           <div class="flex flex-col gap-3">

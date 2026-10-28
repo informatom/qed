@@ -622,6 +622,18 @@ rest is done.
   the plain blog feed of `/episodes` is gone. No paged feeds (user,
   2026-10-28): Apple and most apps read only the first page.
 
+- **#069 Podcast blocks, #125 Podlove Subscribe Button.** Done
+  2026-10-28: a Latest episode block (newest episode: title, number,
+  date, summary, player) and a Subscribe block, the Podlove Subscribe
+  Button with every format's feed, self-hosted (`assets/subscribe-button/`,
+  with a README on its source and updating; the podcast's data in
+  `subscribe-button/podcast-data.js`), in the theme's button color
+  (`theme::color_hex` turns daisyUI's `oklch()` into hex), with the
+  podcast's cover above it, plain feed links without JavaScript. Decided with the user: the site's own feeds are the source
+  of truth, no directory links (Apple, Spotify). Podcast blocks are only
+  offered on podcast sites. New sites can start as a podcast (New site
+  dialog), with both blocks on the start page.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

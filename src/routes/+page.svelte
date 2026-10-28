@@ -105,6 +105,9 @@
       return site?.shared ?? [];
     },
     insidePiece: false,
+    get podcast() {
+      return !!site?.config.podcast;
+    },
     open: (name) => select(`shared/${name}.md`),
     async make(title, block) {
       if (!site) throw new Error("no site open");

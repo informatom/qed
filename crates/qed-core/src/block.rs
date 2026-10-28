@@ -57,6 +57,13 @@ pub enum Block {
     PageList(PageList),
     Video(Video),
     Shared(Shared),
+    /// The podcast's newest episode: title, number, date, summary and the
+    /// player, for the start page. Nothing to set.
+    LatestEpisode,
+    /// The Podlove Subscribe Button: it hands the podcast's own feeds to
+    /// the listener's podcast app. Without JavaScript, links to the feeds.
+    /// Nothing to set.
+    Subscribe,
 }
 
 /// A large header: optional background image, headline, text and a button.
@@ -294,6 +301,8 @@ impl Block {
             Block::PageList(_) => Some("page-list"),
             Block::Video(_) => Some("video"),
             Block::Shared(_) => Some("shared"),
+            Block::LatestEpisode => Some("latest-episode"),
+            Block::Subscribe => Some("subscribe"),
         }
     }
 }
@@ -346,13 +355,15 @@ pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)
         | Block::PostList(_)
         | Block::PageList(_)
         | Block::Video(_)
-        | Block::Shared(_) => {}
+        | Block::Shared(_)
+        | Block::LatestEpisode
+        | Block::Subscribe => {}
     }
 }
 
 /// The blocks a column can hold, besides text. Hero, Gallery and Columns
 /// need the full width.
-pub const COLUMN_TYPES: [&str; 9] = [
+pub const COLUMN_TYPES: [&str; 11] = [
     "image",
     "text-image",
     "download",
@@ -362,9 +373,11 @@ pub const COLUMN_TYPES: [&str; 9] = [
     "page-list",
     "video",
     "shared",
+    "latest-episode",
+    "subscribe",
 ];
 
-pub const CONTAINER_TYPES: [&str; 12] = [
+pub const CONTAINER_TYPES: [&str; 14] = [
     "hero",
     "image",
     "text-image",
@@ -377,6 +390,8 @@ pub const CONTAINER_TYPES: [&str; 12] = [
     "page-list",
     "video",
     "shared",
+    "latest-episode",
+    "subscribe",
 ];
 
 /// Builds a block from a container's type name and its TOML body.
@@ -395,8 +410,20 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
         "page-list" => Ok(Block::PageList(toml::from_str(toml)?)),
         "video" => Ok(Block::Video(toml::from_str(toml)?)),
         "shared" => Ok(Block::Shared(toml::from_str(toml)?)),
+        // Blocks without settings: the container must be empty.
+        "latest-episode" => nothing_to_set(toml).map(|()| Block::LatestEpisode),
+        "subscribe" => nothing_to_set(toml).map(|()| Block::Subscribe),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }
+}
+
+/// Checks that a block without settings has none written in it.
+fn nothing_to_set(toml: &str) -> Result<(), ContainerError> {
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Empty {}
+    toml::from_str::<Empty>(toml)?;
+    Ok(())
 }
 
 /// Why a container couldn't become a block.

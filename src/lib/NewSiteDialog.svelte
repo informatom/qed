@@ -16,6 +16,7 @@
   let dialog: HTMLDialogElement;
   let title = $state("");
   let language = $state("en");
+  let podcast = $state(false);
   /** The folder the site's own folder goes into. */
   let location = $state("");
   let folderName = $state("");
@@ -66,7 +67,7 @@
     creating = true;
     error = null;
     try {
-      await commands.createSite(path, title, language);
+      await commands.createSite(path, title, language, podcast);
       dialog.close();
       oncreated(path);
     } catch (e) {
@@ -91,6 +92,14 @@
         <input id="new-site-language" class="input w-full" bind:value={language} />
       </label>
     </div>
+
+    <label class="flex items-start gap-3">
+      <input id="new-site-podcast" type="checkbox" class="toggle mt-0.5" bind:checked={podcast} />
+      <span class="text-sm">
+        This site is a podcast
+        <span class="block text-base-content/60">Episodes, feeds, and the latest episode with a Subscribe button on the start page. Can be switched on later in the Podcast tab, too.</span>
+      </span>
+    </label>
 
     <div class="grid gap-4 sm:grid-cols-[1fr_14rem]">
       <div class="flex flex-col gap-1">

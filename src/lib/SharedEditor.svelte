@@ -29,6 +29,9 @@
       return outer?.pieces ?? [];
     },
     insidePiece: true,
+    get podcast() {
+      return outer?.podcast ?? false;
+    },
     open: (other) => outer?.open(other),
     make: () => Promise.reject(new Error("a shared block can't hold another one")),
   });

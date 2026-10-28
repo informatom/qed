@@ -20,7 +20,7 @@ export const commands = {
 	 *  Makes `path` a new site (see `site::create_site`) and starts its version
 	 *  history. The UI opens it afterwards with `open_site`.
 	 */
-	createSite: (path: string, title: string, language: string) => __TAURI_INVOKE<null>("create_site", { path, title, language }),
+	createSite: (path: string, title: string, language: string, podcast: boolean) => __TAURI_INVOKE<null>("create_site", { path, title, language, podcast }),
 	/**  Lists the files in `media/`, `assets/` or `static/` with their size and usage. */
 	listMedia: (root: string, library: Library) => __TAURI_INVOKE<MediaFile[]>("list_media", { root, library }),
 	/**  Copies files into `media/`, `assets/` or `static/` (also folders); returns their new names. */
@@ -261,7 +261,18 @@ export type Block =
 	type: "video",
 } & Video | {
 	type: "shared",
-} & Shared;
+} & Shared | 
+/**
+ *  The podcast's newest episode: title, number, date, summary and the
+ *  player, for the start page. Nothing to set.
+ */
+({ type: "latest-episode" }) & { markdown?: never } | 
+/**
+ *  The Podlove Subscribe Button: it hands the podcast's own feeds to
+ *  the listener's podcast app. Without JavaScript, links to the feeds.
+ *  Nothing to set.
+ */
+({ type: "subscribe" }) & { markdown?: never };
 
 /**  What a build produced. */
 export type BuildReport = {

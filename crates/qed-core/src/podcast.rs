@@ -991,6 +991,34 @@ pub fn next_number(site: &Site) -> u32 {
         .map_or(1, |n| n + 1)
 }
 
+/// Makes a site a podcast from the start: the podcast switched on, and the
+/// latest episode and the Subscribe button on the start page, after its
+/// Hero. For new sites; later, the Podcast tab switches it on.
+pub fn start_podcast(root: &Path) -> Result<(), SiteError> {
+    let site = site::open(root)?;
+    let mut config = site.config.clone();
+    if config.podcast.is_none() {
+        config.podcast = Some(Podcast {
+            formats: default_formats(),
+            ..Podcast::default()
+        });
+        site::save_config(root, &config)?;
+    }
+    if let Some(home) = site.pages.iter().find(|page| page.path.is_empty()) {
+        let has = |wanted: &Block| home.content.blocks.iter().any(|b| b == wanted);
+        if !has(&Block::LatestEpisode) && !has(&Block::Subscribe) {
+            let mut blocks = home.content.blocks.clone();
+            let after_hero = usize::from(matches!(blocks.first(), Some(Block::Hero(_))));
+            blocks.splice(
+                after_hero..after_hero,
+                [Block::LatestEpisode, Block::Subscribe],
+            );
+            site::save_blocks(root, &home.file, blocks)?;
+        }
+    }
+    Ok(())
+}
+
 /// The `/episodes` page: in the main menu, with a list of the episodes.
 fn create_archive(root: &Path, language: &str) -> Result<(), SiteError> {
     let content = PageContent {
@@ -1540,5 +1568,121 @@ mod tests {
         let page = std::fs::read_to_string(out.join("index.html")).unwrap();
         assert!(page.contains(r#"href="episodes.mp3.rss""#), "{page}");
         assert!(page.contains("Podcast feed (Ogg)"), "{page}");
+    }
+
+    #[test]
+    fn shows_the_latest_episode_and_a_subscribe_button() {
+        let dir = podcast_site();
+        let mut config = site::open(dir.path()).unwrap().config;
+        if let Some(podcast) = config.podcast.as_mut() {
+            podcast.formats = vec![AudioFormat::Mp3, AudioFormat::M4a];
+            podcast.cover = Some("cover.jpg".to_string());
+        }
+        site::save_config(dir.path(), &config).unwrap();
+        let home = site::open(dir.path())
+            .unwrap()
+            .pages
+            .into_iter()
+            .find(|p| p.path.is_empty())
+            .unwrap();
+        site::save_blocks(
+            dir.path(),
+            &home.file,
+            vec![Block::LatestEpisode, Block::Subscribe],
+        )
+        .unwrap();
+        let text = std::fs::read_to_string(dir.path().join(&home.file)).unwrap();
+        assert!(
+            text.contains("::: latest-episode\n:::\n\n::: subscribe\n:::"),
+            "{text}"
+        );
+
+        for title in ["Erste", "Zweite"] {
+            let page = create_episode(dir.path(), title, None).unwrap();
+            let mut front = page.content.front.clone();
+            front.summary = Some(format!("Über {title}"));
+            if let Some(episode) = front.episode.as_mut() {
+                episode.audio = vec![audio(
+                    AudioFormat::Mp3,
+                    &format!("https://cdn.example/{title}.mp3"),
+                )];
+            }
+            site::save_front_matter(dir.path(), &page.file, front).unwrap();
+        }
+
+        let site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        crate::generator::build_into(&site, &out).unwrap();
+        let html = std::fs::read_to_string(out.join("index.html")).unwrap();
+        // The newest: both are from today, so the later path wins the tie.
+        assert!(
+            html.contains("Über Erste") || html.contains("Über Zweite"),
+            "{html}"
+        );
+        assert!(html.contains("Folge"), "{html}");
+        assert!(
+            html.contains(r#"<source src="https://cdn.example/"#),
+            "{html}"
+        );
+        assert!(
+            html.contains(r#"<script src="subscribe-button/podcast-data.js"></script>"#),
+            "{html}"
+        );
+        assert!(
+            html.contains(
+                r##"src="subscribe-button/javascripts/app.js" data-language="de" data-colors="#"##
+            ) && html.contains(r#"data-format="cover""#),
+            "{html}"
+        );
+        assert!(
+            html.contains(r#"<noscript>"#) && html.contains(r#"href="episodes.m4a.rss""#),
+            "{html}"
+        );
+
+        assert!(out.join("subscribe-button/javascripts/app.js").is_file());
+        assert!(out.join("subscribe-button/button.html").is_file());
+        assert!(!out.join("subscribe-button/README.md").exists());
+        let data = std::fs::read_to_string(out.join("subscribe-button/podcast-data.js")).unwrap();
+        assert!(data.starts_with("window.qedPodcastData = {"), "{data}");
+        assert!(
+            data.contains(r#""url":"https://pod.example/episodes.mp3.rss""#),
+            "{data}"
+        );
+        assert!(data.contains(r#""format":"aac""#), "{data}");
+        assert!(
+            data.contains(r#"window.qedPodcastData.cover = new URL("../media/cover.jpg", document.currentScript.src).href;"#),
+            "{data}"
+        );
+    }
+
+    #[test]
+    fn starts_a_new_site_as_a_podcast() {
+        let dir = tempfile::tempdir().unwrap();
+        site::create_site(dir.path(), "Neu", "de").unwrap();
+        start_podcast(dir.path()).unwrap();
+        let site = site::open(dir.path()).unwrap();
+        assert_eq!(
+            site.config.podcast.as_ref().map(Podcast::main_format),
+            Some(AudioFormat::Mp3)
+        );
+        let home = site.pages.iter().find(|p| p.path.is_empty()).unwrap();
+        assert!(
+            matches!(
+                home.content.blocks[..],
+                [
+                    Block::Hero(_),
+                    Block::LatestEpisode,
+                    Block::Subscribe,
+                    Block::Text { .. }
+                ]
+            ),
+            "{:?}",
+            home.content.blocks
+        );
+        // Once is enough.
+        start_podcast(dir.path()).unwrap();
+        let again = site::open(dir.path()).unwrap();
+        let home_again = again.pages.iter().find(|p| p.path.is_empty()).unwrap();
+        assert_eq!(home_again.content.blocks.len(), 4);
     }
 }

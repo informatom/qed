@@ -34,6 +34,35 @@
 {%- match block %}
 {%- when RenderedBlock::Text with { html } %}
 <div class="prose max-w-none">{{ html|safe }}</div>
+{%- when RenderedBlock::LatestEpisode with { title, href, label, summary_html, audio } %}
+<article class="latest-episode flex flex-col gap-3 rounded-box border border-base-300 p-6">
+  <h2 class="text-2xl font-semibold tracking-tight"><a href="{{ href }}" class="link link-hover">{{ title }}</a></h2>
+  {%- if !label.is_empty() %}
+  <p class="text-sm text-base-content/60">{{ label }}</p>
+  {%- endif %}
+  {%- if let Some(summary_html) = summary_html %}
+  <div class="prose max-w-none">{{ summary_html|safe }}</div>
+  {%- endif %}
+  {%- if let Some(audio) = audio %}
+  <audio controls preload="none" class="w-full">
+    {%- for source in audio.sources %}
+    <source src="{{ source.src }}" type="{{ source.mime_type }}">
+    {%- endfor %}
+  </audio>
+  {%- endif %}
+</article>
+{%- when RenderedBlock::Subscribe with { script, data, language, color, format, feeds } %}
+<div class="subscribe">
+  <script src="{{ data }}"></script>
+  <script class="podlove-subscribe-button" src="{{ script }}" data-language="{{ language }}"{% if let Some(color) = color %} data-colors="{{ color }}"{% endif %} data-size="big" data-style="filled" data-format="{{ format }}" data-json-data="qedPodcastData"></script>
+  <noscript>
+    <ul class="flex flex-col gap-1">
+      {%- for feed in feeds %}
+      <li><a href="{{ feed.href }}" class="link inline-flex items-center gap-1.5">{{ rss_icon|safe }}{{ feed.label }}</a></li>
+      {%- endfor %}
+    </ul>
+  </noscript>
+</div>
 {%- when RenderedBlock::Hero with { image, headline, text_html, button } %}
 <section class="hero relative min-h-80 overflow-hidden rounded-box {% if image.is_some() %}text-neutral-content{% else %}{{ colors.hero }}{% endif %}">
   {%- if let Some(image) = image %}
