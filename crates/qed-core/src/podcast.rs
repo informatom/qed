@@ -947,11 +947,13 @@ pub struct Words {
     pub bonus: &'static str,
     pub chapters: &'static str,
     pub download: &'static str,
+    /// "Mitwirkende": the people section and the contributors' page.
+    pub contributors: &'static str,
+    /// The heading of the transcript on an episode page.
+    pub transcript: &'static str,
     /// The share row (#053): its label, the email link, the copy
     /// button before and after copying, the device's share menu, and the
     /// question for the reader's Mastodon server.
-    /// "Mitwirkende": the people section and the contributors' page.
-    pub contributors: &'static str,
     pub share: &'static str,
     pub email: &'static str,
     pub copy_link: &'static str,
@@ -974,6 +976,7 @@ impl Words {
                 chapters: "Kapitel",
                 download: "Herunterladen",
                 contributors: "Mitwirkende",
+                transcript: "Transkript",
                 share: "Teilen",
                 email: "E-Mail",
                 copy_link: "Link kopieren",
@@ -990,6 +993,7 @@ impl Words {
                 chapters: "Chapitres",
                 download: "Télécharger",
                 contributors: "Contributeurs",
+                transcript: "Transcription",
                 share: "Partager",
                 email: "E-mail",
                 copy_link: "Copier le lien",
@@ -1006,6 +1010,7 @@ impl Words {
                 chapters: "Capítulos",
                 download: "Descargar",
                 contributors: "Participantes",
+                transcript: "Transcripción",
                 share: "Compartir",
                 email: "Correo",
                 copy_link: "Copiar enlace",
@@ -1022,6 +1027,7 @@ impl Words {
                 chapters: "Capitoli",
                 download: "Scarica",
                 contributors: "Partecipanti",
+                transcript: "Trascrizione",
                 share: "Condividi",
                 email: "E-mail",
                 copy_link: "Copia link",
@@ -1038,6 +1044,7 @@ impl Words {
                 chapters: "Hoofdstukken",
                 download: "Downloaden",
                 contributors: "Medewerkers",
+                transcript: "Transcript",
                 share: "Delen",
                 email: "E-mail",
                 copy_link: "Link kopiëren",
@@ -1054,6 +1061,7 @@ impl Words {
                 chapters: "Chapters",
                 download: "Download",
                 contributors: "Contributors",
+                transcript: "Transcript",
                 share: "Share",
                 email: "Email",
                 copy_link: "Copy link",
@@ -1477,6 +1485,78 @@ mod tests {
             "{html}"
         );
         assert!(out.join("share.js").is_file());
+    }
+
+    #[test]
+    fn builds_episode_pages_from_the_episode_layout() {
+        use crate::block::{Block, DEFAULT_EPISODE_LAYOUT};
+        let dir = podcast_site();
+        let page = create_episode(dir.path(), "Gespräch", None).unwrap();
+        let text = |markdown: &str| Block::Text {
+            markdown: markdown.to_string(),
+        };
+        site::save_blocks(dir.path(), &page.file, vec![text("Unsere Shownotes.")]).unwrap();
+        let transcripts = dir.path().join(TRANSCRIPTS_DIR);
+        std::fs::create_dir_all(&transcripts).unwrap();
+        std::fs::write(
+            transcripts.join("one.vtt"),
+            "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n<v Hannah>Hallo\n\n\
+             00:00:02.000 --> 00:00:03.000\n<v Hannah>und willkommen.\n\n\
+             00:00:03.000 --> 00:00:04.000\n<v Max>Servus!\n",
+        )
+        .unwrap();
+        let mut front = page.content.front.clone();
+        if let Some(episode) = front.episode.as_mut() {
+            episode.transcript = Some("one.vtt".to_string());
+            episode.chapters = vec![Chapter {
+                start: "00:00:01".to_string(),
+                title: "Anfang".to_string(),
+                link: None,
+            }];
+        }
+        site::save_front_matter(dir.path(), &page.file, front).unwrap();
+
+        // The default layout needs no file.
+        assert!(
+            site::save_episode_layout(dir.path(), DEFAULT_EPISODE_LAYOUT.to_vec())
+                .unwrap()
+                .is_none()
+        );
+        assert!(!dir.path().join(site::EPISODE_LAYOUT_FILE).exists());
+
+        let layout = vec![
+            text("Vor jeder Folge."),
+            Block::EpisodeShownotes,
+            Block::EpisodeTranscript,
+            Block::EpisodeChapters,
+        ];
+        site::save_episode_layout(dir.path(), layout.clone()).unwrap();
+        let written = std::fs::read_to_string(dir.path().join(site::EPISODE_LAYOUT_FILE)).unwrap();
+        assert!(written.contains("::: episode-transcript\n:::"), "{written}");
+        let site = site::open(dir.path()).unwrap();
+        assert_eq!(site.episode_layout.as_ref().unwrap().content.blocks, layout);
+
+        let out = dir.path().join("_site");
+        crate::generator::build_into(&site, &out).unwrap();
+        let html = std::fs::read_to_string(out.join(&page.path).join("index.html")).unwrap();
+        let at = |needle: &str| {
+            html.find(needle)
+                .unwrap_or_else(|| panic!("no {needle} in {html}"))
+        };
+        assert!(at("Vor jeder Folge.") < at("Unsere Shownotes."));
+        assert!(at("Unsere Shownotes.") < at(r#"<details id="transcript""#));
+        assert!(at(r#"<details id="transcript""#) < at("<h2>Kapitel</h2>"));
+        // One voice's cues in a row make a paragraph.
+        assert!(
+            html.contains("Hannah:</span>Hallo und willkommen.</p>"),
+            "{html}"
+        );
+        assert!(html.contains("Max:</span>Servus!</p>"), "{html}");
+        // Parts left out of the layout are left out of the page.
+        assert!(!html.contains(r#"id="share""#), "{html}");
+        // Pages that aren't episodes don't get the layout.
+        let home = std::fs::read_to_string(out.join("index.html")).unwrap();
+        assert!(!home.contains("Vor jeder Folge."), "{home}");
     }
 
     /// About one second of silent MP3: 39 frames (MPEG-1 Layer III,

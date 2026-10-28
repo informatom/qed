@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use crate::block::Block;
 use crate::page::{self, FrontMatter, PageContent};
 use crate::page_writer;
-use crate::site::{self, FOOTER_PATH, Page, Site, SiteError};
+use crate::site::{self, EPISODE_LAYOUT_PATH, FOOTER_PATH, Page, Site, SiteError};
 use crate::slug::slugify;
 
 /// The folder that holds the pieces.
@@ -160,13 +160,14 @@ fn existing(root: &Path, name: &str) -> Result<PathBuf, SiteError> {
     }
 }
 
-/// The pages (URL paths, sorted) and the footer ([`FOOTER_PATH`]) that show
-/// the piece `name`.
+/// The pages (URL paths, sorted), the footer ([`FOOTER_PATH`]) and the
+/// episode layout ([`EPISODE_LAYOUT_PATH`]) that show the piece `name`.
 pub fn users(site: &Site, name: &str) -> Vec<String> {
     let mut found: Vec<String> = site
         .pages
         .iter()
         .chain(site.footer.as_ref())
+        .chain(site.episode_layout.as_ref())
         .filter(|page| names_in(&page.content.blocks).contains(name))
         .map(|page| page.path.clone())
         .collect();
@@ -183,6 +184,7 @@ pub fn delete(site: &Site, name: &str) -> Result<(), SiteError> {
             .iter()
             .map(|path| match path.as_str() {
                 FOOTER_PATH => "the footer".to_string(),
+                EPISODE_LAYOUT_PATH => "the episode layout".to_string(),
                 path => format!("/{path}"),
             })
             .collect();
@@ -223,17 +225,22 @@ fn without_shared(blocks: Vec<Block>) -> Vec<Block> {
         .collect()
 }
 
-/// The site as the generator sees it: every Shared block on pages and in
-/// the footer replaced by its piece's blocks. A Shared block whose piece
+/// The site as the generator sees it: every Shared block on pages, in
+/// the footer and in the episode layout replaced by its piece's blocks. A Shared block whose piece
 /// is missing shows nothing and adds a note.
 pub(crate) fn expanded(site: &Site, notes: &mut Vec<String>) -> Site {
     let mut expanded = site.clone();
-    for page in expanded.pages.iter_mut().chain(expanded.footer.as_mut()) {
+    let parts = expanded
+        .footer
+        .iter_mut()
+        .chain(&mut expanded.episode_layout);
+    for page in expanded.pages.iter_mut().chain(parts) {
         let mut missing = BTreeSet::new();
         page.content.blocks = expand(&page.content.blocks, &site.shared, &mut missing);
         for name in missing {
             let place = match page.path.as_str() {
                 FOOTER_PATH => "The footer".to_string(),
+                EPISODE_LAYOUT_PATH => "The episode layout".to_string(),
                 path => format!("/{path}"),
             };
             notes.push(if name.is_empty() {

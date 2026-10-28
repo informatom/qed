@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import BlockList from "$lib/BlockList.svelte";
-  import { normalizeBlock, type Block } from "$lib/site";
+  import { normalizeBlock, type Block, type BlockType } from "$lib/site";
 
   interface Props {
     /** The blocks as saved. */
@@ -13,9 +13,13 @@
     start?: Block[];
     /** Tells the parent whether there are unsaved changes. */
     dirty?: boolean;
+    /** The block types that can be added; a page's if not given. */
+    types?: BlockType[];
+    /** What an empty list says. */
+    empty?: string;
   }
 
-  let { saved, siteRoot, persist, start, dirty = $bindable(false) }: Props = $props();
+  let { saved, siteRoot, persist, start, dirty = $bindable(false), types, empty }: Props = $props();
 
   // An editable copy. BlockList keys blocks by the objects themselves, so
   // Svelte can tell them apart while they move (the Markdown editors keep
@@ -53,7 +57,7 @@
 </script>
 
 <div id="block-editor" class="flex flex-col gap-4">
-  <BlockList bind:blocks {siteRoot} />
+  <BlockList bind:blocks {siteRoot} {types} {empty} />
 
   <div class="flex flex-wrap items-center justify-end gap-2">
     {#if error}

@@ -54,6 +54,11 @@ export const commands = {
 	 */
 	saveFooter: (root: string, blocks: Block[]) => __TAURI_INVOKE<Block[]>("save_footer", { root, blocks }),
 	/**
+	 *  Saves the episode layout into `episode.md`; the default layout removes
+	 *  it. Returns the blocks as they read back.
+	 */
+	saveEpisodeLayout: (root: string, blocks: Block[]) => __TAURI_INVOKE<Block[]>("save_episode_layout", { root, blocks }),
+	/**
 	 *  Makes a shared piece from these blocks (usually one, from "Make
 	 *  shared"); its name comes from the title.
 	 */
@@ -283,7 +288,29 @@ export type Block =
  *  The podcast's contributors: photo and name, each linking to their
  *  page. Nothing to set.
  */
-({ type: "contributors" }) & { markdown?: never };
+({ type: "contributors" }) & { markdown?: never } | 
+/**
+ *  The parts of an episode page, for the episode layout (`episode.md`,
+ *  see `site.rs`): each stands for that part of the episode the page
+ *  shows. Nothing to set; elsewhere they show nothing.
+ * 
+ *  The episode's audio: the Podlove Web Player, or the browser's own
+ *  player without JavaScript, and the download links.
+ */
+({ type: "episode-player" }) & { markdown?: never } | 
+/**  The people in the episode, with their roles. */
+({ type: "episode-people" }) & { markdown?: never } | 
+/**  The episode page's own blocks. */
+({ type: "episode-shownotes" }) & { markdown?: never } | 
+/**
+ *  The chapters, as a list; hidden while the Podlove Web Player runs,
+ *  which shows them itself.
+ */
+({ type: "episode-chapters" }) & { markdown?: never } | 
+/**  The transcript as text, folded away. */
+({ type: "episode-transcript" }) & { markdown?: never } | 
+/**  Links for sharing the episode. */
+({ type: "episode-share" }) & { markdown?: never };
 
 /**  What a build produced. */
 export type BuildReport = {
@@ -1119,6 +1146,11 @@ export type Site_Deserialize = {
 	 *  [`FOOTER_PATH`].
 	 */
 	footer: Page | null,
+	/**
+	 *  The episode layout from `episode.md`, if the site has one; its
+	 *  `path` is [`EPISODE_LAYOUT_PATH`].
+	 */
+	episode_layout: Page | null,
 	/**  The shared pieces from `shared/`, sorted by name; see `shared.rs`. */
 	shared: Page[],
 	/**
@@ -1141,6 +1173,11 @@ export type Site_Serialize = {
 	 *  [`FOOTER_PATH`].
 	 */
 	footer: Page | null,
+	/**
+	 *  The episode layout from `episode.md`, if the site has one; its
+	 *  `path` is [`EPISODE_LAYOUT_PATH`].
+	 */
+	episode_layout: Page | null,
 	/**  The shared pieces from `shared/`, sorted by name; see `shared.rs`. */
 	shared: Page[],
 	/**

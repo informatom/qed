@@ -203,6 +203,19 @@ async fn save_footer(root: PathBuf, blocks: Vec<Block>) -> Result<Vec<Block>, St
     Ok(footer.map(|page| page.content.blocks).unwrap_or_default())
 }
 
+/// Saves the episode layout into `episode.md`; the default layout removes
+/// it. Returns the blocks as they read back.
+#[tauri::command]
+#[specta::specta]
+async fn save_episode_layout(root: PathBuf, blocks: Vec<Block>) -> Result<Vec<Block>, String> {
+    let layout = site::save_episode_layout(&root, blocks).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(layout.map_or_else(
+        || qed_core::block::DEFAULT_EPISODE_LAYOUT.to_vec(),
+        |page| page.content.blocks,
+    ))
+}
+
 /// Makes a shared piece from these blocks (usually one, from "Make
 /// shared"); its name comes from the title.
 #[tauri::command]
@@ -725,6 +738,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             save_page_settings,
             save_page_blocks,
             save_footer,
+            save_episode_layout,
             create_shared,
             save_shared,
             rename_shared,

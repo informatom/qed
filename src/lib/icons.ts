@@ -15,6 +15,12 @@ import Newspaper from "@lucide/svelte/icons/newspaper";
 import PanelTop from "@lucide/svelte/icons/panel-top";
 import Type from "@lucide/svelte/icons/type";
 import Mic from "@lucide/svelte/icons/mic";
+import AudioLines from "@lucide/svelte/icons/audio-lines";
+import Captions from "@lucide/svelte/icons/captions";
+import ListOrdered from "@lucide/svelte/icons/list-ordered";
+import NotebookText from "@lucide/svelte/icons/notebook-text";
+import Share2 from "@lucide/svelte/icons/share-2";
+import Users from "@lucide/svelte/icons/users";
 import Rss from "@lucide/svelte/icons/rss";
 import UsersRound from "@lucide/svelte/icons/users-round";
 import type { BlockType } from "$lib/site";
@@ -37,4 +43,10 @@ export const BLOCK_ICONS: Record<BlockType, IconComponent> = {
   "latest-episode": Mic,
   subscribe: Rss,
   contributors: UsersRound,
+  "episode-player": AudioLines,
+  "episode-people": Users,
+  "episode-shownotes": NotebookText,
+  "episode-chapters": ListOrdered,
+  "episode-transcript": Captions,
+  "episode-share": Share2,
 };

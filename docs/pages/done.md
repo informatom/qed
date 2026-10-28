@@ -675,6 +675,19 @@ rest is done.
   the chapter list are hidden (user); without JavaScript they stay. The
   player's share tab is left off: the site has its own share row.
 
+- **#126 Episode layout.** Done 2026-10-28: `episode.md` next to
+  `footer.md` holds the blocks of every episode page below its title and
+  byline. Six blocks without settings stand for the episode's parts:
+  Player, People, Shownotes (the page's own blocks), Chapters, Transcript
+  (new: the WebVTT text, one paragraph per speaker turn, folded away in a
+  `<details>`) and Share links; any other block (a Subscribe button, a
+  Call to action) may go between them. The parts render in `block.html`
+  now, no longer in `page.html`. Without the file, the old order: Player,
+  People, Shownotes, Chapters, Share links; saving that order removes the
+  file. Edited under "Templates" in the page tree, next to Footer (user),
+  on podcast sites only. Each part can be added once; the parts aren't
+  offered on pages, in columns or for "Make shared".
+
 ## Dropped
 
 Not needed in a single-user desktop app:

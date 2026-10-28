@@ -126,7 +126,13 @@ pub fn move_page(site: &Site, file: &Path, parent: &str, slug: &str) -> Result<P
             site::update_footer(&site.root, |content| rewrite_links(content, &links))?;
         }
     }
-    // So do the shared pieces.
+    // So do the episode layout and the shared pieces.
+    if let Some(layout) = &site.episode_layout {
+        let links = new_links(layout, &layout.file, false, &new_paths, &new_files);
+        if !links.is_empty() {
+            site::update_episode_layout(&site.root, |content| rewrite_links(content, &links))?;
+        }
+    }
     for piece in &site.shared {
         let links = new_links(piece, &piece.file, false, &new_paths, &new_files);
         if !links.is_empty() {

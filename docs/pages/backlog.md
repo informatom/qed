@@ -21,15 +21,8 @@ Nothing open.
 
 ### Phase 2: Podcasting
 
-- **#126 Episode layout.** The parts of every episode page as a block list
-  in `episode.md`, like the footer (user, 2026-10-28): placeholder blocks
-  for the episode's player (#049), people, shownotes (the episode's own
-  blocks), chapters, transcript (#048) and share row, plus any normal
-  block (a Subscribe button, a Call to action) shown on every episode.
-  Edited in the page tree next to Footer. Title and byline stay fixed at
-  the top. Without the file, today's order: player, people, shownotes,
-  chapters, share. The episode parts move from `page.html` into
-  `block.html`. After #048 and #049, so their blocks are there.
+Done 2026-10-28, see [Done](done.md) (#046 – #053, #126).
+
 ### Phase 3: Nice to have
 
 - **#070 Code signing.** Apple developer account and notarization, Windows

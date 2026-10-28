@@ -17,7 +17,7 @@
   import MediaPicker from "$lib/MediaPicker.svelte";
   import { edgeScroll, scrollParent } from "$lib/dragScroll";
   import { sharedBlocks } from "$lib/sharedBlocks";
-  import { BLOCK_NAMES, COLUMN_BLOCK_TYPES, PODCAST_BLOCK_TYPES, commands, mediaUrl, newBlock, sharedName, type Block, type BlockType, type Gallery } from "$lib/site";
+  import { COLUMN_BLOCK_TYPES, EPISODE_PART_NOTES, EPISODE_PART_TYPES, PAGE_BLOCK_TYPES, BLOCK_NAMES, PODCAST_BLOCK_TYPES, commands, mediaUrl, newBlock, sharedName, type Block, type BlockType, type Gallery } from "$lib/site";
 
   interface Props {
     /** The blocks being edited; changed in place. */
@@ -27,18 +27,21 @@
     types?: BlockType[];
     /** Inside a column: smaller, without page-level ids. */
     nested?: boolean;
+    /** What an empty list says, instead of the page's words. */
+    empty?: string;
   }
 
-  let { blocks = $bindable(), siteRoot, types = Object.keys(BLOCK_NAMES) as BlockType[], nested = false }: Props = $props();
+  let { blocks = $bindable(), siteRoot, types = PAGE_BLOCK_TYPES, nested = false, empty }: Props = $props();
 
   const shared = sharedBlocks();
-  // A shared block can't hold another one.
-  // A shared block can't hold another one; podcast blocks need a podcast.
+  // A shared block can't hold another one; podcast blocks need a podcast;
+  // each part of an episode page goes in once.
   let offered = $derived(
     types.filter(
       (type) =>
         !(shared?.insidePiece && type === "shared") &&
-        (shared?.podcast !== false || !PODCAST_BLOCK_TYPES.includes(type)),
+        (shared?.podcast !== false || !PODCAST_BLOCK_TYPES.includes(type)) &&
+        !(EPISODE_PART_TYPES.includes(type) && blocks.some((block) => block.type === type)),
     ),
   );
   let canShare = $derived(shared !== undefined && !shared.insidePiece);
@@ -211,7 +214,7 @@
             onpointercancel={() => (drag = null)}><GripVertical class="size-4" /></button>
           <span class="badge badge-soft gap-1.5"><Icon class="size-3.5" />{BLOCK_NAMES[block.type]}</span>
           <div class="flex-1"></div>
-          {#if canShare && block.type !== "shared"}
+          {#if canShare && block.type !== "shared" && !EPISODE_PART_TYPES.includes(block.type)}
             <button type="button" class="btn btn-ghost btn-xs" title="Move this block into a shared block, to show it on other pages too"
               onclick={() => startSharing(block)}><Component class="size-3.5" /> Make shared</button>
           {/if}
@@ -485,6 +488,8 @@
               that page). Pages with a date are posts and left out; a Post list shows those.
             </p>
           </div>
+        {:else if EPISODE_PART_TYPES.includes(block.type)}
+          <p class="text-sm text-base-content/60">{EPISODE_PART_NOTES[block.type]}</p>
         {:else if block.type === "latest-episode"}
           <p class="text-sm text-base-content/60">
             The newest episode: title, number and date, summary and the player. Changes by itself with every new episode.
@@ -580,7 +585,7 @@
     </section>
   {:else}
     <p class={["rounded-box border border-dashed border-base-300 text-center text-base-content/60", nested ? "p-3 text-sm" : "p-8"]}>
-      {nested ? "Empty column." : "This page has no content yet. Add a block below."}
+      {empty ?? (nested ? "Empty column." : "This page has no content yet. Add a block below.")}
     </p>
   {/each}
 

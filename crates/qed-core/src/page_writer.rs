@@ -157,7 +157,14 @@ fn block_document(block: &Block) -> DocumentMut {
         Block::PageList(list) => toml_edit::ser::to_document(list),
         Block::Video(video) => toml_edit::ser::to_document(video),
         Block::Shared(shared) => toml_edit::ser::to_document(shared),
-        Block::LatestEpisode | Block::Contributors => Ok(DocumentMut::new()),
+        Block::LatestEpisode
+        | Block::Contributors
+        | Block::EpisodePlayer
+        | Block::EpisodePeople
+        | Block::EpisodeShownotes
+        | Block::EpisodeChapters
+        | Block::EpisodeTranscript
+        | Block::EpisodeShare => Ok(DocumentMut::new()),
         Block::Subscribe(block) => toml_edit::ser::to_document(block),
     };
     // Structs of strings always serialize; an empty document is a safe fallback.

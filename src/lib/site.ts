@@ -87,10 +87,48 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   "latest-episode": "Latest episode",
   subscribe: "Subscribe",
   contributors: "Contributors",
+  "episode-player": "Player",
+  "episode-people": "People",
+  "episode-shownotes": "Shownotes",
+  "episode-chapters": "Chapters",
+  "episode-transcript": "Transcript",
+  "episode-share": "Share links",
 };
 
 /** Blocks only podcast sites offer. */
 export const PODCAST_BLOCK_TYPES: BlockType[] = ["latest-episode", "subscribe", "contributors"];
+
+/** The parts of an episode page, only for the episode layout (`episode.md`). */
+export const EPISODE_PART_TYPES: BlockType[] = [
+  "episode-player",
+  "episode-people",
+  "episode-shownotes",
+  "episode-chapters",
+  "episode-transcript",
+  "episode-share",
+];
+
+/** What each part of an episode page shows. */
+export const EPISODE_PART_NOTES: Partial<Record<BlockType, string>> = {
+  "episode-player": "The Podlove Web Player with chapters and transcript; without JavaScript, the browser's own player. Below it, the duration and download links.",
+  "episode-people": "Everyone in the episode (Settings → People), with photo and roles, each linking to their page.",
+  "episode-shownotes": "The episode page's own blocks.",
+  "episode-chapters": "The chapter list, with times. Hidden while the Podlove Web Player runs, which lists them itself.",
+  "episode-transcript": "The transcript as text, folded away until a visitor opens it. Search engines read it too.",
+  "episode-share": "Links for sharing the episode: Mastodon, Bluesky, email, copy link. Needs the site's web address.",
+};
+
+/** The episode layout without `episode.md` (DEFAULT_EPISODE_LAYOUT in block.rs). */
+export function defaultEpisodeLayout(): Block[] {
+  return (["episode-player", "episode-people", "episode-shownotes", "episode-chapters", "episode-share"] as const).map(
+    (type) => newBlock(type),
+  );
+}
+
+/** The blocks every page offers: all but the episode parts. */
+export const PAGE_BLOCK_TYPES: BlockType[] = (Object.keys(BLOCK_NAMES) as BlockType[]).filter(
+  (type) => !EPISODE_PART_TYPES.includes(type),
+);
 
 /** The blocks a column can hold (see COLUMN_TYPES in block.rs). */
 export const COLUMN_BLOCK_TYPES: BlockType[] = [
@@ -146,6 +184,12 @@ export function newBlock(type: BlockType): Block {
       return { type, name: null };
     case "latest-episode":
     case "contributors":
+    case "episode-player":
+    case "episode-people":
+    case "episode-shownotes":
+    case "episode-chapters":
+    case "episode-transcript":
+    case "episode-share":
       // A block without settings. bindings.ts adds `markdown?: never` to
       // it, which `Sent` turns into a required field no value can fill;
       // the cast says the block is complete as it is.
@@ -191,6 +235,7 @@ export function mediaUrl(root: string, name: string): string {
 /** A page's URL path for people: `/about`, or "the footer" for the site footer. */
 export function pageLabel(path: string): string {
   if (path === "(footer)") return "the footer";
+  if (path === "(episode layout)") return "the episode layout";
   if (path === "(menu)") return "the menu";
   if (path.startsWith("(shared) ")) return `the shared block “${path.slice(9)}”`;
   if (path.startsWith("(contributor) ")) return `${path.slice(14)}'s photo`;

@@ -24,6 +24,8 @@
   import FolderTree from "@lucide/svelte/icons/folder-tree";
   import PanelBottom from "@lucide/svelte/icons/panel-bottom";
   import FooterEditor from "$lib/FooterEditor.svelte";
+  import LayoutTemplate from "@lucide/svelte/icons/layout-template";
+  import EpisodeLayoutEditor from "$lib/EpisodeLayoutEditor.svelte";
   import SharedEditor from "$lib/SharedEditor.svelte";
   import Component from "@lucide/svelte/icons/component";
   import Plus from "@lucide/svelte/icons/plus";
@@ -61,6 +63,7 @@
   import {
     commands,
     BLOCK_NAMES,
+    defaultEpisodeLayout,
     pageIcons,
     sharedName,
     pageLabel,
@@ -85,14 +88,17 @@
   // The site footer opens like a page, by its file name.
   const FOOTER_FILE = "footer.md";
   let editingFooter = $derived(selectedFile === FOOTER_FILE);
+  // And the episode layout, on podcast sites.
+  const EPISODE_LAYOUT_FILE = "episode.md";
+  let editingEpisodeLayout = $derived(selectedFile === EPISODE_LAYOUT_FILE && !!site?.config.podcast);
   // So do shared blocks, by their file in shared/.
   let selectedShared = $derived(site?.shared.find((p) => p.file === selectedFile) ?? null);
-  let panelOpen = $derived(selected !== null || editingFooter || selectedShared !== null);
+  let panelOpen = $derived(selected !== null || editingFooter || editingEpisodeLayout || selectedShared !== null);
 
-  /** The pages (and the footer) that show the shared block `name`. */
+  /** The pages (the footer, the episode layout) that show the shared block `name`. */
   function sharedUsers(name: string): string[] {
     if (!site) return [];
-    return [...site.pages, ...(site.footer ? [site.footer] : [])]
+    return [...site.pages, ...(site.footer ? [site.footer] : []), ...(site.episode_layout ? [site.episode_layout] : [])]
       .filter((page) => usesShared(page.blocks, name))
       .map((page) => page.path);
   }
@@ -226,7 +232,7 @@
     try {
       site = await commands.openSite(path);
       report = null;
-      const files = [FOOTER_FILE, ...site.pages.map((p) => p.file), ...site.shared.map((p) => p.file)];
+      const files = [FOOTER_FILE, EPISODE_LAYOUT_FILE, ...site.pages.map((p) => p.file), ...site.shared.map((p) => p.file)];
       if (selectedFile !== null && !files.includes(selectedFile)) selectedFile = null;
       recent = rememberSite(path, site.config.title);
       setSiteClosed(false);
@@ -331,7 +337,9 @@
         ? `the shared block “${selectedShared.front.title}”`
         : editingFooter
           ? "the footer"
-          : `the page “${selected?.front.title ?? ""}”`,
+          : editingEpisodeLayout
+            ? "the episode layout"
+            : `the page “${selected?.front.title ?? ""}”`,
     () => editorDirty,
   );
 
@@ -611,7 +619,7 @@
       <button type="button" role="tab" id="view-media" class={["tab", view === "media" && "tab-active"]}
         onclick={() => (view = "media")}><Image class="me-1.5 size-4" />Media</button>
       <button type="button" role="tab" id="view-assets" class={["tab", view === "assets" && "tab-active"]}
-        onclick={() => (view = "assets")}><FileDown class="me-1.5 size-4" />Assets</button>
+        onclick={() => (view = "assets")}><FileDown class="me-1.5 size-4" />Downloads</button>
       <button type="button" role="tab" id="view-static" class={["tab", view === "static" && "tab-active"]}
         onclick={() => (view = "static")}><FolderTree class="me-1.5 size-4" />Static</button>
       {#if hasAudioLibrary}
@@ -764,6 +772,9 @@
           panelOpen && "lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto",
         ]}
       >
+        <li id="pages-heading" class="px-1 pb-1">
+          <span class="text-xs font-semibold tracking-wide text-base-content/60 uppercase">Pages</span>
+        </li>
         {#each shownPages as page, row (page.path)}
           {@const count = below.get(page.path)}
           {@const drop = pageDrag?.plan && pageDrag.row === row ? pageDrag : null}
@@ -887,8 +898,11 @@
             <li class="px-3 pb-1 text-xs text-base-content/50">None yet. “Make shared” on a block makes one.</li>
           {/if}
         {/each}
-        <!-- The footer is on every page, so it's listed after them. -->
-        <li id="page-footer" class="mt-1 flex items-center gap-1 border-t border-base-300 pt-1">
+        <!-- Templates: blocks on every page (the footer) or every episode. -->
+        <li id="templates" class="mt-1 flex items-center gap-1 border-t border-base-300 px-1 pt-2">
+          <span class="flex-1 text-xs font-semibold tracking-wide text-base-content/60 uppercase">Templates</span>
+        </li>
+        <li id="page-footer" class="flex items-center gap-1">
           <span class="w-6 shrink-0"></span>
           <button
             type="button"
@@ -906,7 +920,35 @@
             </div>
           </button>
         </li>
+        {#if site.config.podcast}
+          {@const layout = site.episode_layout?.blocks}
+          <li id="page-episode-layout" class="flex items-center gap-1">
+            <span class="w-6 shrink-0"></span>
+            <button
+              type="button"
+              class={[
+                "flex min-w-0 flex-1 items-center gap-4 rounded-field px-3 py-1 text-left transition-colors",
+                editingEpisodeLayout ? "bg-primary/10" : "hover:bg-base-200",
+              ]}
+              onclick={() => select(EPISODE_LAYOUT_FILE)}
+            >
+              <div class="flex min-w-0 flex-1 flex-col leading-snug">
+                <span class="font-medium"><LayoutTemplate class="me-1 inline size-4 align-[-2px] text-base-content/70" />Episode layout</span>
+                <span class="text-xs text-base-content/60">
+                  {layout ? `on every episode · ${layout.length} ${layout.length === 1 ? "block" : "blocks"}` : "on every episode · the default"}
+                </span>
+              </div>
+            </button>
+          </li>
+        {/if}
       </ul>
+
+      {#if editingEpisodeLayout}
+        <EpisodeLayoutEditor siteRoot={site.root} saved={site.episode_layout?.blocks ?? defaultEpisodeLayout()}
+          onclose={() => select(null)}
+          bind:dirty={editorDirty}
+          onsaved={() => site && load(site.root)} />
+      {/if}
 
       {#if editingFooter}
         <FooterEditor siteRoot={site.root} saved={site.footer?.blocks ?? []} onclose={() => select(null)}

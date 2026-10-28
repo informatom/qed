@@ -64,6 +64,24 @@ pub enum Block {
     /// The podcast's contributors: photo and name, each linking to their
     /// page. Nothing to set.
     Contributors,
+    /// The parts of an episode page, for the episode layout (`episode.md`,
+    /// see `site.rs`): each stands for that part of the episode the page
+    /// shows. Nothing to set; elsewhere they show nothing.
+    ///
+    /// The episode's audio: the Podlove Web Player, or the browser's own
+    /// player without JavaScript, and the download links.
+    EpisodePlayer,
+    /// The people in the episode, with their roles.
+    EpisodePeople,
+    /// The episode page's own blocks.
+    EpisodeShownotes,
+    /// The chapters, as a list; hidden while the Podlove Web Player runs,
+    /// which shows them itself.
+    EpisodeChapters,
+    /// The transcript as text, folded away.
+    EpisodeTranscript,
+    /// Links for sharing the episode.
+    EpisodeShare,
 }
 
 /// The Podlove Subscribe Button: it hands the podcast's own feeds to the
@@ -328,9 +346,38 @@ impl Block {
             Block::LatestEpisode => Some("latest-episode"),
             Block::Subscribe(_) => Some("subscribe"),
             Block::Contributors => Some("contributors"),
+            Block::EpisodePlayer => Some("episode-player"),
+            Block::EpisodePeople => Some("episode-people"),
+            Block::EpisodeShownotes => Some("episode-shownotes"),
+            Block::EpisodeChapters => Some("episode-chapters"),
+            Block::EpisodeTranscript => Some("episode-transcript"),
+            Block::EpisodeShare => Some("episode-share"),
         }
     }
+
+    /// Whether the block stands for a part of an episode page.
+    pub fn is_episode_part(&self) -> bool {
+        matches!(
+            self,
+            Block::EpisodePlayer
+                | Block::EpisodePeople
+                | Block::EpisodeShownotes
+                | Block::EpisodeChapters
+                | Block::EpisodeTranscript
+                | Block::EpisodeShare
+        )
+    }
 }
+
+/// The episode layout without `episode.md`: the order episode pages had
+/// before there was a layout.
+pub const DEFAULT_EPISODE_LAYOUT: [Block; 5] = [
+    Block::EpisodePlayer,
+    Block::EpisodePeople,
+    Block::EpisodeShownotes,
+    Block::EpisodeChapters,
+    Block::EpisodeShare,
+];
 
 /// The container names, as written after `:::` in a page file.
 /// Every block in a list, outer ones first, including the blocks inside
@@ -383,7 +430,13 @@ pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)
         | Block::Shared(_)
         | Block::LatestEpisode
         | Block::Subscribe(_)
-        | Block::Contributors => {}
+        | Block::Contributors
+        | Block::EpisodePlayer
+        | Block::EpisodePeople
+        | Block::EpisodeShownotes
+        | Block::EpisodeChapters
+        | Block::EpisodeTranscript
+        | Block::EpisodeShare => {}
     }
 }
 
@@ -404,7 +457,7 @@ pub const COLUMN_TYPES: [&str; 12] = [
     "contributors",
 ];
 
-pub const CONTAINER_TYPES: [&str; 15] = [
+pub const CONTAINER_TYPES: [&str; 21] = [
     "hero",
     "image",
     "text-image",
@@ -420,6 +473,12 @@ pub const CONTAINER_TYPES: [&str; 15] = [
     "latest-episode",
     "subscribe",
     "contributors",
+    "episode-player",
+    "episode-people",
+    "episode-shownotes",
+    "episode-chapters",
+    "episode-transcript",
+    "episode-share",
 ];
 
 /// Builds a block from a container's type name and its TOML body.
@@ -442,6 +501,12 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
         "latest-episode" => nothing_to_set(toml).map(|()| Block::LatestEpisode),
         "subscribe" => Ok(Block::Subscribe(toml::from_str(toml)?)),
         "contributors" => nothing_to_set(toml).map(|()| Block::Contributors),
+        "episode-player" => nothing_to_set(toml).map(|()| Block::EpisodePlayer),
+        "episode-people" => nothing_to_set(toml).map(|()| Block::EpisodePeople),
+        "episode-shownotes" => nothing_to_set(toml).map(|()| Block::EpisodeShownotes),
+        "episode-chapters" => nothing_to_set(toml).map(|()| Block::EpisodeChapters),
+        "episode-transcript" => nothing_to_set(toml).map(|()| Block::EpisodeTranscript),
+        "episode-share" => nothing_to_set(toml).map(|()| Block::EpisodeShare),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }
 }

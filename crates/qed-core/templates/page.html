@@ -141,72 +141,9 @@
     {%- endif %}
 
     <div class="flex flex-col gap-12">
-      {%- if let Some(audio) = audio %}
-      <section id="episode-audio" class="flex flex-col gap-2">
-        {%- if let Some(player) = player %}
-        <div data-podlove-player data-episode="{{ player.episode }}"></div>
-        <script src="{{ player.embed }}" defer></script>
-        <script src="{{ player.script }}" defer></script>
-        {%- endif %}
-        <audio controls preload="none" class="w-full" data-player-fallback>
-          {%- for source in audio.sources %}
-          <source src="{{ source.src }}" type="{{ source.mime_type }}">
-          {%- endfor %}
-        </audio>
-        <p class="flex flex-wrap gap-x-3 text-sm text-base-content/60">
-          {%- if let Some(duration) = audio.duration %}<span>{{ duration }}</span>{% endif %}
-          <span>{{ audio.download }}:</span>
-          {%- for source in audio.sources %}
-          <a href="{{ source.src }}" download class="link link-hover">{{ source.label }}</a>
-          {%- endfor %}
-        </p>
-      </section>
-      {%- endif %}
-      {%- if !people.is_empty() %}
-      <section id="people" class="flex flex-col gap-4">
-        <h2 class="text-2xl font-semibold tracking-tight">{{ people_heading }}</h2>
-        <ul class="flex flex-wrap gap-x-8 gap-y-4">
-          {%- for person in people %}
-          <li>
-            <a href="{{ person.href }}" class="group flex items-center gap-3">
-              {%- if let Some(picture) = person.picture %}
-              <img src="{{ picture.src }}"{% if let Some(srcset) = picture.srcset %} srcset="{{ srcset }}" sizes="3rem"{% endif %} alt="" class="size-12 rounded-full object-cover" loading="lazy">
-              {%- endif %}
-              <span class="flex flex-col leading-tight">
-                <span class="font-medium group-hover:underline">{{ person.name }}</span>
-                <span class="text-sm text-base-content/60">{{ person.roles }}</span>
-              </span>
-            </a>
-          </li>
-          {%- endfor %}
-        </ul>
-      </section>
-      {%- endif %}
       {%- for html in blocks %}
       {{ html|safe }}
       {%- endfor %}
-      {%- if !chapters.is_empty() %}
-      <section id="chapters" class="prose max-w-none" data-player-fallback>
-        <h2>{{ chapters_heading }}</h2>
-        <ol class="chapters list-none ps-0">
-          {%- for chapter in chapters %}
-          <li class="flex items-baseline gap-4 ps-0"><span class="font-mono text-sm text-base-content/60 tabular-nums">{{ chapter.start }}</span>
-            {%- if let Some(href) = chapter.href %}<a href="{{ href }}">{{ chapter.title }}</a>{% else %}<span>{{ chapter.title }}</span>{% endif %}</li>
-          {%- endfor %}
-        </ol>
-      </section>
-      {%- endif %}
-      {%- if let Some(share) = share %}
-      <nav id="share" aria-label="{{ share.words.share }}" class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-        <span class="font-medium">{{ share.words.share }}:</span>
-        <button type="button" class="link link-hover" hidden data-share="mastodon" data-url="{{ share.url }}" data-text="{{ share.text }}" data-ask="{{ share.words.mastodon_server }}">Mastodon</button>
-        <a href="{{ share.bluesky }}" class="link link-hover" target="_blank" rel="noopener">Bluesky</a>
-        <a href="{{ share.email }}" class="link link-hover">{{ share.words.email }}</a>
-        <button type="button" class="link link-hover" hidden data-share="copy" data-url="{{ share.url }}" data-done="{{ share.words.copied }}">{{ share.words.copy_link }}</button>
-        <button type="button" class="link link-hover" hidden data-share="native" data-url="{{ share.url }}" data-text="{{ share.text }}">{{ share.words.more }}</button>
-      </nav>
-      <script src="{{ share.script }}" defer></script>
-      {%- endif %}
     </div>
   </main>
   {%- if sidebar %}

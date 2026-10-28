@@ -181,8 +181,8 @@
 
   async function moveToAssets() {
     const sure = await ask(
-      `Move ${misplaced.length} ${misplaced.length === 1 ? "file" : "files"} to Assets? Pages that use them are updated to match.`,
-      { title: "Move to Assets", okLabel: "Move", cancelLabel: "Cancel" },
+      `Move ${misplaced.length} ${misplaced.length === 1 ? "file" : "files"} to Downloads? Pages that use them are updated to match.`,
+      { title: "Move to Downloads", okLabel: "Move", cancelLabel: "Cancel" },
     );
     if (!sure) return;
     busy = true;
@@ -223,10 +223,10 @@
     <div id="misplaced-files" role="status" class="alert alert-info alert-soft flex flex-wrap text-sm">
       <span class="flex-1">
         {misplaced.length === 1 ? "1 file here isn't an image" : `${misplaced.length} files here aren't images`}. Files to
-        download now go into Assets.{#if editing} Save or discard the page you're editing first.{/if}
+        download now go into Downloads.{#if editing} Save or discard the page you're editing first.{/if}
       </span>
       <button type="button" id="move-to-assets" class="btn btn-sm" onclick={moveToAssets} disabled={busy || editing}>
-        <FolderInput class="size-4" /> Move to Assets
+        <FolderInput class="size-4" /> Move to Downloads
       </button>
     </div>
   {/if}

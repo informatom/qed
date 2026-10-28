@@ -41,6 +41,12 @@ pub const FOOTER_FILE: &str = "footer.md";
 /// How the footer appears in lists of pages that use a file or link to a
 /// page; never a URL path, which can't start with `(`.
 pub const FOOTER_PATH: &str = "(footer)";
+/// The episode layout: the parts of every episode page and the blocks
+/// shown on each, in the same format as a page file. Without it, episode
+/// pages use [`crate::block::DEFAULT_EPISODE_LAYOUT`].
+pub const EPISODE_LAYOUT_FILE: &str = "episode.md";
+/// How the episode layout appears in lists of pages, like [`FOOTER_PATH`].
+pub const EPISODE_LAYOUT_PATH: &str = "(episode layout)";
 /// How a hand-made main menu appears in those lists.
 pub const MENU_PATH: &str = "(menu)";
 
@@ -366,6 +372,9 @@ pub struct Site {
     /// The footer from `footer.md`, if the site has one; its `path` is
     /// [`FOOTER_PATH`].
     pub footer: Option<Page>,
+    /// The episode layout from `episode.md`, if the site has one; its
+    /// `path` is [`EPISODE_LAYOUT_PATH`].
+    pub episode_layout: Option<Page>,
     /// The shared pieces from `shared/`, sorted by name; see `shared.rs`.
     pub shared: Vec<Page>,
     /// The podcast's contributors from `contributors/`, sorted by name;
@@ -374,12 +383,13 @@ pub struct Site {
 }
 
 impl Site {
-    /// The pages, the footer and the shared pieces: everything that holds
-    /// blocks.
+    /// The pages, the footer, the episode layout and the shared pieces:
+    /// everything that holds blocks.
     pub fn with_blocks(&self) -> impl Iterator<Item = &Page> {
         self.pages
             .iter()
             .chain(self.footer.as_ref())
+            .chain(self.episode_layout.as_ref())
             .chain(&self.shared)
     }
 }
@@ -491,30 +501,34 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
         );
     }
 
-    let footer_file = root.join(FOOTER_FILE);
-    let footer = if footer_file.is_file() {
-        let content = page::parse(&read(&footer_file)?).map_err(|error| SiteError::Page {
-            path: PathBuf::from(FOOTER_FILE),
-            error,
-        })?;
-        Some(Page {
-            path: FOOTER_PATH.to_string(),
-            file: PathBuf::from(FOOTER_FILE),
-            content,
-        })
-    } else {
-        None
-    };
-
     Ok(Site {
         root: root.to_path_buf(),
         config,
         pages: pages.into_values().collect(),
         targets: crate::target::load(root)?,
-        footer,
+        footer: load_part(root, FOOTER_FILE, FOOTER_PATH)?,
+        episode_layout: load_part(root, EPISODE_LAYOUT_FILE, EPISODE_LAYOUT_PATH)?,
         shared: crate::shared::load(root)?,
         contributors: crate::contributors::load(root)?,
     })
+}
+
+/// A file of blocks outside `pages/`, such as `footer.md`, if the site
+/// has it; `path` is how it shows in lists.
+fn load_part(root: &Path, file: &str, path: &str) -> Result<Option<Page>, SiteError> {
+    let full = root.join(file);
+    if !full.is_file() {
+        return Ok(None);
+    }
+    let content = page::parse(&read(&full)?).map_err(|error| SiteError::Page {
+        path: PathBuf::from(file),
+        error,
+    })?;
+    Ok(Some(Page {
+        path: path.to_string(),
+        file: PathBuf::from(file),
+        content,
+    }))
 }
 
 /// Saves the footer's blocks into `footer.md` and returns the footer as
@@ -529,6 +543,36 @@ pub fn save_footer(root: &Path, blocks: Vec<Block>) -> Result<Option<Page>, Site
         return Ok(None);
     }
     update_footer(root, |content| content.blocks = blocks).map(Some)
+}
+
+/// Saves the episode layout into `episode.md` and returns it as saved.
+/// The default layout ([`crate::block::DEFAULT_EPISODE_LAYOUT`]) removes
+/// the file: episode pages look the same without it. No blocks at all
+/// stay a file, for episode pages with only their title.
+pub fn save_episode_layout(root: &Path, blocks: Vec<Block>) -> Result<Option<Page>, SiteError> {
+    let blocks = without_empty_text(blocks);
+    let path = root.join(EPISODE_LAYOUT_FILE);
+    if blocks == crate::block::DEFAULT_EPISODE_LAYOUT {
+        if path.exists() {
+            fs::remove_file(&path).map_err(|source| SiteError::Write { path, source })?;
+        }
+        return Ok(None);
+    }
+    update_episode_layout(root, |content| content.blocks = blocks).map(Some)
+}
+
+/// Like [`update_page`], for `episode.md`; makes the file if it's missing.
+pub(crate) fn update_episode_layout(
+    root: &Path,
+    change: impl FnOnce(&mut PageContent),
+) -> Result<Page, SiteError> {
+    update_part(
+        root,
+        Path::new(EPISODE_LAYOUT_FILE),
+        EPISODE_LAYOUT_PATH,
+        "Episode layout",
+        change,
+    )
 }
 
 /// Like [`update_page`], for `footer.md`; makes the file if it's missing.
@@ -1181,7 +1225,13 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             | Block::Shared(_)
             | Block::LatestEpisode
             | Block::Subscribe(_)
-            | Block::Contributors => {}
+            | Block::Contributors
+            | Block::EpisodePlayer
+            | Block::EpisodePeople
+            | Block::EpisodeShownotes
+            | Block::EpisodeChapters
+            | Block::EpisodeTranscript
+            | Block::EpisodeShare => {}
         }
     }
     for text in texts {

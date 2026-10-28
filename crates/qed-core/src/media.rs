@@ -385,6 +385,7 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
         })
         .map(|page| match page.path.as_str() {
             site::FOOTER_PATH => "the footer".to_string(),
+            site::EPISODE_LAYOUT_PATH => "the episode layout".to_string(),
             path if path.starts_with('(') => {
                 format!("the shared block \"{}\"", page.content.front.title)
             }
@@ -560,7 +561,13 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             | Block::Shared(_)
             | Block::LatestEpisode
             | Block::Subscribe(_)
-            | Block::Contributors => {}
+            | Block::Contributors
+            | Block::EpisodePlayer
+            | Block::EpisodePeople
+            | Block::EpisodeShownotes
+            | Block::EpisodeChapters
+            | Block::EpisodeTranscript
+            | Block::EpisodeShare => {}
         }
     }
 

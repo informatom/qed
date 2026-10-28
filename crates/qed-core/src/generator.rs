@@ -387,7 +387,8 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         {
             write(&out_dir.join(SHARE_FILE), SHARE_SCRIPT.to_string())?;
         }
-        if uses_subscribe(&published, site.footer.as_ref()) {
+        let parts = site.footer.iter().chain(&site.episode_layout);
+        if uses_subscribe(published.iter().copied().chain(parts)) {
             write_subscribe_button(out_dir, &site.config, podcast, base)?;
         }
     }
@@ -754,9 +755,9 @@ fn write_embedded(dir: &include_dir::Dir, target: &Path) -> Result<(), BuildErro
     Ok(())
 }
 
-/// Whether any block in `pages` or the footer is a Subscribe block.
-fn uses_subscribe(pages: &[&Page], footer: Option<&Page>) -> bool {
-    pages.iter().copied().chain(footer).any(|page| {
+/// Whether any block in `pages` is a Subscribe block.
+fn uses_subscribe<'a>(mut pages: impl Iterator<Item = &'a Page>) -> bool {
+    pages.any(|page| {
         block::all_blocks(&page.content.blocks)
             .iter()
             .any(|block| matches!(block, Block::Subscribe(_)))
@@ -1157,21 +1158,8 @@ struct PageTemplate<'a> {
     /// Date and authors, e.g. "2026-10-21 · Claude"; for an episode,
     /// season and number first.
     byline: String,
-    /// An episode's chapters, below its shownotes.
-    chapters: Vec<ChapterEntry>,
-    /// "Chapters", in the site's language.
-    chapters_heading: &'static str,
-    /// Share links on episode pages; only with the site's web address.
-    share: Option<ShareEntry>,
-    /// The Podlove Web Player, for an episode with audio.
-    player: Option<PlayerEntry>,
-    /// The people in an episode, each once with all their roles.
-    people: Vec<PersonEntry>,
-    /// "Mitwirkende", in the site's language.
-    people_heading: &'static str,
-    /// An episode's audio, with a player and a download link.
-    audio: Option<AudioEntry>,
-    /// Each block's HTML, from `block.html`.
+    /// Each block's HTML, from `block.html`; for an episode, the episode
+    /// layout's blocks with the page's own as its shownotes.
     blocks: Vec<String>,
     /// The site footer's blocks, rendered for this page.
     footer_blocks: Vec<String>,
@@ -1625,21 +1613,7 @@ fn player_episode(
             }))
         })
         .collect();
-    let transcripts: Vec<podcast::Cue> = episode
-        .transcript
-        .as_deref()
-        .and_then(|file| {
-            fs::read_to_string(site.root.join(podcast::TRANSCRIPTS_DIR).join(file.trim())).ok()
-        })
-        .map(|text| {
-            podcast::transcript_cues(&text, |voice| {
-                site.contributors
-                    .iter()
-                    .find(|c| !voice.is_empty() && c.name == voice)
-                    .map(|c| c.id.clone())
-            })
-        })
-        .unwrap_or_default();
+    let transcripts = transcript(site, episode);
     serde_json::json!({
         "version": 5,
         "show": {
@@ -1823,6 +1797,28 @@ enum RenderedBlock {
     Text {
         html: String,
     },
+    /// The parts of an episode page; see [`episode_part`].
+    EpisodePlayer {
+        audio: AudioEntry,
+        player: Option<PlayerEntry>,
+    },
+    EpisodePeople {
+        /// "Mitwirkende", in the site's language.
+        heading: &'static str,
+        /// Each person once, with all their roles.
+        people: Vec<PersonEntry>,
+    },
+    EpisodeChapters {
+        heading: &'static str,
+        chapters: Vec<ChapterEntry>,
+    },
+    EpisodeTranscript {
+        heading: &'static str,
+        paragraphs: Vec<TranscriptParagraph>,
+    },
+    EpisodeShare {
+        share: ShareEntry,
+    },
     LatestEpisode {
         title: String,
         href: String,
@@ -1985,6 +1981,185 @@ struct FaqEntry {
     answer_html: String,
 }
 
+/// The cues of an episode's transcript; none without one, or when its
+/// file can't be read (the build notes that, see `audio_notes`).
+fn transcript(site: &Site, episode: &podcast::Episode) -> Vec<podcast::Cue> {
+    episode
+        .transcript
+        .as_deref()
+        .and_then(|file| {
+            fs::read_to_string(site.root.join(podcast::TRANSCRIPTS_DIR).join(file.trim())).ok()
+        })
+        .map(|text| {
+            podcast::transcript_cues(&text, |voice| {
+                site.contributors
+                    .iter()
+                    .find(|c| !voice.is_empty() && c.name == voice)
+                    .map(|c| c.id.clone())
+            })
+        })
+        .unwrap_or_default()
+}
+
+/// A paragraph of a transcript on an episode page: what one voice says
+/// until the next one speaks.
+struct TranscriptParagraph {
+    /// When it starts, "1:02:03".
+    start: String,
+    /// The speaker's name, if the file names them.
+    voice: Option<String>,
+    text: String,
+}
+
+/// Joins the cues of one voice in a row into a paragraph.
+fn paragraphs(cues: &[podcast::Cue]) -> Vec<TranscriptParagraph> {
+    let mut out: Vec<TranscriptParagraph> = Vec::new();
+    let mut last_voice: Option<&str> = None;
+    for cue in cues {
+        let text = cue.text.trim();
+        if text.is_empty() {
+            continue;
+        }
+        match out.last_mut() {
+            Some(paragraph) if last_voice == Some(cue.voice.as_str()) => {
+                paragraph.text.push(' ');
+                paragraph.text.push_str(text);
+            }
+            _ => {
+                out.push(TranscriptParagraph {
+                    start: podcast::readable_start(&cue.start),
+                    voice: Some(cue.voice.clone()).filter(|voice| !voice.is_empty()),
+                    text: text.to_string(),
+                });
+                last_voice = Some(&cue.voice);
+            }
+        }
+    }
+    out
+}
+
+/// What the parts of an episode page are made from.
+struct EpisodePage<'a> {
+    site: &'a Site,
+    context: &'a Context<'a>,
+    page: &'a Page,
+    episode: &'a podcast::Episode,
+    links: &'a LinkContext,
+}
+
+impl EpisodePage<'_> {
+    /// The part of the page `block` stands for (see the episode layout);
+    /// `None` when the episode has nothing for it, such as no chapters.
+    /// The shownotes are the page's own blocks, which `render_page` adds.
+    fn part(&self, block: &Block) -> Option<RenderedBlock> {
+        let (site, links, episode) = (self.site, self.links, self.episode);
+        let config = &site.config;
+        let words = podcast::Words::for_language(&config.language);
+        match block {
+            Block::EpisodePlayer => {
+                let audio =
+                    audio_entry(&site.root, config.podcast.as_ref(), episode, links, &words)?;
+                Some(RenderedBlock::EpisodePlayer {
+                    audio,
+                    player: config.podcast.as_ref().map(|_| PlayerEntry {
+                        episode: PLAYER_EPISODE,
+                        embed: format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
+                        script: format!("{}{PLAYER_FILE}", links.to_root()),
+                    }),
+                })
+            }
+            Block::EpisodePeople => {
+                // Each person once, with all their roles.
+                let mut order: Vec<&str> = Vec::new();
+                for person in &episode.people {
+                    if !order.contains(&person.contributor.as_str()) {
+                        order.push(&person.contributor);
+                    }
+                }
+                let people: Vec<PersonEntry> = order
+                    .into_iter()
+                    .filter_map(|id| {
+                        let person = site.contributors.iter().find(|c| c.id == id)?;
+                        let roles: Vec<&str> = episode
+                            .people
+                            .iter()
+                            .filter(|p| p.contributor == id)
+                            .map(|p| p.role.label(&config.language))
+                            .collect();
+                        Some(PersonEntry {
+                            name: person.name.clone(),
+                            href: links.page(&contributor_path(id)),
+                            roles: roles.join(", "),
+                            picture: person.photo.as_deref().and_then(|photo| {
+                                picture(photo, Some(&person.name), links, self.context.images)
+                            }),
+                        })
+                    })
+                    .collect();
+                (!people.is_empty()).then_some(RenderedBlock::EpisodePeople {
+                    heading: words.contributors,
+                    people,
+                })
+            }
+            Block::EpisodeChapters => {
+                let chapters: Vec<ChapterEntry> = episode
+                    .chapters
+                    .iter()
+                    .map(|chapter| ChapterEntry {
+                        start: podcast::readable_start(&chapter.start),
+                        title: chapter.title.clone(),
+                        href: chapter
+                            .link
+                            .as_deref()
+                            .map(str::trim)
+                            .filter(|link| !link.is_empty())
+                            .map(|link| links.resolve(link)),
+                    })
+                    .collect();
+                (!chapters.is_empty()).then_some(RenderedBlock::EpisodeChapters {
+                    heading: words.chapters,
+                    chapters,
+                })
+            }
+            Block::EpisodeTranscript => {
+                let paragraphs = paragraphs(&transcript(site, episode));
+                (!paragraphs.is_empty()).then_some(RenderedBlock::EpisodeTranscript {
+                    heading: words.transcript,
+                    paragraphs,
+                })
+            }
+            // Sharing needs the page's full address.
+            Block::EpisodeShare => {
+                let base = config
+                    .base_url
+                    .as_ref()
+                    .filter(|_| config.podcast.is_some())?;
+                let front = &self.page.content.front;
+                let url = absolute(base, &self.page.path);
+                let both = format!("{} {url}", front.title);
+                Some(RenderedBlock::EpisodeShare {
+                    share: ShareEntry {
+                        bluesky: format!(
+                            "https://bsky.app/intent/compose?text={}",
+                            url_encode(&both)
+                        ),
+                        email: format!(
+                            "mailto:?subject={}&body={}",
+                            url_encode(&front.title),
+                            url_encode(&url)
+                        ),
+                        script: format!("{}{SHARE_FILE}", links.to_root()),
+                        text: front.title.clone(),
+                        url,
+                        words,
+                    },
+                })
+            }
+            _ => None,
+        }
+    }
+}
+
 fn render_page(
     site: &Site,
     context: &Context,
@@ -2059,6 +2234,51 @@ fn render_page(
         sidebar_links(&nav)
     };
     let sidebar = config.navigation == Navigation::Sidebar && !main_links.is_empty();
+    let failed = |source| BuildError::Template {
+        page: page.path.clone(),
+        source,
+    };
+    let own: Vec<String> = page
+        .content
+        .blocks
+        .iter()
+        .map(|block| render_html(block, &links, context, false))
+        .collect::<Result<_, _>>()
+        .map_err(failed)?;
+    // An episode page is its episode layout, with the page's own blocks as
+    // the shownotes.
+    let blocks = match front.episode.as_ref().filter(|_| !not_found) {
+        None => own,
+        Some(episode) => {
+            let layout = site
+                .episode_layout
+                .as_ref()
+                .map_or(&block::DEFAULT_EPISODE_LAYOUT[..], |layout| {
+                    &layout.content.blocks
+                });
+            let mut blocks = Vec::new();
+            for block in layout {
+                if *block == Block::EpisodeShownotes {
+                    blocks.extend(own.iter().cloned());
+                } else if block.is_episode_part() {
+                    let part = EpisodePage {
+                        site,
+                        context,
+                        page,
+                        episode,
+                        links: &links,
+                    }
+                    .part(block);
+                    if let Some(part) = part {
+                        blocks.push(block_html(&part, context, false).map_err(failed)?);
+                    }
+                } else {
+                    blocks.push(render_html(block, &links, context, false).map_err(failed)?);
+                }
+            }
+            blocks
+        }
+    };
     let template = PageTemplate {
         colors: context.colors,
         site: config,
@@ -2124,103 +2344,7 @@ fn render_page(
         // Without a logo, the title is all the header has.
         show_site_title: config.title_in_header || config.logo.is_none(),
         byline: byline.join(" · "),
-        chapters: front
-            .episode
-            .iter()
-            .flat_map(|episode| &episode.chapters)
-            .map(|chapter| ChapterEntry {
-                start: podcast::readable_start(&chapter.start),
-                title: chapter.title.clone(),
-                href: chapter
-                    .link
-                    .as_deref()
-                    .map(str::trim)
-                    .filter(|link| !link.is_empty())
-                    .map(|link| links.resolve(link)),
-            })
-            .collect(),
-        chapters_heading: words.chapters,
-        people_heading: words.contributors,
-        player: front
-            .episode
-            .as_ref()
-            .filter(|episode| config.podcast.is_some() && !episode.audio.is_empty() && !not_found)
-            .map(|_| PlayerEntry {
-                episode: PLAYER_EPISODE,
-                embed: format!("{}{PLAYER_DIR}/embed.js", links.to_root()),
-                script: format!("{}{PLAYER_FILE}", links.to_root()),
-            }),
-        people: front
-            .episode
-            .iter()
-            .flat_map(|episode| {
-                // Each person once, with all their roles.
-                let mut order: Vec<&str> = Vec::new();
-                for person in &episode.people {
-                    if !order.contains(&person.contributor.as_str()) {
-                        order.push(&person.contributor);
-                    }
-                }
-                order
-                    .into_iter()
-                    .filter_map(|id| {
-                        let person = site.contributors.iter().find(|c| c.id == id)?;
-                        let roles: Vec<&str> = episode
-                            .people
-                            .iter()
-                            .filter(|p| p.contributor == id)
-                            .map(|p| p.role.label(&config.language))
-                            .collect();
-                        Some(PersonEntry {
-                            name: person.name.clone(),
-                            href: links.page(&contributor_path(id)),
-                            roles: roles.join(", "),
-                            picture: person.photo.as_deref().and_then(|photo| {
-                                picture(photo, Some(&person.name), &links, context.images)
-                            }),
-                        })
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect(),
-        share: match (&front.episode, &config.base_url) {
-            (Some(_), Some(base)) if config.podcast.is_some() && !not_found => {
-                let url = absolute(base, &page.path);
-                let both = format!("{} {url}", front.title);
-                Some(ShareEntry {
-                    bluesky: format!("https://bsky.app/intent/compose?text={}", url_encode(&both)),
-                    email: format!(
-                        "mailto:?subject={}&body={}",
-                        url_encode(&front.title),
-                        url_encode(&url)
-                    ),
-                    script: format!("{}{SHARE_FILE}", links.to_root()),
-                    text: front.title.clone(),
-                    url,
-                    words: podcast::Words::for_language(&config.language),
-                })
-            }
-            _ => None,
-        },
-        audio: front.episode.as_ref().and_then(|episode| {
-            audio_entry(
-                &site.root,
-                site.config.podcast.as_ref(),
-                episode,
-                &links,
-                &words,
-            )
-        }),
-        blocks: page
-            .content
-            .blocks
-            .iter()
-            .map(|block| render_html(block, &links, context, false))
-            .collect::<Result<_, _>>()
-            .map_err(|source| BuildError::Template {
-                page: page.path.clone(),
-                source,
-            })?,
+        blocks,
         // The footer's blocks, with this page's links (the footer is on
         // every page, so its links are relative to each one).
         footer_blocks: match &site.footer {
@@ -2271,7 +2395,15 @@ fn render_html(
     context: &Context,
     in_column: bool,
 ) -> Result<String, askama::Error> {
-    let rendered = render_block(block, links, context)?;
+    block_html(&render_block(block, links, context)?, context, in_column)
+}
+
+/// The HTML of a block ready for the template.
+fn block_html(
+    rendered: &RenderedBlock,
+    context: &Context,
+    in_column: bool,
+) -> Result<String, askama::Error> {
     let (full_sizes, half_sizes) = if in_column {
         (
             "(min-width: 48rem) 28rem, 100vw",
@@ -2284,7 +2416,7 @@ fn render_html(
         )
     };
     BlockTemplate {
-        block: &rendered,
+        block: rendered,
         full_sizes,
         half_sizes,
         rss_icon: RSS_ICON,
@@ -2507,6 +2639,16 @@ fn render_block(
                     .collect(),
             }
         }
+        // An episode page's parts come from `EpisodePage::part`; anywhere
+        // else they show nothing.
+        Block::EpisodePlayer
+        | Block::EpisodePeople
+        | Block::EpisodeShownotes
+        | Block::EpisodeChapters
+        | Block::EpisodeTranscript
+        | Block::EpisodeShare => RenderedBlock::Text {
+            html: String::new(),
+        },
         // Replaced by its piece's blocks before rendering (`shared::expanded`).
         Block::Shared(_) => RenderedBlock::Text {
             html: String::new(),
