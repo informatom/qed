@@ -92,6 +92,11 @@ pub struct Podcast {
     /// `https://cdn.example.com/podcast/`. New episodes' audio addresses
     /// start with it.
     pub audio_base_url: Option<String>,
+    /// The podcast's team: contributors and their roles, someone in
+    /// several roles once per role. The feeds name them for the whole
+    /// podcast, and new episodes start with them.
+    #[serde(default)]
+    pub people: Vec<crate::contributors::EpisodePerson>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -272,6 +277,9 @@ pub struct Episode {
     pub duration: Option<String>,
     #[serde(default)]
     pub chapters: Vec<Chapter>,
+    /// Who's in it and what they do; see `contributors.rs`.
+    #[serde(default)]
+    pub people: Vec<crate::contributors::EpisodePerson>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -357,6 +365,9 @@ impl Episode {
             return Some(format!(
                 "the length “{duration}” isn't a time like 01:24:22 or 29:55"
             ));
+        }
+        if let Some(problem) = crate::contributors::duplicate(&self.people) {
+            return Some(problem);
         }
         for (index, audio) in self.audio.iter().enumerate() {
             let label = audio.format.label();
@@ -787,6 +798,9 @@ impl Podcast {
         {
             return Some(format!("“{email}” isn't an email address"));
         }
+        if let Some(problem) = crate::contributors::duplicate(&self.people) {
+            return Some(format!("team: {problem}"));
+        }
         if let Some(base) = self.audio_base_url.as_deref()
             && !(base.starts_with("https://") || base.starts_with("http://"))
         {
@@ -857,6 +871,8 @@ pub struct Words {
     /// The share row (#053): its label, the email link, the copy
     /// button before and after copying, the device's share menu, and the
     /// question for the reader's Mastodon server.
+    /// "Mitwirkende": the people section and the contributors' page.
+    pub contributors: &'static str,
     pub share: &'static str,
     pub email: &'static str,
     pub copy_link: &'static str,
@@ -878,6 +894,7 @@ impl Words {
                 bonus: "Bonus",
                 chapters: "Kapitel",
                 download: "Herunterladen",
+                contributors: "Mitwirkende",
                 share: "Teilen",
                 email: "E-Mail",
                 copy_link: "Link kopieren",
@@ -893,6 +910,7 @@ impl Words {
                 bonus: "Bonus",
                 chapters: "Chapitres",
                 download: "Télécharger",
+                contributors: "Contributeurs",
                 share: "Partager",
                 email: "E-mail",
                 copy_link: "Copier le lien",
@@ -908,6 +926,7 @@ impl Words {
                 bonus: "Extra",
                 chapters: "Capítulos",
                 download: "Descargar",
+                contributors: "Participantes",
                 share: "Compartir",
                 email: "Correo",
                 copy_link: "Copiar enlace",
@@ -923,6 +942,7 @@ impl Words {
                 bonus: "Extra",
                 chapters: "Capitoli",
                 download: "Scarica",
+                contributors: "Partecipanti",
                 share: "Condividi",
                 email: "E-mail",
                 copy_link: "Copia link",
@@ -938,6 +958,7 @@ impl Words {
                 bonus: "Bonus",
                 chapters: "Hoofdstukken",
                 download: "Downloaden",
+                contributors: "Medewerkers",
                 share: "Delen",
                 email: "E-mail",
                 copy_link: "Link kopiëren",
@@ -953,6 +974,7 @@ impl Words {
                 bonus: "Bonus",
                 chapters: "Chapters",
                 download: "Download",
+                contributors: "Contributors",
                 share: "Share",
                 email: "Email",
                 copy_link: "Copy link",
@@ -1010,6 +1032,13 @@ pub fn create_episode(root: &Path, title: &str, number: Option<u32>) -> Result<P
     known.sort_by_key(|e| e.number);
     let season = known.last().and_then(|e| e.season);
 
+    // The podcast's team, to change as the episode needs.
+    let people = site
+        .config
+        .podcast
+        .as_ref()
+        .map(|podcast| podcast.people.clone())
+        .unwrap_or_default();
     let page = site::create_page(
         root,
         EPISODES_PATH,
@@ -1021,6 +1050,7 @@ pub fn create_episode(root: &Path, title: &str, number: Option<u32>) -> Result<P
             season,
             number: Some(number),
             guid: new_guid(),
+            people,
             ..Episode::default()
         });
     })

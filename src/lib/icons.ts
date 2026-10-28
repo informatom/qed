@@ -16,6 +16,7 @@ import PanelTop from "@lucide/svelte/icons/panel-top";
 import Type from "@lucide/svelte/icons/type";
 import Mic from "@lucide/svelte/icons/mic";
 import Rss from "@lucide/svelte/icons/rss";
+import UsersRound from "@lucide/svelte/icons/users-round";
 import type { BlockType } from "$lib/site";
 
 /** One icon per block type, for the Add row and the block cards. */
@@ -35,4 +36,5 @@ export const BLOCK_ICONS: Record<BlockType, IconComponent> = {
   shared: Component,
   "latest-episode": Mic,
   subscribe: Rss,
+  contributors: UsersRound,
 };

@@ -61,6 +61,9 @@ pub enum Block {
     /// player, for the start page. Nothing to set.
     LatestEpisode,
     Subscribe(Subscribe),
+    /// The podcast's contributors: photo and name, each linking to their
+    /// page. Nothing to set.
+    Contributors,
 }
 
 /// The Podlove Subscribe Button: it hands the podcast's own feeds to the
@@ -247,6 +250,9 @@ pub struct PostList {
     pub limit: Option<u32>,
     /// How the posts show; a plain list if empty.
     pub layout: Option<ListLayout>,
+    /// Only the episodes this contributor is in (their id, see
+    /// `contributors.rs`); all posts if empty.
+    pub contributor: Option<String>,
 }
 
 /// How a Post list or Page list shows its pages.
@@ -321,6 +327,7 @@ impl Block {
             Block::Shared(_) => Some("shared"),
             Block::LatestEpisode => Some("latest-episode"),
             Block::Subscribe(_) => Some("subscribe"),
+            Block::Contributors => Some("contributors"),
         }
     }
 }
@@ -375,13 +382,14 @@ pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)
         | Block::Video(_)
         | Block::Shared(_)
         | Block::LatestEpisode
-        | Block::Subscribe(_) => {}
+        | Block::Subscribe(_)
+        | Block::Contributors => {}
     }
 }
 
 /// The blocks a column can hold, besides text. Hero, Gallery and Columns
 /// need the full width.
-pub const COLUMN_TYPES: [&str; 11] = [
+pub const COLUMN_TYPES: [&str; 12] = [
     "image",
     "text-image",
     "download",
@@ -393,9 +401,10 @@ pub const COLUMN_TYPES: [&str; 11] = [
     "shared",
     "latest-episode",
     "subscribe",
+    "contributors",
 ];
 
-pub const CONTAINER_TYPES: [&str; 14] = [
+pub const CONTAINER_TYPES: [&str; 15] = [
     "hero",
     "image",
     "text-image",
@@ -410,6 +419,7 @@ pub const CONTAINER_TYPES: [&str; 14] = [
     "shared",
     "latest-episode",
     "subscribe",
+    "contributors",
 ];
 
 /// Builds a block from a container's type name and its TOML body.
@@ -431,6 +441,7 @@ pub(crate) fn from_container(kind: &str, toml: &str) -> Result<Block, ContainerE
         // Blocks without settings: the container must be empty.
         "latest-episode" => nothing_to_set(toml).map(|()| Block::LatestEpisode),
         "subscribe" => Ok(Block::Subscribe(toml::from_str(toml)?)),
+        "contributors" => nothing_to_set(toml).map(|()| Block::Contributors),
         other => Err(ContainerError::UnknownType(other.to_string())),
     }
 }

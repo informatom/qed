@@ -157,7 +157,7 @@ fn block_document(block: &Block) -> DocumentMut {
         Block::PageList(list) => toml_edit::ser::to_document(list),
         Block::Video(video) => toml_edit::ser::to_document(video),
         Block::Shared(shared) => toml_edit::ser::to_document(shared),
-        Block::LatestEpisode => Ok(DocumentMut::new()),
+        Block::LatestEpisode | Block::Contributors => Ok(DocumentMut::new()),
         Block::Subscribe(block) => toml_edit::ser::to_document(block),
     };
     // Structs of strings always serialize; an empty document is a safe fallback.
@@ -208,10 +208,11 @@ fn front_document(front: &FrontMatter, original: Option<&str>) -> DocumentMut {
         .and_then(|item| item.as_inline_table_mut())
     {
         let mut table = std::mem::take(inline).into_table();
-        let defaults: [DefaultCheck; 3] = [
+        let defaults: [DefaultCheck; 4] = [
             ("type", |item| item.as_str() == Some("full")),
             ("audio", is_empty_array),
             ("chapters", is_empty_array),
+            ("people", is_empty_array),
         ];
         for (key, is_default) in defaults {
             if table.get(key).is_some_and(is_default) {

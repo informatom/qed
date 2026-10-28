@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use qed_core::block::Block;
+use qed_core::contributors;
 use qed_core::fonts::{self, FontInfo, FontListing};
 use qed_core::generator::{self, BuildReport};
 use qed_core::history::{self, DeletedPage, DiffLine, HistoryStatus, SincePublish, Version};
@@ -236,6 +237,29 @@ async fn rename_shared(root: PathBuf, name: String, title: String) -> Result<Pag
 async fn delete_shared(root: PathBuf, name: String) -> Result<(), String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
     shared::delete(&site, &name).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(())
+}
+
+/// Saves a contributor (a new one when `id` is empty) and returns them as
+/// saved.
+#[tauri::command]
+#[specta::specta]
+async fn save_contributor(
+    root: PathBuf,
+    contributor: contributors::Contributor,
+) -> Result<contributors::Contributor, String> {
+    let saved = contributors::save(&root, &contributor).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(saved)
+}
+
+/// Deletes a contributor no episode or the podcast's team lists any more.
+#[tauri::command]
+#[specta::specta]
+async fn delete_contributor(root: PathBuf, id: String) -> Result<(), String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    contributors::delete(&site, &id).map_err(|error| error.to_string())?;
     record(&root);
     Ok(())
 }
@@ -705,6 +729,8 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             save_shared,
             rename_shared,
             delete_shared,
+            save_contributor,
+            delete_contributor,
             save_site_config,
             list_themes,
             custom_theme_variables,

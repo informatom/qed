@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
   import CoverCheck from "$lib/CoverCheck.svelte";
   import ImageField from "$lib/ImageField.svelte";
-  import { AUDIO_FORMATS, commands, podcastFormats, type AudioFiles, type AudioFormat, type Podcast } from "$lib/site";
+  import PeopleEditor from "$lib/PeopleEditor.svelte";
+  import { AUDIO_FORMATS, commands, podcastFormats, type AudioFiles, type AudioFormat, type Contributor, type Podcast } from "$lib/site";
 
   interface Props {
     siteRoot: string;
@@ -12,9 +13,10 @@
     siteTitle: string;
     siteDescription: string | null;
     hasBaseUrl: boolean;
+    contributors: Contributor[];
   }
 
-  let { siteRoot, podcast = $bindable(), siteTitle, siteDescription, hasBaseUrl }: Props = $props();
+  let { siteRoot, podcast = $bindable(), siteTitle, siteDescription, hasBaseUrl, contributors }: Props = $props();
 
   // Turning the podcast off and on again in one go brings back what was
   // typed; only saving removes it from site.toml.
@@ -38,6 +40,7 @@
       formats: ["mp3"],
       audio_files: "local",
       audio_base_url: null,
+      people: [],
     };
   }
 
@@ -174,6 +177,12 @@
         {podcast.guid ?? (hasBaseUrl ? "Made when you save" : "Made once the site has a web address")}
       </span>
     </div>
+  </section>
+
+  <section id="podcast-team" class="flex flex-col gap-3 border-t border-base-300 pt-6">
+    {@render heading("Team")}
+    <p class="text-sm text-base-content/60">The people who make the podcast, for its feeds; new episodes start with them.</p>
+    <PeopleEditor id="podcast-people" bind:people={podcast.people} {contributors} />
   </section>
 
   <section id="podcast-cover-art" class="flex flex-col gap-3 border-t border-base-300 pt-6">

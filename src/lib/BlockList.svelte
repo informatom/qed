@@ -426,6 +426,15 @@
               {@render field("How many", "all if empty")}
               <input class="input w-full" type="number" min="1" bind:value={block.limit} placeholder="all" />
             </label>
+            {#if shared?.podcast && shared.contributors.length}
+              <label class="flex flex-col gap-1 @2xl:col-span-2">
+                {@render field("Only episodes with", "a contributor; all if empty")}
+                <select class="select w-full" bind:value={block.contributor}>
+                  <option value={null}>Everyone</option>
+                  {#each shared.contributors as person (person.id)}<option value={person.id}>{person.name}</option>{/each}
+                </select>
+              </label>
+            {/if}
             <p class="text-sm text-base-content/60 @2xl:col-span-2">
               Lists the pages below that page that have a date, newest first, with date and summary. Posts dated in
               the future appear once the site is built on or after their date.
@@ -479,6 +488,10 @@
         {:else if block.type === "latest-episode"}
           <p class="text-sm text-base-content/60">
             The newest episode: title, number and date, summary and the player. Changes by itself with every new episode.
+          </p>
+        {:else if block.type === "contributors"}
+          <p class="text-sm text-base-content/60">
+            Everyone in the Contributors tab: photo and name, each linking to their page.
           </p>
         {:else if block.type === "subscribe"}
           <div class="flex flex-col gap-2">

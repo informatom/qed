@@ -32,7 +32,7 @@ use crate::links::LinkContext;
 use crate::markdown;
 use crate::markdown::TextMedia;
 use crate::media::CLUTTER;
-use crate::page::Menu;
+use crate::page::{FrontMatter, Menu, PageContent};
 use crate::podcast;
 use crate::site::{
     ASSETS_DIR, Colors, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
@@ -148,10 +148,13 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
 
     // A page at `404` is the 404 page (see `not_found_page`), not one of
     // the site's pages.
+    // A podcast's contributors each get a page (see `contributor_pages`).
+    let people_pages = contributor_pages(site);
     let published: Vec<&Page> = site
         .pages
         .iter()
         .filter(|p| !p.content.front.draft && p.path != NOT_FOUND_PATH)
+        .chain(&people_pages)
         .collect();
     let media_dir = site.root.join(MEDIA_DIR);
     let images = Images::new(&media_dir);
@@ -223,6 +226,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         podcast_feeds: &podcast_feeds,
         podcast,
         button_color: button_color.as_deref(),
+        contributors: &site.contributors,
         colors: &colors,
         root: &site.root,
         images: &images,
@@ -349,6 +353,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             episodes: &episodes,
             shownotes: &shownotes,
             local_length: &local_length,
+            contributors: &site.contributors,
         };
         for feed in crate::feed::podcast_feeds(&input) {
             write(&out_dir.join(&feed.file), feed.xml)?;
@@ -382,7 +387,8 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     Ok(BuildReport {
         out_dir: out_dir.to_path_buf(),
         pages: published.len(),
-        drafts_skipped: site.pages.len() - published.len(),
+        // The contributors' pages are made by the build, not the site's.
+        drafts_skipped: site.pages.len() - (published.len() - people_pages.len()),
         redirects,
         media_files,
         resized_images,
@@ -569,6 +575,8 @@ struct Context<'a> {
     /// The buttons' theme color as `#rrggbb`, for the Subscribe button,
     /// which can't read the stylesheet's variables.
     button_color: Option<&'a str>,
+    /// The podcast's contributors, for the Contributors block.
+    contributors: &'a [crate::contributors::Contributor],
     today: Date,
     /// The site's language, for dates.
     language: &'a str,
@@ -1120,6 +1128,10 @@ struct PageTemplate<'a> {
     chapters_heading: &'static str,
     /// Share links on episode pages; only with the site's web address.
     share: Option<ShareEntry>,
+    /// The people in an episode, each once with all their roles.
+    people: Vec<PersonEntry>,
+    /// "Mitwirkende", in the site's language.
+    people_heading: &'static str,
     /// An episode's audio, with a player and a download link.
     audio: Option<AudioEntry>,
     /// Each block's HTML, from `block.html`.
@@ -1429,6 +1441,97 @@ struct AudioSource {
     mime_type: &'static str,
     /// "MP3, 28.9 MB", for the download link.
     label: String,
+}
+
+/// Someone in an episode, on its page.
+struct PersonEntry {
+    name: String,
+    href: String,
+    /// "Moderation, Schnitt".
+    roles: String,
+    picture: Option<Picture>,
+}
+
+/// The address of a contributor's page.
+fn contributor_path(id: &str) -> String {
+    format!("{}/{id}", crate::contributors::CONTRIBUTORS_DIR)
+}
+
+/// A page for each of the podcast's contributors at
+/// `/contributors/<id>/`: photo, bio and links, then the episodes they're
+/// in; and `/contributors/` with all of them, unless the site has a page
+/// of its own there. A page the site has at one of these addresses wins.
+fn contributor_pages(site: &Site) -> Vec<Page> {
+    use crate::contributors::CONTRIBUTORS_DIR;
+    if site.config.podcast.is_none() || site.contributors.is_empty() {
+        return Vec::new();
+    }
+    let words = podcast::Words::for_language(&site.config.language);
+    let taken = |path: &str| site.pages.iter().any(|page| page.path == path);
+    let mut pages = Vec::new();
+    if !taken(CONTRIBUTORS_DIR) {
+        pages.push(Page {
+            path: CONTRIBUTORS_DIR.to_string(),
+            file: PathBuf::from(CONTRIBUTORS_DIR).join("index.md"),
+            content: PageContent {
+                front: FrontMatter {
+                    title: words.contributors.to_string(),
+                    ..FrontMatter::default()
+                },
+                blocks: vec![Block::Contributors],
+            },
+        });
+    }
+    for person in &site.contributors {
+        let path = contributor_path(&person.id);
+        if taken(&path) {
+            continue;
+        }
+        let links: String = person
+            .links
+            .iter()
+            .map(|link| {
+                format!(
+                    "\n- [{}]({})",
+                    link.title.as_deref().unwrap_or(&link.url),
+                    link.url
+                )
+            })
+            .collect();
+        let text = format!("{}\n{links}", person.bio).trim().to_string();
+        let about = match &person.photo {
+            Some(photo) => Block::TextImage(block::TextImage {
+                text: Some(text),
+                image: Some(photo.clone()),
+                alt: Some(person.name.clone()),
+                image_side: block::Side::Left,
+            }),
+            None => Block::Text { markdown: text },
+        };
+        pages.push(Page {
+            path: path.clone(),
+            file: PathBuf::from(CONTRIBUTORS_DIR).join(format!("{}.md", person.id)),
+            content: PageContent {
+                front: FrontMatter {
+                    title: person.name.clone(),
+                    image: person.photo.clone(),
+                    ..FrontMatter::default()
+                },
+                blocks: vec![
+                    about,
+                    Block::Text {
+                        markdown: format!("## {}", words.episodes),
+                    },
+                    Block::PostList(block::PostList {
+                        from: Some(format!("/{}", podcast::EPISODES_PATH)),
+                        contributor: Some(person.id.clone()),
+                        ..block::PostList::default()
+                    }),
+                ],
+            },
+        });
+    }
+    pages
 }
 
 /// The share row of an episode page (#053): plain links for Bluesky and
@@ -1812,6 +1915,40 @@ fn render_page(
             })
             .collect(),
         chapters_heading: words.chapters,
+        people_heading: words.contributors,
+        people: front
+            .episode
+            .iter()
+            .flat_map(|episode| {
+                // Each person once, with all their roles.
+                let mut order: Vec<&str> = Vec::new();
+                for person in &episode.people {
+                    if !order.contains(&person.contributor.as_str()) {
+                        order.push(&person.contributor);
+                    }
+                }
+                order
+                    .into_iter()
+                    .filter_map(|id| {
+                        let person = site.contributors.iter().find(|c| c.id == id)?;
+                        let roles: Vec<&str> = episode
+                            .people
+                            .iter()
+                            .filter(|p| p.contributor == id)
+                            .map(|p| p.role.label(&config.language))
+                            .collect();
+                        Some(PersonEntry {
+                            name: person.name.clone(),
+                            href: links.page(&contributor_path(id)),
+                            roles: roles.join(", "),
+                            picture: person.photo.as_deref().and_then(|photo| {
+                                picture(photo, Some(&person.name), &links, context.images)
+                            }),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect(),
         share: match (&front.episode, &config.base_url) {
             (Some(_), Some(base)) if config.podcast.is_some() && !not_found => {
                 let url = absolute(base, &page.path);
@@ -2079,6 +2216,16 @@ fn render_block(
         Block::PostList(list) => {
             let from = list_source(&list.from, links);
             let mut posts = posts(context.pages, from, context.today);
+            // Only the episodes a contributor is in, if asked.
+            if let Some(id) = list.contributor.as_deref().filter(|id| !id.is_empty()) {
+                posts.retain(|post| {
+                    post.content
+                        .front
+                        .episode
+                        .as_ref()
+                        .is_some_and(|e| e.people.iter().any(|p| p.contributor == id))
+                });
+            }
             let words = podcast::Words::for_language(context.language);
             if let Some(limit) = list.limit.and_then(|limit| usize::try_from(limit).ok()) {
                 posts.truncate(limit);
@@ -2129,6 +2276,23 @@ fn render_block(
         // Replaced by its piece's blocks before rendering (`shared::expanded`).
         Block::Shared(_) => RenderedBlock::Text {
             html: String::new(),
+        },
+        // Tiles like a Page list's: photo and name, linked to their page.
+        Block::Contributors => RenderedBlock::PageList {
+            compact: context.footer,
+            layout: "tiles",
+            pages: context
+                .contributors
+                .iter()
+                .map(|person| PageEntry {
+                    title: person.name.clone(),
+                    href: links.page(&contributor_path(&person.id)),
+                    summary_html: None,
+                    picture: person.photo.as_deref().and_then(|photo| {
+                        picture(photo, Some(&person.name), links, context.images)
+                    }),
+                })
+                .collect(),
         },
         Block::LatestEpisode => {
             let words = podcast::Words::for_language(context.language);

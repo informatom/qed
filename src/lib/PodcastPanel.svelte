@@ -64,7 +64,7 @@
 
 <form id="podcast-settings" class="@container flex flex-col gap-6" onsubmit={save}>
   <PodcastSettings siteRoot={site.root} bind:podcast={form} siteTitle={site.config.title}
-    siteDescription={site.config.description} hasBaseUrl={!!site.config.base_url} />
+    siteDescription={site.config.description} hasBaseUrl={!!site.config.base_url} contributors={site.contributors} />
 
   {#if error}
     <div role="alert" class="alert alert-error alert-soft text-sm">{error}</div>

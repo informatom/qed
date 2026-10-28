@@ -24,7 +24,7 @@ export const commands = rustCommands as {
   ) => Promise<Sent<Awaited<ReturnType<RustCommands[K]>>>>;
 };
 
-export type { AudioFiles, AudioFormat, EpisodeType, PodcastType, Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage, Surface, ThemeColor } from "./bindings";
+export type { AudioFiles, AudioFormat, Role, EpisodeType, PodcastType, Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage, Surface, ThemeColor } from "./bindings";
 export type Colors = Sent<Rust.Colors>;
 export type Block = Sent<Rust.Block>;
 export type CustomTheme = Sent<Rust.CustomTheme>;
@@ -55,6 +55,9 @@ export type Chapter = Sent<Rust.Chapter>;
 export type Funding = Sent<Rust.Funding>;
 export type AudioInfo = Sent<Rust.AudioInfo>;
 export type EpisodeAudio = Sent<Rust.EpisodeAudio>;
+export type Contributor = Sent<Rust.Contributor>;
+export type ContributorLink = Sent<Rust.ContributorLink>;
+export type EpisodePerson = Sent<Rust.EpisodePerson>;
 export type Target = Sent<Rust.Target>;
 export type TestOutcome = Sent<Rust.TestOutcome>;
 
@@ -83,10 +86,11 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   shared: "Shared block",
   "latest-episode": "Latest episode",
   subscribe: "Subscribe",
+  contributors: "Contributors",
 };
 
 /** Blocks only podcast sites offer. */
-export const PODCAST_BLOCK_TYPES: BlockType[] = ["latest-episode", "subscribe"];
+export const PODCAST_BLOCK_TYPES: BlockType[] = ["latest-episode", "subscribe", "contributors"];
 
 /** The blocks a column can hold (see COLUMN_TYPES in block.rs). */
 export const COLUMN_BLOCK_TYPES: BlockType[] = [
@@ -102,6 +106,7 @@ export const COLUMN_BLOCK_TYPES: BlockType[] = [
   "shared",
   "latest-episode",
   "subscribe",
+  "contributors",
 ];
 
 /** A new, empty block of the given type. */
@@ -132,7 +137,7 @@ export function newBlock(type: BlockType): Block {
     case "call-to-action":
       return { type, headline: null, text: null, button_label: null, button_link: null };
     case "post-list":
-      return { type, from: null, limit: null, layout: null };
+      return { type, from: null, limit: null, layout: null, contributor: null };
     case "page-list":
       return { type, from: null, layout: null };
     case "video":
@@ -140,6 +145,7 @@ export function newBlock(type: BlockType): Block {
     case "shared":
       return { type, name: null };
     case "latest-episode":
+    case "contributors":
       // A block without settings. bindings.ts adds `markdown?: never` to
       // it, which `Sent` turns into a required field no value can fill;
       // the cast says the block is complete as it is.
@@ -151,7 +157,7 @@ export function newBlock(type: BlockType): Block {
 }
 
 /** Fields that may be empty in a file. Everything else is always text. */
-const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout", "name", "align"]);
+const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout", "name", "align", "contributor"]);
 
 /** Empty optional fields become null, so "" and "nothing" count as the same. */
 export function normalizeBlock(block: Block): Block {
@@ -187,6 +193,7 @@ export function pageLabel(path: string): string {
   if (path === "(footer)") return "the footer";
   if (path === "(menu)") return "the menu";
   if (path.startsWith("(shared) ")) return `the shared block “${path.slice(9)}”`;
+  if (path.startsWith("(contributor) ")) return `${path.slice(14)}'s photo`;
   return `/${path}`;
 }
 
@@ -260,3 +267,18 @@ export function formatLabel(format: Rust.AudioFormat): string {
 export function podcastFormats(podcast: { formats?: Rust.AudioFormat[] } | null): Rust.AudioFormat[] {
   return podcast?.formats?.length ? podcast.formats : ["mp3"];
 }
+
+/** The roles someone can have, as the Podcasting 2.0 taxonomy names them (see contributors.rs). */
+export const ROLES: { value: Rust.Role; label: string }[] = [
+  { value: "host", label: "Host" },
+  { value: "co-host", label: "Co-host" },
+  { value: "guest-host", label: "Guest host" },
+  { value: "guest", label: "Guest" },
+  { value: "narrator", label: "Narrator" },
+  { value: "producer", label: "Producer" },
+  { value: "audio-editor", label: "Audio editor" },
+  { value: "sound-designer", label: "Sound designer" },
+  { value: "composer", label: "Composer" },
+  { value: "transcriber", label: "Transcriber" },
+  { value: "cover-art-designer", label: "Cover art designer" },
+];

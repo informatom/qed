@@ -3,7 +3,7 @@
 // BlockList below it, including those inside columns, reads it.
 
 import { getContext, setContext } from "svelte";
-import type { Block, Page } from "$lib/site";
+import type { Block, Contributor, Page } from "$lib/site";
 
 export interface SharedBlocks {
   /** The site's shared blocks, sorted by name. */
@@ -12,6 +12,8 @@ export interface SharedBlocks {
   readonly insidePiece: boolean;
   /** Whether the site has a podcast: only then are the podcast blocks offered. */
   readonly podcast: boolean;
+  /** The podcast's contributors, for a Post list of someone's episodes. */
+  readonly contributors: Contributor[];
   /** Opens a shared block in the editor panel. */
   open(name: string): void;
   /** Makes a new shared block holding `block`; resolves to its name. */

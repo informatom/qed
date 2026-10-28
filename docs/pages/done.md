@@ -643,6 +643,19 @@ rest is done.
   buttons that `share.js` (q.e.d.'s own, copied into the site) shows
   only where they work. Nothing from third parties.
 
+- **#047 Contributors.** Done 2026-10-28 (`qed_core::contributors`):
+  entered once, in a Contributors tab (user: "painful" to copy them into
+  each episode as in octopod). One file each in `contributors/` (name,
+  photo, links, Markdown bio), referred to by id. Episodes list people
+  with Podcasting 2.0 roles (`[[episode.people]]`, several roles = several
+  rows); the podcast's Team (`[[podcast.people]]`) goes into the feeds'
+  channel and starts every new episode. The build makes a page per
+  person (`/contributors/<id>/`, with their episodes via the Post list's
+  new `contributor` filter) and `/contributors/` (unless the site has
+  its own), shows people with roles on episode pages, writes
+  `podcast:person` into the feeds, and has a Contributors block. A
+  contributor still listed, or a photo in use, can't be deleted.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

@@ -35,6 +35,8 @@ pub struct FeedInput<'a> {
     pub shownotes: &'a dyn Fn(&Page) -> String,
     /// The size of a file in `audio/`, which the file itself knows best.
     pub local_length: &'a dyn Fn(&str) -> Option<u64>,
+    /// The contributors, for `podcast:person`.
+    pub contributors: &'a [crate::contributors::Contributor],
 }
 
 /// Every feed of the podcast: one per format.
@@ -151,6 +153,11 @@ fn channel(input: &FeedInput, format: AudioFormat, items: &[String]) -> String {
     if let Some(guid) = &podcast.guid {
         line(tag("podcast:guid", guid));
     }
+    for person in &podcast.people {
+        if let Some(tag) = person_tag(input, person) {
+            line(tag);
+        }
+    }
     for funding in &podcast.funding {
         line(format!(
             "<podcast:funding url=\"{}\">{}</podcast:funding>",
@@ -250,6 +257,11 @@ fn item(input: &FeedInput, page: &Page, format: AudioFormat) -> Option<String> {
     if let Some(image) = episode.image.as_deref().and_then(|i| image_url(base, i)) {
         line(format!("<itunes:image href=\"{}\"/>", escape(&image)));
     }
+    for person in &episode.people {
+        if let Some(tag) = person_tag(input, person) {
+            line(tag);
+        }
+    }
     if !episode.chapters.is_empty() {
         let mut chapters = String::from("<psc:chapters version=\"1.2\">");
         for chapter in &episode.chapters {
@@ -268,6 +280,36 @@ fn item(input: &FeedInput, page: &Page, format: AudioFormat) -> Option<String> {
     }
     xml.push_str("  </item>\n");
     Some(xml)
+}
+
+/// `<podcast:person role="host" group="cast" img="…" href="…">Name</podcast:person>`
+/// for someone listed in the podcast or an episode; their page as `href`.
+fn person_tag(input: &FeedInput, person: &crate::contributors::EpisodePerson) -> Option<String> {
+    let contributor = input
+        .contributors
+        .iter()
+        .find(|c| c.id == person.contributor)?;
+    let (role, group) = person.role.taxonomy();
+    let mut tag = format!(
+        "<podcast:person role=\"{}\" group=\"{}\"",
+        escape(role),
+        escape(group)
+    );
+    if let Some(img) = contributor
+        .photo
+        .as_deref()
+        .and_then(|p| image_url(input.base, p))
+    {
+        tag.push_str(&format!(" img=\"{}\"", escape(&img)));
+    }
+    tag.push_str(&format!(
+        " href=\"{}/{}/{}/\">{}</podcast:person>",
+        input.base,
+        crate::contributors::CONTRIBUTORS_DIR,
+        escape(&contributor.id),
+        escape(&contributor.name)
+    ));
+    Some(tag)
 }
 
 /// The full address of an image: a file in `media/`, or a full address

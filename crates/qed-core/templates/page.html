@@ -157,6 +157,26 @@
         </p>
       </section>
       {%- endif %}
+      {%- if !people.is_empty() %}
+      <section id="people" class="flex flex-col gap-4">
+        <h2 class="text-2xl font-semibold tracking-tight">{{ people_heading }}</h2>
+        <ul class="flex flex-wrap gap-x-8 gap-y-4">
+          {%- for person in people %}
+          <li>
+            <a href="{{ person.href }}" class="group flex items-center gap-3">
+              {%- if let Some(picture) = person.picture %}
+              <img src="{{ picture.src }}"{% if let Some(srcset) = picture.srcset %} srcset="{{ srcset }}" sizes="3rem"{% endif %} alt="" class="size-12 rounded-full object-cover" loading="lazy">
+              {%- endif %}
+              <span class="flex flex-col leading-tight">
+                <span class="font-medium group-hover:underline">{{ person.name }}</span>
+                <span class="text-sm text-base-content/60">{{ person.roles }}</span>
+              </span>
+            </a>
+          </li>
+          {%- endfor %}
+        </ul>
+      </section>
+      {%- endif %}
       {%- for html in blocks %}
       {{ html|safe }}
       {%- endfor %}

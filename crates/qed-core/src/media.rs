@@ -117,6 +117,7 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
                 .iter()
                 .filter(|(_, names)| names.contains(&name))
                 .map(|(page, _)| page.to_string())
+                .chain(contributor_photo_of(site, library, &name))
                 .collect();
             let site_logo = library == Library::Media && is_site_logo(site, &name);
             let podcast_cover = library == Library::Media && is_podcast_cover(site, &name);
@@ -384,6 +385,15 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
             message: "it's the site's logo; choose another one in Site settings first".to_string(),
         });
     }
+    if let Some(person) = contributor_photo_of(site, library, name) {
+        return Err(SiteError::Invalid {
+            path: PathBuf::from(library.dir()).join(name),
+            message: format!(
+                "it's the photo of {}; choose another one in the Contributors tab first",
+                person.trim_start_matches("(contributor) ")
+            ),
+        });
+    }
     if library == Library::Media && is_podcast_cover(site, name) {
         return Err(SiteError::Invalid {
             path: PathBuf::from(library.dir()).join(name),
@@ -416,6 +426,24 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
         dir = folder.parent();
     }
     Ok(())
+}
+
+/// `(contributor) Name` if `name` in `media/` is a contributor's photo,
+/// as it shows in lists of what uses a file.
+fn contributor_photo_of(site: &Site, library: Library, name: &str) -> Option<String> {
+    if library != Library::Media {
+        return None;
+    }
+    site.contributors
+        .iter()
+        .find(|person| {
+            person
+                .photo
+                .as_deref()
+                .and_then(media_name)
+                .is_some_and(|p| p == name)
+        })
+        .map(|person| format!("(contributor) {}", person.name))
 }
 
 /// Whether `name` in `media/` is the podcast's cover art.
@@ -509,7 +537,8 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             | Block::PageList(_)
             | Block::Shared(_)
             | Block::LatestEpisode
-            | Block::Subscribe(_) => {}
+            | Block::Subscribe(_)
+            | Block::Contributors => {}
         }
     }
 

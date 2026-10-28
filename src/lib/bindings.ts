@@ -65,6 +65,13 @@ export const commands = {
 	/**  Deletes a shared piece no page uses any more. */
 	deleteShared: (root: string, name: string) => __TAURI_INVOKE<null>("delete_shared", { root, name }),
 	/**
+	 *  Saves a contributor (a new one when `id` is empty) and returns them as
+	 *  saved.
+	 */
+	saveContributor: (root: string, contributor: Contributor) => __TAURI_INVOKE<Contributor>("save_contributor", { root, contributor }),
+	/**  Deletes a contributor no episode or the podcast's team lists any more. */
+	deleteContributor: (root: string, id: string) => __TAURI_INVOKE<null>("delete_contributor", { root, id }),
+	/**
 	 *  Saves the site's settings into site.toml and returns them as saved
 	 *  (a new podcast gets its `podcast:guid` here).
 	 */
@@ -271,7 +278,12 @@ export type Block =
  */
 ({ type: "latest-episode" }) & { markdown?: never } | {
 	type: "subscribe",
-} & Subscribe;
+} & Subscribe | 
+/**
+ *  The podcast's contributors: photo and name, each linking to their
+ *  page. Nothing to set.
+ */
+({ type: "contributors" }) & { markdown?: never };
 
 /**  What a build produced. */
 export type BuildReport = {
@@ -368,6 +380,28 @@ export type Columns = {
 	items?: Column[],
 };
 
+/**  One contributor, as the UI and the generator see them. */
+export type Contributor = {
+	/**
+	 *  The file name without `.md`, which episodes refer to; it stays when
+	 *  the name changes.
+	 */
+	id: string,
+	name: string,
+	/**  A picture in `media/`, best square. */
+	photo: string | null,
+	/**  Their website, Mastodon, … */
+	links: ContributorLink[],
+	/**  About them, in Markdown. */
+	bio: string,
+};
+
+export type ContributorLink = {
+	/**  The link text, e.g. "Website"; the address if empty. */
+	title: string | null,
+	url: string,
+};
+
 /**  How round boxes, fields and buttons are. */
 export type Corners = "sharp" | "soft" | "round";
 
@@ -455,6 +489,8 @@ export type Episode = {
 	 */
 	duration: string | null,
 	chapters?: Chapter[],
+	/**  Who's in it and what they do; see `contributors.rs`. */
+	people?: EpisodePerson[],
 };
 
 /**  One audio file of an episode, `[[episode.audio]]`. */
@@ -470,6 +506,13 @@ export type EpisodeAudio = {
 	 *  chosen; for audio elsewhere, given by hand.
 	 */
 	length: number | null,
+};
+
+/**  Someone in an episode, `[[episode.people]]`. */
+export type EpisodePerson = {
+	/**  The contributor's id, their file name in `contributors/`. */
+	contributor: string,
+	role?: Role,
 };
 
 export type EpisodeType = "full" | "trailer" | "bonus";
@@ -814,6 +857,12 @@ export type Podcast = {
 	 *  start with it.
 	 */
 	audio_base_url: string | null,
+	/**
+	 *  The podcast's team: contributors and their roles, someone in
+	 *  several roles once per role. The feeds name them for the whole
+	 *  podcast, and new episodes start with them.
+	 */
+	people?: EpisodePerson[],
 };
 
 export type PodcastType = "episodic" | "serial";
@@ -832,6 +881,11 @@ export type PostList = {
 	limit: number | null,
 	/**  How the posts show; a plain list if empty. */
 	layout: ListLayout | null,
+	/**
+	 *  Only the episodes this contributor is in (their id, see
+	 *  `contributors.rs`); all posts if empty.
+	 */
+	contributor: string | null,
 };
 
 /**  What `preview_site` returns: where to look, and what was built. */
@@ -858,6 +912,13 @@ export type PublishReport = {
 	unchanged: number,
 	bytes: number,
 };
+
+/**
+ *  What someone does in an episode. The names and groups are the
+ *  Podcasting 2.0 taxonomy's, which apps read from `podcast:person`:
+ *  <https://github.com/Podcastindex-org/podcast-namespace/blob/main/taxonomy.json>.
+ */
+export type Role = "host" | "co-host" | "guest-host" | "guest" | "narrator" | "producer" | "audio-editor" | "sound-designer" | "composer" | "transcriber" | "cover-art-designer";
 
 /**  What the app knows about a target's secrets, for the target form. */
 export type SecretStatus = {
@@ -1053,6 +1114,11 @@ export type Site_Deserialize = {
 	footer: Page | null,
 	/**  The shared pieces from `shared/`, sorted by name; see `shared.rs`. */
 	shared: Page[],
+	/**
+	 *  The podcast's contributors from `contributors/`, sorted by name;
+	 *  see `contributors.rs`.
+	 */
+	contributors: Contributor[],
 };
 
 /**  A site folder, read into memory. */
@@ -1070,6 +1136,11 @@ export type Site_Serialize = {
 	footer: Page | null,
 	/**  The shared pieces from `shared/`, sorted by name; see `shared.rs`. */
 	shared: Page[],
+	/**
+	 *  The podcast's contributors from `contributors/`, sorted by name;
+	 *  see `contributors.rs`.
+	 */
+	contributors: Contributor[],
 };
 
 export type Stage = "connecting" | "comparing" | "uploading" | "deleting" | "done";

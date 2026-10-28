@@ -8,7 +8,7 @@
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import PageVersions from "$lib/PageVersions.svelte";
-  import { commands, pageLabel, type Page, type Podcast, type PageContent, type Version } from "$lib/site";
+  import { commands, pageLabel, type Contributor, type Page, type Podcast, type PageContent, type Version } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -23,9 +23,10 @@
     dirty?: boolean;
     /** The site's podcast settings; null for sites without one. */
     podcast?: Podcast | null;
+    contributors?: Contributor[];
   }
 
-  let { page, siteRoot, onsaved, onclose, ondeleted, onmove, dirty = $bindable(false), podcast = null }: Props = $props();
+  let { page, siteRoot, onsaved, onclose, ondeleted, onmove, dirty = $bindable(false), podcast = null, contributors = [] }: Props = $props();
 
   let tab = $state<"content" | "versions" | "settings">("content");
   let contentDirty = $state(false);
@@ -140,7 +141,7 @@
         }} />
     </div>
     <div class={[tab !== "settings" && "hidden"]}>
-      <PageSettings {page} {siteRoot} {onsaved} {podcast} start={restored?.front} bind:dirty={settingsDirty} />
+      <PageSettings {page} {siteRoot} {onsaved} {podcast} {contributors} start={restored?.front} bind:dirty={settingsDirty} />
     </div>
   {/key}
   {#if tab === "versions"}

@@ -32,6 +32,9 @@
     get podcast() {
       return outer?.podcast ?? false;
     },
+    get contributors() {
+      return outer?.contributors ?? [];
+    },
     open: (other) => outer?.open(other),
     make: () => Promise.reject(new Error("a shared block can't hold another one")),
   });

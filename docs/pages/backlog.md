@@ -21,9 +21,6 @@ Nothing open.
 
 ### Phase 2: Podcasting
 
-- **#047 Contributors.** Contributors per site (name, photo, Markdown bio,
-  links), linked to episodes with a role. `podcast:person` in the feed,
-  people on episode pages, a Contributors block.
 - **#048 Transcripts.** WebVTT per episode. Deployed as a file, linked with
   `podcast:transcript`, shown on the episode page and in the player.
 - **#049 Web player.** Self-hosted Podlove Web Player, copied into each site,

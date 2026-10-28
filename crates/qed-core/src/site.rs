@@ -368,6 +368,9 @@ pub struct Site {
     pub footer: Option<Page>,
     /// The shared pieces from `shared/`, sorted by name; see `shared.rs`.
     pub shared: Vec<Page>,
+    /// The podcast's contributors from `contributors/`, sorted by name;
+    /// see `contributors.rs`.
+    pub contributors: Vec<crate::contributors::Contributor>,
 }
 
 impl Site {
@@ -510,6 +513,7 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
         targets: crate::target::load(root)?,
         footer,
         shared: crate::shared::load(root)?,
+        contributors: crate::contributors::load(root)?,
     })
 }
 
@@ -869,6 +873,22 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
     if let Some(problem) = config.podcast.as_ref().and_then(Podcast::problem) {
         return Err(invalid(format!("podcast: {problem}")));
     }
+    if let Some(person) = config
+        .podcast
+        .iter()
+        .flat_map(|p| &p.people)
+        .find(|person| {
+            !root
+                .join(crate::contributors::CONTRIBUTORS_DIR)
+                .join(format!("{}.md", person.contributor))
+                .is_file()
+        })
+    {
+        return Err(invalid(format!(
+            "podcast: there is no contributor “{}”",
+            person.contributor
+        )));
+    }
     let saved = with_podcast_guid(config);
     let config = &saved;
 
@@ -895,8 +915,10 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
         .and_then(|item| item.as_table_mut())
     {
         podcast_without_defaults(podcast);
-        if let Some(item) = podcast.get_mut("funding") {
-            tables_from_inline(item);
+        for key in ["funding", "people"] {
+            if let Some(item) = podcast.get_mut(key) {
+                tables_from_inline(item);
+            }
         }
     }
     // And each saved set as a `[[saved_themes]]` section.
@@ -991,7 +1013,10 @@ fn with_podcast_guid(config: &SiteConfig) -> SiteConfig {
 /// Leaves the podcast settings at their defaults out of `[podcast]`, as
 /// for the site's own settings.
 fn podcast_without_defaults(podcast: &mut toml_edit::Table) {
-    let defaults: [page_writer::DefaultCheck; 6] = [
+    let defaults: [page_writer::DefaultCheck; 7] = [
+        ("people", |item| {
+            item.as_array().is_some_and(|array| array.is_empty())
+        }),
         ("explicit", |item| item.as_bool() == Some(false)),
         ("type", |item| item.as_str() == Some("episodic")),
         ("audio_files", |item| item.as_str() == Some("local")),
@@ -1032,6 +1057,21 @@ pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result
             return Err(SiteError::Invalid {
                 path: file.to_path_buf(),
                 message: problem,
+            });
+        }
+        if let Some(person) = episode.people.iter().find(|person| {
+            !root
+                .join(crate::contributors::CONTRIBUTORS_DIR)
+                .join(format!("{}.md", person.contributor))
+                .is_file()
+        }) {
+            return Err(SiteError::Invalid {
+                path: file.to_path_buf(),
+                message: format!(
+                    "there is no contributor “{}” in {}/",
+                    person.contributor,
+                    crate::contributors::CONTRIBUTORS_DIR
+                ),
             });
         }
         // An episode written by hand may come without one.
@@ -1140,7 +1180,8 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             | Block::Video(_)
             | Block::Shared(_)
             | Block::LatestEpisode
-            | Block::Subscribe(_) => {}
+            | Block::Subscribe(_)
+            | Block::Contributors => {}
         }
     }
     for text in texts {

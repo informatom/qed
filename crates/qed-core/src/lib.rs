@@ -3,6 +3,7 @@
 
 pub mod block;
 pub mod calendar;
+pub mod contributors;
 pub mod deploy;
 pub mod feed;
 pub mod fonts;

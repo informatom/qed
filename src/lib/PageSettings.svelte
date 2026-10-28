@@ -4,9 +4,10 @@
   import CoverCheck from "$lib/CoverCheck.svelte";
   import ImageField from "$lib/ImageField.svelte";
   import MediaPicker from "$lib/MediaPicker.svelte";
+  import PeopleEditor from "$lib/PeopleEditor.svelte";
   import {
     commands, formatLabel, pageIcons, podcastFormats,
-    type AudioFormat, type Episode, type EpisodeAudio, type EpisodeType, type FrontMatter, type Menu, type Page, type Podcast,
+    type AudioFormat, type Contributor, type Episode, type EpisodeAudio, type EpisodeType, type FrontMatter, type Menu, type Page, type Podcast,
   } from "$lib/site";
 
   interface Props {
@@ -19,9 +20,10 @@
     dirty?: boolean;
     /** The site's podcast settings; null for sites without one. */
     podcast?: Podcast | null;
+    contributors?: Contributor[];
   }
 
-  let { page, siteRoot, onsaved, start, dirty = $bindable(false), podcast = null }: Props = $props();
+  let { page, siteRoot, onsaved, start, dirty = $bindable(false), podcast = null, contributors = [] }: Props = $props();
 
   // An editable copy of the settings, taken once when the form opens
   // (`untrack` says so on purpose; the parent re-creates the form for another
@@ -391,6 +393,11 @@
           {/if}
           {#if audioError}<p class="text-sm text-error">{audioError}</p>{/if}
         </div>
+      </section>
+
+      <section class="flex flex-col gap-3 border-t border-base-300 pt-6">
+        {@render heading("People")}
+        <PeopleEditor id="episode-people" bind:people={episode.people} {contributors} />
       </section>
 
       <section class="flex flex-col gap-3 border-t border-base-300 pt-6">

@@ -10,6 +10,8 @@
   import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import Mic from "@lucide/svelte/icons/mic";
+  import UsersRound from "@lucide/svelte/icons/users-round";
+  import ContributorsPanel from "$lib/ContributorsPanel.svelte";
   import Files from "@lucide/svelte/icons/files";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
@@ -108,6 +110,9 @@
     get podcast() {
       return !!site?.config.podcast;
     },
+    get contributors() {
+      return site?.contributors ?? [];
+    },
     open: (name) => select(`shared/${name}.md`),
     async make(title, block) {
       if (!site) throw new Error("no site open");
@@ -163,7 +168,7 @@
   let creatingEpisode = $state(false);
   let creatingSite = $state(false);
   let movingPage = $state(false);
-  let view = $state<"pages" | "media" | "assets" | "static" | "audio" | "podcast" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
+  let view = $state<"pages" | "media" | "assets" | "static" | "audio" | "podcast" | "contributors" | "site" | "menu" | "theme" | "publish" | "versions" | "app">("pages");
 
   async function pageCreated(page: Page) {
     if (!site) return;
@@ -201,6 +206,7 @@
   let hasAudioLibrary = $derived(!!site?.config.podcast && site.config.podcast.audio_files !== "external");
   $effect(() => {
     if (view === "audio" && !hasAudioLibrary) view = "pages";
+    if (view === "contributors" && !site?.config.podcast) view = "pages";
   });
 
   // Derived values update by themselves when `site` changes.
@@ -615,6 +621,10 @@
         onclick={() => (view = "site")}><Globe class="me-1.5 size-4" />Site</button>
       <button type="button" role="tab" id="view-podcast" class={["tab", view === "podcast" && "tab-active"]}
         onclick={() => (view = "podcast")}><Mic class="me-1.5 size-4" />Podcast</button>
+      {#if site.config.podcast}
+        <button type="button" role="tab" id="view-contributors" class={["tab", view === "contributors" && "tab-active"]}
+          onclick={() => (view = "contributors")}><UsersRound class="me-1.5 size-4" />Contributors</button>
+      {/if}
       <button type="button" role="tab" id="view-menu" class={["tab", view === "menu" && "tab-active"]}
         onclick={() => (view = "menu")}><MenuIcon class="me-1.5 size-4" />Menu</button>
       <button type="button" role="tab" id="view-theme" class={["tab", view === "theme" && "tab-active"]}
@@ -681,6 +691,10 @@
       <section id="site-podcast" class={["flex max-w-4xl flex-col gap-3", view !== "podcast" && "hidden"]}>
         <h2 class="text-lg font-semibold">Podcast</h2>
         <PodcastPanel {site} onsaved={(config) => site && (site.config = config)} />
+      </section>
+      <section id="site-contributors" class={["flex flex-col gap-3", view !== "contributors" && "hidden"]}>
+        <h2 class="text-lg font-semibold">Contributors</h2>
+        <ContributorsPanel {site} onchanged={(people) => site && (site.contributors = people)} />
       </section>
       <section id="site-menu" class={["flex max-w-4xl flex-col gap-3", view !== "menu" && "hidden"]}>
         <h2 class="text-lg font-semibold">Menu</h2>
@@ -914,6 +928,7 @@
             ondeleted={pageDeleted}
             onmove={() => (movingPage = true)}
             podcast={site.config.podcast}
+            contributors={site.contributors}
             bind:dirty={editorDirty}
           />
         {/key}
