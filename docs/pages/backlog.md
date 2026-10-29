@@ -24,12 +24,6 @@ Nothing open.
 - **#070 Code signing.** Apple developer account and notarization, Windows
   signing (e.g. Azure Trusted Signing). Decided 2026-10-28: moved from
   phase 2; not needed for 1.0.
-- **#029 Publisher: GitHub Pages.** Push the built site to the configured
-  branch with a deploy key. Needs a second `Target` kind, its own key
-  handling and connection test (#031). For podcasts, GitHub Pages warns
-  when an episode lacks an external audio URL (#068).
-- **#011 GitHub Pages.** Decided: deploy key using q.e.d.'s generated key
-  pair. Audio must be external for GitHub targets.
 - **#085 Images in Markdown text, WebP.** *Copies in text done
   2026-10-27*: images written into text as `![…](/media/…)` get the
   smaller copies in `srcset`, `sizes`, their width and height and
@@ -38,8 +32,6 @@ Nothing open.
   than the JPEGs, so this needs another encoder.
 - **#083 Closing versions by themselves.** Close an open version with an
   automatic note after a while without saves (from #073).
-- **#084 Signed commits.** libgit2 doesn't sign, so q.e.d.'s versions are
-  unsigned (from #073).
 - **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
   view, also reachable from where a topic comes up, e.g. the Versions tab
   for backups), and the same pages on the docs site. Written for site

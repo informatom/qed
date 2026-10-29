@@ -843,3 +843,17 @@ Not needed in a single-user desktop app:
   hand instead.
 - #027 Publisher: ZIP. The built site already is a folder (`_site/`); the app
   has "Show in file manager" instead.
+- #029 Publisher: GitHub Pages and #011 (its deploy key), closed
+  2026-10-29: from the web app's first backlog. q.e.d. publishes to the
+  site owner's own webspace and loads nothing from outside services;
+  GitHub Pages can't hold podcast audio (100 MB per file, about 1 GB per
+  repository), and the podcasters q.e.d. is for won't set up GitHub
+  accounts and deploy keys. SFTP covers publishing. If free hosting for a
+  small site is ever asked for: a generic "publish by git push" target
+  (GitHub, Codeberg, GitLab Pages) on the git transport of #129.
+- #084 Signed commits, closed 2026-10-29: noted on 2026-10-26 as a limit
+  of the history (#073), not asked for. q.e.d.'s versions are a safety
+  net, not proof of authorship; the owner doesn't sign commits either,
+  and no remote in use requires it. libgit2 only stores signatures, so
+  q.e.d. would have to sign with an SSH key itself. Back on the list if
+  a site has to be pushed to a repository that requires signed commits.
