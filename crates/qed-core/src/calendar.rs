@@ -61,15 +61,22 @@ pub fn days(date: Date) -> i64 {
     era * 146_097 + day_of_era - 719_468
 }
 
+/// English month names, short: `Jan` … `Dec`.
+const SHORT_MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/// The short English name of a date's month: `Oct`.
+pub fn short_month(date: Date) -> &'static str {
+    SHORT_MONTHS[usize::try_from(date.month.clamp(1, 12) - 1).unwrap_or(0)]
+}
+
 /// A date the way RSS writes it (RFC 822): `Wed, 21 Oct 2026 00:00:00 +0000`.
 pub fn rfc822(date: Date) -> String {
     const WEEKDAYS: [&str; 7] = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"];
-    const MONTHS: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
     // 1970-01-01 was a Thursday.
     let weekday = WEEKDAYS[usize::try_from(days(date).rem_euclid(7)).unwrap_or(0)];
-    let month = MONTHS[usize::try_from(date.month.clamp(1, 12) - 1).unwrap_or(0)];
+    let month = short_month(date);
     format!(
         "{weekday}, {:02} {month} {:04} 00:00:00 +0000",
         date.day, date.year

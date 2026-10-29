@@ -824,6 +824,17 @@ rest is done.
   section in a theme color draws buttons of its color plain
   (`on-primary` …); its picture counts as used media and as the page's
   first image.
+- **#083 Closing versions by themselves.** Rule from the user on
+  2026-10-29: an open version rests after an hour without saves or on an
+  earlier (local) day. Done the same day, post 63: the app asks for a
+  note when a site opens and once a minute (`RestingVersionDialog`,
+  prefilled with `Saves on 27 Oct, 13:50–21:12` from the commit's author
+  and committer times); "Save version" closes it as it is
+  (`history::close_open_version`), "Use suggested note" leaves it, and the next
+  save closes it with the suggested note before starting a new one
+  (`record_save`). The Versions lists show an open version as
+  "Work in progress since <first save>" with "last saved <time>"
+  (`Version::started`, the author time).
 
 ## Dropped
 

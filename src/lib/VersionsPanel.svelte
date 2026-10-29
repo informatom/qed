@@ -5,7 +5,7 @@
   import Undo from "@lucide/svelte/icons/undo-2";
   import { ask } from "@tauri-apps/plugin-dialog";
   import RemotePanel from "$lib/RemotePanel.svelte";
-  import { commands, formatTime, type DeletedPage, type HistoryStatus, type Version } from "$lib/site";
+  import { commands, formatTime, versionLabel, type DeletedPage, type HistoryStatus, type Version } from "$lib/site";
 
   interface Props {
     siteRoot: string;
@@ -124,7 +124,7 @@
         {/if}
         {#if open}
           <p class="text-sm">
-            Your saves since the last version are kept in the open version “{open.summary}”, last saved
+            Your saves since {formatTime(open.started)} are kept in the open version, last saved
             {formatTime(open.time)}. Close it with a note, so the next saves start a new one.
           </p>
         {/if}
@@ -156,8 +156,9 @@
         </form>
         {#if message}<p class="text-sm text-success">{message}</p>{/if}
         <p class="text-sm text-base-content/60">
-          Every save in q.e.d. goes into the open version, so nothing saved is lost. Publishing asks what's new, closes it
-          with that note and marks it with the target's name.
+          Every save in q.e.d. goes into the open version, so nothing saved is lost. After an hour without saves, or on
+          the next day, q.e.d. asks for a note and closes it, so each working session becomes a version of its own.
+          Publishing asks what's new, closes it with that note and marks it with the target's name.
         </p>
 
         {#if status.shared_with}
@@ -185,11 +186,12 @@
         {:else}
           <ul id="version-list" class="flex flex-col divide-y divide-base-300 rounded-box border border-base-300">
             {#each versions as version, i (version.id)}
+              {@const label = versionLabel(version)}
               <li class="group flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
-                <span class="font-medium">{version.summary}</span>
+                <span class="font-medium">{label.title}</span>
                 {#if version.open}<span class="badge badge-warning badge-soft badge-sm">open</span>{/if}
                 {#each version.tags as tag (tag)}<span class="badge badge-soft badge-sm">{tag}</span>{/each}
-                <span class="ms-auto text-sm text-base-content/60">{formatTime(version.time)} · {version.author}</span>
+                <span class="ms-auto text-sm text-base-content/60">{label.time} · {version.author}</span>
                 {#if i > 0}
                   <!-- The newest is the present; any older one can come back. -->
                   <button type="button" class="btn btn-ghost btn-xs" disabled={busy || editing}

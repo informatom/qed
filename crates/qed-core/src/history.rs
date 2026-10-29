@@ -36,7 +36,14 @@ use crate::target::TARGETS_FILE;
 pub const DRAFT_MARK: &str = "qed-draft: true";
 
 /// The note of an open version.
+/// The note of an open version; closing it replaces the note. The app
+/// adds when it started (`Version::started`).
 const DRAFT_NOTE: &str = "Work in progress";
+
+/// How long the open version may rest: a save after an hour without
+/// saves (or on another day) closes it first and starts a new one, so the
+/// history keeps one version per working session (#083).
+const QUIET_SECONDS: i64 = 60 * 60;
 
 /// How many versions a list shows at most.
 const MAX_VERSIONS: usize = 200;
@@ -104,12 +111,29 @@ pub struct Version {
     /// The first line of the note.
     pub summary: String,
     pub author: String,
-    /// Seconds since 1970 (UTC).
+    /// Seconds since 1970 (UTC): when it was saved, for an open version
+    /// its last save.
     pub time: i64,
+    /// When it started: an open version's first save (the commit's author
+    /// time; later saves change only the commit time).
+    pub started: i64,
     /// Tags on this version, such as the publishes.
     pub tags: Vec<String>,
     /// Still open: later saves go into it until it's closed.
     pub open: bool,
+}
+
+/// An open version that has rested long enough to be closed: its last save
+/// was an hour ago or more, or on an earlier day.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct RestingVersion {
+    /// Its first and its last save, seconds since 1970 (UTC).
+    pub first_save: i64,
+    pub last_save: i64,
+    /// A note made from those times, for when nobody writes one:
+    /// `Saves on 27 Oct, 13:50–21:12`.
+    pub note: String,
 }
 
 /// A page that a version had and the site folder doesn't any more.
@@ -286,7 +310,17 @@ pub fn record_save(root: &Path) -> Result<Option<Version>, HistoryError> {
     let tree = site_tree(&site)?;
     let repo = &site.repo;
     let signature = signature(repo)?;
-    let id = match open_version(&site)? {
+    let mut open = open_version(&site)?;
+    if let Some(commit) = &open
+        && commit.tree_id() != tree.id()
+        && let Some(resting) = resting(commit, local_now()?)
+    {
+        // A new working session: the open version keeps the earlier
+        // saves under a note of its own, and this save starts a new one.
+        close_commit(commit, &resting.note)?;
+        open = None;
+    }
+    let id = match open {
         Some(open) if open.tree_id() == tree.id() => return Ok(None),
         Some(open) => open.amend(
             Some("HEAD"),
@@ -317,6 +351,90 @@ pub fn record_save(root: &Path) -> Result<Option<Version>, HistoryError> {
         }
     };
     Ok(Some(version(repo, id, &BTreeMap::new())?))
+}
+
+/// The open version, if it has rested long enough to be closed (see
+/// [`QUIET_SECONDS`]), with a note made from its times. The app asks for
+/// a better note then; the next save closes it with this one otherwise.
+pub fn resting_version(root: &Path) -> Result<Option<RestingVersion>, HistoryError> {
+    let Some(site) = SiteRepo::open(root)? else {
+        return Ok(None);
+    };
+    let Some(open) = open_version(&site)? else {
+        return Ok(None);
+    };
+    Ok(resting(&open, local_now()?))
+}
+
+/// Closes the open version with `note` as it is, without the changes
+/// since its last save (there are none after a save in the app). Returns
+/// `None` if there's no open version.
+pub fn close_open_version(root: &Path, note: &str) -> Result<Option<Version>, HistoryError> {
+    let site = SiteRepo::open(root)?.ok_or(HistoryError::NotTracked)?;
+    let Some(open) = open_version(&site)? else {
+        return Ok(None);
+    };
+    let note = match note.trim() {
+        "" => "Saved version",
+        note => note,
+    };
+    let id = close_commit(&open, note)?;
+    Ok(Some(version(&site.repo, id, &BTreeMap::new())?))
+}
+
+/// Gives the open version (the latest commit) its note, which also takes
+/// away its draft mark. Its contents and times stay.
+fn close_commit(open: &git2::Commit, note: &str) -> Result<git2::Oid, HistoryError> {
+    Ok(open.amend(Some("HEAD"), None, None, None, Some(note), None)?)
+}
+
+/// Now, with the computer's offset from UTC, which is what tells days
+/// apart.
+fn local_now() -> Result<git2::Time, HistoryError> {
+    Ok(Signature::now("q.e.d.", "qed@localhost")?.when())
+}
+
+/// The open version as a [`RestingVersion`], if its last save (the
+/// commit time; the author time is the first save) is [`QUIET_SECONDS`]
+/// ago or on an earlier day than `now`.
+fn resting(open: &git2::Commit, now: git2::Time) -> Option<RestingVersion> {
+    let first = open.author().when().seconds();
+    let last = open.committer().when().seconds();
+    let offset = i64::from(now.offset_minutes()) * 60;
+    let day = |seconds: i64| (seconds + offset).div_euclid(86_400);
+    let quiet = now.seconds() - last >= QUIET_SECONDS || day(last) != day(now.seconds());
+    quiet.then(|| RestingVersion {
+        first_save: first,
+        last_save: last,
+        note: session_note(first, last, offset),
+    })
+}
+
+/// `Saves on 27 Oct, 13:50–21:12`, or `Saves from 27 Oct, 21:50 to
+/// 28 Oct, 09:10` across midnight, in local time (`offset` seconds from
+/// UTC).
+fn session_note(first: i64, last: i64, offset: i64) -> String {
+    let (first_day, first_time) = local_day_and_time(first, offset);
+    let (last_day, last_time) = local_day_and_time(last, offset);
+    if first_day != last_day {
+        format!("Saves from {first_day}, {first_time} to {last_day}, {last_time}")
+    } else if first_time == last_time {
+        format!("Saves on {first_day}, {first_time}")
+    } else {
+        format!("Saves on {first_day}, {first_time}–{last_time}")
+    }
+}
+
+/// A moment as `("27 Oct", "13:50")` in local time, `offset` seconds from
+/// UTC.
+fn local_day_and_time(seconds: i64, offset: i64) -> (String, String) {
+    let seconds = seconds + offset;
+    let date = calendar::from_days(seconds.div_euclid(86_400));
+    let minutes = seconds.rem_euclid(86_400) / 60;
+    (
+        format!("{} {}", date.day, calendar::short_month(date)),
+        format!("{:02}:{:02}", minutes / 60, minutes % 60),
+    )
 }
 
 /// Closes the open version with `note`, after recording the site folder
@@ -862,6 +980,7 @@ fn version(
             .to_string(),
         author: commit.author().name().unwrap_or_default().to_string(),
         time: commit.time().seconds(),
+        started: commit.author().when().seconds(),
         tags: tags.get(&id).cloned().unwrap_or_default(),
     })
 }
@@ -1186,6 +1305,99 @@ mod tests {
     }
 
     #[test]
+    fn names_a_working_session_by_its_times() {
+        // 27 Oct 2026, 13:50 and 21:12 in Vienna (UTC+1 after the clock
+        // change), written in UTC.
+        let (first, last) = (1_793_105_400, 1_793_131_920);
+        let vienna = 3600;
+        assert_eq!(
+            session_note(first, last, vienna),
+            "Saves on 27 Oct, 13:50–21:12"
+        );
+        assert_eq!(session_note(first, first, vienna), "Saves on 27 Oct, 13:50");
+        assert_eq!(
+            session_note(first, last + 12 * 3600, vienna),
+            "Saves from 27 Oct, 13:50 to 28 Oct, 09:12"
+        );
+    }
+
+    #[test]
+    fn an_open_version_rests_after_an_hour_or_overnight() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = Repository::init(dir.path()).unwrap();
+        let tree = repo
+            .find_tree(repo.index().unwrap().write_tree().unwrap())
+            .unwrap();
+        // First save 21:00, last save 22:30, both on 27 Oct (UTC, offset 0).
+        let at = |seconds: i64| Signature::new("A", "a@b", &git2::Time::new(seconds, 0)).unwrap();
+        let (first, last) = (1_793_134_800, 1_793_140_200);
+        let id = repo
+            .commit(None, &at(first), &at(last), DRAFT_MARK, &tree, &[])
+            .unwrap();
+        let open = repo.find_commit(id).unwrap();
+        let now = |seconds: i64| git2::Time::new(seconds, 0);
+
+        assert_eq!(
+            resting(&open, now(last + 59 * 60)),
+            None,
+            "59 minutes later"
+        );
+        let rested = resting(&open, now(last + 60 * 60)).unwrap();
+        assert_eq!(rested.first_save, first);
+        assert_eq!(rested.note, "Saves on 27 Oct, 21:00–22:30");
+
+        // Last save 23:30: at 23:59 it's still open, at 00:01 the next day
+        // it rests, after only half an hour.
+        let id = repo
+            .commit(None, &at(first), &at(1_793_143_800), DRAFT_MARK, &tree, &[])
+            .unwrap();
+        let late = repo.find_commit(id).unwrap();
+        assert_eq!(resting(&late, now(1_793_145_540)), None);
+        assert!(resting(&late, now(1_793_145_660)).is_some(), "a new day");
+    }
+
+    #[test]
+    fn a_save_after_a_rest_starts_a_new_version() {
+        let dir = tempfile::tempdir().unwrap();
+        site(dir.path());
+        start(dir.path()).unwrap();
+        let repo = Repository::open(dir.path()).unwrap();
+        let home = dir.path().join("pages/index.md");
+        fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nMorning.\n").unwrap();
+        record_save(dir.path()).unwrap().unwrap();
+        assert_eq!(resting_version(dir.path()).unwrap(), None, "just saved");
+
+        // Move the open version's saves two hours back.
+        let earlier = now_seconds() - 2 * 3600;
+        let old = Signature::new("A", "a@b", &git2::Time::new(earlier, 0)).unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        head.amend(Some("HEAD"), Some(&old), Some(&old), None, None, None)
+            .unwrap();
+        let rested = resting_version(dir.path()).unwrap().unwrap();
+        assert!(rested.note.starts_with("Saves on "), "{rested:?}");
+
+        fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nAfternoon.\n").unwrap();
+        let open = record_save(dir.path()).unwrap().unwrap();
+        assert!(open.open);
+        let all = versions(dir.path(), None).unwrap();
+        assert_eq!(all.len(), 3, "first version, the morning, the afternoon");
+        assert_eq!(all[1].summary, rested.note);
+        assert!(!all[1].open);
+        let morning = file_at(dir.path(), "pages/index.md", &all[1].id)
+            .unwrap()
+            .unwrap();
+        assert!(morning.contains("Morning."), "the morning keeps its text");
+
+        // Closing by hand keeps the contents and takes the note.
+        let closed = close_open_version(dir.path(), "Afternoon intro")
+            .unwrap()
+            .unwrap();
+        assert_eq!(closed.summary, "Afternoon intro");
+        assert!(!closed.open);
+        assert!(close_open_version(dir.path(), "Again").unwrap().is_none());
+    }
+
+    #[test]
     fn saves_go_into_one_open_version_until_it_is_closed() {
         let dir = tempfile::tempdir().unwrap();
         site(dir.path());
@@ -1199,6 +1411,7 @@ mod tests {
         let open = record_save(dir.path()).unwrap().unwrap();
         assert!(open.open);
         assert_eq!(open.summary, "Work in progress");
+        assert_eq!(open.started, open.time, "one save: it started then");
         fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nTwo.\n").unwrap();
         record_save(dir.path()).unwrap().unwrap();
         assert!(record_save(dir.path()).unwrap().is_none(), "nothing new");

@@ -30,8 +30,6 @@ Nothing open.
   `loading="lazy"`, like image blocks (#075). Still open: WebP copies for
   all images (#033). The image crate writes only lossless WebP, larger
   than the JPEGs, so this needs another encoder.
-- **#083 Closing versions by themselves.** Close an open version with an
-  automatic note after a while without saves (from #073).
 - **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
   view, also reachable from where a topic comes up, e.g. the Versions tab
   for backups), and the same pages on the docs site. Written for site

@@ -44,6 +44,7 @@
   import SiteTheme from "$lib/SiteTheme.svelte";
   import MenuEditor from "$lib/MenuEditor.svelte";
   import VersionsPanel from "$lib/VersionsPanel.svelte";
+  import RestingVersionDialog from "$lib/RestingVersionDialog.svelte";
   import NewPageDialog from "$lib/NewPageDialog.svelte";
   import NewSiteDialog from "$lib/NewSiteDialog.svelte";
   import CloneSiteDialog from "$lib/CloneSiteDialog.svelte";
@@ -517,6 +518,8 @@
     if (path !== undefined) untrack(() => parents(path).forEach((parent) => unfolded.add(parent)));
   });
 
+  /** Counts versions closed outside the Versions tab, so it reloads. */
+  let historyChanges = $state(0);
 </script>
 
 <svelte:window onkeydown={(e) => pageDrag && e.key === "Escape" && (pageDrag = null)} />
@@ -525,6 +528,7 @@
   <UpdateBar />
   {#if site}
     <PullBar siteRoot={site.root} editing={editorDirty} onpulled={() => site && load(site.root)} />
+    <RestingVersionDialog siteRoot={site.root} onclosed={() => historyChanges++} />
   {/if}
   <header class="flex flex-wrap items-start justify-between gap-4">
     {#if site}
@@ -743,7 +747,9 @@
       {:else if view === "static"}
         <MediaLibrary siteRoot={site.root} library="static" />
       {:else if view === "versions"}
-        <VersionsPanel siteRoot={site.root} editing={editorDirty} onrestored={() => site && load(site.root)} />
+        {#key historyChanges}
+          <VersionsPanel siteRoot={site.root} editing={editorDirty} onrestored={() => site && load(site.root)} />
+        {/key}
       {/if}
     {/key}
 

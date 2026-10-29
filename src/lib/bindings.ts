@@ -173,8 +173,16 @@ export const commands = {
 	/**  The first line of the note. */
 	summary: string,
 	author: string,
-	/**  Seconds since 1970 (UTC). */
+	/**
+	 *  Seconds since 1970 (UTC): when it was saved, for an open version
+	 *  its last save.
+	 */
 	time: number,
+	/**
+	 *  When it started: an open version's first save (the commit's author
+	 *  time; later saves change only the commit time).
+	 */
+	started: number,
 	/**  Tags on this version, such as the publishes. */
 	tags: string[],
 	/**  Still open: later saves go into it until it's closed. */
@@ -190,13 +198,60 @@ export const commands = {
 	/**  The first line of the note. */
 	summary: string,
 	author: string,
-	/**  Seconds since 1970 (UTC). */
+	/**
+	 *  Seconds since 1970 (UTC): when it was saved, for an open version
+	 *  its last save.
+	 */
 	time: number,
+	/**
+	 *  When it started: an open version's first save (the commit's author
+	 *  time; later saves change only the commit time).
+	 */
+	started: number,
 	/**  Tags on this version, such as the publishes. */
 	tags: string[],
 	/**  Still open: later saves go into it until it's closed. */
 	open: boolean,
 } | null>("save_version", { root, note }),
+	/**
+	 *  The open version, if it has rested an hour or since an earlier day, with
+	 *  a note made from its times; the app asks for a better one then.
+	 */
+	restingVersion: (root: string) => __TAURI_INVOKE<{
+	/**  Its first and its last save, seconds since 1970 (UTC). */
+	first_save: number,
+	last_save: number,
+	/**
+	 *  A note made from those times, for when nobody writes one:
+	 *  `Saves on 27 Oct, 13:50–21:12`.
+	 */
+	note: string,
+} | null>("resting_version", { root }),
+	/**
+	 *  Closes the open version with a note, as it was last saved; `None` if
+	 *  there's no open version.
+	 */
+	closeOpenVersion: (root: string, note: string) => __TAURI_INVOKE<{
+	/**  The commit id, in full. */
+	id: string,
+	/**  The first line of the note. */
+	summary: string,
+	author: string,
+	/**
+	 *  Seconds since 1970 (UTC): when it was saved, for an open version
+	 *  its last save.
+	 */
+	time: number,
+	/**
+	 *  When it started: an open version's first save (the commit's author
+	 *  time; later saves change only the commit time).
+	 */
+	started: number,
+	/**  Tags on this version, such as the publishes. */
+	tags: string[],
+	/**  Still open: later saves go into it until it's closed. */
+	open: boolean,
+} | null>("close_open_version", { root, note }),
 	/**  The versions of the site, or of one file in it, newest first. */
 	listVersions: (root: string, file: string | null) => __TAURI_INVOKE<Version[]>("list_versions", { root, file }),
 	/**  A page as it was in an earlier version. */
@@ -1026,6 +1081,21 @@ export type RemoteReport = {
 };
 
 /**
+ *  An open version that has rested long enough to be closed: its last save
+ *  was an hour ago or more, or on an earlier day.
+ */
+export type RestingVersion = {
+	/**  Its first and its last save, seconds since 1970 (UTC). */
+	first_save: number,
+	last_save: number,
+	/**
+	 *  A note made from those times, for when nobody writes one:
+	 *  `Saves on 27 Oct, 13:50–21:12`.
+	 */
+	note: string,
+};
+
+/**
  *  What someone does in an episode. The names and groups are the
  *  Podcasting 2.0 taxonomy's, which apps read from `podcast:person`:
  *  <https://github.com/Podcastindex-org/podcast-namespace/blob/main/taxonomy.json>.
@@ -1377,8 +1447,16 @@ export type Version = {
 	/**  The first line of the note. */
 	summary: string,
 	author: string,
-	/**  Seconds since 1970 (UTC). */
+	/**
+	 *  Seconds since 1970 (UTC): when it was saved, for an open version
+	 *  its last save.
+	 */
 	time: number,
+	/**
+	 *  When it started: an open version's first save (the commit's author
+	 *  time; later saves change only the commit time).
+	 */
+	started: number,
 	/**  Tags on this version, such as the publishes. */
 	tags: string[],
 	/**  Still open: later saves go into it until it's closed. */

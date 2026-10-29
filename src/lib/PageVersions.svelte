@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
   import History from "@lucide/svelte/icons/history";
-  import { commands, formatTime, type DiffLine, type Page, type PageContent, type Version } from "$lib/site";
+  import { commands, formatTime, versionLabel, type DiffLine, type Page, type PageContent, type Version } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -84,13 +84,14 @@
     <div class="grid items-start gap-4 lg:grid-cols-[minmax(16rem,24rem)_1fr]">
       <ul class="menu w-full rounded-box border border-base-300 p-1">
         {#each versions as version (version.id)}
+          {@const label = versionLabel(version)}
           <li>
             <button type="button" class={["flex flex-col items-start gap-0.5", selected?.id === version.id && "menu-active"]}
               onclick={() => show(version)}>
               <span class="font-medium">
-                {version.summary}{#if version.open}<span class="badge badge-warning badge-soft badge-xs ms-1.5">open</span>{/if}
+                {label.title}{#if version.open}<span class="badge badge-warning badge-soft badge-xs ms-1.5">open</span>{/if}
               </span>
-              <span class="text-xs opacity-70">{formatTime(version.time)} · {version.author}</span>
+              <span class="text-xs opacity-70">{label.time} · {version.author}</span>
               {#if version.tags.length}
                 <span class="flex flex-wrap gap-1">
                   {#each version.tags as tag (tag)}<span class="badge badge-soft badge-xs">{tag}</span>{/each}

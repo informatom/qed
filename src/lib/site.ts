@@ -43,6 +43,7 @@ export type RemoteOutcome = Sent<Rust.RemoteOutcome>;
 export type Transfer = Sent<Rust.Transfer>;
 export type PageContent = Sent<Rust.PageContent>;
 export type Version = Sent<Rust.Version>;
+export type RestingVersion = Sent<Rust.RestingVersion>;
 export type FrontMatter = Sent<Rust.FrontMatter>;
 export type Gallery = Sent<Rust.Gallery>;
 export type MediaFile = Sent<Rust.MediaFile>;
@@ -252,6 +253,13 @@ export function pageLabel(path: string): string {
 /** A file in one of the site's folders (`media/`, `assets/`, `static/`), for the webview. */
 export function libraryUrl(root: string, library: Rust.Library, name: string): string {
   return convertFileSrc(`${root}/${library}/${name}`);
+}
+
+/** How a version is listed: an open one with when it started, and its last save. */
+export function versionLabel(version: Version): { title: string; time: string } {
+  return version.open
+    ? { title: `${version.summary} since ${formatTime(version.started)}`, time: `last saved ${formatTime(version.time)}` }
+    : { title: version.summary, time: formatTime(version.time) };
 }
 
 /** A version's time (seconds since 1970) in the computer's own format. */

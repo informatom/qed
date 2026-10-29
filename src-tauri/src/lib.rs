@@ -10,7 +10,9 @@ use qed_core::block::Block;
 use qed_core::contributors;
 use qed_core::fonts::{self, FontInfo, FontListing};
 use qed_core::generator::{self, BuildReport};
-use qed_core::history::{self, DeletedPage, DiffLine, HistoryStatus, SincePublish, Version};
+use qed_core::history::{
+    self, DeletedPage, DiffLine, HistoryStatus, RestingVersion, SincePublish, Version,
+};
 use qed_core::media::{self, Library, MediaFile};
 use qed_core::moving;
 use qed_core::page::{FrontMatter, PageContent, PageDate};
@@ -691,6 +693,22 @@ async fn save_version(root: PathBuf, note: String) -> Result<Option<Version>, St
     history::save_version(&root, &note).map_err(|error| error.to_string())
 }
 
+/// The open version, if it has rested an hour or since an earlier day, with
+/// a note made from its times; the app asks for a better one then.
+#[tauri::command]
+#[specta::specta]
+async fn resting_version(root: PathBuf) -> Result<Option<RestingVersion>, String> {
+    history::resting_version(&root).map_err(|error| error.to_string())
+}
+
+/// Closes the open version with a note, as it was last saved; `None` if
+/// there's no open version.
+#[tauri::command]
+#[specta::specta]
+async fn close_open_version(root: PathBuf, note: String) -> Result<Option<Version>, String> {
+    history::close_open_version(&root, &note).map_err(|error| error.to_string())
+}
+
 /// The versions of the site, or of one file in it, newest first.
 #[tauri::command]
 #[specta::specta]
@@ -946,6 +964,8 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             since_publish,
             start_history,
             save_version,
+            resting_version,
+            close_open_version,
             list_versions,
             page_version,
             version_changes,
