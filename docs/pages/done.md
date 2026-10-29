@@ -835,6 +835,13 @@ rest is done.
   (`record_save`). The Versions lists show an open version as
   "Work in progress since <first save>" with "last saved <time>"
   (`Version::started`, the author time).
+- **#085 Images in Markdown text, WebP.** Copies in text done
+  2026-10-27; WebP done 2026-10-29, post 64 (encoder and PNG decided
+  with the user): copies of JPEG photos are lossy WebP from libwebp
+  (`webp` crate, quality 80, method 6), `team.480w.webp`; a photo used as
+  share image also gets a JPEG copy at that width (`Images::share_copy`);
+  PNG copies stay PNG. podcasterei.at: 76 copies 7.0 MB → 3.6 MB (−48%);
+  first build with WebP 2.9 s, cached afterwards.
 
 ## Dropped
 

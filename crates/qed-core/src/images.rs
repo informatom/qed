@@ -11,9 +11,12 @@
 //! site folder and reused while the original stays the same. The cache
 //! folder ignores itself in git and can be deleted at any time.
 //!
-//! The copies keep the original's format: JPEG stays JPEG, PNG stays PNG.
-//! GIF (often animated) and WebP (the image crate can only write lossless
-//! WebP, which is larger) are left as they are.
+//! Copies of JPEG photos are WebP (#085), made with Google's libwebp: about
+//! half the bytes of a JPEG that looks the same. Every browser in use shows
+//! WebP. A photo used as a page's share image (`og:image`) also gets one
+//! JPEG copy at that width, since not every link preview reads WebP.
+//! Copies of PNGs (logos, screenshots) stay PNG. GIF (often animated) and
+//! WebP originals are left as they are.
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -39,6 +42,9 @@ pub const CACHE_DIR: &str = ".qed-cache";
 /// Good enough to look the same as the original at a third of the size.
 const JPEG_QUALITY: u8 = 82;
 
+/// For WebP copies: looks like `JPEG_QUALITY` at about half the bytes.
+const WEBP_QUALITY: f32 = 80.0;
+
 #[derive(Debug, thiserror::Error)]
 pub enum ImageError {
     #[error("can't write {}: {source}", path.display())]
@@ -52,6 +58,9 @@ pub enum ImageError {
         path: PathBuf,
         source: image::ImageError,
     },
+
+    #[error("can't make a WebP copy of {}: {reason}", path.display())]
+    Webp { path: PathBuf, reason: String },
 }
 
 /// What a page needs to know about an image in `media/`.
@@ -73,6 +82,8 @@ pub struct ImageInfo {
 pub struct Images {
     media_dir: PathBuf,
     used: RefCell<BTreeMap<String, Option<ImageInfo>>>,
+    /// Photos used as share images, with the width of their JPEG copy.
+    shared: RefCell<BTreeSet<(String, u32)>>,
 }
 
 impl Images {
@@ -80,6 +91,7 @@ impl Images {
         Images {
             media_dir: media_dir.to_path_buf(),
             used: RefCell::new(BTreeMap::new()),
+            shared: RefCell::new(BTreeSet::new()),
         }
     }
 
@@ -100,6 +112,16 @@ impl Images {
         info
     }
 
+    /// The name of a copy of `name` at `width` (one of its copy widths) for
+    /// a share image: a JPEG for a photo, which link previews can all read.
+    pub fn share_copy(&self, name: &str, width: u32) -> String {
+        let jpeg = share_copy_name(name, width);
+        if jpeg != copy_name(name, width) {
+            self.shared.borrow_mut().insert((name.to_string(), width));
+        }
+        jpeg
+    }
+
     /// Writes the smaller copies of every image asked about into
     /// `out_media` (the built site's `media/`), from the cache where
     /// possible. Cached copies no image used anymore are deleted. Returns the
@@ -113,14 +135,21 @@ impl Images {
             };
             let source = self.media_dir.join(name);
             let key = cache_key(name, &source)?;
-            let extension = extension_of(name);
+            let shared = self.shared.borrow();
+            let share_widths = info
+                .widths
+                .iter()
+                .filter(|&&width| shared.contains(&(name.clone(), width)))
+                .map(|&width| (width, share_copy_name(name, width)));
             let copies = info
                 .widths
                 .iter()
-                .map(|&width| Resized {
+                .map(|&width| (width, copy_name(name, width)))
+                .chain(share_widths)
+                .map(|(width, copy)| Resized {
                     width,
-                    cached: cache.join(format!("{key}-{width}.{extension}")),
-                    target: out_media.join(copy_name(name, width)),
+                    cached: cache.join(format!("{key}-{width}.{}", extension_of(&copy))),
+                    target: out_media.join(copy),
                 })
                 .collect();
             jobs.push(Job { source, copies });
@@ -198,14 +227,37 @@ fn in_parallel<T: Sync>(
     })
 }
 
-/// `logos/a.png` at 480 pixels is `logos/a.480w.png`. Imported media files
-/// never have a dot in their name before the extension, so this can't clash
-/// with one of them.
+/// `logos/a.png` at 480 pixels is `logos/a.480w.png`; a photo's copy is
+/// WebP: `team.jpg` gives `team.480w.webp`. Imported media files never have
+/// a dot in their name before the extension, so this can't clash with one
+/// of them.
 pub fn copy_name(name: &str, width: u32) -> String {
     match name.rsplit_once('.') {
-        Some((stem, extension)) if !stem.ends_with('/') => format!("{stem}.{width}w.{extension}"),
+        Some((stem, extension)) if !stem.ends_with('/') => {
+            let extension = if is_jpeg(extension) {
+                "webp"
+            } else {
+                extension
+            };
+            format!("{stem}.{width}w.{extension}")
+        }
         _ => format!("{name}.{width}w"),
     }
+}
+
+/// The copy for a share image: like [`copy_name`], but a photo stays JPEG
+/// (`team.1600w.jpg`).
+fn share_copy_name(name: &str, width: u32) -> String {
+    match name.rsplit_once('.') {
+        Some((stem, extension)) if !stem.ends_with('/') && is_jpeg(extension) => {
+            format!("{stem}.{width}w.{extension}")
+        }
+        _ => copy_name(name, width),
+    }
+}
+
+fn is_jpeg(extension: &str) -> bool {
+    matches!(extension.to_lowercase().as_str(), "jpg" | "jpeg")
 }
 
 fn read_info(path: &Path) -> Option<ImageInfo> {
@@ -297,26 +349,57 @@ fn resize(source: &Path, copies: &[Resized]) -> Result<(), ImageError> {
     let mut copies: Vec<&Resized> = copies.iter().collect();
     copies.sort_by_key(|resized| std::cmp::Reverse(resized.width));
     for resized in copies {
-        let height = scaled_height(image.width(), image.height(), resized.width);
-        image = image.resize_exact(resized.width, height, FilterType::CatmullRom);
+        // A share image's JPEG has the same width as a WebP copy: resize once.
+        if image.width() != resized.width {
+            let height = scaled_height(image.width(), image.height(), resized.width);
+            image = image.resize_exact(resized.width, height, FilterType::CatmullRom);
+        }
         let target = &resized.cached;
         // Write under a temporary name and rename, so an interrupted build
         // never leaves half a file in the cache.
         let partial = target.with_extension("partial");
         let file = fs::File::create(&partial).map_err(io(&partial))?;
         let mut writer = BufWriter::new(file);
-        match format {
-            Some(ImageFormat::Jpeg) => JpegEncoder::new_with_quality(&mut writer, JPEG_QUALITY)
-                .encode_image(&DynamicImage::ImageRgb8(image.to_rgb8())),
-            _ => image.write_to(&mut writer, ImageFormat::Png),
+        let extension = target
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or_default();
+        match (extension, format) {
+            ("webp", _) => {
+                let bytes = webp_bytes(&image).map_err(|reason| ImageError::Webp {
+                    path: source.to_path_buf(),
+                    reason,
+                })?;
+                writer.write_all(&bytes).map_err(io(&partial))?;
+            }
+            (_, Some(ImageFormat::Jpeg)) => {
+                JpegEncoder::new_with_quality(&mut writer, JPEG_QUALITY)
+                    .encode_image(&DynamicImage::ImageRgb8(image.to_rgb8()))
+                    .map_err(failed)?
+            }
+            _ => image
+                .write_to(&mut writer, ImageFormat::Png)
+                .map_err(failed)?,
         }
-        .map_err(failed)?;
         // Dropping a BufWriter would write its last bytes but ignore an
         // error doing so (a full disk, say); flushing reports it.
         writer.flush().map_err(io(&partial))?;
         fs::rename(&partial, target).map_err(io(target))?;
     }
     Ok(())
+}
+
+/// A photo as lossy WebP. `method` 6 is libwebp's slowest and smallest;
+/// copies are made once and cached, so the time is well spent.
+fn webp_bytes(image: &DynamicImage) -> Result<Vec<u8>, String> {
+    let rgb = image.to_rgb8();
+    let mut config = webp::WebPConfig::new().map_err(|()| "libwebp didn't start".to_string())?;
+    config.quality = WEBP_QUALITY;
+    config.method = 6;
+    let encoded = webp::Encoder::from_rgb(rgb.as_raw(), rgb.width(), rgb.height())
+        .encode_advanced(&config)
+        .map_err(|error| format!("{error:?}"))?;
+    Ok(encoded.to_vec())
 }
 
 /// The height that keeps the aspect ratio at `new_width`, at least 1 pixel.
@@ -360,7 +443,9 @@ mod tests {
 
     #[test]
     fn names_copies_next_to_the_original() {
-        assert_eq!(copy_name("team.jpg", 480), "team.480w.jpg");
+        assert_eq!(copy_name("team.jpg", 480), "team.480w.webp");
+        assert_eq!(share_copy_name("team.jpg", 1600), "team.1600w.jpg");
+        assert_eq!(share_copy_name("logos/a.png", 960), "logos/a.960w.png");
         assert_eq!(copy_name("logos/a.png", 960), "logos/a.960w.png");
         assert_eq!(copy_name("README", 480), "README.480w");
     }
@@ -393,7 +478,7 @@ mod tests {
         images.info("photo.jpg");
         assert_eq!(images.write(&out, &cache).unwrap(), 3);
         assert_eq!(
-            image::image_dimensions(out.join("photo.960w.jpg")).unwrap(),
+            image::image_dimensions(out.join("photo.960w.webp")).unwrap(),
             (960, 480)
         );
         assert!(cache.join(".gitignore").is_file());
@@ -449,7 +534,7 @@ mod tests {
         let out = site.path().join("_site/media");
         images.write(&out, &site.path().join(CACHE_DIR)).unwrap();
         assert_eq!(
-            image::image_dimensions(out.join("phone.480w.jpg")).unwrap(),
+            image::image_dimensions(out.join("phone.480w.webp")).unwrap(),
             (480, 960)
         );
     }

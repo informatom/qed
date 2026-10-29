@@ -24,12 +24,6 @@ Nothing open.
 - **#070 Code signing.** Apple developer account and notarization, Windows
   signing (e.g. Azure Trusted Signing). Decided 2026-10-28: moved from
   phase 2; not needed for 1.0.
-- **#085 Images in Markdown text, WebP.** *Copies in text done
-  2026-10-27*: images written into text as `![…](/media/…)` get the
-  smaller copies in `srcset`, `sizes`, their width and height and
-  `loading="lazy"`, like image blocks (#075). Still open: WebP copies for
-  all images (#033). The image crate writes only lossless WebP, larger
-  than the JPEGs, so this needs another encoder.
 - **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
   view, also reachable from where a topic comes up, e.g. the Versions tab
   for backups), and the same pages on the docs site. Written for site

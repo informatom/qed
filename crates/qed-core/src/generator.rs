@@ -8,7 +8,7 @@
 //!   about/index.html      /about/
 //!   style.css             one stylesheet for every site and theme
 //!   media/…               copied from the site's media folder, plus smaller
-//!                         copies of photos (`team.480w.jpg`, see images.rs)
+//!                         copies of photos (`team.480w.webp`, see images.rs)
 //!   assets/…              copied from the site's assets folder (downloads)
 //!   pdf/a.pdf, …          the site's static folder, copied as it is
 //!   sitemap.xml           only if `base_url` is set
@@ -2151,7 +2151,7 @@ struct ShareImage {
 pub(crate) struct Picture {
     src: String,
     /// The smaller copies and the original, with their widths, for the
-    /// browser to choose from: `media/a.480w.jpg 480w, …, media/a.jpg 2400w`.
+    /// browser to choose from: `media/a.480w.webp 480w, …, media/a.jpg 2400w`.
     srcset: Option<String>,
     alt: String,
     width: Option<u32>,
@@ -3264,7 +3264,7 @@ fn share_image(page: &Page, base_url: &str, images: &Images) -> Option<ShareImag
             .find(|&&width| width >= SHARE_IMAGE_WIDTH)
         {
             Some(&width) => (
-                images::copy_name(file, width),
+                images.share_copy(file, width),
                 Some(width),
                 Some(images::scaled_height(info.width, info.height, width)),
             ),
@@ -3789,9 +3789,9 @@ mod tests {
         let home = read(out.join("index.html"));
 
         assert_eq!(report.resized_images, 3, "once per photo, not per use");
-        assert!(out.join("media/wide.480w.jpg").is_file());
+        assert!(out.join("media/wide.480w.webp").is_file());
         assert!(home.contains(
-            r#"srcset="media/wide.480w.jpg 480w, media/wide.960w.jpg 960w, media/wide.1600w.jpg 1600w, media/wide.jpg 2000w""#
+            r#"srcset="media/wide.480w.webp 480w, media/wide.960w.webp 960w, media/wide.1600w.webp 1600w, media/wide.jpg 2000w""#
         ));
         assert!(
             home.contains(r#"sizes="(min-width: 56rem) 18rem"#),
@@ -3845,7 +3845,7 @@ mod tests {
         );
         assert!(
             eule.contains(
-                r#"<img src="../media/eule.1600w.jpg" alt="Eule" srcset="../media/eule.480w.jpg 480w, ../media/eule.960w.jpg 960w, ../media/eule.1600w.jpg 1600w, ../media/eule.jpg 2000w" sizes="95vw" width="1600" height="800" loading="lazy">"#
+                r#"<img src="../media/eule.1600w.webp" alt="Eule" srcset="../media/eule.480w.webp 480w, ../media/eule.960w.webp 960w, ../media/eule.1600w.webp 1600w, ../media/eule.jpg 2000w" sizes="95vw" width="1600" height="800" loading="lazy">"#
             ),
             "the browser picks the size for its screen, up to the original: {eule}"
         );
@@ -3881,10 +3881,10 @@ mod tests {
         let trip = read(out.join("blog/trip/index.html"));
 
         assert_eq!(report.resized_images, 3, "{trip}");
-        assert!(out.join("media/wide.960w.jpg").is_file());
+        assert!(out.join("media/wide.960w.webp").is_file());
         assert!(
             trip.contains(
-                r#"<img loading="lazy" src="../../media/wide.jpg" srcset="../../media/wide.480w.jpg 480w, ../../media/wide.960w.jpg 960w, ../../media/wide.1600w.jpg 1600w, ../../media/wide.jpg 2000w" sizes="(min-width: 56rem) 56rem, 100vw" width="2000" height="1000" alt="The lake""#
+                r#"<img loading="lazy" src="../../media/wide.jpg" srcset="../../media/wide.480w.webp 480w, ../../media/wide.960w.webp 960w, ../../media/wide.1600w.webp 1600w, ../../media/wide.jpg 2000w" sizes="(min-width: 56rem) 56rem, 100vw" width="2000" height="1000" alt="The lake""#
             ),
             "{trip}"
         );
@@ -3951,8 +3951,14 @@ mod tests {
         site.config.base_url = Some("https://example.com".into());
         build_into(&site, &out).unwrap();
 
-        // The first image, as its 1600 px copy.
+        // The first image, as its 1600 px copy: a JPEG, which every link
+        // preview reads, next to the WebP copy the page shows.
         let home = read(out.join("index.html"));
+        assert_eq!(
+            image::guess_format(&fs::read(out.join("media/wide.1600w.jpg")).unwrap()).unwrap(),
+            image::ImageFormat::Jpeg
+        );
+        assert!(out.join("media/wide.1600w.webp").is_file());
         assert!(home.contains(r#"<meta property="og:type" content="website">"#));
         assert!(home.contains(r#"<meta property="og:url" content="https://example.com/">"#));
         assert!(home.contains(
