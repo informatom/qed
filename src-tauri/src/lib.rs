@@ -21,7 +21,7 @@ use qed_core::preview::Preview;
 use qed_core::remote::{self, RemoteError, RemoteInfo, RemoteReport, Transfer};
 use qed_core::sftp::{self, Progress, PublishReport, SftpError};
 use qed_core::shared;
-use qed_core::site::{self, Page, Site, SiteConfig};
+use qed_core::site::{self, Page, SaveOutcome, Site, SiteConfig};
 use qed_core::target::{self, SftpAuth, SftpTarget, Target};
 use qed_core::theme::{CustomTheme, ThemeVariable};
 use qed_core::video::{self, VideoInfo};
@@ -170,30 +170,40 @@ async fn move_documents_to_assets(root: PathBuf) -> Result<usize, String> {
     Ok(moved)
 }
 
-/// Saves a page's settings into its file and returns the saved page.
+/// Saves a page's settings into its file, unless they changed on disk
+/// since the editor read them as `base` (`None` saves anyway).
 #[tauri::command]
 #[specta::specta]
 async fn save_page_settings(
     root: PathBuf,
     file: PathBuf,
     front: FrontMatter,
-) -> Result<Page, String> {
-    let page = site::save_front_matter(&root, &file, front).map_err(|error| error.to_string())?;
-    record(&root);
-    Ok(page)
+    base: Option<FrontMatter>,
+) -> Result<SaveOutcome, String> {
+    let outcome = site::save_front_matter_checked(&root, &file, front, base.as_ref())
+        .map_err(|error| error.to_string())?;
+    if matches!(outcome, SaveOutcome::Saved { .. }) {
+        record(&root);
+    }
+    Ok(outcome)
 }
 
-/// Saves a page's blocks into its file and returns the page as it reads back.
+/// Saves a page's blocks into its file, unless they changed on disk since
+/// the editor read them as `base` (`None` saves anyway).
 #[tauri::command]
 #[specta::specta]
 async fn save_page_blocks(
     root: PathBuf,
     file: PathBuf,
     blocks: Vec<Block>,
-) -> Result<Page, String> {
-    let page = site::save_blocks(&root, &file, blocks).map_err(|error| error.to_string())?;
-    record(&root);
-    Ok(page)
+    base: Option<Vec<Block>>,
+) -> Result<SaveOutcome, String> {
+    let outcome = site::save_blocks_checked(&root, &file, blocks, base.as_deref())
+        .map_err(|error| error.to_string())?;
+    if matches!(outcome, SaveOutcome::Saved { .. }) {
+        record(&root);
+    }
+    Ok(outcome)
 }
 
 /// Saves the site footer's blocks into `footer.md`; no blocks removes it.

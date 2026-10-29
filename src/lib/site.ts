@@ -3,6 +3,7 @@
 // `commands()` there); this file adds what Rust doesn't provide.
 
 import { Channel, convertFileSrc } from "@tauri-apps/api/core";
+import { message } from "@tauri-apps/plugin-dialog";
 import { commands as rustCommands } from "./bindings";
 import type * as Rust from "./bindings";
 
@@ -253,6 +254,39 @@ export function pageLabel(path: string): string {
 /** A file in one of the site's folders (`media/`, `assets/`, `static/`), for the webview. */
 export function libraryUrl(root: string, library: Rust.Library, name: string): string {
   return convertFileSrc(`${root}/${library}/${name}`);
+}
+
+export type SaveOutcome = Sent<Rust.SaveOutcome>;
+
+const KEEP_MINE = "Keep mine";
+const TAKE_FILES = "Take the file's";
+
+/**
+ * Saves part of a page (`what`: "content" or "settings") only if nobody
+ * changed that part outside the app since it was opened: an AI assistant,
+ * a text editor, another computer (#105). `save(true)` saves with that
+ * check, `save(false)` without. If it did change, asks which to keep.
+ * Returns the page as saved, or as the file has it ("Take the file's"),
+ * with `replaced` true then; `null` if the person cancelled.
+ */
+export async function saveChecked(
+  save: (check: boolean) => Promise<SaveOutcome>,
+  what: string,
+): Promise<{ page: Page; replaced: boolean } | null> {
+  const outcome = await save(true);
+  if (outcome.outcome === "saved") return { page: outcome.page, replaced: false };
+  const choice = await message(
+    `The page's ${what} changed outside q.e.d. since you opened it, by an AI assistant, another program or by hand.\n\n` +
+      `“${KEEP_MINE}” saves your version over those changes. “${TAKE_FILES}” shows the page as the file has it now; ` +
+      "your unsaved changes here are lost.",
+    { title: "Changed outside q.e.d.", kind: "warning", buttons: { yes: KEEP_MINE, no: TAKE_FILES, cancel: "Cancel" } },
+  );
+  if (choice === KEEP_MINE || choice === "Yes") {
+    const forced = await save(false);
+    return { page: forced.page, replaced: false };
+  }
+  if (choice === TAKE_FILES || choice === "No") return { page: outcome.page, replaced: true };
+  return null;
 }
 
 /** How a version is listed: an open one with when it started, and its last save. */

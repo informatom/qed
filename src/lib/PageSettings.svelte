@@ -6,14 +6,15 @@
   import MediaPicker from "$lib/MediaPicker.svelte";
   import PeopleEditor from "$lib/PeopleEditor.svelte";
   import {
-    commands, formatLabel, pageIcons, podcastFormats,
+    commands, formatLabel, pageIcons, podcastFormats, saveChecked,
     type AudioFormat, type Contributor, type Episode, type EpisodeAudio, type EpisodeType, type FrontMatter, type Menu, type Page, type Podcast,
   } from "$lib/site";
 
   interface Props {
     page: Page;
     siteRoot: string;
-    onsaved: (page: Page) => void;
+    /** After saving; `replaced` if the form took the file's version instead. */
+    onsaved: (page: Page, replaced?: boolean) => void;
     /** Settings to start with instead of the saved ones (an earlier version). */
     start?: FrontMatter;
     /** Tells the parent whether there are unsaved changes. */
@@ -206,9 +207,17 @@
     saving = true;
     error = null;
     try {
-      const saved = await commands.savePageSettings(siteRoot, page.file, edited);
-      savedAt = new Date();
-      onsaved(saved);
+      const base = $state.snapshot(page.front);
+      const result = await saveChecked(
+        (check) => commands.savePageSettings(siteRoot, page.file, edited, check ? base : null),
+        "settings",
+      );
+      if (!result) {
+        error = "Not saved. Save again to choose which version to keep.";
+        return;
+      }
+      if (!result.replaced) savedAt = new Date();
+      onsaved(result.page, result.replaced);
     } catch (e) {
       error = String(e);
     } finally {

@@ -44,10 +44,49 @@ export const commands = {
 	 *  updates the pages; returns how many moved.
 	 */
 	moveDocumentsToAssets: (root: string) => __TAURI_INVOKE<number>("move_documents_to_assets", { root }),
-	/**  Saves a page's settings into its file and returns the saved page. */
-	savePageSettings: (root: string, file: string, front: FrontMatter) => __TAURI_INVOKE<Page>("save_page_settings", { root, file, front }),
-	/**  Saves a page's blocks into its file and returns the page as it reads back. */
-	savePageBlocks: (root: string, file: string, blocks: Block[]) => __TAURI_INVOKE<Page>("save_page_blocks", { root, file, blocks }),
+	/**
+	 *  Saves a page's settings into its file, unless they changed on disk
+	 *  since the editor read them as `base` (`None` saves anyway).
+	 */
+	savePageSettings: (root: string, file: string, front: FrontMatter, base: {
+	title: string,
+	/**  Meta description for search engines. */
+	description: string | null,
+	/**
+	 *  The image link previews show (`og:image`), e.g. on social media or in
+	 *  chat apps: a file in `media/`. Without one, the page's first image is
+	 *  used.
+	 */
+	image: string | null,
+	/**  Drafts are left out of the built site. */
+	draft?: boolean,
+	/**
+	 *  Leaves out the page's title above the content, for pages that open
+	 *  with a heading of their own. A page starting with a Hero leaves it
+	 *  out anyway.
+	 */
+	hide_title?: boolean,
+	menu?: Menu,
+	/**  A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`. */
+	icon: string | null,
+	/**  Sort order among sibling pages; lower comes first. */
+	weight?: number,
+	/**  Earlier URLs of this page. The site gets redirects from these. */
+	redirect_from?: string[],
+	/**  Publication date, mainly for blog posts: `date = 2026-10-21`. */
+	date: PageDate | null,
+	authors?: string[],
+	tags?: string[],
+	/**  A short teaser for post lists and feeds. Markdown. */
+	summary: string | null,
+	/**  Makes the page a podcast episode; see `podcast.rs`. */
+	episode: Episode | null,
+} | null) => __TAURI_INVOKE<SaveOutcome>("save_page_settings", { root, file, front, base }),
+	/**
+	 *  Saves a page's blocks into its file, unless they changed on disk since
+	 *  the editor read them as `base` (`None` saves anyway).
+	 */
+	savePageBlocks: (root: string, file: string, blocks: Block[], base: Block[] | null) => __TAURI_INVOKE<SaveOutcome>("save_page_blocks", { root, file, blocks, base }),
 	/**
 	 *  Saves the site footer's blocks into `footer.md`; no blocks removes it.
 	 *  Returns the blocks as they read back.
@@ -1101,6 +1140,13 @@ export type RestingVersion = {
  *  <https://github.com/Podcastindex-org/podcast-namespace/blob/main/taxonomy.json>.
  */
 export type Role = "host" | "co-host" | "guest-host" | "guest" | "narrator" | "producer" | "audio-editor" | "sound-designer" | "composer" | "transcriber" | "cover-art-designer";
+
+/**
+ *  What a save from the editor did: saved, or not, because the file
+ *  changed since the editor read it (#105). Then `page` is the page as the
+ *  file is now, so the app can ask which version to keep.
+ */
+export type SaveOutcome = { outcome: "saved"; page: Page } | { outcome: "changed"; page: Page };
 
 /**  What the app knows about a target's secrets, for the target form. */
 export type SecretStatus = {

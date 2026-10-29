@@ -410,6 +410,17 @@ pub struct Page {
     pub content: PageContent,
 }
 
+/// What a save from the editor did: saved, or not, because the file
+/// changed since the editor read it (#105). Then `page` is the page as the
+/// file is now, so the app can ask which version to keep.
+#[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(tag = "outcome", rename_all = "lowercase")]
+pub enum SaveOutcome {
+    Saved { page: Page },
+    Changed { page: Page },
+}
+
 /// Everything that can go wrong when opening a site.
 #[derive(Debug, thiserror::Error)]
 pub enum SiteError {
@@ -1300,6 +1311,56 @@ pub fn delete_page(site: &Site, file: &Path) -> Result<(), SiteError> {
     Ok(())
 }
 
+/// A page as its file is now.
+pub fn read_page(root: &Path, file: &Path) -> Result<Page, SiteError> {
+    let full = page_file(root, file)?;
+    let content = page::parse(&read(&full)?).map_err(|error| SiteError::Page {
+        path: file.to_path_buf(),
+        error,
+    })?;
+    Ok(Page {
+        path: url_path(&full, &root.join(PAGES_DIR), file)?,
+        file: file.to_path_buf(),
+        content,
+    })
+}
+
+/// [`save_blocks`], but only if the file's blocks are still `base`, the
+/// ones the editor started from. Otherwise someone else (an assistant, a
+/// text editor) changed them meanwhile, and saving would undo that.
+/// Without `base`, saves anyway: "Keep mine".
+pub fn save_blocks_checked(
+    root: &Path,
+    file: &Path,
+    blocks: Vec<Block>,
+    base: Option<&[Block]>,
+) -> Result<SaveOutcome, SiteError> {
+    if let Some(base) = base {
+        let now = read_page(root, file)?;
+        if now.content.blocks != base {
+            return Ok(SaveOutcome::Changed { page: now });
+        }
+    }
+    save_blocks(root, file, blocks).map(|page| SaveOutcome::Saved { page })
+}
+
+/// [`save_front_matter`], but only if the file's settings are still
+/// `base`; see [`save_blocks_checked`].
+pub fn save_front_matter_checked(
+    root: &Path,
+    file: &Path,
+    front: FrontMatter,
+    base: Option<&FrontMatter>,
+) -> Result<SaveOutcome, SiteError> {
+    if let Some(base) = base {
+        let now = read_page(root, file)?;
+        if now.content.front != *base {
+            return Ok(SaveOutcome::Changed { page: now });
+        }
+    }
+    save_front_matter(root, file, front).map(|page| SaveOutcome::Saved { page })
+}
+
 /// Reads a page file, lets `change` modify its content, and saves it.
 ///
 /// The file is read again right before saving, so whatever someone edited
@@ -1491,6 +1552,27 @@ mod tests {
         assert_eq!(imprint.content.front.menu, Menu::Footer);
     }
 
+    /// The editor sends back a page's blocks and settings as it got them,
+    /// and saving compares them with the file (`save_blocks_checked`). So
+    /// they must come back from JSON unchanged, or every save would look
+    /// like a change made outside. Checked on every page of the docs and
+    /// the demo site.
+    #[test]
+    fn pages_come_back_from_the_editor_unchanged() {
+        for folder in ["../../docs", "../../examples/demo-site"] {
+            let site = open(&Path::new(env!("CARGO_MANIFEST_DIR")).join(folder)).unwrap();
+            for page in site.with_blocks() {
+                let content = &page.content;
+                let blocks: Vec<Block> =
+                    serde_json::from_str(&serde_json::to_string(&content.blocks).unwrap()).unwrap();
+                assert_eq!(blocks, content.blocks, "{}", page.file.display());
+                let front: FrontMatter =
+                    serde_json::from_str(&serde_json::to_string(&content.front).unwrap()).unwrap();
+                assert_eq!(front, content.front, "{}", page.file.display());
+            }
+        }
+    }
+
     /// The project's own docs folder is a qed site. This keeps it valid.
     #[test]
     fn opens_the_docs_site() {
@@ -1535,6 +1617,68 @@ mod tests {
             text,
             "+++\n# A comment\ntitle = \"About us\"\nmenu = \"main\"\n+++\n\nHello.\n"
         );
+    }
+
+    #[test]
+    fn saves_only_what_nobody_changed_outside_meanwhile() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            ("pages/a.md", "+++\ntitle = \"A\"\n+++\n\nMine.\n"),
+        ]);
+        let (root, file) = (dir.path(), Path::new("pages/a.md"));
+        let opened = read_page(root, file).unwrap();
+        let text = |markdown: &str| Block::Text {
+            markdown: markdown.into(),
+        };
+
+        // Nothing changed outside: saved.
+        let outcome = save_blocks_checked(
+            root,
+            file,
+            vec![text("Mine, edited.")],
+            Some(&opened.content.blocks),
+        )
+        .unwrap();
+        let SaveOutcome::Saved { page } = outcome else {
+            panic!("{outcome:?}")
+        };
+
+        // An assistant changes the text and the title meanwhile.
+        fs::write(root.join(file), "+++\ntitle = \"Theirs\"\n+++\n\nTheirs.\n").unwrap();
+        let outcome = save_blocks_checked(
+            root,
+            file,
+            vec![text("Mine again.")],
+            Some(&page.content.blocks),
+        )
+        .unwrap();
+        let SaveOutcome::Changed { page: theirs } = outcome else {
+            panic!("{outcome:?}")
+        };
+        assert_eq!(theirs.content.blocks, [text("Theirs.")]);
+        assert!(
+            read(&root.join(file)).unwrap().contains("Theirs."),
+            "not overwritten"
+        );
+
+        // Settings started from "A", now "Theirs": changed too.
+        let mut front = opened.content.front.clone();
+        front.title = "Mine".into();
+        let outcome =
+            save_front_matter_checked(root, file, front.clone(), Some(&opened.content.front))
+                .unwrap();
+        assert!(
+            matches!(outcome, SaveOutcome::Changed { .. }),
+            "{outcome:?}"
+        );
+
+        // "Keep mine": without a base it saves anyway, and only its part.
+        let outcome = save_front_matter_checked(root, file, front, None).unwrap();
+        let SaveOutcome::Saved { page } = outcome else {
+            panic!("{outcome:?}")
+        };
+        assert_eq!(page.content.front.title, "Mine");
+        assert_eq!(page.content.blocks, [text("Theirs.")], "their text stays");
     }
 
     #[test]

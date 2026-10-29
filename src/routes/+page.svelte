@@ -251,6 +251,28 @@
     }
   }
 
+  // Pages can change outside the app: an AI assistant through qed-mcp, a
+  // text editor, a pull on another computer (#105). When the window comes
+  // back into focus, read the site again, quietly, unless a page has
+  // unsaved changes (saving then asks, see `saveChecked`). Only on Pages:
+  // other tabs keep forms of their own.
+  async function refreshOnFocus() {
+    if (!site || loading || editorDirty || view !== "pages") return;
+    const root = site.root;
+    try {
+      const fresh = await commands.openSite(root);
+      if (!site || site.root !== root || editorDirty) return;
+      if (JSON.stringify(fresh) === JSON.stringify(site)) return;
+      site = fresh;
+      const files = [FOOTER_FILE, EPISODE_LAYOUT_FILE, ...fresh.pages.map((p) => p.file), ...fresh.shared.map((p) => p.file)];
+      if (selectedFile !== null && !files.includes(selectedFile)) selectedFile = null;
+      // The open editor starts again from the page as it is now.
+      reloads++;
+    } catch {
+      // The next save or a manual reload shows what's wrong.
+    }
+  }
+
   async function build() {
     if (!site) return;
     building = true;
@@ -418,6 +440,8 @@
   let treeScroller: HTMLElement | null = null;
   // Re-creates the open page's editor after its order changed on disk.
   let reorders = $state(0);
+  /** Counts quiet reloads after changes outside the app (`refreshOnFocus`). */
+  let reloads = $state(0);
 
   function treeDragStart(event: PointerEvent, page: Page) {
     if (event.button !== 0) return;
@@ -522,7 +546,7 @@
   let historyChanges = $state(0);
 </script>
 
-<svelte:window onkeydown={(e) => pageDrag && e.key === "Escape" && (pageDrag = null)} />
+<svelte:window onkeydown={(e) => pageDrag && e.key === "Escape" && (pageDrag = null)} onfocus={refreshOnFocus} />
 
 <main class="flex min-h-screen flex-col gap-8 p-8">
   <UpdateBar />
@@ -994,7 +1018,7 @@
 
       {#if selected}
         <!-- Re-create the editor when another page is picked, so it starts fresh. -->
-        {#key `${selected.file} ${reorders}`}
+        {#key `${selected.file} ${reorders} ${reloads}`}
           <PageEditor
             page={selected}
             siteRoot={site.root}

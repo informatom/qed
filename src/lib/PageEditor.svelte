@@ -8,7 +8,7 @@
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import PageVersions from "$lib/PageVersions.svelte";
-  import { commands, pageLabel, type Contributor, type Page, type Podcast, type PageContent, type Version } from "$lib/site";
+  import { commands, pageLabel, saveChecked, type Contributor, type Page, type Podcast, type PageContent, type Version } from "$lib/site";
 
   interface Props {
     page: Page;
@@ -41,11 +41,14 @@
   let restored = $state<PageContent | null>(null);
   let restoredFrom = $state<Version | null>(null);
   let restoreCount = $state(0);
+  /** Counts "Take the file's" in Settings, which rebuilds just that form. */
+  let settingsReload = $state(0);
 
   function restore(content: PageContent, version: Version) {
     restored = content;
     restoredFrom = version;
     restoreCount += 1;
+    settingsReload = 0;
     tab = "content";
   }
 
@@ -135,14 +138,28 @@
     <div class={[tab !== "content" && "hidden"]}>
       <BlockEditor saved={page.blocks} {siteRoot} start={restored?.blocks} bind:dirty={contentDirty}
         persist={async (blocks) => {
-          const saved = await commands.savePageBlocks(siteRoot, page.file, blocks);
-          onsaved(saved);
-          return saved.blocks;
+          const base = $state.snapshot(page.blocks);
+          const result = await saveChecked(
+            (check) => commands.savePageBlocks(siteRoot, page.file, blocks, check ? base : null),
+            "content",
+          );
+          if (!result) throw new Error("Not saved. Save again to choose which version to keep.");
+          onsaved(result.page);
+          return result.page.blocks;
         }} />
     </div>
-    <div class={[tab !== "settings" && "hidden"]}>
-      <PageSettings {page} {siteRoot} {onsaved} {podcast} {contributors} start={restored?.front} bind:dirty={settingsDirty} />
-    </div>
+    <!-- Its own key: "Take the file's" in Settings rebuilds the form from the
+         file without touching unsaved content. -->
+    {#key settingsReload}
+      <div class={[tab !== "settings" && "hidden"]}>
+        <PageSettings {page} {siteRoot} {podcast} {contributors} start={settingsReload ? undefined : restored?.front}
+          bind:dirty={settingsDirty}
+          onsaved={(saved, replaced) => {
+            onsaved(saved);
+            if (replaced) settingsReload++;
+          }} />
+      </div>
+    {/key}
   {/key}
   {#if tab === "versions"}
     <!-- Mounted on demand, so it lists the versions fresh each time. -->
