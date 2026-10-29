@@ -31,29 +31,6 @@ Nothing open.
   hand-made menu (#111), boxed columns (#113). To decide: where the
   pages live so app and docs site share them (e.g. `docs/pages/manual/`,
   built into the app), and offline use.
-- **#105 MCP server.** A second thin shell around qed-core next to the Tauri
-  app, so AI assistants (Claude Code, Claude Desktop) can work on a site
-  through the [Model Context Protocol](https://modelcontextprotocol.io): a
-  small crate with the official Rust SDK (`rmcp`), started locally over
-  stdio. Tools such as `list_pages`, `read_page`, `save_blocks`,
-  `create_page`, `move_page`, `list_media`, `import_media`, `build_site`,
-  `list_versions` and `save_version`, with the app's rules: usage checks
-  before deleting, links rewritten on moves, every change recorded in the
-  site's history, so it shows in Versions and can be undone. Decided
-  with the user on 2026-10-29:
-  - A separate small program, `qed-mcp`, started by the assistant over
-    stdio, without the app running; shipped in the installers next to
-    q.e.d. (a Tauri sidecar), and the app shows the settings snippet to
-    paste.
-  - One site per server, its folder given at start
-    (`qed-mcp /path/to/site`); nothing outside that folder.
-  - No publishing: the assistant can build the site and see what changed
-    since the last publish; publishing stays a click in the app, keys
-    stay in the keychain.
-  - The app asks before overwriting: saving a page that changed on disk
-    since it was opened offers to keep either version; page lists reload
-    when the window gets focus. Live file watching only if that's missed.
-    This protects edits by hand and other tools too.
 
 ### Phase 4: Future
 
