@@ -8,6 +8,7 @@ pub mod chart;
 pub mod chem;
 pub mod contributors;
 pub mod deploy;
+pub mod editing;
 pub mod feed;
 pub mod fonts;
 pub mod generator;

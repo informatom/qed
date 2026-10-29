@@ -177,11 +177,14 @@ export const commands = {
 	audioInfo: (root: string, name: string) => __TAURI_INVOKE<AudioInfo>("audio_info", { root, name }),
 	/**  The pages that link to the page at `path`, for the delete confirmation. */
 	pagesLinkingTo: (root: string, path: string) => __TAURI_INVOKE<string[]>("pages_linking_to", { root, path }),
-	/**  Deletes a page's file. */
+	/**
+	 *  Deletes a page's file, after closing the open version (see
+	 *  `editing::delete_page`).
+	 */
 	deletePage: (root: string, file: string) => __TAURI_INVOKE<null>("delete_page", { root, file }),
 	/**
 	 *  Gives a page a new address (see `moving::move_page`) and returns it at
-	 *  its new place.
+	 *  its new place; the open version is closed first.
 	 */
 	movePage: (root: string, file: string, parent: string, slug: string) => __TAURI_INVOKE<Page>("move_page", { root, file, parent, slug }),
 	/**
@@ -266,6 +269,14 @@ export const commands = {
 	 */
 	note: string,
 } | null>("resting_version", { root }),
+	/**
+	 *  Where the `qed-mcp` program is (#105), for the settings an AI assistant
+	 *  needs; `None` if it isn't there (a development build without
+	 *  `cargo build -p qed-mcp`). Installers put it next to q.e.d.'s own
+	 *  program. An AppImage runs from a new temporary folder each time, so
+	 *  there it's copied to the app's data folder, which stays put.
+	 */
+	mcpProgram: () => __TAURI_INVOKE<string | null>("mcp_program"),
 	/**
 	 *  Closes the open version with a note, as it was last saved; `None` if
 	 *  there's no open version.

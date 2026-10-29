@@ -1409,7 +1409,7 @@ fn page_file(root: &Path, file: &Path) -> Result<PathBuf, SiteError> {
 
 /// Writes a file so that it's never half-written: first to a temporary file
 /// next to it, then renamed over the original in one step.
-pub(crate) fn write_atomically(path: &Path, contents: &str) -> Result<(), SiteError> {
+pub fn write_atomically(path: &Path, contents: &str) -> Result<(), SiteError> {
     let error = |source| SiteError::Write {
         path: path.to_path_buf(),
         source,
@@ -1421,7 +1421,7 @@ pub(crate) fn write_atomically(path: &Path, contents: &str) -> Result<(), SiteEr
     fs::rename(&temporary, path).map_err(error)
 }
 
-pub(crate) fn read(path: &Path) -> Result<String, SiteError> {
+pub fn read(path: &Path) -> Result<String, SiteError> {
     fs::read_to_string(path).map_err(|source| SiteError::Io {
         path: path.to_path_buf(),
         source,

@@ -38,6 +38,7 @@
   import Palette from "@lucide/svelte/icons/palette";
   import Upload from "@lucide/svelte/icons/upload";
   import AppSettings from "$lib/AppSettings.svelte";
+  import AssistantSetup from "$lib/AssistantSetup.svelte";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
   import PodcastPanel from "$lib/PodcastPanel.svelte";
@@ -691,6 +692,7 @@
 
   {#if view === "app"}
     <AppSettings />
+    {#if site}<AssistantSetup siteRoot={site.root} siteTitle={site.config.title} />{/if}
   {/if}
 
   {#if site}

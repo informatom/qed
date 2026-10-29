@@ -8,13 +8,13 @@ use std::sync::Mutex;
 
 use qed_core::block::Block;
 use qed_core::contributors;
+use qed_core::editing;
 use qed_core::fonts::{self, FontInfo, FontListing};
 use qed_core::generator::{self, BuildReport};
 use qed_core::history::{
     self, DeletedPage, DiffLine, HistoryStatus, RestingVersion, SincePublish, Version,
 };
 use qed_core::media::{self, Library, MediaFile};
-use qed_core::moving;
 use qed_core::page::{FrontMatter, PageContent, PageDate};
 use qed_core::podcast;
 use qed_core::preview::Preview;
@@ -347,30 +347,18 @@ async fn pages_linking_to(root: PathBuf, path: String) -> Result<Vec<String>, St
     Ok(site::pages_linking_to(&site, &path))
 }
 
-/// Deletes a page's file.
+/// Deletes a page's file, after closing the open version (see
+/// `editing::delete_page`).
 #[tauri::command]
 #[specta::specta]
 async fn delete_page(root: PathBuf, file: PathBuf) -> Result<(), String> {
-    let site = site::open(&root).map_err(|error| error.to_string())?;
-    // Close the open version first, so it keeps the page. Otherwise the
-    // deletion would go into the same open version, and a page made and
-    // deleted in it would leave no trace to bring back.
-    let tracked = history::status(&root)
-        .map_err(|error| error.to_string())?
-        .tracked;
-    if let Some(page) = site.pages.iter().find(|page| page.file == file)
-        && tracked
-    {
-        history::save_version(&root, &format!("Before deleting /{}", page.path))
-            .map_err(|error| error.to_string())?;
-    }
-    site::delete_page(&site, &file).map_err(|error| error.to_string())?;
+    editing::delete_page(&root, &file).map_err(|error| error.to_string())?;
     record(&root);
     Ok(())
 }
 
 /// Gives a page a new address (see `moving::move_page`) and returns it at
-/// its new place.
+/// its new place; the open version is closed first.
 #[tauri::command]
 #[specta::specta]
 async fn move_page(
@@ -379,20 +367,8 @@ async fn move_page(
     parent: String,
     slug: String,
 ) -> Result<Page, String> {
-    let site = site::open(&root).map_err(|error| error.to_string())?;
-    // As before deleting: close the open version first, so the site from
-    // before the move stays in the history.
-    let tracked = history::status(&root)
-        .map_err(|error| error.to_string())?
-        .tracked;
-    if let Some(page) = site.pages.iter().find(|page| page.file == file)
-        && tracked
-    {
-        history::save_version(&root, &format!("Before moving /{}", page.path))
-            .map_err(|error| error.to_string())?;
-    }
     let page =
-        moving::move_page(&site, &file, &parent, &slug).map_err(|error| error.to_string())?;
+        editing::move_page(&root, &file, &parent, &slug).map_err(|error| error.to_string())?;
     record(&root);
     Ok(page)
 }
@@ -719,6 +695,43 @@ async fn close_open_version(root: PathBuf, note: String) -> Result<Option<Versio
     history::close_open_version(&root, &note).map_err(|error| error.to_string())
 }
 
+/// Where the `qed-mcp` program is (#105), for the settings an AI assistant
+/// needs; `None` if it isn't there (a development build without
+/// `cargo build -p qed-mcp`). Installers put it next to q.e.d.'s own
+/// program. An AppImage runs from a new temporary folder each time, so
+/// there it's copied to the app's data folder, which stays put.
+#[tauri::command]
+#[specta::specta]
+fn mcp_program(app: AppHandle) -> Result<Option<PathBuf>, String> {
+    let name = if cfg!(windows) {
+        "qed-mcp.exe"
+    } else {
+        "qed-mcp"
+    };
+    let own = std::env::current_exe().map_err(|error| error.to_string())?;
+    let Some(beside) = own.parent().map(|folder| folder.join(name)) else {
+        return Ok(None);
+    };
+    if !beside.is_file() {
+        return Ok(None);
+    }
+    if std::env::var_os("APPIMAGE").is_none() {
+        return Ok(Some(beside));
+    }
+    let folder = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| error.to_string())?;
+    std::fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+    let stable = folder.join(name);
+    // A newer q.e.d. brings a newer qed-mcp: copy whenever they differ.
+    let differs = std::fs::read(&beside).ok() != std::fs::read(&stable).ok();
+    if differs {
+        std::fs::copy(&beside, &stable).map_err(|error| error.to_string())?;
+    }
+    Ok(Some(stable))
+}
+
 /// The versions of the site, or of one file in it, newest first.
 #[tauri::command]
 #[specta::specta]
@@ -975,6 +988,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             start_history,
             save_version,
             resting_version,
+            mcp_program,
             close_open_version,
             list_versions,
             page_version,
