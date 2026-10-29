@@ -21,16 +21,19 @@ Nothing open.
 
 ### Phase 3:  In progress
 
-- **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
-  view, also reachable from where a topic comes up, e.g. the Versions tab
-  for backups), and the same pages on the docs site. Written for site
-  owners and editors, not developers. Starts with [Backups](backups.md)
-  (#037); further topics: the first site, pages and blocks, media and
-  files, themes and fonts, versions, publishing, moving a site over,
-  icons in text (`:icon-phone:`, #114, with the list of icons), the
-  hand-made menu (#111), boxed columns (#113). To decide: where the
-  pages live so app and docs site share them (e.g. `docs/pages/manual/`,
-  built into the app), and offline use.
+- **#110 Manual.** A user manual inside the app, also reachable from
+  where a topic comes up, and the same pages on the docs site, for site
+  owners and editors, not developers. First part done 2026-10-29, post
+  65: decided that the pages live in `docs/pages/manual/`, compiled into
+  the app (`qed_core::manual`, offline, built in the app's theme, shown
+  in a second window; outside links open in the browser); a life-buoy
+  button next to the preview button and **Manual** links in the Pages,
+  Media, Publish and Versions tabs. Pages so far: start, getting
+  started, pages and blocks, pictures and files, versions,
+  [Backups](manual/backups.md) (#037, moved there), publishing. Still to
+  write: themes and fonts, moving a site over, icons in text
+  (`:icon-phone:`, #114, with the list of icons), the hand-made menu
+  (#111), boxed columns (#113), podcasts.
 
 ### Phase 4: Future
 

@@ -34,6 +34,10 @@ use tauri::{AppHandle, Manager, State};
 #[derive(Default)]
 struct PreviewState(Mutex<Option<Preview>>);
 
+/// The built manual and its server, with the theme it was built in.
+#[derive(Default)]
+struct ManualState(Mutex<Option<(String, Preview)>>);
+
 /// The URL slug for a title. The UI calls it as `commands.slugify(title)`.
 #[tauri::command]
 #[specta::specta]
@@ -445,6 +449,66 @@ async fn build_site(path: PathBuf) -> Result<BuildReport, String> {
 struct PreviewInfo {
     url: String,
     report: BuildReport,
+}
+
+/// Opens the manual (#110) in a window of its own, at `page` (`versions/`,
+/// or empty for its start). It's built from the pages compiled into the
+/// app (see `qed_core::manual`), in the app's `theme`, once per run or
+/// theme, and served like a preview. Links to other websites open in the
+/// browser.
+#[tauri::command]
+#[specta::specta]
+async fn open_manual(
+    app: AppHandle,
+    theme: String,
+    page: Option<String>,
+    state: State<'_, ManualState>,
+) -> Result<(), String> {
+    let base = {
+        let mut manual = state
+            .0
+            .lock()
+            .map_err(|_| "manual state is broken".to_string())?;
+        if manual.as_ref().is_none_or(|(built, _)| *built != theme) {
+            let folder = app
+                .path()
+                .app_cache_dir()
+                .map_err(|error| error.to_string())?
+                .join("manual");
+            let report = qed_core::manual::build(&folder, &theme).map_err(|e| e.to_string())?;
+            let server = Preview::start(&report.out_dir).map_err(|e| e.to_string())?;
+            *manual = Some((theme, server));
+        }
+        manual
+            .as_ref()
+            .map(|(_, server)| server.url().to_string())
+            .unwrap_or_default()
+    };
+    let address = format!("{base}{}", page.unwrap_or_default().trim_start_matches('/'));
+    let url: tauri::Url = address.parse().map_err(|error| format!("{error}"))?;
+
+    if let Some(window) = app.get_webview_window("manual") {
+        window.navigate(url).map_err(|error| error.to_string())?;
+        window.show().map_err(|error| error.to_string())?;
+        return window.set_focus().map_err(|error| error.to_string());
+    }
+    let opener = app.clone();
+    tauri::WebviewWindowBuilder::new(&app, "manual", tauri::WebviewUrl::External(url))
+        .title("q.e.d. manual")
+        .inner_size(1100.0, 850.0)
+        .on_navigation(move |target| {
+            // The manual's own pages stay here; anything else goes to the
+            // browser, where it can be read properly.
+            if target.as_str().starts_with(&base) {
+                return true;
+            }
+            use tauri_plugin_opener::OpenerExt;
+            let _ = opener.opener().open_url(target.as_str(), None::<&str>);
+            false
+        })
+        .build()
+        .map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 /// Builds the site and serves it locally.
@@ -975,6 +1039,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             start_history,
             save_version,
             resting_version,
+            open_manual,
             close_open_version,
             list_versions,
             page_version,
@@ -1012,6 +1077,7 @@ pub fn run() {
         // runs. The very first start uses tauri.conf.json (maximized).
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(PreviewState::default())
+        .manage(ManualState::default())
         .invoke_handler(commands().invoke_handler())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

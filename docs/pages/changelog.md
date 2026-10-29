@@ -42,7 +42,7 @@ One site on two computers, without the command line.
   computers; if both changed the same page, it changes nothing and says
   which. q.e.d. logs in with its own key, kept in the keychain, and
   checks the server's key on first use, as when publishing. A progress
-  bar shows how far it has got. See [Backups](backups.md).
+  bar shows how far it has got. See [Backups](manual/backups.md).
 - **Get a site from git**: in the site menu and on the start screen.
   Copies a pushed site to this computer with its whole history.
 - **New versions on the remote**: when a site opens, q.e.d. checks its

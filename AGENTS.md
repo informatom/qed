@@ -54,6 +54,20 @@ Secrets (SSH keys, tokens) live in the OS keychain, never in the site folder.
   optional features that degrade gracefully, such as the player and site
   search (#108).
 
+## Manual
+
+The user manual (#110) is for site owners and editors, not developers:
+`docs/pages/manual/`, on the docs site under `/manual` and compiled into
+the app (`qed_core::manual`, opened with the Manual button). Manual
+pages link to each other by file name (`versions.md`) and to anything
+else with a full web address, so the links work in both places;
+`cargo test` fails on one that doesn't. Use blocks (columns, FAQ, call
+to action, text with image) and icons next to button names
+(`:icon-eye:`), and name buttons exactly as the app does. Screenshots go
+into `docs/media/manual/` and are always taken with the app's own theme
+set to *catppuccin-mocha* (App tab), so they look the same throughout.
+When a change alters what a manual page describes, update the page.
+
 ## Learning blog
 
 The owner is learning Rust, Svelte and TypeScript through this project. When a

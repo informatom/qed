@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManualLink from "$lib/ManualLink.svelte";
   import { untrack } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
@@ -118,7 +119,8 @@
 
 <section id="publish-panel" class="flex flex-col gap-3">
     <div class="flex items-center justify-between gap-2">
-      <h2 class="text-lg font-semibold">Publishing</h2>
+      <h2 class="flex-1 text-lg font-semibold">Publishing</h2>
+      <ManualLink page="publishing/" topic="Publishing" />
       {#if editing === null}
         <button type="button" id="add-target" class="btn btn-sm" onclick={() => (editing = -1)} disabled={!!publishing}>
           <Plus class="size-4" /> Add target

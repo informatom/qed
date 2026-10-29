@@ -15,6 +15,7 @@ pub mod history;
 pub mod icons;
 pub mod images;
 pub mod links;
+pub mod manual;
 pub mod markdown;
 pub mod media;
 pub mod moving;

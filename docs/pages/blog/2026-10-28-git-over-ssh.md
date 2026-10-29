@@ -9,7 +9,7 @@ tags = ["rust", "git", "ssh", "traits", "unsafe"]
 summary = "The Versions tab can now push a site to a git repository and pull it back (#129), so one site can be edited on two computers. libgit2 speaks git; q.e.d. carries the bytes over the SSH connection it already had for publishing. That takes a trait object, a global, and the project's first unsafe block."
 +++
 
-Every q.e.d. site has a git history, and the [Backups](../backups.md) page
+Every q.e.d. site has a git history, and the [Backups](../manual/backups.md) page
 told you to push it with `git` on the command line. Now the Versions tab
 has *Push* and *Pull* (#129). Push on the laptop, pull on the mini PC, and
 the same site is on both, with every version. On a computer that doesn't

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManualLink from "$lib/ManualLink.svelte";
   import AudioPreview from "$lib/AudioPreview.svelte";
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
@@ -203,6 +204,9 @@
     <input id="{library}-search" class="input w-64" type="search" placeholder="Search by name" bind:value={search} />
     <span class="text-sm text-base-content/60">{shown.length} of {files.length} files</span>
     <div class="flex-1"></div>
+    {#if library !== "audio" && library !== "transcripts"}
+      <ManualLink page="pictures-and-files/" topic="Pictures and files" />
+    {/if}
     {#if isStatic}
       <button type="button" id="show-static-folder" class="btn"
         onclick={() => revealItemInDir(`${siteRoot}/static${dir ? `/${dir.slice(0, -1)}` : ""}`)}

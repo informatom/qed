@@ -38,6 +38,9 @@
   import Palette from "@lucide/svelte/icons/palette";
   import Upload from "@lucide/svelte/icons/upload";
   import AppSettings from "$lib/AppSettings.svelte";
+  import ManualLink from "$lib/ManualLink.svelte";
+  import LifeBuoy from "@lucide/svelte/icons/life-buoy";
+  import { openManual } from "$lib/manual";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
   import PodcastPanel from "$lib/PodcastPanel.svelte";
@@ -593,8 +596,14 @@
     <!-- Keeps the room the preview button had in the header; the button
          itself floats in the window's corner, so it stays in reach while
          scrolling. -->
-    <div class="size-10 shrink-0" aria-hidden="true"></div>
+    <div class="h-10 w-22 shrink-0" aria-hidden="true"></div>
     <div class="fixed top-8 right-8 z-40 flex gap-2">
+      <div class="tooltip tooltip-left" data-tip="Manual">
+        <button id="open-manual" class="btn btn-circle shadow-lg" aria-label="Manual"
+          onclick={() => openManual().catch((e) => (error = String(e)))}>
+          <LifeBuoy class="size-5" />
+        </button>
+      </div>
       {#if site}
         <!-- An icon is enough here; the tooltip and aria-label say what it does. -->
         <div class="tooltip tooltip-left" data-tip={previewTip}>
@@ -789,6 +798,7 @@
       <span class="text-sm text-base-content/60">
         {site.pages.length} pages{draftCount ? `, ${draftCount} drafts` : ""}
       </span>
+      <ManualLink page="pages-and-blocks/" topic="Pages and blocks" />
       {#if below.size}
         <button id="unfold-all" class="btn btn-ghost btn-xs" onclick={() => below.forEach((_, path) => unfolded.add(path))}>
           <ChevronsUpDown class="size-3.5" /> Expand all

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManualLink from "$lib/ManualLink.svelte";
   import { onMount } from "svelte";
   import History from "@lucide/svelte/icons/history";
   import Save from "@lucide/svelte/icons/save";
@@ -180,7 +181,10 @@
       </section>
 
       <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">Versions</h2>
+        <div class="flex items-center gap-2">
+          <h2 class="flex-1 text-lg font-semibold">Versions</h2>
+          <ManualLink page="versions/" topic="Versions" />
+        </div>
         {#if versions.length === 0}
           <p class="text-sm text-base-content/60">No versions yet.</p>
         {:else}

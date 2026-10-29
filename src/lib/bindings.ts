@@ -267,6 +267,14 @@ export const commands = {
 	note: string,
 } | null>("resting_version", { root }),
 	/**
+	 *  Opens the manual (#110) in a window of its own, at `page` (`versions/`,
+	 *  or empty for its start). It's built from the pages compiled into the
+	 *  app (see `qed_core::manual`), in the app's `theme`, once per run or
+	 *  theme, and served like a preview. Links to other websites open in the
+	 *  browser.
+	 */
+	openManual: (theme: string, page: string | null) => __TAURI_INVOKE<null>("open_manual", { theme, page }),
+	/**
 	 *  Closes the open version with a note, as it was last saved; `None` if
 	 *  there's no open version.
 	 */
