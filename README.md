@@ -19,9 +19,13 @@ The installers for the latest version are on the
 [releases page](https://github.com/informatom/qed/releases/latest). They
 aren't signed yet, so your system asks once before the first start.
 
-- 🍎 **macOS**: download the `.dmg`, open it and drag q.e.d. into
-  Applications (Apple Silicon and Intel). The first time, right-click
-  q.e.d. in Applications and choose **Open**.
+- 🍎 **macOS**: download the `.dmg`, open it and drag qed into
+  Applications (Apple Silicon and Intel). The first time, open qed;
+  macOS says it can't check it, so choose **Done**. Then open System
+  Settings → **Privacy & Security**, scroll down to qed and choose
+  **Open Anyway**, and confirm with your password. (On macOS 14 and
+  older, right-clicking qed in Applications and choosing **Open** does
+  the same.)
 - 🪟 **Windows**: download the `.exe` and run it. When Windows shows
   “Windows protected your PC”, choose **More info**, then **Run anyway**.
 - 🐧 **Linux**: on Debian and Ubuntu, download the `.deb` and install it

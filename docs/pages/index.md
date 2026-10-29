@@ -49,10 +49,16 @@ aren't signed yet, so your system asks once before the first start.
 title = "macOS"
 :::
 
-Download the `.dmg`, open it and drag q.e.d. into Applications. It runs on
+Download the `.dmg`, open it and drag qed into Applications. It runs on
 Apple Silicon and Intel Macs.
 
-The first time, right-click q.e.d. in Applications and choose **Open**.
+The first time, open qed. macOS says it can't check it: choose **Done**.
+Then open System Settings → **Privacy & Security**, scroll down to the
+note about qed, choose **Open Anyway** and confirm with your password.
+From then on qed opens as usual.
+
+On macOS 14 and older, right-click qed in Applications and choose
+**Open** instead.
 
 ::: column
 title = "Windows"
