@@ -525,7 +525,8 @@ fn custom_theme_variables(custom: CustomTheme) -> Vec<ThemeVariable> {
     custom.variables()
 }
 
-/// The daisyUI theme names the app and generated sites can use.
+/// The theme names the app and generated sites can use: daisyUI's and
+/// the Catppuccin flavors.
 #[tauri::command]
 #[specta::specta]
 fn list_themes() -> Vec<&'static str> {

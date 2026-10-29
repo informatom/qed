@@ -9,6 +9,8 @@ authors.workspace = true
 
 [dependencies]
 askama = "0.16.1"
+# The app's Catppuccin themes (Latte, Mocha): the palette's colors.
+catppuccin = "2.8.0"
 # syntect-fancy: code highlighting with a pure-Rust regex engine (no C).
 comrak = { version = "0.57.0", default-features = false, features = ["syntect-fancy"] }
 deunicode = "1"

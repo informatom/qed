@@ -81,7 +81,10 @@ export const commands = {
 	 *  (a new podcast gets its `podcast:guid` here).
 	 */
 	saveSiteConfig: (root: string, config: SiteConfig_Deserialize) => __TAURI_INVOKE<SiteConfig_Serialize>("save_site_config", { root, config }),
-	/**  The daisyUI theme names the app and generated sites can use. */
+	/**
+	 *  The theme names the app and generated sites can use: daisyUI's and
+	 *  the Catppuccin flavors.
+	 */
 	listThemes: () => __TAURI_INVOKE<string[]>("list_themes"),
 	/**  The CSS variables a custom theme sets, for previews in the app. */
 	customThemeVariables: (custom: CustomTheme) => __TAURI_INVOKE<ThemeVariable[]>("custom_theme_variables", { custom }),

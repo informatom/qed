@@ -3,6 +3,7 @@
 
 pub mod block;
 pub mod calendar;
+pub mod catppuccin_themes;
 pub mod chart;
 pub mod chem;
 pub mod contributors;

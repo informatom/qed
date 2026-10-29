@@ -10,6 +10,9 @@
 @plugin "daisyui" {
   themes: all;
 }
+/* The four Catppuccin flavors as daisyUI themes, made from the catppuccin
+   crate by qed-core (catppuccin_themes.rs); `cargo test` keeps it current. */
+@import "./catppuccin.css";
 
 /* Theme colors beyond buttons: links in text get an underline in the
    site's link color (primary unless `[colors] links` says otherwise),

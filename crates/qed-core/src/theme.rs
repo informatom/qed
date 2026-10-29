@@ -1,4 +1,6 @@
 //! The daisyUI themes a site can use, and custom colors on top of one.
+//! Besides daisyUI's own, there are the four Catppuccin flavors
+//! (`catppuccin_themes`).
 //!
 //! The site stylesheet (`assets/site.css`) is compiled with all of them, so
 //! any of these names works in `site.toml`. A test checks that the list and
@@ -14,7 +16,7 @@ use serde::{Deserialize, Serialize};
 /// `theme = "custom"` in `site.toml` uses `[custom_theme]`.
 pub const CUSTOM: &str = "custom";
 
-pub const THEMES: [&str; 35] = [
+pub const THEMES: [&str; 39] = [
     "light",
     "dark",
     "cupcake",
@@ -50,6 +52,11 @@ pub const THEMES: [&str; 35] = [
     "caramellatte",
     "abyss",
     "silk",
+    // Kept in step with `catppuccin_themes::CATPPUCCIN_THEMES` (a test checks).
+    "catppuccin-latte",
+    "catppuccin-frappe",
+    "catppuccin-macchiato",
+    "catppuccin-mocha",
 ];
 
 pub fn is_theme(name: &str) -> bool {
@@ -463,5 +470,19 @@ mod tests {
                 "{theme} is missing from site.css"
             );
         }
+    }
+
+    #[test]
+    fn includes_the_catppuccin_flavors() {
+        for theme in crate::catppuccin_themes::CATPPUCCIN_THEMES {
+            assert!(is_theme(theme), "{theme} is missing from THEMES");
+        }
+    }
+
+    #[test]
+    fn finds_catppuccin_colors_in_the_site_stylesheet() {
+        let css = include_str!("../assets/site.css");
+        let primary = color_hex(css, "catppuccin-mocha", None, "--color-primary");
+        assert_eq!(primary.as_deref(), Some("#b4befe"));
     }
 }

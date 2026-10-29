@@ -7,6 +7,9 @@
 @plugin "daisyui" {
   themes: all;
 }
+/* The Catppuccin themes, made from the catppuccin crate by qed-core;
+   `cargo test` keeps the file current. Sites have the same file. */
+@import "../crates/qed-core/assets/catppuccin.css";
 
 /* Monospaced text (file names, the text viewer). Tailwind's own list names
    Mac and Windows fonts only, so on Linux it fell through to DejaVu Sans
