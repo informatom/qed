@@ -10,6 +10,37 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.11.0 · 2026-10-29
+
+A manual in the app, sections, Catppuccin themes and lighter photos.
+
+- **Manual** (#110): how to make and run a website with q.e.d., for
+  site owners: getting started, pages and blocks, pictures and files,
+  versions, backups and publishing. In the app, offline, with the
+  life-buoy button at the top right and the **Manual** links in the
+  tabs; also on this website under [Manual](manual/index.md). See
+  [A manual in the app](blog/2026-10-29-a-manual-in-the-app.md).
+- **Section block** (#087): a band across the page with a background
+  color or picture, holding other blocks, columns too. See
+  [Sections](blog/2026-10-29-sections.md).
+- **Catppuccin themes** (#132): Latte, Frappé, Macchiato and Mocha, for
+  sites and for the app. See [Catppuccin themes](blog/2026-10-29-catppuccin.md).
+- **WebP copies** (#085): the smaller copies of photos are WebP, about
+  half the size of before. See [WebP copies](blog/2026-10-29-webp-copies.md).
+- **A version per working session** (#083): saves go into one version
+  until you stop for an hour or the next day; then the app asks for a
+  note. See [A version per session](blog/2026-10-29-a-version-per-session.md).
+- **More languages for code** (#106): some 200, among them TypeScript,
+  Svelte, TOML and Elixir. See [More code languages](blog/2026-10-29-more-languages.md).
+- **Notes for missing links** (#133): building the site notes links to
+  pages that don't exist (or are drafts) and to missing pictures and
+  files.
+- **Pages changed outside the app**: when a page was changed in another
+  program since you opened it, saving asks whether to keep yours or
+  take the file's.
+- Fixed: a version stayed "work in progress" after someone committed
+  on top of it with git.
+
 ## 0.10.0 · 2026-10-28
 
 Search, and science on the page: formulas, molecules, charts and rock
