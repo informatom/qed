@@ -183,11 +183,14 @@ fn with_icons(html: &str, links: &LinkContext, site_icons: &SiteIcons) -> String
 /// Code blocks with a language (```rust) get their parts marked with CSS
 /// classes, `hl-keyword` and so on; [`code_css`] colors them. The `hl-`
 /// prefix keeps syntect's names apart from daisyUI's (both have `link`).
-/// Loading the grammars takes a moment, so it happens once.
+/// The grammars are `bat`'s, from the two-face crate: syntect's own lack
+/// TypeScript, Svelte, TOML and more. Loading them takes a moment, so it
+/// happens once.
 fn highlighter() -> &'static SyntectAdapter {
     static ADAPTER: OnceLock<SyntectAdapter> = OnceLock::new();
     ADAPTER.get_or_init(|| {
         SyntectAdapterBuilder::new()
+            .syntax_set(two_face::syntax::extra_newlines())
             .css_with_class_prefix(CLASS_PREFIX)
             .build()
     })
@@ -458,6 +461,26 @@ mod tests {
         );
         assert!(html.contains("&lt;b&gt;"), "code is escaped: {html}");
         assert!(code_css().contains(".hl-keyword {"), "{}", code_css());
+    }
+
+    #[test]
+    fn knows_the_languages_of_the_docs() {
+        // The fence names the docs use that syntect alone didn't know, and
+        // the class their grammar's scope gives (`source.ts` → `hl-ts`).
+        for (lang, code, class) in [
+            ("ts", "const x: number = 1;", "hl-ts"),
+            ("svelte", "<script>let x = 1;</script>", "hl-svelte"),
+            ("toml", "title = \"q.e.d.\"", "hl-toml"),
+            ("elixir", "defmodule Foo do\nend", "hl-elixir"),
+            ("jinja", "{% if x %}{{ x }}{% endif %}", "hl-jinja"),
+        ] {
+            let markdown = format!("```{lang}\n{code}\n```\n");
+            let html = render_on("", "pages/index.md", &markdown);
+            assert!(html.contains(class), "{lang}: {html}");
+        }
+        // An unknown language stays plain.
+        let html = render_on("", "pages/index.md", "```nosuchlang\nx\n```\n");
+        assert!(!html.contains("hl-source"), "{html}");
     }
 
     #[test]

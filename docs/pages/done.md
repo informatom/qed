@@ -806,6 +806,12 @@ rest is done.
   `@catppuccin/daisyui`; the test `stylesheet_is_current` writes
   `assets/catppuccin.css`, which `site.input.css` and `src/app.css` both
   import (site.css +3 KB).
+- **#106 More languages for code highlighting.** Done 2026-10-29, post
+  61: the `two-face` crate (0.5.2, `bat`'s grammars, fancy-regex build)
+  gives comrak's highlighter some 200 languages, among them TypeScript,
+  Svelte, TOML, Elixir and Jinja; all 79 docs blocks that were plain are
+  colored now (only ```` ```text ```` stays plain). Costs: about 1 MB in
+  the program, docs build 1 s instead of 0.45 s.
 
 ## Dropped
 

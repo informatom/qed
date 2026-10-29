@@ -52,12 +52,6 @@ Nothing open.
   built into the app), and offline use.
 - **#087 Section block.** A full-width block that holds other blocks, in
   the same nested format as Columns (#074).
-- **#106 More languages for code highlighting.** syntect's built-in
-  grammars (#094) lack TypeScript, Svelte, TOML, Elixir and Jinja, so about
-  60 code blocks in the docs show without colors. The `two-face` crate
-  (the grammars of `bat`, some 200 languages) plugs into the same
-  highlighter; it costs a few MB in the app and a slower first build per
-  run.
 
 ### Phase 4: Moving in, open to AI assistants
 
