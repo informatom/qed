@@ -32,3 +32,6 @@ crc32fast = { opt-level = 3 }
 adler2 = { opt-level = 3 }
 simd-adler32 = { opt-level = 3 }
 moxcms = { opt-level = 3 }
+# WebP copies (#085): libwebp is C, built by the cc crate, which takes
+# the optimization level from here too.
+libwebp-sys = { opt-level = 3 }

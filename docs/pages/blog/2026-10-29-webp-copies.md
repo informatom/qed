@@ -100,3 +100,23 @@ Writing `|()|` instead of `|_|` says "the error is nothing" in the
 pattern itself, and if a later version of the crate gave the error a
 real type, this line would stop compiling, so the message could be
 improved then. `|_|` would silently throw the new information away.
+
+## Fast in development too
+
+The first build of waldgruber.at with WebP copies was slow in the app
+during development. [Responsive images](2026-10-21-responsive-images.md)
+explains why: `npm run tauri dev` builds without optimizations, which
+makes image work about 25 times slower, so `Cargo.toml` optimizes the
+image libraries even there. libwebp was missing from that list:
+
+```toml
+[profile.dev.package]
+libwebp-sys = { opt-level = 3 }
+```
+
+This works for C code too. `libwebp-sys` compiles libwebp with the
+[cc](https://docs.rs/cc) crate in its build script, and Cargo tells
+every build script the optimization level of its package (the
+`OPT_LEVEL` variable), which cc passes on to the C compiler as `-O3`.
+Encoding three large test pictures went from 6.4 to 2.1 seconds.
+Released versions were optimized all along.
