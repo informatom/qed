@@ -19,11 +19,8 @@ Nothing open.
 
 ## To build
 
-### Phase 3: Nice to have
+### In progress
 
-- **#070 Code signing.** Apple developer account and notarization, Windows
-  signing (e.g. Azure Trusted Signing). Decided 2026-10-28: moved from
-  phase 2; not needed for 1.0.
 - **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
   view, also reachable from where a topic comes up, e.g. the Versions tab
   for backups), and the same pages on the docs site. Written for site
@@ -34,9 +31,23 @@ Nothing open.
   hand-made menu (#111), boxed columns (#113). To decide: where the
   pages live so app and docs site share them (e.g. `docs/pages/manual/`,
   built into the app), and offline use.
+- **#133 Links to missing pages.** The build stops on links that leave
+  the site folder, but a link to a page, media file or download that
+  doesn't exist (a mistyped `2026-10-21-link-previews.md`, found
+  2026-10-29) builds without a word and gives visitors a 404. The build
+  should note each one, with the page it's on, like a missing shared
+  block; the app could also mark it while editing.
 
-### Phase 4: Moving in, open to AI assistants
+### Future
 
+- **#070 Code signing.** For downloads from the releases page, not app
+  stores. macOS: notarization needs the Apple Developer Program (99 USD
+  a year); without it, macOS 15 and later make people allow the app in
+  System Settings (right-click → Open no longer works). Windows: the
+  SignPath Foundation signs open-source projects for free (builds from
+  CI; check their terms); SmartScreen still warns until the app has a
+  reputation. Updates are already safe through the updater's own
+  signature. Moved here on 2026-10-29: worth it once Mac users come in.
 - **#123 Import from Podlove Publisher.** Bring a podcast over from
   WordPress with the
   [Podlove Publisher](https://podlove.org/podlove-podcast-publisher/)
@@ -51,7 +62,7 @@ Nothing open.
 - **#034 Feed import.** Import an existing podcast from its RSS feed or
   from a jekyll-octopod site (compare `octopod import`). Keep each
   episode's old guid (octopod used the episode's address) and its old
-  address as a redirect. Moved to phase 4 on 2026-10-28, with #123.
+  address as a redirect. Moved here on 2026-10-28, with #123.
 - **#124 Feed redirects.** Podlove Publisher's feeds live at other
   addresses (`/feed/mp3/`, or `/?feed=…` without pretty links) than
   q.e.d.'s (`/episodes.mp3.rss`), and subscribers must keep getting new
