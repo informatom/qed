@@ -83,6 +83,7 @@ export const BLOCK_NAMES: Record<BlockType, string> = {
   download: "Download",
   faq: "FAQ",
   columns: "Columns",
+  section: "Section",
   "call-to-action": "Call to action",
   "post-list": "Post list",
   "page-list": "Page list",
@@ -176,6 +177,8 @@ export function newBlock(type: BlockType): Block {
           { title: null, width: null, boxed: false, blocks: [{ type: "text", markdown: "" }] },
         ],
       };
+    case "section":
+      return { type, title: null, background: null, image: null, spacing: null, blocks: [{ type: "text", markdown: "" }] };
     case "call-to-action":
       return { type, headline: null, text: null, button_label: null, button_link: null };
     case "post-list":
@@ -205,7 +208,7 @@ export function newBlock(type: BlockType): Block {
 }
 
 /** Fields that may be empty in a file. Everything else is always text. */
-const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout", "name", "align", "contributor"]);
+const OPTIONAL = new Set(["image", "alt", "headline", "text", "caption", "button_label", "button_link", "file", "label", "heading", "title", "from", "url", "layout", "name", "align", "contributor", "background", "spacing"]);
 
 /** Empty optional fields become null, so "" and "nothing" count as the same. */
 export function normalizeBlock(block: Block): Block {

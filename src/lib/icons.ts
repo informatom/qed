@@ -5,6 +5,7 @@ import CircleQuestionMark from "@lucide/svelte/icons/circle-question-mark";
 import Columns3 from "@lucide/svelte/icons/columns-3";
 import Component from "@lucide/svelte/icons/component";
 import Download from "@lucide/svelte/icons/download";
+import Group from "@lucide/svelte/icons/group";
 import Image from "@lucide/svelte/icons/image";
 import Images from "@lucide/svelte/icons/images";
 import List from "@lucide/svelte/icons/list";
@@ -35,6 +36,7 @@ export const BLOCK_ICONS: Record<BlockType, IconComponent> = {
   download: Download,
   faq: CircleQuestionMark,
   columns: Columns3,
+  section: Group,
   "call-to-action": Megaphone,
   "post-list": List,
   "page-list": ListTree,

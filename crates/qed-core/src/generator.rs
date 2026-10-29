@@ -1291,14 +1291,6 @@ fn color_classes(colors: &Colors) -> ColorClasses {
             }
         }
     };
-    let filled = |surface: Surface| match surface {
-        Surface::Plain => "border border-base-300 bg-base-100 text-base-content",
-        Surface::Shaded => "bg-base-200 text-base-content",
-        Surface::Primary => "on-color bg-primary text-primary-content",
-        Surface::Secondary => "on-color bg-secondary text-secondary-content",
-        Surface::Accent => "on-color bg-accent text-accent-content",
-        Surface::Neutral => "on-color bg-neutral text-neutral-content",
-    };
     let hero = colors.hero.unwrap_or(Surface::Secondary);
     let call_to_action = colors.call_to_action.unwrap_or(Surface::Primary);
     let content = match colors.content.unwrap_or(Surface::Plain) {
@@ -1327,9 +1319,54 @@ fn color_classes(colors: &Colors) -> ColorClasses {
         call_to_action: filled(call_to_action),
         call_to_action_button: button_on(call_to_action),
         boxed: match colors.boxes.unwrap_or(Surface::Plain) {
-            Surface::Plain => "border border-base-300 bg-base-100 shadow-sm",
+            // Its own text color too: on a colored section, it would
+            // otherwise take the section's light text.
+            Surface::Plain => "border border-base-300 bg-base-100 text-base-content shadow-sm",
             other => filled(other),
         },
+    }
+}
+
+/// An area filled with a surface: background, text color, and `on-color`
+/// for Markdown in a theme color (site.input.css).
+fn filled(surface: Surface) -> &'static str {
+    match surface {
+        Surface::Plain => "border border-base-300 bg-base-100 text-base-content",
+        Surface::Shaded => "bg-base-200 text-base-content",
+        Surface::Primary => "on-color bg-primary text-primary-content",
+        Surface::Secondary => "on-color bg-secondary text-secondary-content",
+        Surface::Accent => "on-color bg-accent text-accent-content",
+        Surface::Neutral => "on-color bg-neutral text-neutral-content",
+    }
+}
+
+/// The classes of a section: its fill and the room around its blocks.
+/// A section in a theme color also gets `on-primary` (and so on), which
+/// draws buttons of that same color plain, so they don't vanish
+/// (site.input.css). With a picture, the text is white on the picture,
+/// darkened with black.
+fn section_classes(section: &block::Section, has_picture: bool) -> String {
+    let large = section.spacing == Some(block::Spacing::Large);
+    let fill = if has_picture {
+        // White, not the theme's neutral text: the picture is darkened
+        // with black, and in dark themes neutral text is dark.
+        Some("on-color relative overflow-hidden text-white")
+    } else {
+        section.background.map(filled)
+    };
+    let own = match section.background.filter(|_| !has_picture) {
+        Some(Surface::Primary) => " on-primary",
+        Some(Surface::Secondary) => " on-secondary",
+        Some(Surface::Accent) => " on-accent",
+        Some(Surface::Neutral) => " on-neutral",
+        _ => "",
+    };
+    match (fill, large) {
+        (Some(fill), false) => format!("rounded-box p-6 sm:p-8 {fill}{own}"),
+        (Some(fill), true) => format!("rounded-box px-6 py-12 sm:px-12 sm:py-20 {fill}{own}"),
+        // Without a fill, only the room above and below shows.
+        (None, false) => String::new(),
+        (None, true) => "py-8 sm:py-12".to_string(),
     }
 }
 
@@ -2058,6 +2095,15 @@ enum RenderedBlock {
         /// Unequal widths: `--cols: 2fr 1fr`, which the grid class reads.
         style: Option<String>,
         columns: Vec<ColumnEntry>,
+    },
+    Section {
+        title: Option<String>,
+        /// From [`section_classes`].
+        classes: String,
+        /// The background picture, behind the blocks.
+        picture: Option<Picture>,
+        /// The section's blocks, each rendered with `block.html`.
+        blocks: Vec<String>,
     },
     CallToAction {
         headline: Option<String>,
@@ -2795,6 +2841,25 @@ fn render_block(
                 })
                 .collect::<Result<_, askama::Error>>()?,
         },
+        Block::Section(section) => {
+            let picture = section
+                .image
+                .as_deref()
+                .and_then(|name| picture(name, None, links, images));
+            RenderedBlock::Section {
+                title: section
+                    .title
+                    .clone()
+                    .filter(|title| !title.trim().is_empty()),
+                classes: section_classes(section, picture.is_some()),
+                picture,
+                blocks: section
+                    .blocks
+                    .iter()
+                    .map(|inner| render_html(inner, links, context, false))
+                    .collect::<Result<_, _>>()?,
+            }
+        }
         Block::CallToAction(cta) => RenderedBlock::CallToAction {
             headline: cta.headline.clone(),
             text_html: markdown(&cta.text),
@@ -3290,6 +3355,7 @@ fn first_image(blocks: &[Block]) -> Option<(&str, Option<&str>)> {
         .into_iter()
         .find_map(|block| match block {
             Block::Hero(hero) => hero.image.as_deref().map(|image| (image, None)),
+            Block::Section(section) => section.image.as_deref().map(|image| (image, None)),
             Block::Image(image) => image
                 .image
                 .as_deref()
@@ -4473,11 +4539,40 @@ mod tests {
             "{home}"
         );
         assert_eq!(
-            home.matches("rounded-box p-6 border border-base-300 bg-base-100 shadow-sm")
-                .count(),
+            home.matches(
+                "rounded-box p-6 border border-base-300 bg-base-100 text-base-content shadow-sm"
+            )
+            .count(),
             1,
             "one boxed column: {home}"
         );
+    }
+
+    #[test]
+    fn renders_sections() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("site.toml"), "title = \"S\"\n").unwrap();
+        fs::create_dir_all(dir.path().join("pages")).unwrap();
+        fs::write(
+            dir.path().join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\n::::: section\n::: settings\ntitle = \"Ours\"\nbackground = \"primary\"\nspacing = \"large\"\n:::\n\nIntro.\n\n:::: columns\n::: column\n:::\n\nLeft.\n::: column\n:::\n\nRight.\n::::\n:::::\n\n::::: section\nPlain.\n:::::\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(
+            home.contains(r#"<section class="rounded-box px-6 py-12 sm:px-12 sm:py-20 on-color bg-primary text-primary-content on-primary">"#),
+            "{home}"
+        );
+        assert!(home.contains(">Ours</h2>"), "{home}");
+        assert!(
+            home.contains("grid gap-8 md:grid-cols-2"),
+            "columns inside: {home}"
+        );
+        assert!(home.contains(r#"<section class="">"#), "no fill: {home}");
+        assert!(home.contains("Plain."), "{home}");
     }
 
     #[test]

@@ -208,21 +208,9 @@ fn names_in(blocks: &[Block]) -> BTreeSet<&str> {
         .collect()
 }
 
-/// The blocks without Shared blocks, columns included.
+/// The blocks without Shared blocks, inside columns and sections too.
 fn without_shared(blocks: Vec<Block>) -> Vec<Block> {
-    blocks
-        .into_iter()
-        .filter(|block| !matches!(block, Block::Shared(_)))
-        .map(|block| match block {
-            Block::Columns(mut columns) => {
-                for column in &mut columns.items {
-                    column.blocks = without_shared(std::mem::take(&mut column.blocks));
-                }
-                Block::Columns(columns)
-            }
-            other => other,
-        })
-        .collect()
+    crate::block::retain_deep(blocks, &|block| !matches!(block, Block::Shared(_)))
 }
 
 /// The site as the generator sees it: every Shared block on pages, in
@@ -268,14 +256,14 @@ fn expand(blocks: &[Block], pieces: &[Page], missing: &mut BTreeSet<String>) -> 
                     }
                 }
             }
-            Block::Columns(columns) => {
-                let mut columns = columns.clone();
-                for column in &mut columns.items {
-                    column.blocks = expand(&column.blocks, pieces, missing);
+            other => {
+                // Shared blocks inside columns and sections too.
+                let mut block = other.clone();
+                for inner in block.inner_lists_mut() {
+                    *inner = expand(inner, pieces, missing);
                 }
-                out.push(Block::Columns(columns));
+                out.push(block);
             }
-            other => out.push(other.clone()),
         }
     }
     out

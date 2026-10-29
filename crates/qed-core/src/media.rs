@@ -550,6 +550,9 @@ pub fn references(page: &Page, library: Library) -> Vec<String> {
             }
             // Their blocks come next in `all_blocks`.
             Block::Columns(_) => {}
+            Block::Section(section) => {
+                images.extend(section.image.as_deref().and_then(media_name));
+            }
             Block::CallToAction(cta) => {
                 markdown_texts.extend(cta.text.as_deref());
                 buttons.extend(cta.button_link.as_deref());
@@ -707,15 +710,10 @@ pub fn move_documents_to_assets(site: &Site) -> Result<usize, SiteError> {
 
 /// Points a block's download and its Markdown links at the moved files.
 fn rename_in_block(block: &mut Block, moved: &[(String, String)]) {
-    if let Block::Columns(columns) = block {
-        for inner in columns
-            .items
-            .iter_mut()
-            .flat_map(|column| column.blocks.iter_mut())
-        {
+    for inner in block.inner_lists_mut() {
+        for inner in inner.iter_mut() {
             rename_in_block(inner, moved);
         }
-        return;
     }
     if let Block::Download(download) = block
         && let Some(file) = &mut download.file
@@ -1003,6 +1001,18 @@ answer = "See [the menu](/media/menu.pdf)."
             references(cols, Library::Media),
             ["logos/a.png", "team.png"],
             "images inside columns count"
+        );
+        fs::write(
+            dir.path().join("pages/band.md"),
+            "+++\ntitle = \"Band\"\n+++\n\n::::: section\n::: settings\nimage = \"team.png\"\n:::\n::: image\nimage = \"logos/a.png\"\n:::\n:::::\n",
+        )
+        .unwrap();
+        let site = site::open(dir.path()).unwrap();
+        let band = site.pages.iter().find(|p| p.path == "band").unwrap();
+        assert_eq!(
+            references(band, Library::Media),
+            ["logos/a.png", "team.png"],
+            "a section's picture and the images inside it count"
         );
         let more = site.pages.iter().find(|p| p.path == "more").unwrap();
         assert_eq!(

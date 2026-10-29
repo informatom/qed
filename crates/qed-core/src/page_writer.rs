@@ -16,7 +16,7 @@
 
 use toml_edit::{DocumentMut, Item, Value};
 
-use crate::block::{Block, Column, ColumnSettings};
+use crate::block::{Block, Column, ColumnSettings, Section};
 use crate::page::{self, BlockSource, ColumnSource, FrontMatter, PageContent};
 
 /// Turns a page into the text of its file. `original` is the file's current
@@ -87,6 +87,15 @@ fn write_block(block: &Block, previous: Option<(&Block, &BlockSource)>) -> Strin
             text.push_str("::::");
             text
         }
+        Block::Section(section) => {
+            let previous = match previous {
+                Some((Block::Section(old), BlockSource::Section { settings, blocks })) => {
+                    Some((old, settings.as_str(), blocks.as_slice()))
+                }
+                _ => None,
+            };
+            write_section(section, previous)
+        }
         _ => {
             let kind = block.container_type().unwrap_or_default();
             let toml = match previous {
@@ -133,6 +142,32 @@ fn write_column(column: &Column, previous: Option<(&Column, &ColumnSource)>) -> 
     )
 }
 
+/// `::::: section`, its `::: settings` (left out when there are none) and
+/// its blocks. `previous` is the section as it was, with its settings as
+/// written and how its blocks were written.
+fn write_section(section: &Section, previous: Option<(&Section, &str, &[BlockSource])>) -> String {
+    let settings = section.settings();
+    let fresh = || {
+        let mut document = toml_edit::ser::to_document(&settings).unwrap_or_default();
+        use_multiline_strings(&mut document);
+        document
+    };
+    let toml = match previous {
+        Some((old, written, _)) if old.settings() == settings => written.to_string(),
+        Some((_, written, _)) if !written.trim().is_empty() => merge(written, fresh()),
+        _ => fresh().to_string(),
+    };
+    let mut text = String::from("::::: section\n");
+    if !toml.trim().is_empty() {
+        text.push_str(&container("settings", &toml));
+        text.push('\n');
+    }
+    let inner = previous.map(|(old, _, sources)| (old.blocks.as_slice(), sources));
+    text.push_str(&write_blocks(&section.blocks, inner));
+    text.push_str(":::::");
+    text
+}
+
 /// A `:::` container with its TOML body.
 fn container(kind: &str, toml: &str) -> String {
     match toml.trim_end() {
@@ -145,7 +180,7 @@ fn container(kind: &str, toml: &str) -> String {
 fn block_document(block: &Block) -> DocumentMut {
     let document = match block {
         // Written by `write_block` itself.
-        Block::Text { .. } | Block::Columns(_) => Ok(DocumentMut::new()),
+        Block::Text { .. } | Block::Columns(_) | Block::Section(_) => Ok(DocumentMut::new()),
         Block::Hero(hero) => toml_edit::ser::to_document(hero),
         Block::Image(image) => toml_edit::ser::to_document(image),
         Block::TextImage(block) => toml_edit::ser::to_document(block),
@@ -426,6 +461,49 @@ More text.
         );
         // The blocks didn't change, so they're copied as written.
         assert!(file.contains("headline = 'Hello'\n# The button"), "{file}");
+        assert_eq!(parse(&file).unwrap(), content);
+    }
+
+    #[test]
+    fn keeps_what_was_written_inside_a_section() {
+        let original = "+++\ntitle = \"S\"\n+++\n\n::::: section\n::: settings\ntitle = 'Ours'  # short\n:::\n\nText.\n\n:::: columns\n::: column\n:::\n\nLeft.\n::::\n:::::\n";
+        let mut content = parse(original).unwrap();
+        assert_eq!(
+            write(&content, Some(original)),
+            original,
+            "unchanged stays as it was"
+        );
+
+        let Block::Section(section) = &mut content.blocks[0] else {
+            panic!()
+        };
+        section.background = Some(crate::site::Surface::Accent);
+        section.blocks.push(Block::Text {
+            markdown: "More.".into(),
+        });
+        let file = write(&content, Some(original));
+        assert!(
+            file.contains("::: settings\ntitle = 'Ours'  # short\nbackground = \"accent\"\n:::"),
+            "{file}"
+        );
+        assert!(
+            file.contains(":::: columns\n::: column\n:::\n\nLeft.\n::::"),
+            "{file}"
+        );
+        assert_eq!(parse(&file).unwrap(), content, "reads back as written");
+
+        // A new section without settings has no `::: settings`.
+        let content = PageContent {
+            front: content.front.clone(),
+            blocks: vec![Block::Section(crate::block::Section {
+                blocks: vec![Block::Text {
+                    markdown: "Hi.".into(),
+                }],
+                ..Default::default()
+            })],
+        };
+        let file = write(&content, None);
+        assert!(file.ends_with("\n::::: section\n\nHi.\n:::::\n"), "{file}");
         assert_eq!(parse(&file).unwrap(), content);
     }
 

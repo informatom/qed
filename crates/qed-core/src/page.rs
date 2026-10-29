@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::block::{
     self, Block, COLUMN_TYPES, CONTAINER_TYPES, Column, ColumnSettings, Columns, ContainerError,
+    Section, SectionSettings,
 };
 
 /// Settings at the top of a page file.
@@ -176,6 +177,12 @@ pub(crate) enum BlockSource {
     Toml(String),
     /// Each column's settings and blocks.
     Columns(Vec<ColumnSource>),
+    /// The TOML body of the section's `::: settings` (empty without one)
+    /// and its blocks.
+    Section {
+        settings: String,
+        blocks: Vec<BlockSource>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -241,8 +248,9 @@ pub(crate) fn parse_parts(source: &str) -> Result<ParsedPage, ParseError> {
     let body: Vec<(usize, &str)> = lines.collect();
     let mut blocks = Vec::new();
     let mut block_sources = Vec::new();
-    for piece in parse_body(&body, false)? {
-        // Column markers only come back from inside columns.
+    for piece in parse_body(&body, Inside::Page)? {
+        // Column and settings markers only come back from inside columns
+        // and sections.
         if let Piece::Block(block, source) = piece {
             blocks.push(block);
             block_sources.push(source);
@@ -260,6 +268,18 @@ enum Piece {
     Block(Block, BlockSource),
     /// A `::: column` line: a new column starts here.
     Column(ColumnSettings, String),
+    /// A section's `::: settings`, with the line it starts on.
+    Settings(SectionSettings, String, usize),
+}
+
+/// Where a body is: what may go in it depends on that.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Inside {
+    Page,
+    /// `::::: section`: any blocks but sections, settings first.
+    Section,
+    /// `:::: columns`: `::: column` lines, and the blocks a column holds.
+    Columns,
 }
 
 /// A `:::` container that's open: its type, first line and body lines.
@@ -269,18 +289,35 @@ struct Open<'a> {
     body: Vec<&'a str>,
 }
 
-/// Splits a body into Markdown text and blocks. `in_columns` is true inside
-/// `:::: columns`, where `::: column` lines separate the columns.
-fn parse_body<'a>(lines: &[(usize, &'a str)], in_columns: bool) -> Result<Vec<Piece>, ParseError> {
+/// Splits a body into Markdown text and blocks. Inside `:::: columns`,
+/// `::: column` lines separate the columns; inside `::::: section`, a
+/// `::: settings` may come first.
+fn parse_body<'a>(lines: &[(usize, &'a str)], inside: Inside) -> Result<Vec<Piece>, ParseError> {
+    let in_columns = inside == Inside::Columns;
     let mut pieces = Vec::new();
     let mut text: Vec<&str> = Vec::new();
     let mut open: Option<Open> = None;
-    // An open `:::: columns`: its first line and the lines inside.
+    // An open `:::: columns` or `::::: section`: its first line and the
+    // lines inside.
     let mut columns: Option<(usize, Vec<(usize, &'a str)>)> = None;
+    let mut section: Option<(usize, Vec<(usize, &'a str)>)> = None;
     // Inside a ``` code block, colons are just text.
     let mut fence: Option<Fence> = None;
 
     for &(number, line) in lines {
+        // A section's lines, columns included, go in as they are until
+        // its own `:::::`.
+        if let Some((_, inner)) = section.as_mut() {
+            track_fence(&mut fence, line);
+            if fence.is_none() && marker(line) == Some((5, "")) {
+                if let Some((_, inner)) = section.take() {
+                    pieces.push(section_block(&inner)?);
+                }
+            } else {
+                inner.push((number, line));
+            }
+            continue;
+        }
         if let Some((_, inner)) = columns.as_mut() {
             track_fence(&mut fence, line);
             if fence.is_none() && marker(line) == Some((4, "")) {
@@ -297,7 +334,7 @@ fn parse_body<'a>(lines: &[(usize, &'a str)], in_columns: bool) -> Result<Vec<Pi
             match marker(line) {
                 Some((3, "")) => {
                     if let Some(container) = open.take() {
-                        pieces.push(close(container, in_columns)?);
+                        pieces.push(close(container, inside)?);
                     }
                 }
                 Some(_) => {
@@ -328,6 +365,14 @@ fn parse_body<'a>(lines: &[(usize, &'a str)], in_columns: bool) -> Result<Vec<Pi
             (3, "columns") => {
                 return error("columns hold blocks, so they use four colons: :::: columns".into());
             }
+            (3, "section") => {
+                return error(
+                    "a section holds blocks, so it uses five colons: ::::: section".into(),
+                );
+            }
+            (3, "settings") if inside != Inside::Section => {
+                return error("::: settings only works inside a ::::: section block".into());
+            }
             (3, kind) => {
                 push_text(&mut pieces, &mut text);
                 open = Some(Open {
@@ -347,7 +392,29 @@ fn parse_body<'a>(lines: &[(usize, &'a str)], in_columns: bool) -> Result<Vec<Pi
                     "only columns use ::::; write ::: {kind} for a {kind} block"
                 ));
             }
-            _ => return error("use ::: for blocks and :::: for columns".into()),
+            (5, "") => return error("this ::::: doesn't close any section".into()),
+            (5, "section") if inside == Inside::Section => {
+                return error("a section can't go inside another section".into());
+            }
+            (5, "section") if in_columns => {
+                return error(
+                    "a section can't go inside columns; put the columns inside the section".into(),
+                );
+            }
+            (5, "section") => {
+                push_text(&mut pieces, &mut text);
+                section = Some((number, Vec::new()));
+            }
+            (5, kind) => {
+                return error(format!(
+                    "only a section uses :::::; write ::: {kind} for a {kind} block"
+                ));
+            }
+            _ => {
+                return error(
+                    "use ::: for blocks, :::: for columns and ::::: for a section".into(),
+                );
+            }
         }
     }
 
@@ -366,6 +433,12 @@ fn parse_body<'a>(lines: &[(usize, &'a str)], in_columns: bool) -> Result<Vec<Pi
             "the columns block isn't closed; add a :::: line after it",
         ));
     }
+    if let Some((start, _)) = section {
+        return Err(ParseError::new(
+            start,
+            "the section isn't closed; add a ::::: line after it",
+        ));
+    }
     push_text(&mut pieces, &mut text);
     Ok(pieces)
 }
@@ -378,8 +451,9 @@ fn marker(line: &str) -> Option<(usize, &str)> {
     (colons >= 3).then(|| (colons, line[colons..].trim()))
 }
 
-/// A closed `:::` container: a block, or a column marker inside columns.
-fn close(container: Open, in_columns: bool) -> Result<Piece, ParseError> {
+/// A closed `:::` container: a block, a column marker inside columns, or
+/// a section's settings.
+fn close(container: Open, inside: Inside) -> Result<Piece, ParseError> {
     let Open { kind, start, body } = container;
     let toml = body.join("\n");
     if kind == "column" {
@@ -387,7 +461,13 @@ fn close(container: Open, in_columns: bool) -> Result<Piece, ParseError> {
             toml::from_str(&toml).map_err(|error| toml_error(&error, &body, start + 1))?;
         return Ok(Piece::Column(settings, toml));
     }
-    if in_columns && CONTAINER_TYPES.contains(&kind) && !COLUMN_TYPES.contains(&kind) {
+    if kind == "settings" {
+        let settings =
+            toml::from_str(&toml).map_err(|error| toml_error(&error, &body, start + 1))?;
+        return Ok(Piece::Settings(settings, toml, start));
+    }
+    if inside == Inside::Columns && CONTAINER_TYPES.contains(&kind) && !COLUMN_TYPES.contains(&kind)
+    {
         return Err(ParseError::new(
             start,
             format!("a {kind} block can't go inside a column; it needs the full width"),
@@ -401,7 +481,7 @@ fn close(container: Open, in_columns: bool) -> Result<Piece, ParseError> {
 fn columns_block(start: usize, lines: &[(usize, &str)]) -> Result<Piece, ParseError> {
     let mut items: Vec<Column> = Vec::new();
     let mut sources: Vec<ColumnSource> = Vec::new();
-    for piece in parse_body(lines, true)? {
+    for piece in parse_body(lines, Inside::Columns)? {
         match piece {
             Piece::Column(settings, toml) => {
                 items.push(Column {
@@ -427,11 +507,61 @@ fn columns_block(start: usize, lines: &[(usize, &str)]) -> Result<Piece, ParseEr
                     ));
                 }
             },
+            // `parse_body` only gives these inside a section.
+            Piece::Settings(..) => {}
         }
     }
     Ok(Piece::Block(
         Block::Columns(Columns { items }),
         BlockSource::Columns(sources),
+    ))
+}
+
+/// The inside of `::::: section`: its settings, if it starts with them,
+/// and its blocks.
+fn section_block(lines: &[(usize, &str)]) -> Result<Piece, ParseError> {
+    let mut section = Section::default();
+    // The settings as written, once there were any.
+    let mut settings_toml: Option<String> = None;
+    let mut sources = Vec::new();
+    for piece in parse_body(lines, Inside::Section)? {
+        match piece {
+            Piece::Settings(settings, toml, line) => {
+                if !section.blocks.is_empty() || settings_toml.is_some() {
+                    return Err(ParseError::new(
+                        line,
+                        "a section's ::: settings go first, before its blocks, and only once",
+                    ));
+                }
+                let SectionSettings {
+                    title,
+                    background,
+                    image,
+                    spacing,
+                } = settings;
+                section = Section {
+                    title,
+                    background,
+                    image,
+                    spacing,
+                    blocks: Vec::new(),
+                };
+                settings_toml = Some(toml);
+            }
+            Piece::Block(block, source) => {
+                section.blocks.push(block);
+                sources.push(source);
+            }
+            // `parse_body` only gives these inside columns.
+            Piece::Column(..) => {}
+        }
+    }
+    Ok(Piece::Block(
+        Block::Section(section),
+        BlockSource::Section {
+            settings: settings_toml.unwrap_or_default(),
+            blocks: sources,
+        },
     ))
 }
 
@@ -710,6 +840,71 @@ mod tests {
                 markdown: "```\n::::\n```".into()
             }],
             "colons in code stay text"
+        );
+    }
+
+    #[test]
+    fn reads_a_section_with_settings_and_columns() {
+        let content = parse(&page(
+            "::::: section\n::: settings\ntitle = \"What we do\"\nbackground = \"primary\"\nspacing = \"large\"\n:::\nIntro.\n\n:::: columns\n::: column\n:::\nLeft.\n::: column\n:::\n```\n:::::\n```\n::::\n\n::: hero\n:::\n:::::\n\nAfter.\n",
+        ))
+        .unwrap();
+        let [Block::Section(section), Block::Text { markdown: after }] = content.blocks.as_slice()
+        else {
+            panic!("{:?}", content.blocks);
+        };
+        assert_eq!(after, "After.");
+        assert_eq!(section.title.as_deref(), Some("What we do"));
+        assert_eq!(section.background, Some(crate::site::Surface::Primary));
+        assert_eq!(section.spacing, Some(crate::block::Spacing::Large));
+        let [Block::Text { .. }, Block::Columns(columns), Block::Hero(_)] = &section.blocks[..]
+        else {
+            panic!("{:?}", section.blocks);
+        };
+        assert_eq!(
+            columns.items[1].blocks,
+            [Block::Text {
+                markdown: "```\n:::::\n```".into()
+            }],
+            "colons in code stay text"
+        );
+
+        // Settings are optional.
+        let content = parse(&page("::::: section\nJust text.\n:::::\n")).unwrap();
+        let [Block::Section(section)] = content.blocks.as_slice() else {
+            panic!("{:?}", content.blocks);
+        };
+        assert_eq!(section.title, None);
+        assert_eq!(section.blocks.len(), 1);
+    }
+
+    #[test]
+    fn explains_mistakes_with_sections() {
+        let error_for = |body: &str| parse(&page(body)).unwrap_err();
+        // Lines: 1-3 front matter, so the body starts on line 4.
+        let error = error_for("::: section\n:::\n");
+        assert!(error.message.contains("five colons"), "{error:?}");
+        let error = error_for("::::: section\nText.\n");
+        assert_eq!(error.line, 4);
+        assert!(error.message.contains("isn't closed"), "{error:?}");
+        let error = error_for("::::: section\n::::: section\n:::::\n:::::\n");
+        assert!(
+            error.message.contains("inside another section"),
+            "{error:?}"
+        );
+        let error = error_for(":::: columns\n::: column\n:::\n::::: section\n:::::\n::::\n");
+        assert!(error.message.contains("inside columns"), "{error:?}");
+        let error = error_for("::::: section\nText.\n\n::: settings\n:::\n:::::\n");
+        assert_eq!(error.line, 7);
+        assert!(error.message.contains("go first"), "{error:?}");
+        let error = error_for("::: settings\n:::\n");
+        assert!(error.message.contains("only works inside"), "{error:?}");
+        let error = error_for("::::: section\n::: settings\nbackground = \"pink\"\n:::\n:::::\n");
+        assert_eq!(error.line, 6);
+        let error = error_for(":::::\n");
+        assert!(
+            error.message.contains("doesn't close any section"),
+            "{error:?}"
         );
     }
 

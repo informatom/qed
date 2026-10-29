@@ -17,7 +17,7 @@
   import MediaPicker from "$lib/MediaPicker.svelte";
   import { edgeScroll, scrollParent } from "$lib/dragScroll";
   import { sharedBlocks } from "$lib/sharedBlocks";
-  import { COLUMN_BLOCK_TYPES, EPISODE_PART_NOTES, EPISODE_PART_TYPES, PAGE_BLOCK_TYPES, BLOCK_NAMES, PODCAST_BLOCK_TYPES, commands, mediaUrl, newBlock, sharedName, type Block, type BlockType, type Gallery } from "$lib/site";
+  import { COLUMN_BLOCK_TYPES, EPISODE_PART_NOTES, EPISODE_PART_TYPES, PAGE_BLOCK_TYPES, BLOCK_NAMES, PODCAST_BLOCK_TYPES, commands, mediaUrl, newBlock, sharedName, type Block, type BlockType, type Gallery, type Surface } from "$lib/site";
 
   interface Props {
     /** The blocks being edited; changed in place. */
@@ -108,6 +108,17 @@
       fetching.delete(block);
     }
   }
+
+  /** A section's background choices: nothing, or a surface (see `Surface`). */
+  const SECTION_BACKGROUNDS: [Surface | null, string][] = [
+    [null, "None"],
+    ["plain", "Box"],
+    ["shaded", "Shaded"],
+    ["primary", "Primary"],
+    ["secondary", "Secondary"],
+    ["accent", "Accent"],
+    ["neutral", "Neutral"],
+  ];
 
   /** The gallery an image is being picked for, if any. */
   let pickingFor = $state<Gallery | null>(null);
@@ -425,6 +436,42 @@
                 Up to four; on phones they stack. Widths {columns.items.map((c) => c.width ?? 1).join(" : ")}
                 (2× next to 1× is two thirds).
               </span>
+            </div>
+          </div>
+        {:else if block.type === "section"}
+          {@const section = block}
+          <div class="flex flex-col gap-3">
+            <div class="grid gap-3 @2xl:grid-cols-2">
+              <label class="flex flex-col gap-1">
+                {@render field("Title", "optional, above the blocks")}
+                <input class="input w-full" bind:value={section.title} />
+              </label>
+              <div class="flex flex-wrap items-end gap-3">
+                <label class="flex flex-col gap-1">
+                  {@render field("Background")}
+                  <select class="select w-40" bind:value={section.background} disabled={!!section.image}>
+                    {#each SECTION_BACKGROUNDS as [value, label] (label)}<option {value}>{label}</option>{/each}
+                  </select>
+                </label>
+                <div class="flex flex-col gap-1">
+                  {@render field("Spacing")}
+                  <div class="join">
+                    {#each [["normal", "Normal"], ["large", "Large"]] as [value, label] (value)}
+                      <button type="button" class={["btn join-item", (section.spacing ?? "normal") === value && "btn-active"]}
+                        onclick={() => (section.spacing = value === "normal" ? null : "large")}>{label}</button>
+                    {/each}
+                  </div>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1 @2xl:col-span-2">
+                {@render field("Background image", "darkened, text on it is light; replaces the background color")}
+                <ImageField {siteRoot} bind:value={section.image} />
+              </div>
+            </div>
+            <div class="rounded-box border border-base-300 p-3">
+              <!-- The same list, one level down, with everything but sections. -->
+              <BlockList bind:blocks={section.blocks} {siteRoot} types={types.filter((type) => type !== "section")} nested
+                empty="Empty section." />
             </div>
           </div>
         {:else if block.type === "post-list"}

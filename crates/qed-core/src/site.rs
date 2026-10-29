@@ -1162,22 +1162,14 @@ pub fn set_order(site: &Site, files: &[PathBuf]) -> Result<usize, SiteError> {
     Ok(changed)
 }
 
-/// Leaves out text blocks with nothing in them, inside columns too. A file
-/// can't hold them anyway: they'd read back as nothing.
+/// Leaves out text blocks with nothing in them, inside columns and
+/// sections too. A file can't hold them anyway: they'd read back as
+/// nothing.
 pub(crate) fn without_empty_text(blocks: Vec<Block>) -> Vec<Block> {
-    blocks
-        .into_iter()
-        .filter(|block| !matches!(block, Block::Text { markdown } if markdown.trim().is_empty()))
-        .map(|block| match block {
-            Block::Columns(mut columns) => {
-                for column in &mut columns.items {
-                    column.blocks = without_empty_text(std::mem::take(&mut column.blocks));
-                }
-                Block::Columns(columns)
-            }
-            other => other,
-        })
-        .collect()
+    crate::block::retain_deep(
+        blocks,
+        &|block| !matches!(block, Block::Text { markdown } if markdown.trim().is_empty()),
+    )
 }
 
 /// The pages that link to the page at `path` (URL paths, sorted), from
@@ -1226,6 +1218,7 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             Block::Gallery(_)
             | Block::Download(_)
             | Block::Columns(_)
+            | Block::Section(_)
             | Block::Video(_)
             | Block::Shared(_)
             | Block::LatestEpisode

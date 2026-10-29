@@ -299,6 +299,8 @@ export type Block =
 } & Faq | {
 	type: "columns",
 } & Columns | {
+	type: "section",
+} & Section | {
 	type: "call-to-action",
 } & CallToAction | {
 	type: "post-list",
@@ -1037,6 +1039,30 @@ export type SecretStatus = {
 	public_key: string | null,
 };
 
+/**
+ *  A band across the page's content width that holds blocks of its own:
+ *  an optional title above them, a background color or picture, roomy or
+ *  normal spacing. Groups blocks that belong together, such as columns on
+ *  a colored background.
+ */
+export type Section = {
+	title: string | null,
+	/**
+	 *  What it's filled with; nothing (the page background, no border) if
+	 *  empty.
+	 */
+	background: Surface | null,
+	/**
+	 *  A picture in `media/` behind the blocks, darkened so text on it
+	 *  stays readable (as on a Hero); wins over `background`.
+	 */
+	image: string | null,
+	/**  The room around the blocks; normal if empty. */
+	spacing: Spacing | null,
+	/**  Any blocks but sections. */
+	blocks?: Block[],
+};
+
 /**  How qed logs in. */
 export type SftpAuth = "password" | 
 /**  A key pair qed generated; the public key goes on the server. */
@@ -1272,6 +1298,9 @@ export type Site_Serialize = {
 	 */
 	contributors: Contributor[],
 };
+
+/**  The room around a section's blocks. */
+export type Spacing = "normal" | "large";
 
 export type Stage = "connecting" | "comparing" | "uploading" | "deleting" | "done";
 

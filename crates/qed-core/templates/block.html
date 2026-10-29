@@ -230,6 +230,23 @@
   </div>
   {%- endfor %}
 </section>
+{%- when RenderedBlock::Section with { title, classes, picture, blocks } %}
+<section class="{{ classes }}">
+  {%- if let Some(picture) = picture %}
+  {%- call img(picture, "absolute inset-0 h-full w-full object-cover", full_sizes, "lazy") %}{% endcall %}
+  {#- Black, not a Hero's neutral overlay: neutral is light in dark
+      themes and a section holds more text. The text on it is white. #}
+  <div class="absolute inset-0 bg-black/60"></div>
+  {%- endif %}
+  <div class="relative flex flex-col gap-8">
+    {%- if let Some(title) = title %}
+    <h2 class="text-2xl font-bold tracking-tight text-balance">{{ title }}</h2>
+    {%- endif %}
+    {%- for html in blocks %}
+    {{ html|safe }}
+    {%- endfor %}
+  </div>
+</section>
 {%- when RenderedBlock::CallToAction with { headline, text_html, button } %}
 <section class="card {{ colors.call_to_action }}">
   <div class="card-body items-center gap-4 text-center sm:py-10">

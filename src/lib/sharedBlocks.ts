@@ -30,11 +30,12 @@ export function sharedBlocks(): SharedBlocks | undefined {
   return getContext<SharedBlocks | undefined>(KEY);
 }
 
-/** Whether these blocks (columns included) show the shared block `name`. */
+/** Whether these blocks (columns and sections included) show the shared block `name`. */
 export function usesShared(blocks: Block[], name: string): boolean {
   return blocks.some(
     (block) =>
       (block.type === "shared" && block.name === name) ||
-      (block.type === "columns" && block.items.some((column) => usesShared(column.blocks, name))),
+      (block.type === "columns" && block.items.some((column) => usesShared(column.blocks, name))) ||
+      (block.type === "section" && usesShared(block.blocks, name)),
   );
 }

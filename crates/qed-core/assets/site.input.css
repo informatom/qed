@@ -70,6 +70,17 @@
   --tw-prose-quotes: currentColor;
   --tw-prose-hr: currentColor;
 }
+/* A button on a section of its own color would vanish: inside a
+   section in a theme color (`on-primary` and so on, generator.rs), buttons
+   of that color are drawn plain, as on a Hero or a Call to action. */
+.on-primary .btn-primary,
+.on-secondary .btn-secondary,
+.on-accent .btn-accent,
+.on-neutral .btn-neutral {
+  --btn-color: initial;
+  --btn-fg: var(--color-base-content);
+}
+
 /* Lists in the footer look like its compact Post and Page lists: no
    bullets, tight, links underlined on hover only. */
 .site-footer .prose :where(ul, ol) {

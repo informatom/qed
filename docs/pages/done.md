@@ -812,6 +812,18 @@ rest is done.
   Svelte, TOML, Elixir and Jinja; all 79 docs blocks that were plain are
   colored now (only ```` ```text ```` stays plain). Costs: about 1 MB in
   the program, docs build 1 s instead of 0.45 s.
+- **#087 Section block.** Decided with the user on 2026-10-29: as wide as
+  the page's content (like Hero, works with the sidebar), settings title,
+  background (none or a `Surface`: box, shaded, a theme color),
+  background image (darkened, wins over the color) and spacing (normal,
+  large); holds everything but sections, Columns included. Done the same
+  day, post 62: `::::: section` … `:::::` with an optional
+  `::: settings` first; parser `Inside` enum (page, section, columns);
+  `Block::inner_lists(_mut)` and `retain_deep` replace the hand-written
+  walks into columns (links, media, shared blocks, empty text); a
+  section in a theme color draws buttons of its color plain
+  (`on-primary` …); its picture counts as used media and as the page's
+  first image.
 
 ## Dropped
 

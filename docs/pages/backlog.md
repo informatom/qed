@@ -50,8 +50,6 @@ Nothing open.
   hand-made menu (#111), boxed columns (#113). To decide: where the
   pages live so app and docs site share them (e.g. `docs/pages/manual/`,
   built into the app), and offline use.
-- **#087 Section block.** A full-width block that holds other blocks, in
-  the same nested format as Columns (#074).
 
 ### Phase 4: Moving in, open to AI assistants
 

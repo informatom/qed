@@ -30,8 +30,28 @@
 //! Write to us.
 //! ::::
 //! ```
+//!
+//! A section holds any blocks but sections, columns included, so it uses
+//! five colons. Its settings go in an optional `::: settings` container
+//! first:
+//!
+//! ```text
+//! ::::: section
+//! ::: settings
+//! title = "What we do"
+//! background = "primary"
+//! :::
+//! Three things, done well.
+//!
+//! :::: columns
+//! …
+//! ::::
+//! :::::
+//! ```
 
 use serde::{Deserialize, Serialize};
+
+use crate::site::Surface;
 
 /// One block of a page, in the order it appears in the file.
 ///
@@ -52,6 +72,7 @@ pub enum Block {
     Download(Download),
     Faq(Faq),
     Columns(Columns),
+    Section(Section),
     CallToAction(CallToAction),
     PostList(PostList),
     PageList(PageList),
@@ -243,6 +264,60 @@ pub(crate) struct ColumnSettings {
     pub boxed: bool,
 }
 
+/// A band across the page's content width that holds blocks of its own:
+/// an optional title above them, a background color or picture, roomy or
+/// normal spacing. Groups blocks that belong together, such as columns on
+/// a colored background.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct Section {
+    pub title: Option<String>,
+    /// What it's filled with; nothing (the page background, no border) if
+    /// empty.
+    pub background: Option<Surface>,
+    /// A picture in `media/` behind the blocks, darkened so text on it
+    /// stays readable (as on a Hero); wins over `background`.
+    pub image: Option<String>,
+    /// The room around the blocks; normal if empty.
+    pub spacing: Option<Spacing>,
+    /// Any blocks but sections.
+    #[serde(default)]
+    pub blocks: Vec<Block>,
+}
+
+/// The settings in a section's `::: settings` container, as written in
+/// the file: everything but the blocks.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SectionSettings {
+    pub title: Option<String>,
+    pub background: Option<Surface>,
+    pub image: Option<String>,
+    pub spacing: Option<Spacing>,
+}
+
+impl Section {
+    pub(crate) fn settings(&self) -> SectionSettings {
+        SectionSettings {
+            title: self.title.clone(),
+            background: self.background,
+            image: self.image.clone(),
+            spacing: self.spacing,
+        }
+    }
+}
+
+/// The room around a section's blocks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum Spacing {
+    #[default]
+    Normal,
+    Large,
+}
+
 /// A highlighted box that asks the visitor to do something.
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
@@ -342,6 +417,7 @@ impl Block {
             Block::Download(_) => Some("download"),
             Block::Faq(_) => Some("faq"),
             Block::Columns(_) => Some("columns"),
+            Block::Section(_) => Some("section"),
             Block::CallToAction(_) => Some("call-to-action"),
             Block::PostList(_) => Some("post-list"),
             Block::PageList(_) => Some("page-list"),
@@ -356,6 +432,25 @@ impl Block {
             Block::EpisodeChapters => Some("episode-chapters"),
             Block::EpisodeTranscript => Some("episode-transcript"),
             Block::EpisodeShare => Some("episode-share"),
+        }
+    }
+
+    /// The lists of blocks inside this one: one per column, or a
+    /// section's; none for other blocks.
+    pub fn inner_lists(&self) -> Vec<&Vec<Block>> {
+        match self {
+            Block::Columns(columns) => columns.items.iter().map(|c| &c.blocks).collect(),
+            Block::Section(section) => vec![&section.blocks],
+            _ => Vec::new(),
+        }
+    }
+
+    /// [`Block::inner_lists`], to change them.
+    pub fn inner_lists_mut(&mut self) -> Vec<&mut Vec<Block>> {
+        match self {
+            Block::Columns(columns) => columns.items.iter_mut().map(|c| &mut c.blocks).collect(),
+            Block::Section(section) => vec![&mut section.blocks],
+            _ => Vec::new(),
         }
     }
 
@@ -383,37 +478,44 @@ pub const DEFAULT_EPISODE_LAYOUT: [Block; 4] = [
     Block::EpisodeChapters,
 ];
 
-/// The container names, as written after `:::` in a page file.
 /// Every block in a list, outer ones first, including the blocks inside
-/// columns.
+/// columns and sections.
 pub fn all_blocks(blocks: &[Block]) -> Vec<&Block> {
     let mut all = Vec::new();
     for block in blocks {
         all.push(block);
-        if let Block::Columns(columns) = block {
-            for column in &columns.items {
-                all.extend(all_blocks(&column.blocks));
-            }
+        for inner in block.inner_lists() {
+            all.extend(all_blocks(inner));
         }
     }
     all
 }
 
 /// Calls `change` on every block in a list, outer ones first, including
-/// the blocks inside columns.
+/// the blocks inside columns and sections.
 pub fn for_each_block_mut(blocks: &mut [Block], change: &mut impl FnMut(&mut Block)) {
     for block in blocks {
         change(block);
-        if let Block::Columns(columns) = block {
-            for column in &mut columns.items {
-                for_each_block_mut(&mut column.blocks, change);
-            }
+        for inner in block.inner_lists_mut() {
+            for_each_block_mut(inner, change);
         }
     }
 }
 
+/// The blocks of a list with `keep` false for some left out, inside
+/// columns and sections too.
+pub(crate) fn retain_deep(mut blocks: Vec<Block>, keep: &impl Fn(&Block) -> bool) -> Vec<Block> {
+    blocks.retain(keep);
+    for block in &mut blocks {
+        for inner in block.inner_lists_mut() {
+            *inner = retain_deep(std::mem::take(inner), keep);
+        }
+    }
+    blocks
+}
+
 /// Calls `change` on every Markdown text in a block (not in the blocks
-/// inside columns).
+/// inside columns and sections).
 pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)) {
     match block {
         Block::Text { markdown } => change(markdown),
@@ -428,6 +530,7 @@ pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)
         Block::Gallery(_)
         | Block::Download(_)
         | Block::Columns(_)
+        | Block::Section(_)
         | Block::PostList(_)
         | Block::PageList(_)
         | Block::Video(_)
@@ -444,8 +547,8 @@ pub fn for_each_markdown(block: &mut Block, change: &mut impl FnMut(&mut String)
     }
 }
 
-/// The blocks a column can hold, besides text. Hero, Gallery and Columns
-/// need the full width.
+/// The blocks a column can hold, besides text. Hero, Gallery, Columns and
+/// Section need the full width.
 pub const COLUMN_TYPES: [&str; 12] = [
     "image",
     "text-image",
@@ -461,7 +564,9 @@ pub const COLUMN_TYPES: [&str; 12] = [
     "contributors",
 ];
 
-pub const CONTAINER_TYPES: [&str; 21] = [
+/// The container names, as written after `:::` in a page file (`::::`
+/// for columns, `:::::` for a section).
+pub const CONTAINER_TYPES: [&str; 22] = [
     "hero",
     "image",
     "text-image",
@@ -469,6 +574,7 @@ pub const CONTAINER_TYPES: [&str; 21] = [
     "download",
     "faq",
     "columns",
+    "section",
     "call-to-action",
     "post-list",
     "page-list",
