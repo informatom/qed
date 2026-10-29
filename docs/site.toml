@@ -6,3 +6,7 @@ theme = "catppuccin-mocha"
 base_url = "https://qed.informatom.com/"
 navigation = "sidebar"
 mark_external_links = true
+
+[fonts]
+headings = "Saira Condensed"
+text = "Saira"
