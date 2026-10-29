@@ -16,6 +16,7 @@
 //!                         also only with `base_url`
 //! ```
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -133,6 +134,93 @@ fn check_links(site: &Site) -> Result<(), BuildError> {
     Ok(())
 }
 
+/// Notes links to pages and files that don't exist (#133): a mistyped
+/// `other-post.md`, a page that was deleted, a picture that isn't in
+/// Media. They don't stop the build (a typo shouldn't keep a site from
+/// being published), but each one would be a "page not found" for
+/// visitors. `site` has its shared blocks expanded, so their links are
+/// checked where they're shown, with each page's own links.
+fn missing_links(site: &Site, published: &[&Page]) -> Vec<String> {
+    let mut exists: BTreeSet<&str> = published.iter().map(|page| page.path.as_str()).collect();
+    for page in published {
+        exists.extend(
+            page.content
+                .front
+                .redirect_from
+                .iter()
+                .map(|from| from.trim_matches('/')),
+        );
+    }
+    let checked = site
+        .pages
+        .iter()
+        .filter(|page| !page.content.front.draft)
+        .chain(site.footer.as_ref())
+        .chain(site.episode_layout.as_ref());
+    let mut notes = Vec::new();
+    for page in checked {
+        let links = LinkContext::new(&page.path, &page.file);
+        let place = match page.path.as_str() {
+            crate::site::FOOTER_PATH => "The footer".to_string(),
+            crate::site::EPISODE_LAYOUT_PATH => "The episode layout".to_string(),
+            path => format!("/{path}"),
+        };
+        let mut seen = BTreeSet::new();
+        for link in crate::site::link_targets(&page.content.blocks) {
+            if !seen.insert(link.clone()) {
+                continue;
+            }
+            let problem = if let Some(path) = links.page_path_of(&link) {
+                let path = crate::preview::percent_decode(&path);
+                // A folder in `static/` is served as it is, like a page.
+                let in_static = !path.is_empty() && site.root.join(STATIC_DIR).join(&path).exists();
+                if exists.contains(path.as_str()) || in_static {
+                    continue;
+                }
+                if site
+                    .pages
+                    .iter()
+                    .any(|p| p.path == path && p.content.front.draft)
+                {
+                    "that page is a draft and not on the website yet"
+                } else {
+                    "there's no such page"
+                }
+            } else if let Some(missing) = missing_file(&site.root, &link) {
+                missing
+            } else {
+                continue;
+            };
+            notes.push(format!("{place} links to \"{link}\", but {problem}."));
+        }
+    }
+    notes
+}
+
+/// For a link to `/media/…` or `/assets/…` (as written in text), what's
+/// wrong if that file isn't there; `None` if it is, or the link is to
+/// something else.
+fn missing_file(root: &Path, link: &str) -> Option<&'static str> {
+    let target = link.split(['#', '?']).next().unwrap_or_default();
+    let target = crate::preview::percent_decode(target);
+    let media = format!("/{MEDIA_DIR}/");
+    let assets = format!("/{ASSETS_DIR}/");
+    let (name, folders, problem): (&str, &[&str], _) = match target.strip_prefix(&media) {
+        Some(name) => (name, &[MEDIA_DIR], "that file isn't in Media"),
+        // Anything else but a download isn't checked. Downloads still in
+        // `media/` work too (see `download_location`).
+        None => (
+            target.strip_prefix(&assets)?,
+            &[ASSETS_DIR, MEDIA_DIR],
+            "that file isn't in Downloads",
+        ),
+    };
+    let found = folders
+        .iter()
+        .any(|folder| root.join(folder).join(name).is_file());
+    (!found).then_some(problem)
+}
+
 /// Builds the site into `_site/` inside its folder.
 pub fn build(site: &Site) -> Result<BuildReport, BuildError> {
     build_into(site, &site.root.join(OUTPUT_DIR))
@@ -165,6 +253,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         .filter(|p| !p.content.front.draft && p.path != NOT_FOUND_PATH)
         .chain(&people_pages)
         .collect();
+    notes.extend(missing_links(site, &published));
     let media_dir = site.root.join(MEDIA_DIR);
     let images = Images::new(&media_dir);
     let site_icons = SiteIcons::load(&media_dir);
@@ -4551,6 +4640,66 @@ mod tests {
             .count(),
             1,
             "one boxed column: {home}"
+        );
+    }
+
+    #[test]
+    fn notes_links_to_pages_and_files_that_dont_exist() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::write(root.join("site.toml"), "title = \"S\"\n").unwrap();
+        fs::create_dir_all(root.join("pages/blog")).unwrap();
+        fs::create_dir_all(root.join("media")).unwrap();
+        fs::create_dir_all(root.join("static/slides")).unwrap();
+        fs::write(root.join("media/team.png"), "png").unwrap();
+        fs::write(root.join("media/menu.pdf"), "pdf").unwrap();
+        fs::write(
+            root.join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\n[ok](/about) [old](/old-about) [post](blog/post.md#top) \
+             [slides](/slides/) [mail](mailto:a@b.at) [web](https://example.com)\n\n\
+             ![team](/media/team.png) [menu](/assets/menu.pdf)\n\n\
+             [typo](/abuot) [draft](/secret) [gone](blog/gone.md) ![x](/media/nope.png) \
+             [y](/assets/nope.pdf) [typo again](/abuot)\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("pages/about.md"),
+            "+++\ntitle = \"About\"\nredirect_from = [\"old-about\"]\n+++\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("pages/blog/post.md"),
+            "+++\ntitle = \"Post\"\n+++\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("pages/secret.md"),
+            "+++\ntitle = \"Secret\"\ndraft = true\n+++\n\n[missing](/nowhere)\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("footer.md"),
+            "+++\ntitle = \"Footer\"\n+++\n\n[Contact](/contact)\n",
+        )
+        .unwrap();
+        let site = site::open(root).unwrap();
+        let report = build_into(&site, &root.join("_site")).unwrap();
+        let notes: Vec<&String> = report
+            .notes
+            .iter()
+            .filter(|n| n.contains(" links to "))
+            .collect();
+        assert_eq!(
+            notes,
+            [
+                r#"/ links to "/abuot", but there's no such page."#,
+                r#"/ links to "/secret", but that page is a draft and not on the website yet."#,
+                r#"/ links to "blog/gone.md", but there's no such page."#,
+                r#"/ links to "/media/nope.png", but that file isn't in Media."#,
+                r#"/ links to "/assets/nope.pdf", but that file isn't in Downloads."#,
+                r#"The footer links to "/contact", but there's no such page."#,
+            ],
+            "once each, drafts' own links unchecked"
         );
     }
 

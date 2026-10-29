@@ -842,6 +842,16 @@ rest is done.
   share image also gets a JPEG copy at that width (`Images::share_copy`);
   PNG copies stay PNG. podcasterei.at: 76 copies 7.0 MB → 3.6 MB (−48%);
   first build with WebP 2.9 s, cached afterwards.
+- **#133 Links to missing pages.** Found and done 2026-10-29: the build
+  notes every link (Markdown links and images, buttons, list sources) to
+  a page that doesn't exist or is a draft, and to a `/media/` or
+  `/assets/` file that isn't there, once per page, in the footer and
+  episode layout too, with shared blocks checked where they're shown
+  (`missing_links` in generator.rs). Notes, not errors, so a typo
+  doesn't keep a site from being published. Redirect addresses and
+  folders in `static/` count as existing. Found right away: /technik on
+  waldgruber.at still links to the deleted /ror-installation. Not done:
+  marking such links while editing.
 
 ## Dropped
 

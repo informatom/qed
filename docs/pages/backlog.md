@@ -19,7 +19,7 @@ Nothing open.
 
 ## To build
 
-### In progress
+### Phase 3:  In progress
 
 - **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
   view, also reachable from where a topic comes up, e.g. the Versions tab
@@ -31,14 +31,8 @@ Nothing open.
   hand-made menu (#111), boxed columns (#113). To decide: where the
   pages live so app and docs site share them (e.g. `docs/pages/manual/`,
   built into the app), and offline use.
-- **#133 Links to missing pages.** The build stops on links that leave
-  the site folder, but a link to a page, media file or download that
-  doesn't exist (a mistyped `2026-10-21-link-previews.md`, found
-  2026-10-29) builds without a word and gives visitors a 404. The build
-  should note each one, with the page it's on, like a missing shared
-  block; the app could also mark it while editing.
 
-### Future
+### Phase 4: Future
 
 - **#070 Code signing.** For downloads from the releases page, not app
   stores. macOS: notarization needs the Apple Developer Program (99 USD
