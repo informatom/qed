@@ -796,6 +796,16 @@ rest is done.
   size, scale from the base, labels pushed apart, legend. Ideas not
   built: ternary diagrams (QAPF, soil texture), rose diagrams,
   stereonets.
+- **#132 Catppuccin themes.** Asked for by the user on 2026-10-29 (first
+  Latte and Mocha for the app, then all four flavors for sites too) and
+  done the same day, post 60: catppuccin-latte, -frappe, -macchiato and
+  -mocha are in `theme::THEMES` (39 themes now), so sites, custom themes
+  ("start from") and the app offer them. qed-core's
+  `catppuccin_themes.rs` builds them as daisyUI themes from the
+  `catppuccin` crate's palette, matched up like Catppuccin's own
+  `@catppuccin/daisyui`; the test `stylesheet_is_current` writes
+  `assets/catppuccin.css`, which `site.input.css` and `src/app.css` both
+  import (site.css +3 KB).
 
 ## Dropped
 
