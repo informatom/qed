@@ -110,4 +110,67 @@ mod tests {
         assert!(start.contains(r#"data-theme="catppuccin-mocha""#));
         assert!(report.out_dir.join("backups/index.html").is_file());
     }
+
+    #[test]
+    fn the_libraries_page_matches_cargo_lock_and_package_json() {
+        let page = PAGES
+            .get_file("libraries.md")
+            .and_then(|file| file.contents_utf8())
+            .unwrap();
+        let again = "run `cargo run -p qed-core --example libraries`";
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+
+        let lock: toml::Table = fs::read_to_string(root.join("Cargo.lock"))
+            .unwrap()
+            .parse()
+            .unwrap();
+        let mut libraries = 0;
+        for package in lock["package"].as_array().unwrap() {
+            // Libraries from crates.io have a source; q.e.d.'s own don't.
+            if package.get("source").is_none() {
+                continue;
+            }
+            libraries += 1;
+            let name = package["name"].as_str().unwrap();
+            let version = package["version"].as_str().unwrap();
+            let row = format!("| [{name}](https://crates.io/crates/{name}) | {version} |");
+            assert!(page.contains(&row), "{name} {version} is missing: {again}");
+        }
+        let rows = page.matches("](https://crates.io/crates/").count();
+        let direct = page
+            .split("## Used directly")
+            .nth(1)
+            .and_then(|rest| rest.split("## In the app").next())
+            .unwrap()
+            .matches("](https://crates.io/crates/")
+            .count();
+        assert_eq!(
+            rows - direct,
+            libraries,
+            "libraries.md lists others: {again}"
+        );
+
+        let manifest: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(root.join("package.json")).unwrap()).unwrap();
+        for key in ["dependencies", "devDependencies"] {
+            for name in manifest[key].as_object().unwrap().keys() {
+                let link = format!("[{name}](https://www.npmjs.com/package/{name})");
+                assert!(page.contains(&link), "{name} is missing: {again}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_icons_page_lists_every_icon() {
+        let page = PAGES
+            .get_file("icons.md")
+            .and_then(|file| file.contents_utf8())
+            .unwrap();
+        for (name, _) in crate::icons::ICONS {
+            assert!(
+                page.contains(&format!("`:icon-{name}:`")),
+                "icons.md doesn't list {name}"
+            );
+        }
+    }
 }

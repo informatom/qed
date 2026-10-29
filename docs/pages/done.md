@@ -852,6 +852,32 @@ rest is done.
   folders in `static/` count as existing. Found right away: /technik on
   waldgruber.at still links to the deleted /ror-installation. Not done:
   marking such links while editing.
+- **#110 Manual.** A user manual inside the app, also reachable from
+  where a topic comes up, and the same pages on the docs site, for site
+  owners and editors, not developers. *Done 2026-10-29*, post 65:
+  decided that the pages live in `docs/pages/manual/`, compiled into
+  the app (`qed_core::manual`, offline, built in the app's theme, shown
+  in a second window; outside links open in the browser); a life-buoy
+  button next to the preview button and **Manual** links in the tabs.
+  Pages: start, before you start, getting started, pages and blocks (with boxed columns,
+  #113), icons (#114, the full list; a test keeps it complete),
+  pictures and files, site settings, menus (#111), colors and fonts,
+  versions, [Backups](manual/backups.md) (#037, moved there),
+  publishing, podcasts (3-schweinehun.de as the example), moving a site
+  over, license and credits (ideas from jekyll-octopod's manual), the
+  libraries (written by `examples/libraries.rs` from `cargo metadata`
+  and `package.json`; a test keeps it in step), with
+  screenshots in catppuccin-mocha (rule in AGENTS.md).
+  Found on the way: #134, #135.
+- **#136 Back and next links.** Asked for by the user on 2026-10-29
+  after reading the manual, for the blog too, and done the same day.
+  Decided with the user: switched on by a setting on the page above
+  (`back_next = true`, "Back and next links on the pages below"), not
+  site-wide; posts read "← Older" / "Newer →" (newest first, as in a
+  Post list), other pages "← Back" / "Next →" by their order, as in a
+  Page list. Words in German and English. `neighbours` in generator.rs,
+  a `<nav>` at the end of `<main>` in page.html, left out of the search
+  index. On for docs/pages/manual and docs/pages/blog.
 
 ## Dropped
 

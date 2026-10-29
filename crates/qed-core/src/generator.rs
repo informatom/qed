@@ -1293,6 +1293,85 @@ struct PageTemplate<'a> {
     searchable: bool,
     /// The site footer's blocks, rendered for this page.
     footer_blocks: Vec<String>,
+    /// Links to the page before and after this one (#136), when the page
+    /// above it asks for them.
+    neighbours: Neighbours,
+}
+
+/// The links at the bottom of a page in a series (#136): on the left the
+/// one before (Back, or Older for posts), on the right the one after
+/// (Next, or Newer).
+#[derive(Default)]
+struct Neighbours {
+    left: Option<Neighbour>,
+    right: Option<Neighbour>,
+    /// What the links are, for screen readers: "Back and next".
+    label: String,
+}
+
+struct Neighbour {
+    /// "Back", "Next", "Older" or "Newer", in the site's language.
+    label: &'static str,
+    title: String,
+    href: String,
+}
+
+/// "Back", "Next", "Older", "Newer" and "and", in the site's language.
+fn neighbour_words(language: &str) -> [&'static str; 5] {
+    match language.trim().split(['-', '_']).next().unwrap_or_default() {
+        "de" => ["Zurück", "Weiter", "Älter", "Neuer", "und"],
+        _ => ["Back", "Next", "Older", "Newer", "and"],
+    }
+}
+
+/// The pages before and after `page` among those below the same page, if
+/// that page has `back_next` on. Posts (pages with a date) go newest first
+/// as in a Post list, so the older one is on the left; other pages go by
+/// their order, as in a Page list.
+fn neighbours(page: &Page, context: &Context, links: &LinkContext) -> Neighbours {
+    let Some((parent, _)) = page.path.rsplit_once('/').or_else(|| {
+        // Pages at the top are below the start page ("").
+        (!page.path.is_empty()).then_some(("", page.path.as_str()))
+    }) else {
+        return Neighbours::default();
+    };
+    let wanted = context
+        .pages
+        .iter()
+        .any(|other| other.path == parent && other.content.front.back_next);
+    if !wanted {
+        return Neighbours::default();
+    }
+    let [back, next, older, newer, and] = neighbour_words(context.language);
+    let dated = page.content.front.date.is_some();
+    let series = if dated {
+        posts(context.pages, parent, context.today)
+    } else {
+        children(context.pages, parent)
+    };
+    let Some(index) = series.iter().position(|other| other.path == page.path) else {
+        return Neighbours::default();
+    };
+    let before = index.checked_sub(1).and_then(|i| series.get(i));
+    let after = series.get(index + 1);
+    let link = |label: &'static str, other: &&Page| Neighbour {
+        label,
+        title: other.content.front.title.clone(),
+        href: links.page(&other.path),
+    };
+    if dated {
+        Neighbours {
+            left: after.map(|other| link(older, other)),
+            right: before.map(|other| link(newer, other)),
+            label: format!("{older} {and} {}", newer.to_lowercase()),
+        }
+    } else {
+        Neighbours {
+            left: before.map(|other| link(back, other)),
+            right: after.map(|other| link(next, other)),
+            label: format!("{back} {and} {}", next.to_lowercase()),
+        }
+    }
 }
 
 /// Tailwind classes for the header, written out in full here so the
@@ -2623,7 +2702,13 @@ fn render_page(
         .iter()
         .any(|html| html.contains("data-podlove-player"))
         .then(|| format!("{}{PLAYER_FILE}", links.to_root()));
+    let neighbours = if not_found {
+        Neighbours::default()
+    } else {
+        neighbours(page, context, &links)
+    };
     let template = PageTemplate {
+        neighbours,
         player_script,
         searchable: config.search && !not_found,
         colors: context.colors,
@@ -4202,6 +4287,96 @@ mod tests {
                 "{clash}: {error}"
             );
         }
+    }
+
+    #[test]
+    fn links_pages_in_a_series_back_and_next() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"Series\"\nlanguage = \"en\"\n");
+        write("pages/index.md", "+++\ntitle = \"Home\"\n+++\n");
+        write("pages/about.md", "+++\ntitle = \"About\"\n+++\n");
+        write(
+            "pages/manual/index.md",
+            "+++\ntitle = \"Manual\"\nback_next = true\n+++\n",
+        );
+        write(
+            "pages/manual/one.md",
+            "+++\ntitle = \"One\"\nweight = 10\n+++\n",
+        );
+        write(
+            "pages/manual/two.md",
+            "+++\ntitle = \"Two\"\nweight = 20\n+++\n",
+        );
+        write(
+            "pages/manual/three.md",
+            "+++\ntitle = \"Three\"\nweight = 30\n+++\n",
+        );
+        write(
+            "pages/manual/draft.md",
+            "+++\ntitle = \"Draft\"\nweight = 25\ndraft = true\n+++\n",
+        );
+        write(
+            "pages/blog/index.md",
+            "+++\ntitle = \"Blog\"\nback_next = true\n+++\n",
+        );
+        write(
+            "pages/blog/old.md",
+            "+++\ntitle = \"Old\"\ndate = 2025-01-01\n+++\n",
+        );
+        write(
+            "pages/blog/mid.md",
+            "+++\ntitle = \"Mid\"\ndate = 2025-06-01\n+++\n",
+        );
+        write(
+            "pages/blog/new.md",
+            "+++\ntitle = \"New\"\ndate = 2025-12-01\n+++\n",
+        );
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let nav = |path: &str| {
+            let html = read(out.path().join(path).join("index.html"));
+            html.split_once(r#"<nav class="mt-16"#)
+                .map(|(_, rest)| rest.split("</nav>").next().unwrap_or_default().to_string())
+                .unwrap_or_default()
+        };
+
+        // Pages go by their order, drafts left out.
+        let two = nav("manual/two");
+        assert!(two.contains("← Back</span>"), "{two}");
+        assert!(two.contains(r#"href="../../manual/one/""#), "{two}");
+        assert!(two.contains("Next →</span>"), "{two}");
+        assert!(
+            two.contains(">Three</span>") && !two.contains("Draft"),
+            "{two}"
+        );
+        let one = nav("manual/one");
+        assert!(
+            !one.contains("← Back") && one.contains(">Two</span>"),
+            "{one}"
+        );
+        assert!(!nav("manual/three").contains("Next →"));
+
+        // Posts: the older one on the left, the newer on the right.
+        let mid = nav("blog/mid");
+        assert!(
+            mid.contains("← Older</span>") && mid.contains(">Old</span>"),
+            "{mid}"
+        );
+        assert!(
+            mid.contains("Newer →</span>") && mid.contains(">New</span>"),
+            "{mid}"
+        );
+        assert!(mid.contains(r#"aria-label="Older and newer""#), "{mid}");
+
+        // Only below a page that asks for it.
+        assert!(nav("about").is_empty());
+        assert!(nav("manual").is_empty());
     }
 
     #[test]

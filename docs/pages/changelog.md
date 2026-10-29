@@ -15,11 +15,16 @@ itself (App → Check for updates).
 A manual in the app, sections, Catppuccin themes and lighter photos.
 
 - **Manual** (#110): how to make and run a website with q.e.d., for
-  site owners: getting started, pages and blocks, pictures and files,
-  versions, backups and publishing. In the app, offline, with the
-  life-buoy button at the top right and the **Manual** links in the
+  site owners: what you need, getting started, pages and blocks, icons,
+  pictures and files, site settings, menus, colors and fonts, versions,
+  backups, publishing, podcasts, moving a site over, and license and
+  credits. In the app, offline, with
+  the life-buoy button at the top right and the **Manual** links in the
   tabs; also on this website under [Manual](manual/index.md). See
   [A manual in the app](blog/2026-10-29-a-manual-in-the-app.md).
+- **Back and next links** (#136): a page setting gives the pages below
+  it links to the page before and after them, at the bottom; posts get
+  Older and Newer. On for the manual and the blog here.
 - **Section block** (#087): a band across the page with a background
   color or picture, holding other blocks, columns too. See
   [Sections](blog/2026-10-29-sections.md).

@@ -21,26 +21,29 @@ Nothing open.
 
 ### Phase 3:  In progress
 
-- **#110 Manual.** A user manual inside the app, also reachable from
-  where a topic comes up, and the same pages on the docs site, for site
-  owners and editors, not developers. First part done 2026-10-29, post
-  65: decided that the pages live in `docs/pages/manual/`, compiled into
-  the app (`qed_core::manual`, offline, built in the app's theme, shown
-  in a second window; outside links open in the browser); a life-buoy
-  button next to the preview button and **Manual** links in the Pages,
-  Media, Publish and Versions tabs. Pages so far: start, getting
-  started, pages and blocks, pictures and files, versions,
-  [Backups](manual/backups.md) (#037, moved there), publishing. Still to
-  write: themes and fonts, moving a site over, icons in text
-  (`:icon-phone:`, #114, with the list of icons), the hand-made menu
-  (#111), boxed columns (#113), podcasts.
+- **#134 Old addresses in the page settings.** A page's earlier
+  addresses (`redirect_from`) are only set by moving or renaming it in
+  the app; old addresses a q.e.d. page can't have (such as ones ending in
+  `.html`, from a site moved over by hand) have to be typed into the
+  page's file. The manual's [Moving a site over](manual/moving-a-site.md)
+  says so. Wanted: a list in the page's Settings tab to see, add and
+  remove them. Found 2026-10-29 while writing the manual (#110).
+- **#135 Old episode guids.** A new episode gets a guid that never
+  changes, and the app offers no way to give it the one it had before.
+  A podcast moved over by hand from another system then shows every
+  episode as new in podcast apps; the manual says to move one with help
+  for now. Wanted: entering an episode's old guid in its Settings tab
+  (with a warning that it must match the old feed exactly), until the
+  imports (#034, #123) carry guids over by themselves. Found 2026-10-29
+  while writing the manual (#110).
 
 ### Phase 4: Future
 
 - **#070 Code signing.** For downloads from the releases page, not app
   stores. macOS: notarization needs the Apple Developer Program (99 USD
   a year); without it, macOS 15 and later make people allow the app in
-  System Settings (right-click → Open no longer works). Windows: the
+  System Settings → Privacy & Security → Open Anyway (right-click → Open
+  no longer works; the instructions say so since 2026-10-29). Windows: the
   SignPath Foundation signs open-source projects for free (builds from
   CI; check their terms); SmartScreen still warns until the app has a
   reputation. Updates are already safe through the updater's own

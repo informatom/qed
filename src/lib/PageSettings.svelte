@@ -280,6 +280,10 @@
           <input id="setting-hide-title" type="checkbox" class="toggle" bind:checked={form.hide_title} />
           <span class="text-sm">Hide the title (for pages that start with their own heading)</span>
         </label>
+        <label class="flex items-center gap-3">
+          <input id="setting-back-next" type="checkbox" class="toggle" bind:checked={form.back_next} />
+          <span class="text-sm">Back and next links on the pages below (Older and newer for posts)</span>
+        </label>
       </div>
 
       <fieldset class="flex flex-col gap-2 @xl:col-span-2">

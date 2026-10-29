@@ -216,9 +216,10 @@ fn block_document(block: &Block) -> DocumentMut {
 fn front_document(front: &FrontMatter, original: Option<&str>) -> DocumentMut {
     let mut document = toml_edit::ser::to_document(front).unwrap_or_default();
 
-    let defaults: [DefaultCheck; 7] = [
+    let defaults: [DefaultCheck; 8] = [
         ("draft", |item| item.as_bool() == Some(false)),
         ("hide_title", |item| item.as_bool() == Some(false)),
+        ("back_next", |item| item.as_bool() == Some(false)),
         ("menu", |item| item.as_str() == Some("none")),
         ("weight", |item| item.as_integer() == Some(0)),
         ("redirect_from", is_empty_array),

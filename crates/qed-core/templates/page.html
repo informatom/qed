@@ -167,6 +167,23 @@
       {{ html|safe }}
       {%- endfor %}
     </div>
+    {%- if neighbours.left.is_some() || neighbours.right.is_some() %}
+    <!-- Back and next (#136): the pages before and after this one. -->
+    <nav class="mt-16 grid gap-3 border-t border-base-300 pt-6 sm:grid-cols-2" aria-label="{{ neighbours.label }}" data-pagefind-ignore>
+      {%- if let Some(link) = neighbours.left %}
+      <a class="flex flex-col gap-1 rounded-box p-3 no-underline hover:bg-base-200" href="{{ link.href }}">
+        <span class="text-sm text-base-content/60">← {{ link.label }}</span>
+        <span class="font-medium">{{ link.title }}</span>
+      </a>
+      {%- endif %}
+      {%- if let Some(link) = neighbours.right %}
+      <a class="flex flex-col gap-1 rounded-box p-3 text-right no-underline hover:bg-base-200 sm:col-start-2" href="{{ link.href }}">
+        <span class="text-sm text-base-content/60">{{ link.label }} →</span>
+        <span class="font-medium">{{ link.title }}</span>
+      </a>
+      {%- endif %}
+    </nav>
+    {%- endif %}
   </main>
   {%- if sidebar %}
   </div>

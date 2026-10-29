@@ -65,11 +65,11 @@ The tabs below the title hold everything about the open site:
 - **Media**, **Downloads** and **Static**: pictures, files to download
   and files the website needs as they are. See
   [Pictures and files](pictures-and-files.md).
-- **Site**: title, description, language, the web address, logo and the
-  layout of the header and menu.
-- **Menu**: a menu made by hand, if the automatic one isn't what you
-  want.
-- **Theme**: colors and fonts.
+- **Site**: title, description, language, the web address, logo, search
+  and page width. See [Site settings](site-settings.md).
+- **Menu**: the sidebar, and a menu made by hand if the automatic one
+  isn't what you want. See [Menus](menus.md).
+- **Theme**: colors and fonts. See [Colors and fonts](colors-and-fonts.md).
 - **Publish**: build the website and put it online. See
   [Publishing](publishing.md).
 - **Versions**: the site's history. See [Versions](versions.md).
@@ -77,7 +77,7 @@ The tabs below the title hold everything about the open site:
   here use *catppuccin-mocha*) and updates.
 
 A podcast site has a few more: **Podcast**, **Audio**, **Transcripts**
-and **Contributors**.
+and **Contributors**. See [Podcasts](podcasts.md).
 
 ::: image
 image = "manual/app-tab.png"

@@ -66,6 +66,11 @@ export const commands = {
 	 *  out anyway.
 	 */
 	hide_title?: boolean,
+	/**
+	 *  The pages below this one get links to the page before and after
+	 *  them (#136): "Back"/"Next" in their order, "Older"/"Newer" for posts.
+	 */
+	back_next?: boolean,
 	menu?: Menu,
 	/**  A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`. */
 	icon: string | null,
@@ -749,6 +754,11 @@ export type FrontMatter = {
 	 *  out anyway.
 	 */
 	hide_title?: boolean,
+	/**
+	 *  The pages below this one get links to the page before and after
+	 *  them (#136): "Back"/"Next" in their order, "Older"/"Newer" for posts.
+	 */
+	back_next?: boolean,
 	menu?: Menu,
 	/**  A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`. */
 	icon: string | null,

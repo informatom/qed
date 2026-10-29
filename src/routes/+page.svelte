@@ -722,7 +722,10 @@
         </div>
         <div class="max-w-4xl">
           <section class="flex flex-col gap-3">
-            <h2 class="text-lg font-semibold">Settings</h2>
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-lg font-semibold">Settings</h2>
+              <ManualLink page="site-settings/" topic="Site settings" />
+            </div>
             <SiteSettings {site} onsaved={(config) => {
               if (!site) return;
               site.config = config;
@@ -749,19 +752,31 @@
         <PublishPanel {site} ontargets={(targets) => site && (site.targets = targets)} />
       </div>
       <section id="site-podcast" class={["flex max-w-4xl flex-col gap-3", view !== "podcast" && "hidden"]}>
-        <h2 class="text-lg font-semibold">Podcast</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Podcast</h2>
+          <ManualLink page="podcasts/" topic="Podcasts" />
+        </div>
         <PodcastPanel {site} onsaved={(config) => site && (site.config = config)} />
       </section>
       <section id="site-contributors" class={["flex flex-col gap-3", view !== "contributors" && "hidden"]}>
-        <h2 class="text-lg font-semibold">Contributors</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Contributors</h2>
+          <ManualLink page="podcasts/" topic="Contributors" />
+        </div>
         <ContributorsPanel {site} onchanged={(people) => site && (site.contributors = people)} />
       </section>
       <section id="site-menu" class={["flex max-w-4xl flex-col gap-3", view !== "menu" && "hidden"]}>
-        <h2 class="text-lg font-semibold">Menu</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Menu</h2>
+          <ManualLink page="menus/" topic="Menus" />
+        </div>
         <MenuEditor {site} onsaved={(config) => site && (site.config = config)} />
       </section>
       <section id="site-theme-tab" class={["flex flex-col gap-3", view !== "theme" && "hidden"]}>
-        <h2 class="text-lg font-semibold">Theme</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Theme</h2>
+          <ManualLink page="colors-and-fonts/" topic="Colors and fonts" />
+        </div>
         <SiteTheme {site} onsaved={(config) => site && (site.config = config)} />
       </section>
     {/key}

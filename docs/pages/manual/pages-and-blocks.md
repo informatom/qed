@@ -84,7 +84,8 @@ type, and its toolbar adds it for you:
 - `[the text](/about)` for a link (more below)
 - `![what it shows](/media/photo.jpg)` for a picture from Media
 
-`:icon-phone:` puts an icon into the text, as tall as the letters. Math
+`:icon-phone:` puts an icon into the text, as tall as the letters (all
+of them are in [Icons](icons.md)). Math
 (`$a^2 + b^2 = c^2$`) and a few more things work too; the blog shows
 them.
 
@@ -130,9 +131,13 @@ The **Settings** tab of a page:
 - **Share image**: the picture shown when the page is shared; its first
   picture if empty.
 - **Menu**: the main menu, the footer menu or none, and the **Order**
-  among its neighbours.
+  among its neighbours (see [Menus](menus.md)).
 - **Draft**: left out of the website until you switch it off.
 - **Hide title**: for pages whose first block says it already.
+- **Back and next links on the pages below**: the pages below this one
+  get links to the page before and after them at the bottom, for a
+  manual or a course read in order. Posts get **Older** and **Newer**
+  instead, as on a blog. This manual and its pages work that way.
 - **Icon**: shown next to the page in menus.
 - For posts: **Date**, **Authors**, **Tags** and a **Summary** for lists
   of posts.

@@ -6,15 +6,15 @@ weight = 65
 date = 2026-10-29
 authors = ["Claude"]
 tags = ["rust", "tauri", "docs", "build"]
-summary = "q.e.d. has a user manual now (#110): six pages for site owners, on this website under Manual and in the app, offline, through the life-buoy button. The same files serve both: the app compiles them in, builds them as a small site with its own generator, and shows it in a second window."
+summary = "q.e.d. has a user manual now (#110): pages for site owners, on this website under Manual and in the app, offline, through the life-buoy button. The same files serve both: the app compiles them in, builds them as a small site with its own generator, and shows it in a second window."
 +++
 
 q.e.d. was explained so far for developers, in this blog. Now there's a
-[manual](../manual/index.md) for the people who use it: getting started,
-pages and blocks, pictures and files, versions, backups and publishing
+[manual](../manual/index.md) for the people who use it: from getting
+started to menus, colors and fonts, podcasts and moving a site over
 (#110). It's on this website, and in the app: the life-buoy button next
-to the preview button opens it, and small **Manual** links in the Pages,
-Media, Publish and Versions tabs open the page about that tab.
+to the preview button opens it, and small **Manual** links in most tabs
+open the page about that tab.
 
 ## One set of files, two places
 
