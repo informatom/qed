@@ -50,8 +50,11 @@ changes.
 - **#141 Footer color in dark themes.** The footer takes the theme's
   accent color unless set otherwise; in catppuccin-mocha (and likely
   the other dark Catppuccin themes) that's a pale pink band below a
-  dark page. blog.panoptikum.social now has `footer = "shaded"`. To
-  decide: another default for dark themes, or per theme.
+  dark page. blog.panoptikum.social now has `footer = "shaded"`.
+  Decided 2026-10-30: when the theme's background is dark, the footer
+  is shaded by default (no list per theme); a footer color set in the
+  Theme tab still wins. Fits #146, where a site has a light and a dark
+  theme.
 
 #### For sites moved over by hand
 
@@ -73,8 +76,18 @@ changes.
 - **#138 Line breaks in table cells.** Markdown tables have no line
   break of their own inside a cell; the usual way is `<br>`, but q.e.d.
   escapes all raw HTML, so it shows as text. Panoptikum's API page used
-  it in many cells (it now has "; " instead). Idea: let `<br>` through
-  inside table cells only, everything else stays escaped.
+  it in many cells (it now has "; " instead). Decided 2026-10-30: a
+  short list of HTML tags goes through in text, everywhere (not only
+  in tables): `<br>`, `<kbd>` (#139), `<sup>` and `<sub>`, without
+  attributes, and not in code, where they stay text. Everything else
+  stays escaped, so no styles, scripts or embeds. Not taken: `<mark>`,
+  `<abbr>`. The manual's Pages and blocks page should list them.
+- **#139 Button and key names in text.** Panoptikum's manuals marked
+  button names with `<kbd>` (**My Data**, **Delete my account**), which
+  q.e.d. escapes; they became bold. Decided 2026-10-30: keys get their
+  own look, written as `<kbd>Ctrl</kbd>+<kbd>S</kbd>` (let through by
+  #138) and shown as keycaps in the theme's colors. Button names stay
+  bold, as in q.e.d.'s own manual.
 - **#143 Site icon.** The icon in the browser tab (favicon) only works
   as `favicon.ico` in Static, which browsers ask for by themselves.
   Idea: a site icon in the Site settings, made from a picture in Media
@@ -86,20 +99,15 @@ changes.
   icon; the footer now has a plain link. Idea: a Mastodon profile
   (or several "me" links) in the Site settings that adds
   `<link rel="me">` to every page, maybe with a follow link and icon.
-
-#### To decide with the user
-
-- **#139 Button and key names in text.** Panoptikum's manuals marked
-  button names with `<kbd>` (**My Data**, **Delete my account**), which
-  q.e.d. escapes; they became bold. To decide whether bold is enough
-  (q.e.d.'s own manual uses bold plus an icon) or whether names of keys
-  and buttons deserve their own look.
 - **#144 Sidebar menu: folding groups and post lists.** The old sidebar
   had groups that fold open and closed (Manuals, Blog, Supported By;
   the current page's group open) and a Blog group listing every post.
   q.e.d.'s sidebar shows groups as headings, always open, and posts are
-  reached through the Blog page with back and next links. To decide
-  whether either is worth having. The old `.html` addresses are #134.
+  reached through the Blog page with back and next links. Decided
+  2026-10-30: groups fold open and closed (`<details>`, works without
+  JavaScript), the current page's group starts open; no post list in
+  the sidebar. To check: on or off per site, or always. The old `.html`
+  addresses are #134.
 
 #### Bigger features
 
