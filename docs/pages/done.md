@@ -889,6 +889,17 @@ rest is done.
   still left out, but the build says so in a note, and the Menu tab
   shows them with a warning. The manual's Menus page says so.
 
+- **#137 Misleading count before publishing.** Reported by the user on
+  2026-10-29, done 2026-10-30: the Publish dialog listed the site's
+  changed files ("3 files changed"), but publishing uploads every built
+  file that differs on the server, often many more. Now it reads "3 of
+  your files changed since the last publish", with a line below that
+  more files of the website can change (a title shows in every page's
+  menu); the report after publishing says "57 website files uploaded".
+  The manual's Publishing page explains it in a question. Not done:
+  building first to show how many website files will go up; back on the
+  list if the wording isn't enough.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

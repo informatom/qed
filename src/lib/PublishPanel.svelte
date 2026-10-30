@@ -209,7 +209,8 @@
       {#if report}
         <div id="publish-report" role="status" class="alert alert-success alert-soft">
           <span>
-            Published: {report.uploaded} files uploaded ({formatSize(report.bytes)}), {report.unchanged} unchanged{report.deleted
+            Published: {report.uploaded === 1 ? "1 website file" : `${report.uploaded} website files`} uploaded
+            ({formatSize(report.bytes)}), {report.unchanged} unchanged{report.deleted
               ? `, ${report.deleted} deleted`
               : ""}.
             {#if site.config.base_url}

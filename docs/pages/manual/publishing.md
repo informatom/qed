@@ -51,13 +51,18 @@ caption = "A target that's been tested: **server trusted**, ready to **Publish**
    different server answers at that address.
 2. :icon-upload: **Publish.** q.e.d. asks *What's new on the site?*:
    a few words for the history, such as *Summer opening hours*. Then it
-   builds the site and copies only what changed since last time.
+   builds the website and copies only the files of the website that
+   differ on the server.
 3. **Open the website** to look at it online.
 
 Files q.e.d. didn't upload itself are never touched on the server, so
 other things in the same folder stay as they are.
 
 ::: faq
+[[items]]
+question = "Publish said 3 of my files changed, but uploaded 57. Why?"
+answer = "Your files and the website's files are two things. The Publish dialog lists the files you changed in q.e.d., such as one page. The website is built from all of them, and one change can show on many of its pages: a page's title is in every page's menu, a new post in the Post lists and in the back and next links. Publish uploads every file of the website that differs from the one on the server, so the count after publishing (*57 website files uploaded*) is often bigger."
+
 [[items]]
 question = "Do I have to build first?"
 answer = "No. Publish builds the site by itself. :icon-hammer: **Build** in the Publish tab is for looking at the files, or uploading them yourself."

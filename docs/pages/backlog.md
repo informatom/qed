@@ -30,19 +30,6 @@ changes.
 
 #### Small fixes
 
-- **#137 Misleading count before publishing.** The Publish dialog says
-  "3 files changed since the last publish" and lists the changed files
-  of the site (`pages/about.md`), but publishing then uploads many more
-  files: it builds the website and uploads every built file that differs
-  on the server, and one changed title or new page changes every page
-  (menu, sidebar, Post lists, back and next links). Reported by the user
-  on 2026-10-29. Wanted: wording that keeps the two apart, e.g. "3 of
-  your files changed since the last publish" with a line saying that
-  more files of the website can change (a title shows in every page's
-  menu), and "website files" in the report after publishing ("57
-  website files uploaded"). Possibly, for later: build first and show
-  how many website files will go up, before asking. The manual's
-  [Publishing](manual/publishing.md) page should say the same.
 - **#141 Footer color in dark themes.** The footer takes the theme's
   accent color unless set otherwise; in catppuccin-mocha (and likely
   the other dark Catppuccin themes) that's a pale pink band below a

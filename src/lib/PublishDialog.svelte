@@ -81,17 +81,21 @@
            last publish is still news for this target. -->
       <div id="publish-since" class="text-sm">
         {#if since.published_at === null}
-          <p>This is the first publish to {target.name} from this history: the whole site goes up.</p>
+          <p>This is the first publish to {target.name} from this history: the whole website goes up.</p>
         {:else if since.changes.length}
           <details>
             <summary class="cursor-pointer">
-              {since.changes.length === 1 ? "1 file" : `${since.changes.length} files`} changed since the last publish to
-              {target.name} ({formatTime(since.published_at)})
+              {since.changes.length === 1 ? "1 of your files" : `${since.changes.length} of your files`} changed since the last
+              publish to {target.name} ({formatTime(since.published_at)})
             </summary>
             <ul class="mt-2 font-mono text-xs text-base-content/70">
               {#each since.changes as file (file)}<li>{file}</li>{/each}
             </ul>
           </details>
+          <p id="publish-website-files" class="mt-1 text-xs text-base-content/60">
+            More files of the website can change than these: a page's title, for example, shows in every page's menu.
+            Only website files that differ on the server go up.
+          </p>
         {:else}
           <p class="text-base-content/70">
             Nothing changed since the last publish to {target.name} ({formatTime(since.published_at)}). Publishing again
