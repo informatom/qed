@@ -37,6 +37,7 @@
     language: form.language.trim() || "en",
     description: orNull(form.description),
     logo: orNull(form.logo),
+    icon: orNull(form.icon),
     base_url: orNull(form.base_url),
     podcast: site.config.podcast,
   });
@@ -89,7 +90,7 @@
 
   <section id="site-logo" class="flex flex-col gap-2 border-t border-base-300 pt-6">
     {@render heading("Logo")}
-    <p class="text-sm text-base-content/60">In the header of every page, and the browser-tab icon unless static/ has a favicon.ico; SVG at best.</p>
+    <p class="text-sm text-base-content/60">In the header of every page; SVG at best. Also the browser-tab icon, unless the site has a site icon or static/ has a favicon.ico.</p>
     <ImageField siteRoot={site.root} bind:value={form.logo} />
     {#if form.logo}
       <div class="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -110,6 +111,15 @@
         </label>
       </div>
     {/if}
+  </section>
+
+  <section id="site-icon" class="flex flex-col gap-2 border-t border-base-300 pt-6">
+    {@render heading("Site icon")}
+    <p class="text-sm text-base-content/60">
+      The icon in the browser tab and on phones' home screens, used as it is: an SVG, a square PNG (180 × 180 pixels
+      or more, so it's sharp on phones) or an ICO file from Media. Without one, the logo.
+    </p>
+    <ImageField siteRoot={site.root} bind:value={form.icon} />
   </section>
 
   <section id="site-links" class="flex flex-col gap-3 border-t border-base-300 pt-6">

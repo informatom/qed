@@ -1298,9 +1298,9 @@ struct PageTemplate<'a> {
     share_image: Option<ShareImage>,
     /// The site's logo, for the header.
     logo: Option<Picture>,
-    /// The browser-tab icon: `favicon.ico` from `static/` if the site has
-    /// one, else the logo.
-    icon: Option<String>,
+    /// The browser-tab icon: the site icon, else `favicon.ico` from
+    /// `static/` if the site has one, else the logo.
+    icon: Option<TabIcon>,
     /// The site's RSS feeds, for `<link rel="alternate">` and the footer.
     feeds: Vec<FeedLink>,
     rss_icon: &'static str,
@@ -1617,6 +1617,61 @@ fn close_label(language: &str) -> &'static str {
         "de" => "Schließen",
         _ => "Close",
     }
+}
+
+/// The icon in the browser tab, and for a PNG on phones' home screens.
+struct TabIcon {
+    href: String,
+    /// The file's media type, so browsers needn't fetch one they can't show.
+    mime: &'static str,
+    /// Also `apple-touch-icon`: iPhones take a PNG, not an SVG or ICO.
+    touch: bool,
+}
+
+/// The site icon if there is one (its file in `media/`, as it is), else a
+/// `favicon.ico` of the site's own in `static/`, else the logo; a wide
+/// logo makes a poor tab icon, so the other two win.
+fn tab_icon(site: &Site, links: &LinkContext, images: &Images) -> Option<TabIcon> {
+    let mime = |name: &str| match name
+        .rsplit_once('.')
+        .map(|(_, e)| e.to_lowercase())
+        .as_deref()
+    {
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("ico") => "image/x-icon",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("avif") => "image/avif",
+        _ => "image/jpeg",
+    };
+    if let Some(name) = site
+        .config
+        .icon
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+    {
+        let mime = mime(name);
+        return Some(TabIcon {
+            href: media_link(name, links),
+            mime,
+            touch: mime == "image/png",
+        });
+    }
+    if site.root.join(STATIC_DIR).join("favicon.ico").is_file() {
+        return Some(TabIcon {
+            href: format!("{}favicon.ico", links.to_root()),
+            mime: "image/x-icon",
+            touch: false,
+        });
+    }
+    let logo = site.config.logo.as_deref()?;
+    picture(logo, None, links, images).map(|picture| TabIcon {
+        href: picture.src,
+        mime: mime(logo),
+        touch: false,
+    })
 }
 
 #[derive(Template)]
@@ -2784,16 +2839,7 @@ fn render_page(
             .logo
             .as_deref()
             .and_then(|name| picture(name, None, &links, context.images)),
-        // A favicon.ico of its own wins: a wide logo makes a poor tab icon.
-        icon: if site.root.join(STATIC_DIR).join("favicon.ico").is_file() {
-            Some(format!("{}favicon.ico", links.to_root()))
-        } else {
-            config
-                .logo
-                .as_deref()
-                .and_then(|name| picture(name, None, &links, context.images))
-                .map(|logo| logo.src)
-        },
+        icon: tab_icon(site, &links, context.images),
         feeds: context
             .podcast_feeds
             .iter()
@@ -4239,7 +4285,7 @@ mod tests {
 
         let team = read(out.path().join("about/team/index.html"));
         assert!(
-            team.contains(r#"<link rel="icon" href="../../media/mark.svg">"#),
+            team.contains(r#"<link rel="icon" href="../../media/mark.svg" type="image/svg+xml">"#),
             "{team}"
         );
         assert!(team.contains(
@@ -4262,8 +4308,24 @@ mod tests {
         build_on(&site, out.path(), TODAY).unwrap();
         let blog = read(out.path().join("blog/index.html"));
         assert!(
-            blog.contains(r#"<link rel="icon" href="../favicon.ico">"#),
+            blog.contains(r#"<link rel="icon" href="../favicon.ico" type="image/x-icon">"#),
             "{blog}"
+        );
+
+        // A site icon wins over both, as it is; a PNG also for phones.
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        fs::write(dir.path().join("media/tab.png"), b"png").unwrap();
+        site.config.icon = Some("tab.png".into());
+        build_on(&site, out.path(), TODAY).unwrap();
+        let blog = read(out.path().join("blog/index.html"));
+        assert!(
+            blog.contains(r#"<link rel="icon" href="../media/tab.png" type="image/png">"#)
+                && blog.contains(r#"<link rel="apple-touch-icon" href="../media/tab.png">"#),
+            "{blog}"
+        );
+        assert!(
+            out.path().join("media/tab.png").is_file(),
+            "copied with Media"
         );
         assert!(
             blog.contains(r#"<img src="../media/wide.svg""#),

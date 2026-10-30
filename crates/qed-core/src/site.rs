@@ -64,6 +64,10 @@ pub struct SiteConfig {
     /// and as the icon in the browser tab. A small square one (an SVG at
     /// best) works best.
     pub logo: Option<String>,
+    /// The icon in the browser tab and on phones' home screens: an SVG, a
+    /// square PNG or an ICO file in `media/`, used as it is (see
+    /// [`icon_problem`]). Without one, `static/favicon.ico` or the logo.
+    pub icon: Option<String>,
     /// A daisyUI theme name, or `custom` for `custom_theme`.
     #[serde(default = "default_theme")]
     pub theme: String,
@@ -133,6 +137,42 @@ pub struct MenuItem {
     /// The entries of a group.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub items: Vec<MenuItem>,
+}
+
+/// Why `name` in `media_dir` can't be the site icon, if it can't. Browsers
+/// take SVG, PNG and ICO; q.e.d. uses the file as it is, so a PNG must be
+/// square (a browser would squeeze it).
+pub fn icon_problem(media_dir: &Path, name: &str) -> Option<String> {
+    let extension = name
+        .rsplit_once('.')
+        .map(|(_, e)| e.to_lowercase())
+        .unwrap_or_default();
+    if !matches!(extension.as_str(), "svg" | "png" | "ico") {
+        let kind = if extension.is_empty() {
+            "a file without a type".to_string()
+        } else {
+            format!("a {} file", extension.to_uppercase())
+        };
+        return Some(format!(
+            "“{name}” is {kind}; the icon must be an SVG, a PNG or an ICO file"
+        ));
+    }
+    let path = media_dir.join(name);
+    if !path.is_file() {
+        return Some(format!("there's no “{name}” in Media"));
+    }
+    if extension == "png" {
+        match image::image_dimensions(&path) {
+            Ok((width, height)) if width != height => {
+                return Some(format!(
+                    "“{name}” is {width} × {height} pixels; a PNG icon must be square"
+                ));
+            }
+            Ok(_) => {}
+            Err(_) => return Some(format!("“{name}” can't be read as a PNG")),
+        }
+    }
+    None
 }
 
 /// A menu entry's page as the pages' addresses have it, for entries typed
@@ -926,6 +966,13 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
     };
     if config.title.trim().is_empty() {
         return Err(invalid("a site needs a title".to_string()));
+    }
+    if let Some(problem) = config
+        .icon
+        .as_deref()
+        .and_then(|icon| icon_problem(&root.join(MEDIA_DIR), icon))
+    {
+        return Err(invalid(format!("site icon: {problem}")));
     }
     if config.theme == crate::theme::CUSTOM {
         let custom = config
@@ -2305,6 +2352,47 @@ mod tests {
                 .to_string();
             assert!(error.contains(message), "{error}");
         }
+    }
+
+    #[test]
+    fn takes_svg_square_png_and_ico_as_the_site_icon() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            ("media/icon.svg", "<svg/>"),
+            ("media/favicon.ico", "ico"),
+            ("media/photo.jpg", "jpg"),
+        ]);
+        let media = dir.path().join(MEDIA_DIR);
+        image::RgbaImage::new(64, 64)
+            .save(media.join("square.png"))
+            .unwrap();
+        image::RgbaImage::new(64, 32)
+            .save(media.join("wide.png"))
+            .unwrap();
+        for good in ["icon.svg", "favicon.ico", "square.png"] {
+            assert_eq!(icon_problem(&media, good), None, "{good}");
+        }
+        for (bad, problem) in [
+            (
+                "photo.jpg",
+                "is a JPG file; the icon must be an SVG, a PNG or an ICO file",
+            ),
+            ("wide.png", "is 64 × 32 pixels; a PNG icon must be square"),
+            ("gone.svg", "there's no “gone.svg” in Media"),
+        ] {
+            let found = icon_problem(&media, bad).unwrap_or_default();
+            assert!(found.contains(problem), "{bad}: {found}");
+        }
+
+        let mut config = open(dir.path()).unwrap().config;
+        config.icon = Some("wide.png".into());
+        assert!(save_config(dir.path(), &config).is_err());
+        config.icon = Some("icon.svg".into());
+        save_config(dir.path(), &config).unwrap();
+        assert_eq!(
+            open(dir.path()).unwrap().config.icon.as_deref(),
+            Some("icon.svg")
+        );
     }
 
     #[test]

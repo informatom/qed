@@ -790,7 +790,9 @@ fn kind_of(name: &str) -> MediaKind {
         .map(|(_, e)| e.to_lowercase())
         .unwrap_or_default();
     match extension.as_str() {
-        "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" | "avif" => MediaKind::Image,
+        // `ico` only for the site icon: browsers show it, the image crate
+        // doesn't read it, so it gets no smaller copies.
+        "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" | "avif" | "ico" => MediaKind::Image,
         "mp3" | "m4a" | "ogg" | "oga" | "opus" | "flac" => MediaKind::Audio,
         "pdf" | "zip" | "doc" | "docx" | "odt" | "xls" | "xlsx" | "ods" | "epub" => {
             MediaKind::Document

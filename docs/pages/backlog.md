@@ -30,11 +30,6 @@ changes.
 
 #### For sites moved over by hand
 
-- **#143 Site icon.** The icon in the browser tab (favicon) only works
-  as `favicon.ico` in Static, which browsers ask for by themselves.
-  Idea: a site icon in the Site settings, made from a picture in Media
-  (sizes for browsers and phones, `<link rel="icon">`), maybe the logo
-  by default.
 - **#140 Mastodon verification.** The old sidebar had a "Follow" button
   with `rel="me"`, so Mastodon shows the site as verified on the
   profile. q.e.d. can't set `rel="me"` on a link and has no Mastodon

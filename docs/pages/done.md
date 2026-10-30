@@ -950,6 +950,16 @@ rest is done.
   site.input.css; on colored areas in their text color). Button names
   stay bold, as in q.e.d.'s own manual.
 
+- **#143 Site icon.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day: `icon` in site.toml, a
+  file from Media picked under Site icon in the Site tab. Decided with
+  the user: q.e.d. makes nothing from it and uses it as it is, so it
+  must be an SVG, a square PNG or an ICO (`site::icon_problem`, checked
+  when saving; Media takes `.ico` now). Pages get `<link rel="icon">`
+  with its type, a PNG also `apple-touch-icon`. Without one, as before:
+  `static/favicon.ico`, else the logo. The manual's Site settings page
+  says so.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

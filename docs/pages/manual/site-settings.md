@@ -1,9 +1,9 @@
 +++
 title = "Site settings"
-description = "The Site tab: title, language, description and web address, the logo, links to other sites, site search and the page width."
+description = "The Site tab: title, language, description and web address, the logo and the site icon, links to other sites, site search and the page width."
 menu = "main"
 weight = 32
-summary = "Title, language, web address, logo, search and page width."
+summary = "Title, language, web address, logo, icon, search and page width."
 +++
 
 The **Site** tab holds what belongs to the whole website. Change what
@@ -24,14 +24,29 @@ you like, then press **Save**; **Discard** forgets the changes.
 
 ## Logo
 
-Pick a picture from Media; it's shown in the header of every page and
-as the icon in the browser tab. An SVG file stays sharp at any size.
+Pick a picture from Media; it's shown in the header of every page and,
+without a site icon, as the icon in the browser tab. An SVG file stays
+sharp at any size.
 
 - **Size**: **Small**, **Medium**, **Large**, or **Original** for the
   picture's own size (up to 112 pixels high), which keeps small bitmap
   logos sharp.
 - **Show the site title next to the logo**: switch it off when the logo
   already shows the name.
+
+## Site icon
+
+The small picture in the browser tab, in bookmarks, and on a phone's
+home screen when someone adds the site there. A wide logo makes a poor
+icon, so it can be a picture of its own: add it in Media, then pick it
+here. q.e.d. uses it as it is, so it must be one of these:
+
+- an **SVG**, sharp at any size;
+- a square **PNG**, at least 180 × 180 pixels so it's sharp on phones;
+- an **ICO** file, the classic `favicon.ico`.
+
+Saving refuses other pictures, and a PNG that isn't square. Without a
+site icon, the browser tab shows the logo.
 
 ## Links
 

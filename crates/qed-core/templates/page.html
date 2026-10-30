@@ -36,7 +36,10 @@
   <link rel="alternate" type="application/rss+xml" title="{{ feed.title }}" href="{{ feed.href }}">
   {%- endfor %}
   {%- if let Some(icon) = icon %}
-  <link rel="icon" href="{{ icon }}">
+  <link rel="icon" href="{{ icon.href }}" type="{{ icon.mime }}">
+  {%- if icon.touch %}
+  <link rel="apple-touch-icon" href="{{ icon.href }}">
+  {%- endif %}
   {%- endif %}
   <meta name="generator" content="q.e.d.">
   {%- if site.search %}

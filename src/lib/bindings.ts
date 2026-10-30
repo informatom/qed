@@ -1267,6 +1267,12 @@ export type SiteConfig_Deserialize = {
 	 *  best) works best.
 	 */
 	logo: string | null,
+	/**
+	 *  The icon in the browser tab and on phones' home screens: an SVG, a
+	 *  square PNG or an ICO file in `media/`, used as it is (see
+	 *  [`icon_problem`]). Without one, `static/favicon.ico` or the logo.
+	 */
+	icon: string | null,
 	/**  A daisyUI theme name, or `custom` for `custom_theme`. */
 	theme?: string,
 	/**
@@ -1329,6 +1335,12 @@ export type SiteConfig_Serialize = {
 	 *  best) works best.
 	 */
 	logo: string | null,
+	/**
+	 *  The icon in the browser tab and on phones' home screens: an SVG, a
+	 *  square PNG or an ICO file in `media/`, used as it is (see
+	 *  [`icon_problem`]). Without one, `static/favicon.ico` or the logo.
+	 */
+	icon: string | null,
 	/**  A daisyUI theme name, or `custom` for `custom_theme`. */
 	theme: string,
 	/**
