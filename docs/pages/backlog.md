@@ -30,14 +30,6 @@ changes.
 
 #### For sites moved over by hand
 
-- **#135 Old episode guids.** A new episode gets a guid that never
-  changes, and the app offers no way to give it the one it had before.
-  A podcast moved over by hand from another system then shows every
-  episode as new in podcast apps; the manual says to move one with help
-  for now. Wanted: entering an episode's old guid in its Settings tab
-  (with a warning that it must match the old feed exactly), until the
-  imports (#034, #123) carry guids over by themselves. Found 2026-10-29
-  while writing the manual (#110).
 - **#138 Line breaks in table cells.** Markdown tables have no line
   break of their own inside a cell; the usual way is `<br>`, but q.e.d.
   escapes all raw HTML, so it shows as text. Panoptikum's API page used

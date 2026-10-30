@@ -78,10 +78,15 @@
     return value !== null && value !== "" && Number.isInteger(n) && n >= min ? n : null;
   }
 
+  // The guid is shown, and only typed over on purpose (an old feed's).
+  let changingGuid = $state(false);
+
   function cleanEpisode(episode: Episode | null): Episode | null {
     if (!episode) return null;
     return {
       ...episode,
+      // Left empty, it stays as it was: an empty one would get a new guid.
+      guid: episode.guid.trim() || (page.front.episode?.guid ?? ""),
       season: counted(episode.season, 1),
       // Episode 0 is common: many podcasts start counting there.
       number: counted(episode.number, 0),
@@ -388,9 +393,25 @@
           <CoverCheck {siteRoot} name={episode.image} />
         </div>
 
-        <p class="text-xs text-base-content/50 @xl:col-span-4">
-          Guid <span id="episode-guid" class="font-mono">{episode.guid}</span> · podcast apps tell episodes apart by it; it never changes.
-        </p>
+        {#if changingGuid}
+          <div class="flex flex-col gap-2 @xl:col-span-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Guid</span>
+              <input id="episode-guid-input" class="input w-full font-mono" bind:value={episode.guid} />
+            </label>
+            <div role="alert" class="alert alert-warning alert-soft text-sm">
+              Only for an episode moved over from another system: type the guid it had there, exactly as in the old
+              feed's &lt;guid&gt;, character for character. Podcast apps take an episode with another guid for a new
+              one, and show it again to everyone who has heard it.
+            </div>
+          </div>
+        {:else}
+          <p class="text-xs text-base-content/50 @xl:col-span-4">
+            Guid <span id="episode-guid" class="font-mono">{episode.guid}</span> · podcast apps tell episodes apart by it, so it stays the same.
+            <button type="button" id="episode-change-guid" class="link" onclick={() => (changingGuid = true)}>Change it</button>
+            for an episode moved over from another system.
+          </p>
+        {/if}
       </section>
 
       <section class="flex flex-col gap-3 border-t border-base-300 pt-6">

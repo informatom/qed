@@ -14,14 +14,14 @@ website and email, copied from the episode before. q.e.d. keeps each
 person once, in `contributors/`, and episodes only point to them (#047):
 
 ```text
-contributors/hannah-c-rosenblatt.md
+contributors/stefan-haslinger.md
 
 +++
-name = "Hannah C. Rosenblatt"
+name = "Stefan Haslinger"
 
 [[links]]
-title = "Ein Blog von Vielen"
-url = "https://einblogvonvielen.org/"
+title = "informatom"
+url = "https://informatom.com/"
 +++
 
 A short bio, in Markdown.
@@ -29,7 +29,7 @@ A short bio, in Markdown.
 
 ```toml
 [[episode.people]]
-contributor = "hannah-c-rosenblatt"
+contributor = "stefan-haslinger"
 role = "guest"
 ```
 
@@ -47,7 +47,7 @@ each has a name and a group, `guest` in `cast`, `audio editor` in
 `audio post-production`. The feeds write them as
 
 ```xml
-<podcast:person role="guest" group="cast" href="https://…/contributors/hannah-c-rosenblatt/">Hannah C. Rosenblatt</podcast:person>
+<podcast:person role="guest" group="cast" href="https://…/contributors/stefan-haslinger/">Stefan Haslinger</podcast:person>
 ```
 
 and apps that know the tag can show who's speaking. On the site, the
@@ -99,7 +99,7 @@ the compiler would refuse to keep references to them. A site that writes its own
 `pages/contributors.md` keeps it: made-up pages never replace real ones.
 
 The Post list's new `contributor` filter works on any page, too: "all
-episodes with Hannah" is a Post list with her picked.
+episodes with Stefan" is a Post list with him picked.
 
 ## An Option is a list of at most one
 

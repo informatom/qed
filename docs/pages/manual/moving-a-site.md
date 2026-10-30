@@ -45,10 +45,10 @@ moves or gets a new name in q.e.d., the old address leads to the new one
 by itself.
 
 Old addresses that a q.e.d. page can't have, such as ones ending in
-`.html`, can be kept too: in the page's **Settings** tab, under **Old
-addresses**, press **Add an address** and type it
-(`/2022/11/11/episode51.html`), or paste the full address from the old
-website; q.e.d. keeps only the part after the domain. Visitors who come
+`.html`, can be kept too: open the page in the **Pages** tab, then its
+**Settings** tab; under **Old addresses**, press **Add an address** and
+type it (`/2022/11/11/episode51.html`), or paste the full address from
+the old website; q.e.d. keeps only the part after the domain. Visitors who come
 there are sent on to the page. The same list shows the addresses q.e.d.
 kept when the page was moved; **Remove** takes one away.
 
@@ -65,8 +65,11 @@ ones as new.
   subscribers notice nothing. 3 Schweinehunde moved over this way.
 - **From other systems** (Podlove Publisher, a podcast host): the feeds
   had other addresses, and the episodes' identities (*guids*) have to be
-  carried over so apps don't show every episode as new. An import that
-  does this is planned; until then, move a podcast with help.
+  carried over so apps don't show every episode as new. In each
+  episode's **Settings** tab (in the **Pages** tab, next to **Content**),
+  press **Change it** next to its guid and type the one from the old
+  feed (the `<guid>` of the episode's `<item>`), exactly as it is there. An import that does this by itself
+  is planned; the old feed addresses still need help for now.
 
 ## Switching over
 

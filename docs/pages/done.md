@@ -925,6 +925,15 @@ rest is done.
   the theme's background and text color (inline, from `color_hex`), so
   it doesn't flash white on a dark site.
 
+- **#135 Old episode guids.** Found 2026-10-29 while writing the
+  manual, done 2026-10-30: the guid in an episode's Settings tab has a
+  Change it link that opens a field with a warning (it must match the
+  old feed's `<guid>` exactly; apps take another guid for a new
+  episode). Left empty, the guid stays as it was. Saving trims it and
+  refuses one another episode has already. The manual's Moving a site
+  over says how. The imports (#034, #123) are to carry guids over by
+  themselves; old feed addresses are #124.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

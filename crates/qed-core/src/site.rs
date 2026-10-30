@@ -1163,8 +1163,11 @@ pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result
             });
         }
         // An episode written by hand may come without one.
-        if episode.guid.trim().is_empty() {
+        episode.guid = episode.guid.trim().to_string();
+        if episode.guid.is_empty() {
             episode.guid = crate::podcast::new_guid();
+        } else {
+            check_episode_guid(root, file, &episode.guid)?;
         }
     }
     front.redirect_from = front
@@ -1193,6 +1196,35 @@ pub fn old_address(written: &str) -> Option<String> {
     let address = address.split(['#', '?']).next().unwrap_or_default();
     let address = address.trim_matches('/');
     (!address.is_empty()).then(|| format!("/{address}"))
+}
+
+/// Refuses a guid that changed (one carried over from an old feed, typed
+/// in the Settings tab) if another episode has it already: podcast apps
+/// would take the two for one.
+fn check_episode_guid(root: &Path, file: &Path, guid: &str) -> Result<(), SiteError> {
+    let before = read_page(root, file)?.content.front.episode.map(|e| e.guid);
+    if before.as_deref() == Some(guid) {
+        return Ok(());
+    }
+    let site = open(root)?;
+    if let Some(other) = site.pages.iter().find(|page| {
+        page.file != file
+            && page
+                .content
+                .front
+                .episode
+                .as_ref()
+                .is_some_and(|episode| episode.guid.trim() == guid)
+    }) {
+        return Err(SiteError::Invalid {
+            path: file.to_path_buf(),
+            message: format!(
+                "the episode “{}” has the guid “{guid}” already",
+                other.content.front.title
+            ),
+        });
+    }
+    Ok(())
 }
 
 /// Refuses old addresses that are new in `addresses` (not yet in the file)
