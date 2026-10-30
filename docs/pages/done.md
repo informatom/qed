@@ -905,16 +905,6 @@ Not needed in a single-user desktop app:
   accounts and deploy keys. SFTP covers publishing. If free hosting for a
   small site is ever asked for: a generic "publish by git push" target
   (GitHub, Codeberg, GitLab Pages) on the git transport of #129.
-- #105 MCP server, dropped 2026-10-29 by the user: AI assistants
-  working on a site over the Model Context Protocol. Built on the branch
-  `mcp-server` (not merged): a separate `qed-mcp` program with 13 tools
-  and the app's rules, bundled as a Tauri sidecar, set up from App
-  settings. As its own program it carries all of qed-core again and more
-  than doubles the installers (.deb 12 → 28 MB); a single program with
-  an `mcp` mode would avoid that. What came of it on main: the app asks
-  before overwriting a page that changed on disk since it was opened, and
-  re-reads the site when the window gets focus (useful for edits by hand
-  and other tools too).
 - #084 Signed commits, closed 2026-10-29: noted on 2026-10-26 as a limit
   of the history (#073), not asked for. q.e.d.'s versions are a safety
   net, not proof of authorship; the owner doesn't sign commits either,

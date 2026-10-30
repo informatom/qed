@@ -21,6 +21,40 @@ Nothing open.
 
 ### Phase 3:  In progress
 
+In the order to build them (sorted 2026-10-30). #138–#144 were found
+on 2026-10-30 while moving blog.panoptikum.social over by hand (62
+posts, 12 pages, sidebar menu, theme catppuccin-mocha). Sites in
+several languages (#145) come before the MCP server (#105), since
+its tools and format guide describe the site folder that #145
+changes.
+
+#### Small fixes
+
+- **#142 The start page in a hand-made menu.** `page = "index"` drops the
+  entry without a word; only `page = "/"` works. Check what the Menu tab
+  writes, accept both, and warn about menu entries whose page doesn't
+  exist instead of leaving them out silently.
+- **#137 Misleading count before publishing.** The Publish dialog says
+  "3 files changed since the last publish" and lists the changed files
+  of the site (`pages/about.md`), but publishing then uploads many more
+  files: it builds the website and uploads every built file that differs
+  on the server, and one changed title or new page changes every page
+  (menu, sidebar, Post lists, back and next links). Reported by the user
+  on 2026-10-29. Wanted: wording that keeps the two apart, e.g. "3 of
+  your files changed since the last publish" with a line saying that
+  more files of the website can change (a title shows in every page's
+  menu), and "website files" in the report after publishing ("57
+  website files uploaded"). Possibly, for later: build first and show
+  how many website files will go up, before asking. The manual's
+  [Publishing](manual/publishing.md) page should say the same.
+- **#141 Footer color in dark themes.** The footer takes the theme's
+  accent color unless set otherwise; in catppuccin-mocha (and likely
+  the other dark Catppuccin themes) that's a pale pink band below a
+  dark page. blog.panoptikum.social now has `footer = "shaded"`. To
+  decide: another default for dark themes, or per theme.
+
+#### For sites moved over by hand
+
 - **#134 Old addresses in the page settings.** A page's earlier
   addresses (`redirect_from`) are only set by moving or renaming it in
   the app; old addresses a q.e.d. page can't have (such as ones ending in
@@ -36,60 +70,76 @@ Nothing open.
   (with a warning that it must match the old feed exactly), until the
   imports (#034, #123) carry guids over by themselves. Found 2026-10-29
   while writing the manual (#110).
-- **#137 Misleading count before publishing.** The Publish dialog says
-  "3 files changed since the last publish" and lists the changed files
-  of the site (`pages/about.md`), but publishing then uploads many more
-  files: it builds the website and uploads every built file that differs
-  on the server, and one changed title or new page changes every page
-  (menu, sidebar, Post lists, back and next links). Reported by the user
-  on 2026-10-29. Wanted: wording that keeps the two apart, e.g. "3 of
-  your files changed since the last publish" with a line saying that
-  more files of the website can change (a title shows in every page's
-  menu), and "website files" in the report after publishing ("57
-  website files uploaded"). Possibly, for later: build first and show
-  how many website files will go up, before asking. The manual's
-  [Publishing](manual/publishing.md) page should say the same.
-
-Found on 2026-10-30 while moving blog.panoptikum.social over by hand
-(62 posts, 12 pages, sidebar menu, theme catppuccin-mocha). To go
-through with the user:
-
 - **#138 Line breaks in table cells.** Markdown tables have no line
   break of their own inside a cell; the usual way is `<br>`, but q.e.d.
   escapes all raw HTML, so it shows as text. Panoptikum's API page used
   it in many cells (it now has "; " instead). Idea: let `<br>` through
   inside table cells only, everything else stays escaped.
-- **#139 Button and key names in text.** Panoptikum's manuals marked
-  button names with `<kbd>` (**My Data**, **Delete my account**), which
-  q.e.d. escapes; they became bold. To decide whether bold is enough
-  (q.e.d.'s own manual uses bold plus an icon) or whether names of keys
-  and buttons deserve their own look.
+- **#143 Site icon.** The icon in the browser tab (favicon) only works
+  as `favicon.ico` in Static, which browsers ask for by themselves.
+  Idea: a site icon in the Site settings, made from a picture in Media
+  (sizes for browsers and phones, `<link rel="icon">`), maybe the logo
+  by default.
 - **#140 Mastodon verification.** The old sidebar had a "Follow" button
   with `rel="me"`, so Mastodon shows the site as verified on the
   profile. q.e.d. can't set `rel="me"` on a link and has no Mastodon
   icon; the footer now has a plain link. Idea: a Mastodon profile
   (or several "me" links) in the Site settings that adds
   `<link rel="me">` to every page, maybe with a follow link and icon.
-- **#141 Footer color in dark themes.** The footer takes the theme's
-  accent color unless set otherwise; in catppuccin-mocha (and likely
-  the other dark Catppuccin themes) that's a pale pink band below a
-  dark page. blog.panoptikum.social now has `footer = "shaded"`. To
-  decide: another default for dark themes, or per theme.
-- **#142 The start page in a hand-made menu.** `page = "index"` drops the
-  entry without a word; only `page = "/"` works. Check what the Menu tab
-  writes, accept both, and warn about menu entries whose page doesn't
-  exist instead of leaving them out silently.
-- **#143 Site icon.** The icon in the browser tab (favicon) only works
-  as `favicon.ico` in Static, which browsers ask for by themselves.
-  Idea: a site icon in the Site settings, made from a picture in Media
-  (sizes for browsers and phones, `<link rel="icon">`), maybe the logo
-  by default.
+
+#### To decide with the user
+
+- **#139 Button and key names in text.** Panoptikum's manuals marked
+  button names with `<kbd>` (**My Data**, **Delete my account**), which
+  q.e.d. escapes; they became bold. To decide whether bold is enough
+  (q.e.d.'s own manual uses bold plus an icon) or whether names of keys
+  and buttons deserve their own look.
 - **#144 Sidebar menu: folding groups and post lists.** The old sidebar
   had groups that fold open and closed (Manuals, Blog, Supported By;
   the current page's group open) and a Blog group listing every post.
   q.e.d.'s sidebar shows groups as headings, always open, and posts are
   reached through the Blog page with back and next links. To decide
   whether either is worth having. The old `.html` addresses are #134.
+
+#### Bigger features
+
+- **#146 Light and dark mode.** A site with two themes, one light and
+  one dark (e.g. latte and mocha), and a switch on the page for light,
+  dark and the system's setting. Without JavaScript the page follows
+  the system (`prefers-color-scheme`; daisyUI 5 can mark a theme
+  `--prefersdark`); the switch is an optional feature that remembers
+  the choice in the browser and must set it before the page shows, so
+  it doesn't flash in the wrong colors. To decide: the setting in the
+  Site tab (a second theme, off by default), what a custom theme
+  (#101) needs for its dark side, where the switch goes (header,
+  footer), and whether `[colors]` and the footer color are set per
+  mode (see #141). Added by the user on 2026-10-30.
+- **#145 Sites in several languages.** A site in German and English
+  (more later), starting with the manual (#110), for which a German
+  version was asked for. To decide: how a translation is stored
+  (`about.md` next to `about.en.md`, or a folder per language), the
+  addresses (the main language at `/`, others under `/en/`), what
+  belongs to each language (title, description, menus, footer, shared
+  blocks, posts, feeds), a language switch in the header (a plain link
+  to the same page in the other language, no JavaScript) and
+  `<link rel="alternate" hreflang>`, how pages without a translation
+  show, and how the app's editor and New page handle it. For the
+  manual compiled into the app: which language the Manual button opens
+  (the app's own texts are English only for now), and how manual pages
+  keep linking to each other by file name in both languages. Added
+  by the user on 2026-10-30.
+- **#105 MCP server, picked up again.** Dropped on 2026-10-29, back
+  on the list on 2026-10-30: AI assistants (Claude Desktop, Claude
+  Code) working on a site over the Model Context Protocol, with the
+  app's rules. Continue on the branch `mcp-server` (one commit,
+  `qed-mcp` with 13 tools, a format guide as server instructions, a
+  stdio test, settings shown in App settings): first bring it up to
+  date with main, then make it one program instead of a second one
+  bundled as a sidecar, which more than doubled the installers (.deb
+  12 → 28 MB): the app itself answers over stdio when started as
+  `qed mcp`. To check: stdio of a Windows GUI program started by an
+  assistant, and what the settings for Claude Desktop and Claude Code
+  then point to (the app's own path, per system).
 
 ### Phase 4: Future
 
