@@ -126,10 +126,10 @@ export const commands = {
 	 */
 	saveSiteConfig: (root: string, config: SiteConfig_Deserialize) => __TAURI_INVOKE<SiteConfig_Serialize>("save_site_config", { root, config }),
 	/**
-	 *  The theme names the app and generated sites can use: daisyUI's and
-	 *  the Catppuccin flavors.
+	 *  The themes the app and generated sites can use (daisyUI's and the
+	 *  Catppuccin flavors), each marked light or dark.
 	 */
-	listThemes: () => __TAURI_INVOKE<string[]>("list_themes"),
+	listThemes: () => __TAURI_INVOKE<ThemeChoice[]>("list_themes"),
 	/**  The CSS variables a custom theme sets, for previews in the app. */
 	customThemeVariables: (custom: CustomTheme) => __TAURI_INVOKE<ThemeVariable[]>("custom_theme_variables", { custom }),
 	/**
@@ -1476,6 +1476,13 @@ export type TextImage = {
 	image: string | null,
 	alt: string | null,
 	image_side?: Side,
+};
+
+/**  A theme as the app offers it: light ones and dark ones apart. */
+export type ThemeChoice = {
+	name: string,
+	/**  Whether its page background is dark (see [`is_dark`]). */
+	dark: boolean,
 };
 
 /**  One of the theme's four colors. */

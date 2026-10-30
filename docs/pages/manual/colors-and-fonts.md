@@ -12,8 +12,8 @@ the right, a small sketch of a page shows the result while you choose.
 
 ## A theme
 
-At the bottom of the tab are the themes: light ones and dark ones, each
-with its colors in a row. Click one, and the whole site takes its
+At the bottom of the tab are the themes, under **Light** and **Dark**,
+each with its colors in a row. Click one, and the whole site takes its
 colors. Every theme has four colors (**primary**, **secondary**,
 **accent** and **neutral**) on its background.
 
@@ -28,6 +28,10 @@ colors it gets:
   background** and **Footer**: **plain**, **shaded** (a shade darker
   than the page) or one of the four colors. The content background
   takes only a light tint, so text stays readable.
+
+On a dark theme the footer is **shaded** unless you pick another color:
+the theme's accent is often a pale color that would make a bright band
+below a dark page. On a light theme it's **accent**.
 
 **Reset** puts the header and every color back to the defaults.
 
@@ -73,5 +77,5 @@ answer = "The preview shows the site as it was built. Press :icon-eye: again to 
 
 [[items]]
 question = "Can visitors switch between light and dark?"
-answer = "No, the site has the one theme you choose. Pick a light or a dark one, whichever suits it."
+answer = "Not yet: the site has the one theme you choose. Pick a light or a dark one, whichever suits it."
 :::

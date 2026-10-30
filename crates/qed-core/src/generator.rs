@@ -48,7 +48,7 @@ pub const OUTPUT_DIR: &str = "_site";
 const MARKER: &str = ".qed-build";
 
 /// The stylesheet, compiled by `npm run build:site-css` and built into qed.
-const STYLESHEET: &str = include_str!("../assets/site.css");
+pub(crate) const STYLESHEET: &str = include_str!("../assets/site.css");
 /// For sites with formulas: pulldown-latex's stylesheet and the Latin
 /// Modern Math font; see `assets/pulldown-latex/README.md`.
 const MATH_CSS: &str = include_str!("../assets/pulldown-latex/math.css");
@@ -336,7 +336,8 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
         _ => Vec::new(),
     };
-    let colors = color_classes(&site.config.colors);
+    let dark = crate::theme::is_dark(STYLESHEET, site.config.page_theme(), site.config.custom());
+    let colors = color_classes(&site.config.colors, dark);
     let button_color = crate::theme::color_hex(
         STYLESHEET,
         site.config.page_theme(),
@@ -1471,8 +1472,10 @@ struct ColorClasses {
 
 /// Whole class names throughout, so Tailwind finds them when it scans this
 /// file. A colored area gets `on-color`: Markdown text in it takes the
-/// area's text color (site.input.css).
-fn color_classes(colors: &Colors) -> ColorClasses {
+/// area's text color (site.input.css). `dark` is whether the theme's page
+/// background is dark: the footer is then shaded by default, not a pale
+/// band of the accent color below a dark page.
+fn color_classes(colors: &Colors, dark: bool) -> ColorClasses {
     let buttons = colors.buttons.unwrap_or(ThemeColor::Primary);
     // A button on a box of its own color would vanish: it's drawn plain.
     let button_on = |surface: Surface| {
@@ -1505,7 +1508,11 @@ fn color_classes(colors: &Colors) -> ColorClasses {
     };
     ColorClasses {
         body: format!("{content}{links}"),
-        footer: match colors.footer.unwrap_or(Surface::Accent) {
+        footer: match colors.footer.unwrap_or(if dark {
+            Surface::Shaded
+        } else {
+            Surface::Accent
+        }) {
             Surface::Plain => "border-t border-base-300 bg-base-100 text-base-content",
             other => filled(other),
         },
@@ -4624,12 +4631,23 @@ mod tests {
 
     #[test]
     fn uses_the_chosen_theme_colors() {
-        let defaults = color_classes(&Colors::default());
+        let defaults = color_classes(&Colors::default(), false);
         assert_eq!(
             defaults.body, "bg-base-100",
             "links in primary need no class"
         );
         assert_eq!(defaults.footer, "on-color bg-accent text-accent-content");
+        let dark = color_classes(&Colors::default(), true);
+        assert_eq!(dark.footer, "bg-base-200 text-base-content");
+        let chosen = Colors {
+            footer: Some(Surface::Accent),
+            ..Colors::default()
+        };
+        assert_eq!(
+            color_classes(&chosen, true).footer,
+            "on-color bg-accent text-accent-content",
+            "a footer color that was picked wins"
+        );
         assert_eq!(defaults.hero_button, "btn btn-primary");
         assert_eq!(
             defaults.call_to_action_button, "btn",

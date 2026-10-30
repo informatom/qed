@@ -15,6 +15,8 @@ export interface ColorSetting {
   surface: boolean;
   /** What empty means; the defaults are how sites looked before. */
   fallback: Surface;
+  /** What empty means on a theme with a dark page background, if that differs. */
+  darkFallback?: Surface;
 }
 
 export const COLOR_SETTINGS: ColorSetting[] = [
@@ -24,16 +26,34 @@ export const COLOR_SETTINGS: ColorSetting[] = [
   { key: "call_to_action", label: "Call to action", uses: "Call to action box", surface: true, fallback: "primary" },
   { key: "boxes", label: "Boxed columns", uses: "boxed columns", surface: true, fallback: "plain" },
   { key: "content", label: "Content background", uses: "tint of the page background", surface: true, fallback: "plain" },
-  { key: "footer", label: "Footer", uses: "footer", surface: true, fallback: "accent" },
+  { key: "footer", label: "Footer", uses: "footer", surface: true, fallback: "accent", darkFallback: "shaded" },
 ];
 
 export const THEME_COLORS: ThemeColor[] = ["primary", "secondary", "accent", "neutral"];
 export const SURFACES: Surface[] = ["plain", "shaded", ...THEME_COLORS];
 
+/** What an empty setting means: on a dark theme, the footer is shaded (as color_classes in generator.rs). */
+export function fallbackOf(setting: ColorSetting, dark: boolean): Surface {
+  return (dark && setting.darkFallback) || setting.fallback;
+}
+
 /** The choice in effect for `key`: the one saved, or the default. */
-export function colorOf(colors: Colors | undefined, key: ColorKey): Surface {
+export function colorOf(colors: Colors | undefined, key: ColorKey, dark = false): Surface {
   const setting = COLOR_SETTINGS.find((s) => s.key === key);
-  return colors?.[key] ?? setting?.fallback ?? "plain";
+  return colors?.[key] ?? (setting ? fallbackOf(setting, dark) : "plain");
+}
+
+/** Whether light text reads better on `#rrggbb` than dark text: a dark page background (as is_light in theme.rs). */
+export function isDarkHex(hex: string): boolean | null {
+  const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return null;
+  const digits = match[1].length === 3 ? [...match[1]].map((d) => d + d).join("") : match[1];
+  const channel = (i: number) => {
+    const c = parseInt(digits.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const l = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  return (l + 0.05) / 0.05 <= 1.05 / (l + 0.05);
 }
 
 /** Whole class names for the app's Tailwind: an area filled with `surface`. */
@@ -62,14 +82,14 @@ export function contentBackground(colors: Colors | undefined): string | null {
 }
 
 /** Where a theme color shows up on the site with these choices. */
-export function usesOf(color: ThemeColor, colors: Colors | undefined, header: HeaderStyle): string {
+export function usesOf(color: ThemeColor, colors: Colors | undefined, header: HeaderStyle, dark = false): string {
   const fixed: Record<ThemeColor, string[]> = {
     primary: header === "plain" ? ["current page in the top menu"] : [],
     secondary: ["dates in Post lists"],
     accent: header === "plain" ? ["stripe along the top of the header", "bar beside quotes"] : ["bar beside quotes"],
     neutral: ["current page in the sidebar menu", "file type in Download blocks"],
   };
-  const chosen = COLOR_SETTINGS.filter((s) => colorOf(colors, s.key) === color).map((s) => s.uses);
+  const chosen = COLOR_SETTINGS.filter((s) => colorOf(colors, s.key, dark) === color).map((s) => s.uses);
   if (header === color) chosen.push("the header bar");
   const all = [...chosen, ...fixed[color]];
   return all.length ? all.join(", ") : "nothing else";

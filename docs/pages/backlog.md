@@ -28,17 +28,6 @@ several languages (#145) come before the MCP server (#105), since
 its tools and format guide describe the site folder that #145
 changes.
 
-#### Small fixes
-
-- **#141 Footer color in dark themes.** The footer takes the theme's
-  accent color unless set otherwise; in catppuccin-mocha (and likely
-  the other dark Catppuccin themes) that's a pale pink band below a
-  dark page. blog.panoptikum.social now has `footer = "shaded"`.
-  Decided 2026-10-30: when the theme's background is dark, the footer
-  is shaded by default (no list per theme); a footer color set in the
-  Theme tab still wins. Fits #146, where a site has a light and a dark
-  theme.
-
 #### For sites moved over by hand
 
 - **#134 Old addresses in the page settings.** A page's earlier

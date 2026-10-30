@@ -9,8 +9,8 @@
   import FontPicker from "$lib/FontPicker.svelte";
   import ThemeLegend from "$lib/ThemeLegend.svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
-  import { commands, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type Surface, type ThemeVariable } from "$lib/site";
-  import { COLOR_SETTINGS, colorOf, SURFACES, THEME_COLORS, type ColorSetting } from "$lib/siteColors";
+  import { commands, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type Surface, type ThemeChoice, type ThemeVariable } from "$lib/site";
+  import { COLOR_SETTINGS, colorOf, fallbackOf, isDarkHex, SURFACES, THEME_COLORS, type ColorSetting } from "$lib/siteColors";
 
   interface Props {
     site: Site;
@@ -18,12 +18,18 @@
   }
 
   let { site, onsaved }: Props = $props();
-  let themes = $state<string[]>([]);
+  let themes = $state<ThemeChoice[]>([]);
   let error = $state<string | null>(null);
 
   let isCustom = $derived(site.config.theme === "custom");
   /** The custom colors being edited; saved on each finished change. */
   let draft = $state<CustomTheme | null>(null);
+  /** Whether the site's page background is dark: a custom background, or the theme's (as theme::is_dark). */
+  let dark = $derived(
+    (isCustom && draft?.background ? isDarkHex(draft.background) : null) ??
+      themes.find((t) => t.name === (isCustom && draft ? draft.from : site.config.theme))?.dark ??
+      false,
+  );
   let variables = $state<ThemeVariable[]>([]);
 
   const COLORS = [
@@ -58,14 +64,14 @@
 
   // The default is saved as nothing, so site.toml only names what was changed.
   function setColor(setting: ColorSetting, value: Surface) {
-    if (colorOf(site.config.colors, setting.key) === value) return;
-    const colors = { ...$state.snapshot(site.config.colors ?? {}), [setting.key]: value === setting.fallback ? null : value };
+    if (colorOf(site.config.colors, setting.key, dark) === value) return;
+    const colors = { ...$state.snapshot(site.config.colors ?? {}), [setting.key]: value === fallbackOf(setting, dark) ? null : value };
     save({ ...$state.snapshot(site.config), colors: colors as SiteConfig["colors"] });
   }
 
   /** Whether any color, the header included, differs from its default. */
   let colorsChanged = $derived(
-    site.config.header !== "plain" || COLOR_SETTINGS.some((setting) => colorOf(site.config.colors, setting.key) !== setting.fallback),
+    site.config.header !== "plain" || COLOR_SETTINGS.some((setting) => colorOf(site.config.colors, setting.key, dark) !== fallbackOf(setting, dark)),
   );
 
   async function resetColors() {
@@ -306,13 +312,13 @@
           {/each}
         </div>
         {#each COLOR_SETTINGS as setting (setting.key)}
-          {@const current = colorOf(site.config.colors, setting.key)}
+          {@const current = colorOf(site.config.colors, setting.key, dark)}
           <span class="text-base-content/80">{setting.label}</span>
           <div id="color-{setting.key}" class="join flex-wrap">
             {#each setting.surface ? SURFACES : THEME_COLORS as value (value)}
               <button type="button" id="color-{setting.key}-{value}"
                 class={["btn join-item btn-xs gap-1.5 capitalize", current === value && "btn-active"]}
-                title={value === setting.fallback ? "The default" : undefined}
+                title={value === fallbackOf(setting, dark) ? "The default" : undefined}
                 onclick={() => setColor(setting, value)}>
                 {@render swatch(value)}{value}
               </button>
@@ -367,7 +373,7 @@
           <span class="w-28">Start from</span>
           <select id="custom-theme-from" class="select select-sm w-48" value={draft.from}
             onchange={(e) => changeBase(e.currentTarget.value)}>
-            {#each themes as theme (theme)}<option value={theme}>{theme}</option>{/each}
+            {#each themes as theme (theme.name)}<option value={theme.name}>{theme.name}</option>{/each}
           </select>
           <span class="text-xs text-base-content/60">Changing it takes that theme's colors.</span>
         </label>
@@ -448,7 +454,7 @@
 
   <!-- Stays in view while the theme list scrolls. -->
   <div class="@container xl:sticky xl:top-4">
-    <ThemeLegend theme={isCustom && draft ? draft.from : site.config.theme} {variables} header={site.config.header} colors={site.config.colors}
+    <ThemeLegend theme={isCustom && draft ? draft.from : site.config.theme} {variables} header={site.config.header} colors={site.config.colors} {dark}
       label={isCustom && draft ? (draft.name ? `“${draft.name}”, from ${draft.from}` : `custom, from ${draft.from}`) : site.config.theme} />
   </div>
 </div>

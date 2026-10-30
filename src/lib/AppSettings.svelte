@@ -5,9 +5,9 @@
   import ThemePicker from "$lib/ThemePicker.svelte";
   import { checkForUpdate, installUpdate, updates } from "$lib/updates.svelte";
   import { applyAppTheme, loadAppTheme, saveAppTheme } from "$lib/appTheme";
-  import { commands } from "$lib/site";
+  import { commands, type ThemeChoice } from "$lib/site";
 
-  let themes = $state<string[]>([]);
+  let themes = $state<ThemeChoice[]>([]);
   let theme = $state(loadAppTheme());
 
   onMount(async () => {

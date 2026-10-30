@@ -601,12 +601,12 @@ fn custom_theme_variables(custom: CustomTheme) -> Vec<ThemeVariable> {
     custom.variables()
 }
 
-/// The theme names the app and generated sites can use: daisyUI's and
-/// the Catppuccin flavors.
+/// The themes the app and generated sites can use (daisyUI's and the
+/// Catppuccin flavors), each marked light or dark.
 #[tauri::command]
 #[specta::specta]
-fn list_themes() -> Vec<&'static str> {
-    qed_core::theme::THEMES.to_vec()
+fn list_themes() -> Vec<qed_core::theme::ThemeChoice> {
+    qed_core::theme::choices()
 }
 
 /// Replaces the site's publish targets in targets.toml.

@@ -900,6 +900,18 @@ rest is done.
   building first to show how many website files will go up; back on the
   list if the wording isn't enough.
 
+- **#141 Footer color in dark themes.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day: on a theme with a dark
+  page background, the footer is shaded by default instead of the
+  accent color (a pale pink band in catppuccin-mocha); a footer color
+  picked in the Theme tab still wins. `theme::is_dark` decides by the
+  page background (`--color-base-100`), so a custom theme's own
+  background counts; a test checks it agrees with each theme's
+  `color-scheme`. Asked for by the user on the way: the theme pickers
+  (Theme tab and App tab) show the themes under Light and Dark, each
+  A to Z (`theme::choices`, `list_themes`). The manual's Colors and
+  fonts page says both. Groundwork for #146.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

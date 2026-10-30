@@ -33,6 +33,7 @@ export type FontInfo = Sent<Rust.FontInfo>;
 export type FontListing = Sent<Rust.FontListing>;
 export type Fonts = Sent<Rust.Fonts>;
 export type ThemeVariable = Sent<Rust.ThemeVariable>;
+export type ThemeChoice = Sent<Rust.ThemeChoice>;
 export type BuildReport = Sent<Rust.BuildReport>;
 export type DeletedPage = Sent<Rust.DeletedPage>;
 export type DiffLine = Sent<Rust.DiffLine>;
