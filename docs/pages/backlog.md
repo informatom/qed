@@ -30,13 +30,6 @@ changes.
 
 #### For sites moved over by hand
 
-- **#134 Old addresses in the page settings.** A page's earlier
-  addresses (`redirect_from`) are only set by moving or renaming it in
-  the app; old addresses a q.e.d. page can't have (such as ones ending in
-  `.html`, from a site moved over by hand) have to be typed into the
-  page's file. The manual's [Moving a site over](manual/moving-a-site.md)
-  says so. Wanted: a list in the page's Settings tab to see, add and
-  remove them. Found 2026-10-29 while writing the manual (#110).
 - **#135 Old episode guids.** A new episode gets a guid that never
   changes, and the app offers no way to give it the one it had before.
   A podcast moved over by hand from another system then shows every
@@ -79,7 +72,7 @@ changes.
   2026-10-30: groups fold open and closed (`<details>`, works without
   JavaScript), the current page's group starts open; no post list in
   the sidebar. To check: on or off per site, or always. The old `.html`
-  addresses are #134.
+  addresses were #134.
 
 #### Bigger features
 

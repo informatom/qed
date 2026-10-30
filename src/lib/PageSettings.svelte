@@ -180,6 +180,18 @@
     form.episode.chapters = [...form.episode.chapters, { start: last === "" ? "00:00:00" : last, title: "", link: null }];
   }
 
+  /** An old address as saved (as site::old_address): a path with a leading slash, from a full web address too. */
+  function oldAddress(text: string): string | null {
+    let address = text.trim();
+    const scheme = address.indexOf("://");
+    if (scheme !== -1) {
+      const rest = address.slice(scheme + 3);
+      address = rest.includes("/") ? rest.slice(rest.indexOf("/")) : "";
+    }
+    address = address.split(/[#?]/)[0].replace(/^\/+|\/+$/g, "");
+    return address === "" ? null : `/${address}`;
+  }
+
   // What would be saved, recomputed whenever a field changes.
   let edited: FrontMatter = $derived({
     ...form,
@@ -192,6 +204,7 @@
     weight: Number(form.weight) || 0,
     authors: list(authors),
     tags: list(tags),
+    redirect_from: [...new Set(form.redirect_from.map(oldAddress).filter((a) => a !== null))],
     episode: cleanEpisode(form.episode),
   });
 
@@ -319,6 +332,27 @@
         <span class="text-sm font-medium">Summary</span>
         <textarea id="setting-summary" class="textarea w-full" rows="3" bind:value={form.summary}></textarea>
       </label>
+    </section>
+
+    <section id="page-old-addresses" class="flex flex-col gap-2 border-t border-base-300 pt-6">
+      {@render heading("Old addresses")}
+      <p class="text-xs text-base-content/60">
+        Addresses this page had before, on this site or on the one it was moved from, such as
+        <code>/2016/03/28/easterhegg.html</code>. Each one leads visitors and search engines here. Moving or renaming
+        the page in q.e.d. adds its old address by itself.
+      </p>
+      {#each form.redirect_from as _, index (index)}
+        <div class="flex gap-2">
+          <input id="old-address-{index}" class="input input-sm w-full max-w-xl font-mono" bind:value={form.redirect_from[index]}
+            placeholder="/old/address or https://old-site.example/old/address" aria-label="Old address" />
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Remove old address"
+            onclick={() => (form.redirect_from = form.redirect_from.filter((_, i) => i !== index))}>Remove</button>
+        </div>
+      {/each}
+      <div>
+        <button type="button" id="add-old-address" class="btn btn-sm"
+          onclick={() => (form.redirect_from = [...form.redirect_from, ""])}>Add an address</button>
+      </div>
     </section>
 
     {#if form.episode}

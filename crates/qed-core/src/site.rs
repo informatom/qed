@@ -1167,7 +1167,78 @@ pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result
             episode.guid = crate::podcast::new_guid();
         }
     }
+    front.redirect_from = front
+        .redirect_from
+        .iter()
+        .filter_map(|address| old_address(address))
+        .fold(Vec::new(), |mut kept, address| {
+            if !kept.contains(&address) {
+                kept.push(address);
+            }
+            kept
+        });
+    check_old_addresses(root, file, &front.redirect_from)?;
     update_page(root, file, |content| content.front = front)
+}
+
+/// An old address as `redirect_from` keeps it: `/2016/03/28/easterhegg.html`.
+/// A full web address (pasted from the old site) keeps only its path;
+/// `#…` and `?…` are dropped, since a redirect page can't tell them apart.
+/// `None` for an empty one.
+pub fn old_address(written: &str) -> Option<String> {
+    let mut address = written.trim();
+    if let Some((_, rest)) = address.split_once("://") {
+        address = rest.find('/').map_or("", |slash| &rest[slash..]);
+    }
+    let address = address.split(['#', '?']).next().unwrap_or_default();
+    let address = address.trim_matches('/');
+    (!address.is_empty()).then(|| format!("/{address}"))
+}
+
+/// Refuses old addresses that are new in `addresses` (not yet in the file)
+/// and belong to another page already: as its address, or as one of its
+/// old addresses. The build would stop on the first, and the second would
+/// lead visitors to one of the two pages at random.
+fn check_old_addresses(root: &Path, file: &Path, addresses: &[String]) -> Result<(), SiteError> {
+    let before = read_page(root, file)?.content.front.redirect_from;
+    let added: Vec<&String> = addresses
+        .iter()
+        .filter(|address| !before.contains(address))
+        .collect();
+    if added.is_empty() {
+        return Ok(());
+    }
+    let site = open(root)?;
+    let invalid = |message: String| SiteError::Invalid {
+        path: file.to_path_buf(),
+        message,
+    };
+    for address in added {
+        let path = address.trim_matches('/');
+        for page in &site.pages {
+            let title = &page.content.front.title;
+            if page.path == path {
+                return Err(invalid(if page.file == file {
+                    format!("“{address}” is this page's own address")
+                } else {
+                    format!("“{address}” is the address of the page “{title}”")
+                }));
+            }
+            if page.file != file
+                && page
+                    .content
+                    .front
+                    .redirect_from
+                    .iter()
+                    .any(|other| other.trim_matches('/') == path)
+            {
+                return Err(invalid(format!(
+                    "“{address}” already leads to the page “{title}”"
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Saves a page's blocks and returns the page as saved.
@@ -2140,6 +2211,68 @@ mod tests {
         let menu = open(dir.path()).unwrap().config.main_menu;
         assert_eq!(menu[0].page.as_deref(), Some(""));
         assert_eq!(menu[1].items[0].page.as_deref(), Some("blog"));
+    }
+
+    #[test]
+    fn tidies_old_addresses_and_refuses_ones_taken() {
+        for (written, address) in [
+            ("about", Some("/about")),
+            (
+                " /2016/03/28/easterhegg.html ",
+                Some("/2016/03/28/easterhegg.html"),
+            ),
+            (
+                "https://old.example.org/blog/post/?p=1#top",
+                Some("/blog/post"),
+            ),
+            ("https://old.example.org", None),
+            ("/", None),
+            ("", None),
+        ] {
+            assert_eq!(old_address(written).as_deref(), address, "{written:?}");
+        }
+
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            ("pages/index.md", PAGE),
+            ("pages/about.md", PAGE),
+            (
+                "pages/contact.md",
+                "+++\ntitle = \"Contact\"\nredirect_from = [\"/kontakt\"]\n+++\n",
+            ),
+        ]);
+        let file = Path::new("pages/about.md");
+        let front = |addresses: &[&str]| FrontMatter {
+            title: "About".into(),
+            redirect_from: addresses.iter().map(|a| a.to_string()).collect(),
+            ..FrontMatter::default()
+        };
+        let saved = save_front_matter(
+            dir.path(),
+            file,
+            front(&[
+                "ueber-uns",
+                "/ueber-uns/",
+                "https://old.example.org/team.html",
+                " ",
+            ]),
+        )
+        .unwrap();
+        assert_eq!(
+            saved.content.front.redirect_from,
+            ["/ueber-uns", "/team.html"]
+        );
+
+        for (taken, message) in [
+            ("/contact", "is the address of the page “Contact”"),
+            ("kontakt", "already leads to the page “Contact”"),
+            ("/about", "is this page's own address"),
+        ] {
+            let error = save_front_matter(dir.path(), file, front(&["/ueber-uns", taken]))
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains(message), "{error}");
+        }
     }
 
     #[test]

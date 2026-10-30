@@ -38,7 +38,8 @@ caption = "The **Pages** tab: the pages on the left, the one you picked in the e
 :::
 
 The buttons next to the tabs move or rename the page (:icon-folder-input:;
-it keeps its old address as a redirect, and links to it are updated) and
+it keeps its old address, listed under **Old addresses** in its
+Settings tab, and links to it are updated) and
 delete it (:icon-trash:). The start page can't be moved or deleted.
 
 ## Blocks

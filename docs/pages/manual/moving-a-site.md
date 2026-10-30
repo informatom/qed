@@ -45,10 +45,15 @@ moves or gets a new name in q.e.d., the old address leads to the new one
 by itself.
 
 Old addresses that a q.e.d. page can't have, such as ones ending in
-`.html`, can be kept too, though not in the app yet: in the page's file,
-a line such as `redirect_from = ["2022/11/11/episode51.html"]` at the top,
-among the settings, sends visitors from there to the page. Ask for help
-if that's new to you.
+`.html`, can be kept too: in the page's **Settings** tab, under **Old
+addresses**, press **Add an address** and type it
+(`/2022/11/11/episode51.html`), or paste the full address from the old
+website; q.e.d. keeps only the part after the domain. Visitors who come
+there are sent on to the page. The same list shows the addresses q.e.d.
+kept when the page was moved; **Remove** takes one away.
+
+An address can lead to one page only: q.e.d. won't save one that is
+already another page's address, or another page's old address.
 
 ## A podcast
 

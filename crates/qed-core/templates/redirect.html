@@ -1,8 +1,10 @@
 <!doctype html>
-<html>
+<html lang="{{ language }}">
 <head>
   <meta charset="utf-8">
   <title>Moved</title>
+  <meta name="color-scheme" content="{% if dark %}dark{% else %}light{% endif %}">
+  <style>body{background:{{ background }};color:{{ text }};font-family:system-ui,sans-serif;margin:2rem}a{color:inherit}</style>
   <meta name="robots" content="noindex">
   <meta http-equiv="refresh" content="0; url={{ target }}">
   <link rel="canonical" href="{{ target }}">

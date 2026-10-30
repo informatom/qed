@@ -912,6 +912,19 @@ rest is done.
   A to Z (`theme::choices`, `list_themes`). The manual's Colors and
   fonts page says both. Groundwork for #146.
 
+- **#134 Old addresses in the page settings.** Found 2026-10-29 while
+  writing the manual, done 2026-10-30: the page's Settings tab lists its
+  old addresses (`redirect_from`) under Old addresses, with Add an
+  address and Remove. Saving tidies them (`site::old_address`: a leading
+  slash, only the path of a full web address pasted from the old site,
+  no `#…` or `?…`, no doubles) and refuses a new one that is another
+  page's address or another page's old address, which the build would
+  stop on or which would lead to two pages. The manual's Moving a site
+  over and Pages and blocks pages say so. On the way, asked for by the user:
+  the short page an old address shows before it sends visitors on takes
+  the theme's background and text color (inline, from `color_hex`), so
+  it doesn't flash white on a dark site.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

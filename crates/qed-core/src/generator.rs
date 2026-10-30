@@ -397,6 +397,17 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     write(&out_dir.join("404.html"), html)?;
 
     let mut redirects = 0;
+    let theme_hex = |variable: &str, fallback: &str| {
+        crate::theme::color_hex(
+            STYLESHEET,
+            site.config.page_theme(),
+            site.config.custom(),
+            variable,
+        )
+        .unwrap_or_else(|| fallback.to_string())
+    };
+    let redirect_background = theme_hex("--color-base-100", "#ffffff");
+    let redirect_text = theme_hex("--color-base-content", "#1d232a");
     for page in &published {
         for from in &page.content.front.redirect_from {
             let from = from.trim_matches('/');
@@ -418,12 +429,18 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             };
             let links = LinkContext::new(folder, Path::new(""));
             let target = links.page(&page.path);
-            let html = RedirectTemplate { target: &target }
-                .render()
-                .map_err(|source| BuildError::Template {
-                    page: page.path.clone(),
-                    source,
-                })?;
+            let html = RedirectTemplate {
+                target: &target,
+                language: &site.config.language,
+                background: &redirect_background,
+                text: &redirect_text,
+                dark,
+            }
+            .render()
+            .map_err(|source| BuildError::Template {
+                page: page.path.clone(),
+                source,
+            })?;
             write(&file, html)?;
             redirects += 1;
         }
@@ -1606,6 +1623,12 @@ fn close_label(language: &str) -> &'static str {
 #[template(path = "redirect.html")]
 struct RedirectTemplate<'a> {
     target: &'a str,
+    language: &'a str,
+    /// The theme's page background and text, as `#rrggbb`: the page shows
+    /// for a moment, so it shouldn't flash white on a dark site.
+    background: &'a str,
+    text: &'a str,
+    dark: bool,
 }
 
 struct MenuLink {
@@ -4760,6 +4783,19 @@ mod tests {
             "{top}"
         );
         assert!(out.path().join("news/index.html").is_file());
+        assert!(
+            deep.contains("<style>body{background:#ffffff;") && deep.contains("content=\"light\""),
+            "the theme's colors: {deep}"
+        );
+
+        site.config.theme = "catppuccin-mocha".into();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let dark = read(out.path().join("old.html"));
+        assert!(
+            dark.contains("<style>body{background:#1e1e2e;color:#cdd6f4;")
+                && dark.contains("content=\"dark\""),
+            "{dark}"
+        );
     }
 
     #[test]
