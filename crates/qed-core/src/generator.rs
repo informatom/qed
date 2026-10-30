@@ -197,6 +197,33 @@ fn missing_links(site: &Site, published: &[&Page]) -> Vec<String> {
     notes
 }
 
+/// Entries of a hand-made menu whose page isn't on the website: the menu
+/// leaves them out, and this says so.
+fn menu_notes(site: &Site, published: &[&Page], items: &[crate::site::MenuItem]) -> Vec<String> {
+    let mut notes = Vec::new();
+    for item in items {
+        if let Some(written) = &item.page {
+            let path = crate::site::menu_page_path(written);
+            if !published.iter().any(|page| page.path == path) {
+                let problem = if site
+                    .pages
+                    .iter()
+                    .any(|p| p.path == path && p.content.front.draft)
+                {
+                    "that page is a draft and not on the website yet"
+                } else {
+                    "there's no such page"
+                };
+                notes.push(format!(
+                    "The menu has an entry for \"/{path}\", but {problem}; it's left out."
+                ));
+            }
+        }
+        notes.extend(menu_notes(site, published, &item.items));
+    }
+    notes
+}
+
 /// For a link to `/media/…` or `/assets/…` (as written in text), what's
 /// wrong if that file isn't there; `None` if it is, or the link is to
 /// something else.
@@ -254,6 +281,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         .chain(&people_pages)
         .collect();
     notes.extend(missing_links(site, &published));
+    notes.extend(menu_notes(site, &published, &site.config.main_menu));
     let media_dir = site.root.join(MEDIA_DIR);
     let images = Images::new(&media_dir);
     let site_icons = SiteIcons::load(&media_dir);
@@ -1632,12 +1660,12 @@ fn hand_made_menu(
                 });
             }
             let (title, href, target) = if let Some(path) = &item.page {
-                let path = path.trim().trim_matches('/');
+                let path = crate::site::menu_page_path(path);
                 let page = pages.iter().find(|page| page.path == path)?;
                 (
                     title.unwrap_or_else(|| page.content.front.title.clone()),
-                    links.page(path),
-                    Some(path.to_string()),
+                    links.page(&path),
+                    Some(path),
                 )
             } else {
                 let link = item.link.as_deref()?.trim();
@@ -5004,10 +5032,33 @@ mod tests {
                 ..MenuItem::default()
             },
             page("blog", None),
+            page("index", Some("Start")),
             page("gone", None),
+            page("blog/2026-02-02-draft", None),
         ];
         let out = tempfile::tempdir().unwrap();
-        build_on(&site, out.path(), TODAY).unwrap();
+        let report = build_on(&site, out.path(), TODAY).unwrap();
+        assert!(
+            report.notes.contains(
+                &"The menu has an entry for \"/gone\", but there's no such page; it's left out."
+                    .to_string()
+            ),
+            "{:?}",
+            report.notes
+        );
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("\"/blog/2026-02-02-draft\", but that page is a draft")),
+            "{:?}",
+            report.notes
+        );
+        assert!(
+            !report.notes.iter().any(|n| n.contains("\"/\"")),
+            "the start page as `index` is found: {:?}",
+            report.notes
+        );
         let about = read(out.path().join("blog/about/index.html"));
         let header = &about[about.find("<header").unwrap()..about.find("</header>").unwrap()];
         assert!(header.contains("dropdown dropdown-hover"), "{header}");
@@ -5019,6 +5070,10 @@ mod tests {
         assert!(
             header.contains(">Blog</a>"),
             "page title by default: {header}"
+        );
+        assert!(
+            header.contains(">Start</a>"),
+            "`index` is the start page: {header}"
         );
         assert!(
             !header.contains("gone"),

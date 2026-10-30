@@ -64,6 +64,10 @@ The arrows move an entry up and down, :icon-trash: removes it. **Save
 menu** saves it; **Back to automatic** returns to the menu made from the
 pages' settings.
 
+A page that is a draft, or was deleted, isn't shown in the menu. Its
+entry stays in the Menu tab with a warning, and building the website
+says so, until you pick another page or remove the entry.
+
 ::: faq
 [[items]]
 question = "I made a new page, but it's not in the menu."

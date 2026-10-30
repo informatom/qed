@@ -30,10 +30,6 @@ changes.
 
 #### Small fixes
 
-- **#142 The start page in a hand-made menu.** `page = "index"` drops the
-  entry without a word; only `page = "/"` works. Check what the Menu tab
-  writes, accept both, and warn about menu entries whose page doesn't
-  exist instead of leaving them out silently.
 - **#137 Misleading count before publishing.** The Publish dialog says
   "3 files changed since the last publish" and lists the changed files
   of the site (`pages/about.md`), but publishing then uploads many more

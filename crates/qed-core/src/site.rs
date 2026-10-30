@@ -135,6 +135,32 @@ pub struct MenuItem {
     pub items: Vec<MenuItem>,
 }
 
+/// A menu entry's page as the pages' addresses have it, for entries typed
+/// by hand: `/`, `index` and `index.md` are the start page (`""`), and
+/// `/blog/`, `blog.md` and `blog/index` are `blog`, like the page files.
+pub fn menu_page_path(written: &str) -> String {
+    let path = written.trim().trim_matches('/');
+    let path = path.strip_suffix(".md").unwrap_or(path);
+    let path = if path == "index" {
+        ""
+    } else {
+        path.strip_suffix("/index").unwrap_or(path)
+    };
+    path.to_string()
+}
+
+/// Writes every page entry of a hand-made menu the way the pages' addresses
+/// are written (see `menu_page_path`), so the build, the Menu tab and moving
+/// pages find them.
+fn tidy_menu_pages(items: &mut [MenuItem]) {
+    for item in items {
+        if let Some(page) = &mut item.page {
+            *page = menu_page_path(page);
+        }
+        tidy_menu_pages(&mut item.items);
+    }
+}
+
 fn is_false(value: &bool) -> bool {
     !value
 }
@@ -478,10 +504,12 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
     if !config_path.is_file() {
         return Err(SiteError::NotASite(root.to_path_buf()));
     }
-    let config = toml::from_str(&read(&config_path)?).map_err(|source| SiteError::Config {
-        path: config_path,
-        source,
-    })?;
+    let mut config: SiteConfig =
+        toml::from_str(&read(&config_path)?).map_err(|source| SiteError::Config {
+            path: config_path,
+            source,
+        })?;
+    tidy_menu_pages(&mut config.main_menu);
 
     let mut files = Vec::new();
     let pages_dir = root.join(PAGES_DIR);
@@ -1252,7 +1280,7 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
 /// Whether a hand-made menu has an entry for the page at `path`.
 fn menu_links_to(items: &[MenuItem], path: &str) -> bool {
     items.iter().any(|item| {
-        item.page.as_deref().map(|p| p.trim().trim_matches('/')) == Some(path)
+        item.page.as_deref().map(menu_page_path).as_deref() == Some(path)
             || item.link.as_deref().is_some_and(|link| {
                 link.strip_prefix('/').map(|l| {
                     l.split(['#', '?'])
@@ -2088,6 +2116,30 @@ mod tests {
                 config.main_menu
             );
         }
+    }
+
+    #[test]
+    fn reads_menu_pages_written_by_hand_like_page_files() {
+        for (written, path) in [
+            ("", ""),
+            ("/", ""),
+            ("index", ""),
+            ("/index.md", ""),
+            ("blog", "blog"),
+            ("/blog/", "blog"),
+            ("blog.md", "blog"),
+            ("blog/index", "blog"),
+            (" about/team ", "about/team"),
+        ] {
+            assert_eq!(menu_page_path(written), path, "{written:?}");
+        }
+        let dir = site_with(&[(
+            "site.toml",
+            "title = \"S\"\n\n[[main_menu]]\npage = \"index\"\n\n[[main_menu]]\ntitle = \"More\"\n\n[[main_menu.items]]\npage = \"/blog/\"\n",
+        )]);
+        let menu = open(dir.path()).unwrap().config.main_menu;
+        assert_eq!(menu[0].page.as_deref(), Some(""));
+        assert_eq!(menu[1].items[0].page.as_deref(), Some("blog"));
     }
 
     #[test]

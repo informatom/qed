@@ -172,7 +172,7 @@ fn move_menu_entries(items: &mut [site::MenuItem], new_paths: &BTreeMap<&str, &s
     let mut changed = false;
     for item in items {
         if let Some(page) = &mut item.page
-            && let Some(new) = new_paths.get(page.trim().trim_matches('/'))
+            && let Some(new) = new_paths.get(site::menu_page_path(page).as_str())
         {
             *page = new.to_string();
             changed = true;

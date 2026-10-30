@@ -879,6 +879,16 @@ rest is done.
   a `<nav>` at the end of `<main>` in page.html, left out of the search
   index. On for docs/pages/manual and docs/pages/blog.
 
+- **#142 The start page in a hand-made menu.** Found 2026-10-30 while
+  moving blog.panoptikum.social over, done the same day: a menu entry
+  written by hand as `page = "index"` was left out without a word (the
+  Menu tab writes `""` for the start page). `site::menu_page_path` now
+  reads menu pages like page files (`/`, `index`, `index.md`, `blog/`,
+  `blog.md`, `blog/index`), when `site.toml` is opened, in the build and
+  when pages move. Entries whose page is a draft or doesn't exist are
+  still left out, but the build says so in a note, and the Menu tab
+  shows them with a warning. The manual's Menus page says so.
+
 ## Dropped
 
 Not needed in a single-user desktop app:
