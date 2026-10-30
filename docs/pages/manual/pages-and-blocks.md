@@ -85,6 +85,18 @@ type, and its toolbar adds it for you:
 - `[the text](/about)` for a link (more below)
 - `![what it shows](/media/photo.jpg)` for a picture from Media
 
+Four HTML tags work in text, for what Markdown has no way to write:
+
+- `<kbd>Ctrl</kbd>+<kbd>S</kbd>` for keys: <kbd>Ctrl</kbd>+<kbd>S</kbd>
+- `m<sup>2</sup>` and `CO<sub>2</sub>`: m<sup>2</sup>, CO<sub>2</sub>
+- `<br>` for a new line where Markdown has none, such as inside a table
+  cell
+
+The four buttons after the two code buttons (code in a line, and a
+code block) in the toolbar put them in for you, around what you
+selected. Any other HTML shows as it is written,
+as text.
+
 `:icon-phone:` puts an icon into the text, as tall as the letters (all
 of them are in [Icons](icons.md)). Math
 (`$a^2 + b^2 = c^2$`) and a few more things work too; the blog shows

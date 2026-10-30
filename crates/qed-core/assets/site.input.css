@@ -36,6 +36,31 @@
   border-inline-start-color: var(--color-accent);
 }
 
+/* Keys (`<kbd>Ctrl</kbd>`) as keycaps, in the theme's base colors like
+   daisyUI's kbd; on a colored area in its text color. */
+.prose kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 0.4em;
+  border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-field, 0.25rem);
+  background-color: var(--color-base-200);
+  color: var(--color-base-content);
+  box-shadow: none;
+  font-family: inherit;
+  font-size: 0.85em;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: center;
+  vertical-align: 0.05em;
+}
+.on-color .prose kbd,
+.site-footer .prose kbd {
+  background-color: transparent;
+  color: inherit;
+}
+
 /* `[colors] content`: the page background tinted with a theme color,
    light enough for the base text color to stay readable. */
 .content-primary {

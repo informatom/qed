@@ -934,6 +934,22 @@ rest is done.
   over says how. The imports (#034, #123) are to carry guids over by
   themselves; old feed addresses are #124.
 
+- **#138 Line breaks in table cells.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day as decided with the
+  user: four plain HTML tags go through in text, everywhere: `<br>`
+  (also `<br/>`), `<kbd>`, `<sup>` and `<sub>`, without attributes
+  (`markdown::allowed_tag`, written as comrak's `Raw` nodes). Inside
+  code they stay text; any other tag, or one with attributes, stays
+  escaped. The text editor's toolbar has buttons for them after Code
+  (Key, Superscript, Subscript, Line break; OverType's `toolbarButtons`
+  with Lucide icons), and a Code block button next to OverType's inline
+  code, asked for by the user. The manual's Pages and
+  blocks page lists them.
+- **#139 Button and key names in text.** Found and done with #138:
+  `<kbd>` shows as a keycap in the theme's base colors (`.prose kbd` in
+  site.input.css; on colored areas in their text color). Button names
+  stay bold, as in q.e.d.'s own manual.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

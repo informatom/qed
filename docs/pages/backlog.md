@@ -30,21 +30,6 @@ changes.
 
 #### For sites moved over by hand
 
-- **#138 Line breaks in table cells.** Markdown tables have no line
-  break of their own inside a cell; the usual way is `<br>`, but q.e.d.
-  escapes all raw HTML, so it shows as text. Panoptikum's API page used
-  it in many cells (it now has "; " instead). Decided 2026-10-30: a
-  short list of HTML tags goes through in text, everywhere (not only
-  in tables): `<br>`, `<kbd>` (#139), `<sup>` and `<sub>`, without
-  attributes, and not in code, where they stay text. Everything else
-  stays escaped, so no styles, scripts or embeds. Not taken: `<mark>`,
-  `<abbr>`. The manual's Pages and blocks page should list them.
-- **#139 Button and key names in text.** Panoptikum's manuals marked
-  button names with `<kbd>` (**My Data**, **Delete my account**), which
-  q.e.d. escapes; they became bold. Decided 2026-10-30: keys get their
-  own look, written as `<kbd>Ctrl</kbd>+<kbd>S</kbd>` (let through by
-  #138) and shown as keycaps in the theme's colors. Button names stay
-  bold, as in q.e.d.'s own manual.
 - **#143 Site icon.** The icon in the browser tab (favicon) only works
   as `favicon.ico` in Static, which browsers ask for by themselves.
   Idea: a site icon in the Site settings, made from a picture in Media

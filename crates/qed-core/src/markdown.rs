@@ -15,7 +15,7 @@ use crate::links::LinkContext;
 /// Renders Markdown to HTML.
 ///
 /// Raw HTML in the Markdown is escaped, so it shows as text instead of
-/// running. Links and images are rewritten for the built site (see
+/// running; only a few plain tags go through (see [`allowed_tag`]). Links and images are rewritten for the built site (see
 /// [`LinkContext::resolve`]). Images from `media/` get their smaller
 /// copies and their size, like image blocks. `:icon-name:` becomes an
 /// icon, the site's own if it has one by that name.
@@ -48,6 +48,17 @@ pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String 
                 }
             }
             _ => {}
+        }
+    }
+
+    // The few tags let through become raw HTML, which comrak writes as it is.
+    for node in root.descendants() {
+        let tag = match &node.data.borrow().value {
+            NodeValue::HtmlInline(html) => allowed_tag(html),
+            _ => None,
+        };
+        if let Some(tag) = tag {
+            node.data.borrow_mut().value = NodeValue::Raw(tag.to_string());
         }
     }
 
@@ -106,6 +117,24 @@ pub fn render(markdown: &str, links: &LinkContext, media: &TextMedia) -> String 
     // Images further down load when they're about to be seen.
     let html = html.replace("<img src=", "<img loading=\"lazy\" src=");
     with_icons(&html, links, media.site_icons)
+}
+
+/// The HTML tags text may use, though Markdown has no syntax for them: a
+/// line break (also in table cells), keys and super- and subscript. Only
+/// plain tags without attributes, so nothing can carry a style, a script
+/// or an address; everything else stays escaped. Inside code they're
+/// text anyway (comrak keeps code apart).
+fn allowed_tag(html: &str) -> Option<&'static str> {
+    match html.trim().to_ascii_lowercase().as_str() {
+        "<br>" | "<br/>" | "<br />" => Some("<br>"),
+        "<kbd>" => Some("<kbd>"),
+        "</kbd>" => Some("</kbd>"),
+        "<sup>" => Some("<sup>"),
+        "</sup>" => Some("</sup>"),
+        "<sub>" => Some("<sub>"),
+        "</sub>" => Some("</sub>"),
+        _ => None,
+    }
 }
 
 /// What text needs from the site besides links: its own icons and its
@@ -577,6 +606,36 @@ mod tests {
         let html = render_on("", "pages/index.md", "<script>alert(1)</script>");
         assert!(!html.contains("<script>"), "{html}");
         assert!(html.contains("&lt;script&gt;"), "{html}");
+    }
+
+    #[test]
+    fn lets_a_few_plain_tags_through() {
+        let html = render_on(
+            "",
+            "pages/index.md",
+            "Press <kbd>Ctrl</kbd>+<KBD>S</KBD>: m<sup>2</sup>, CO<sub>2</sub>,<br/>next line.\n\n\
+             | API | Returns |\n|---|---|\n| /podcasts | id<br>title |\n\n\
+             `<br>` and <kbd class=\"x\">K</kbd> <span>s</span> <sup onclick=\"x()\">1</sup>",
+        );
+        assert!(
+            html.contains("Press <kbd>Ctrl</kbd>+<kbd>S</kbd>: m<sup>2</sup>, CO<sub>2</sub>,<br>"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<td>id<br>title</td>"),
+            "in table cells: {html}"
+        );
+        assert!(
+            html.contains("<code>&lt;br&gt;</code>"),
+            "text in code: {html}"
+        );
+        for escaped in [
+            "&lt;kbd class=&quot;x&quot;&gt;",
+            "&lt;span&gt;",
+            "&lt;sup onclick=&quot;x()&quot;&gt;",
+        ] {
+            assert!(html.contains(escaped), "attributes and other tags: {html}");
+        }
     }
 
     #[test]
