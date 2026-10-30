@@ -101,7 +101,7 @@ you can always go back; see [Versions](versions.md).
 
 ## This manual
 
-:icon-life-buoy: **Manual**, next to the preview button, opens this
+:icon-book-open: **Manual**, next to the preview button, opens this
 manual in a window of its own, for the version of q.e.d. you have,
 without an internet connection. Some places in the app link to the page
 that explains them.

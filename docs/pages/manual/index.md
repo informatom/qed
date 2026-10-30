@@ -2,7 +2,7 @@
 title = "Manual"
 description = "How to make and run your website with q.e.d.: pages and blocks, pictures and files, menus, colors and fonts, versions, backups, publishing and podcasts."
 menu = "main"
-icon = "life-buoy"
+icon = "book-open"
 weight = 5
 summary = "How to make and run your website with q.e.d., step by step."
 back_next = true
@@ -10,7 +10,7 @@ back_next = true
 
 This manual is for the people who make and look after a website with
 q.e.d.: no programming needed, and no need to know how websites work
-inside. The same pages are in the app: the :icon-life-buoy: **Manual**
+inside. The same pages are in the app: the :icon-book-open: **Manual**
 button at the top right opens them in a window of their own, so you can
 read them offline, next to what you're doing.
 
