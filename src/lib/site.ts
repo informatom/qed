@@ -308,6 +308,19 @@ export function formatSize(bytes: number): string {
   return `${bytes} bytes`;
 }
 
+/**
+ * Whether two values hold the same data, whatever order their keys are in
+ * (`{ a, b }` and `{ b, a }` are the same); keys set to `undefined` count
+ * as missing. For "unsaved changes" checks against what Rust sent.
+ */
+export function sameData(a: unknown, b: unknown): boolean {
+  const sorted = (_key: string, value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)))
+      : value;
+  return JSON.stringify(a, sorted) === JSON.stringify(b, sorted);
+}
+
 export function newSftpTarget(): Target {
   return { kind: "sftp", name: "", host: "", port: 22, user: "", path: "", auth: "password", host_key: null, delete_stale: false };
 }

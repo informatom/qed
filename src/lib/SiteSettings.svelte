@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import ImageField from "$lib/ImageField.svelte";
   import { trackUnsaved } from "$lib/unsaved.svelte";
-  import { commands, type Site, type SiteConfig } from "$lib/site";
+  import { commands, sameData, type Site, type SiteConfig } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -40,7 +40,7 @@
     base_url: orNull(form.base_url),
     podcast: site.config.podcast,
   });
-  let changed = $derived(JSON.stringify(edited) !== JSON.stringify(site.config));
+  let changed = $derived(!sameData(edited, site.config));
   trackUnsaved(() => "Site settings", () => changed);
 
   async function save(event: SubmitEvent) {

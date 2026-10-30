@@ -6,7 +6,7 @@
   import MediaPicker from "$lib/MediaPicker.svelte";
   import PeopleEditor from "$lib/PeopleEditor.svelte";
   import {
-    commands, formatLabel, pageIcons, podcastFormats, saveChecked,
+    commands, formatLabel, pageIcons, podcastFormats, sameData, saveChecked,
     type AudioFormat, type Contributor, type Episode, type EpisodeAudio, type EpisodeType, type FrontMatter, type Menu, type Page, type Podcast,
   } from "$lib/site";
 
@@ -195,7 +195,7 @@
     episode: cleanEpisode(form.episode),
   });
 
-  let changed = $derived(JSON.stringify(edited) !== JSON.stringify(page.front));
+  let changed = $derived(!sameData(edited, page.front));
 
   // Keep the parent informed.
   $effect(() => {
