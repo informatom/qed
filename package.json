@@ -1,6 +1,6 @@
 {
   "name": "qed",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Desktop app for your own website or podcast site, made without programming and published to your own webspace",
   "type": "module",
   "scripts": {

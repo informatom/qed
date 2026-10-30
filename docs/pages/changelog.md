@@ -10,6 +10,43 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.12.0 · 2026-10-30
+
+For sites moved over from elsewhere: old addresses and episode guids in
+the app, a site icon, Mastodon verification, keys and formulas in text,
+and menus that fold.
+
+- **Old addresses** (#134): a page's Settings tab lists the addresses it
+  had before, on this site or the old one, and each leads to the page.
+  Add one, or paste a full address from the old website. The short page
+  that sends visitors on now has the site's colors.
+- **Old episode guids** (#135): **Change it** next to an episode's guid
+  carries over the one it had in another system's feed, so podcast apps
+  don't show it as new.
+- **Site icon** (#143): an SVG, a square PNG or an ICO from Media for the
+  browser tab and phones' home screens, used as it is.
+- **Mastodon verification** (#140): your profiles elsewhere, in the Site
+  tab, are named on every page, so Mastodon shows the site as verified.
+- **Keys, super- and subscript, line breaks** (#138, #139): `<kbd>`,
+  `<sup>`, `<sub>` and `<br>` work in text, also in table cells; keys
+  look like keycaps. New toolbar buttons put them in, and one more makes
+  a code block.
+- **Folding sidebar** (#144): groups of the menu fold open and closed;
+  only the one with the page being shown starts open. Pages with pages
+  below them fold the same way.
+- **Light and dark themes apart** (#141): the theme pickers show light
+  and dark themes in two groups, A to Z. On a dark theme the footer is
+  shaded by default instead of a pale band.
+- **Clearer publishing** (#137): the Publish dialog counts your changed
+  files and says that more files of the website can change; the report
+  counts website files.
+- **Manual button**: an open book instead of the life-buoy.
+- Fixed: a menu entry written by hand as `page = "index"` disappeared
+  without a word (#142); entries whose page is missing or a draft are
+  now noted when building and marked in the Menu tab.
+- Fixed: settings showed unsaved changes right after saving when
+  another tab had added colors or fonts.
+
 ## 0.11.0 · 2026-10-29
 
 A manual in the app, sections, Catppuccin themes and lighter photos.
