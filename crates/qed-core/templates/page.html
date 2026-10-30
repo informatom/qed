@@ -63,16 +63,31 @@
 {%- macro search_body() %}
 {%- if searchable %} data-pagefind-body data-pagefind-meta="title:{{ title }}"{% endif %}
 {%- endmacro %}
-{%- macro menu_items(items) %}
-{%- for item in items %}
-{%- if item.heading %}
-<li class="menu-title mt-2">{{ item.title }}</li>
-{%- else %}
+{%- macro menu_link(item) %}
 <li
   {%- if item.level > 0 %} class="ms-4 border-s border-base-300"
   {%- if item.level > 1 %} style="margin-inline-start: {{ item.level }}rem"{% endif %}{% endif %}><a href="{{ item.href }}"
   {%- if item.exact %} class="menu-active" aria-current="page"{% else if item.current %} class="font-semibold"{% endif %}>
   {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
+{%- endmacro %}
+{#- A hand-made menu's group folds open and closed (daisyUI's collapsible
+    submenu, a <details>, so it works without JavaScript). #}
+{%- macro menu_items(items) %}
+{%- for item in items %}
+{%- if item.heading %}
+{#- A hand-made group's title is plain text; a page with pages below it
+    (the automatic menu) stays a link: a click on the title opens the
+    page, one beside it folds the group. #}
+<li><details{% if item.open %} open{% endif %}><summary
+  {%- if !item.href.is_empty() %}{% if item.exact %} class="menu-active"{% else if item.current %} class="font-semibold"{% endif %}{% endif %}>
+  {%- if item.href.is_empty() %}{{ item.title }}{% else %}<a href="{{ item.href }}" class="flex items-center gap-2"{% if item.exact %} aria-current="page"{% endif %}>
+  {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a>{% endif %}</summary>
+  <ul>
+  {%- for child in item.children %}{% call menu_link(child) %}{% endcall %}{% endfor %}
+  </ul>
+</details></li>
+{%- else %}
+{%- call menu_link(item) %}{% endcall %}
 {%- endif %}
 {%- endfor %}
 {%- endmacro %}

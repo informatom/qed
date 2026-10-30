@@ -969,6 +969,18 @@ rest is done.
   the footer. The manual's Site settings page says how to verify.
   Not yet tried against Mastodon: that's part of #147.
 
+- **#144 Sidebar menu: folding groups.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day as decided with the
+  user: a hand-made menu's groups fold open and closed in the sidebar
+  and in the phones' menu box (daisyUI's collapsible submenu, a
+  `<details>`, no JavaScript). The group of the page being shown starts
+  open, the others closed (also on pages outside every group, as the
+  user wanted). Always so, no setting. No post list in the sidebar: back and
+  next links and the Blog page cover posts. Asked for by the user on
+  the way: the automatic sidebar folds the same way (`folded`): a
+  top-level page with pages below it is a group whose title stays a
+  link (a click beside it folds); the top bar keeps every page.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

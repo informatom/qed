@@ -21,26 +21,10 @@ Nothing open.
 
 ### Phase 3:  In progress
 
-In the order to build them (sorted 2026-10-30). #138–#144 were found
-on 2026-10-30 while moving blog.panoptikum.social over by hand (62
-posts, 12 pages, sidebar menu, theme catppuccin-mocha). Sites in
-several languages (#145) come before the MCP server (#105), since
-its tools and format guide describe the site folder that #145
-changes.
-
-#### For sites moved over by hand
-
-- **#144 Sidebar menu: folding groups and post lists.** The old sidebar
-  had groups that fold open and closed (Manuals, Blog, Supported By;
-  the current page's group open) and a Blog group listing every post.
-  q.e.d.'s sidebar shows groups as headings, always open, and posts are
-  reached through the Blog page with back and next links. Decided
-  2026-10-30: groups fold open and closed (`<details>`, works without
-  JavaScript), the current page's group starts open; no post list in
-  the sidebar. To check: on or off per site, or always. The old `.html`
-  addresses were #134.
-
-#### Bigger features
+In the order to build them (sorted 2026-10-30). Sites in several
+languages (#145) come before the MCP server (#105), since its tools and
+format guide describe the site folder that #145 changes. #138–#144,
+found while moving blog.panoptikum.social over by hand, are done.
 
 - **#146 Light and dark mode.** A site with two themes, one light and
   one dark (e.g. latte and mocha), and a switch on the page for light,
@@ -87,17 +71,8 @@ changes.
   a real site (62 posts, 12 pages, sidebar menu) and of `rel="me"`.
   Added by the user on 2026-10-30.
 
-### Phase 4: Future
+### Phase 4: Podcast Publisher Import
 
-- **#070 Code signing.** For downloads from the releases page, not app
-  stores. macOS: notarization needs the Apple Developer Program (99 USD
-  a year); without it, macOS 15 and later make people allow the app in
-  System Settings → Privacy & Security → Open Anyway (right-click → Open
-  no longer works; the instructions say so since 2026-10-29). Windows: the
-  SignPath Foundation signs open-source projects for free (builds from
-  CI; check their terms); SmartScreen still warns until the app has a
-  reputation. Updates are already safe through the updater's own
-  signature. Moved here on 2026-10-29: worth it once Mac users come in.
 - **#123 Import from Podlove Publisher.** Bring a podcast over from
   WordPress with the
   [Podlove Publisher](https://podlove.org/podlove-podcast-publisher/)
@@ -123,3 +98,15 @@ changes.
   `.htaccess` with `Redirect 301` rules for Apache hosts (handles query
   strings too), or both. Old feed addresses per format would be a
   podcast setting, filled in by the import.
+
+### Phase 5: Roll out
+
+- **#070 Code signing.** For downloads from the releases page, not app
+  stores. macOS: notarization needs the Apple Developer Program (99 USD
+  a year); without it, macOS 15 and later make people allow the app in
+  System Settings → Privacy & Security → Open Anyway (right-click → Open
+  no longer works; the instructions say so since 2026-10-29). Windows: the
+  SignPath Foundation signs open-source projects for free (builds from
+  CI; check their terms); SmartScreen still warns until the app has a
+  reputation. Updates are already safe through the updater's own
+  signature. Moved here on 2026-10-29: worth it once Mac users come in.

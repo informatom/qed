@@ -1696,8 +1696,13 @@ struct MenuLink {
     current: bool,
     /// Exactly this page is being shown.
     exact: bool,
-    /// A group's title in the sidebar: a heading, not a link.
+    /// A group of a hand-made menu: a title that folds its entries
+    /// (`children`) open and closed, not a link.
     heading: bool,
+    /// A group's entries.
+    children: Vec<MenuLink>,
+    /// A group that starts open (see `sidebar_links`).
+    open: bool,
 }
 
 /// An entry of a hand-made main menu in the top bar: a link, or a group
@@ -1768,32 +1773,55 @@ fn hand_made_menu(
         .collect()
 }
 
+/// The automatic menu for the sidebar: each top-level page with pages
+/// below it becomes a group that folds, its title still a link to the
+/// page. The pages below keep their indentation, one level less inside the
+/// group. Only the group of the page being shown starts open.
+fn folded(links: Vec<MenuLink>) -> Vec<MenuLink> {
+    let mut groups: Vec<MenuLink> = Vec::new();
+    for mut link in links {
+        match groups.last_mut() {
+            Some(parent) if link.level > 0 => {
+                link.level -= 1;
+                parent.heading = true;
+                parent.open = parent.current;
+                parent.children.push(link);
+            }
+            _ => groups.push(link),
+        }
+    }
+    groups
+}
+
 /// A hand-made menu for the sidebar: groups become headings with their
 /// entries below; dividers are left out.
 fn sidebar_links(nav: &[NavItem]) -> Vec<MenuLink> {
-    let mut links = Vec::new();
-    for item in nav {
-        let group = !item.children.is_empty();
-        links.push(MenuLink {
-            title: item.title.clone(),
-            href: item.href.clone(),
-            level: 0,
-            icon: None,
-            current: item.current,
-            exact: item.exact,
-            heading: group,
-        });
-        for child in item.children.iter().filter(|child| !child.divider) {
-            links.push(MenuLink {
-                title: child.title.clone(),
-                href: child.href.clone(),
-                level: 0,
-                icon: None,
-                current: child.current,
-                exact: child.exact,
-                heading: false,
-            });
-        }
+    let link = |item: &NavItem, children: Vec<MenuLink>| MenuLink {
+        title: item.title.clone(),
+        href: item.href.clone(),
+        level: 0,
+        icon: None,
+        current: item.current,
+        exact: item.exact,
+        heading: !children.is_empty(),
+        children,
+        open: false,
+    };
+    let mut links: Vec<MenuLink> = nav
+        .iter()
+        .map(|item| {
+            let children = item
+                .children
+                .iter()
+                .filter(|child| !child.divider)
+                .map(|child| link(child, Vec::new()))
+                .collect();
+            link(item, children)
+        })
+        .collect();
+    // Only the group of the page being shown starts open.
+    for group in links.iter_mut().filter(|l| l.heading) {
+        group.open = group.current;
     }
     links
 }
@@ -2723,6 +2751,8 @@ fn render_page(
                 current: is_within(&page.path, &entry.path),
                 exact: page.path == entry.path,
                 heading: false,
+                children: Vec::new(),
+                open: false,
             })
             .collect()
     };
@@ -2766,6 +2796,13 @@ fn render_page(
         sidebar_links(&nav)
     };
     let sidebar = config.navigation == Navigation::Sidebar && !main_links.is_empty();
+    // In the sidebar, the automatic menu folds like a hand-made one; the
+    // top bar keeps showing every page.
+    let main_links = if sidebar && nav.is_empty() {
+        folded(main_links)
+    } else {
+        main_links
+    };
     let failed = |source| BuildError::Template {
         page: page.path.clone(),
         source,
@@ -4026,9 +4063,21 @@ mod tests {
         build_into(&site, out.path()).unwrap();
         let html = read(out.path().join("index.html"));
         assert!(
-            html.contains(r#"<li class="ms-4 border-s border-base-300">"#),
-            "{html}"
+            html.contains(r#"<li><details><summary><a href="about/" class="flex items-center gap-2">About</a></summary>"#),
+            "a page with pages below folds, closed elsewhere: {html}"
         );
+        let team = read(out.path().join("about/team/index.html"));
+        assert!(
+            team.contains(r#"<li><details open><summary class="font-semibold"><a href="../../about/" class="flex items-center gap-2">About</a></summary>"#)
+                && team.contains(r#"<a href="../../about/team/" class="menu-active" aria-current="page">"#),
+            "open on a page in it: {team}"
+        );
+
+        // The top bar keeps every page in one row.
+        site.config.navigation = Navigation::Top;
+        build_into(&site, out.path()).unwrap();
+        let html = read(out.path().join("index.html"));
+        assert!(!html.contains("<details><summary><a"), "{html}");
     }
 
     #[test]
@@ -5216,8 +5265,30 @@ mod tests {
             "missing pages are left out: {header}"
         );
         assert!(
-            header.contains(r#"<li class="menu-title mt-2">More</li>"#),
-            "phone menu heading: {header}"
+            header.contains(r#"<li><details open><summary>More</summary>"#),
+            "phone menu group, open on a page in it: {header}"
+        );
+
+        // In the sidebar, groups fold; the current page's starts open.
+        site.config.navigation = Navigation::Sidebar;
+        site.config.main_menu.push(MenuItem {
+            title: Some("Elsewhere".into()),
+            items: vec![page("blog/2026-01-05-old", None)],
+            ..MenuItem::default()
+        });
+        build_on(&site, out.path(), TODAY).unwrap();
+        let about = read(out.path().join("blog/about/index.html"));
+        let sidebar = &about[about.find("aria-label=\"Main menu\"").unwrap()..];
+        assert!(
+            sidebar.contains("<li><details open><summary>More</summary>")
+                && sidebar.contains("<li><details><summary>Elsewhere</summary>"),
+            "{sidebar}"
+        );
+        let home = read(out.path().join("index.html"));
+        assert!(
+            home.contains("<li><details><summary>More</summary>")
+                && home.contains("<li><details><summary>Elsewhere</summary>"),
+            "outside every group, all closed: {home}"
         );
     }
 

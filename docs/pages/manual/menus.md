@@ -28,6 +28,11 @@ the main menu in a sidebar** in the **Menu** tab. The menu then runs
 down the left side of every page; on phones it becomes a *Menu* box
 above the content. It's saved at once.
 
+A page with pages below it folds them away in the sidebar: a click on
+its name opens the page, a click on the arrow beside it shows or hides
+the pages below. Only the part of the menu with the page a visitor is
+on starts open.
+
 ## Arranged by hand
 
 To group pages, give them other titles in the menu, or add links to
@@ -57,7 +62,9 @@ boxed = true
 :::
 
 :icon-list: A title with pages and links below it: a dropdown in the
-top bar, a heading in the sidebar. A **Line** inside a group divides it.
+top bar. In the sidebar it folds open and closed with a click; only the
+group of the page a visitor is on starts open. A **Line** inside a group
+divides it.
 ::::
 
 The arrows move an entry up and down, :icon-trash: removes it. **Save
