@@ -107,6 +107,11 @@ pub struct SiteConfig {
     /// visitors with JavaScript. On unless switched off.
     #[serde(default = "yes")]
     pub search: bool,
+    /// The owner's profiles elsewhere (`https://mastodon.social/@name`):
+    /// every page names them in `<link rel="me">`, so Mastodon and the like
+    /// show the site as verified on the profile.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub profiles: Vec<String>,
     /// Self-hosted fonts in `fonts/`; empty keeps the system's.
     #[serde(default, skip_serializing_if = "is_default_fonts")]
     pub fonts: Fonts,
@@ -973,6 +978,14 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
         .and_then(|icon| icon_problem(&root.join(MEDIA_DIR), icon))
     {
         return Err(invalid(format!("site icon: {problem}")));
+    }
+    if let Some(profile) = config.profiles.iter().find(|profile| {
+        !(profile.starts_with("https://") || profile.starts_with("http://"))
+            || profile.contains(char::is_whitespace)
+    }) {
+        return Err(invalid(format!(
+            "profiles: “{profile}” isn't a web address (https://…)"
+        )));
     }
     if config.theme == crate::theme::CUSTOM {
         let custom = config
@@ -2393,6 +2406,24 @@ mod tests {
             open(dir.path()).unwrap().config.icon.as_deref(),
             Some("icon.svg")
         );
+    }
+
+    #[test]
+    fn keeps_profiles_elsewhere_as_web_addresses() {
+        let dir = site_with(&[("site.toml", "title = \"S\"\n")]);
+        let mut config = open(dir.path()).unwrap().config;
+        config.profiles = vec!["https://mastodon.social/@qed".into()];
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains("profiles = [\"https://mastodon.social/@qed\"]"),
+            "{text}"
+        );
+        assert_eq!(open(dir.path()).unwrap().config, config);
+
+        config.profiles = vec!["@qed@mastodon.social".into()];
+        let error = save_config(dir.path(), &config).unwrap_err().to_string();
+        assert!(error.contains("isn't a web address"), "{error}");
     }
 
     #[test]

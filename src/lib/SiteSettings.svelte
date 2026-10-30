@@ -11,6 +11,9 @@
 
   let { site, onsaved }: Props = $props();
   let form = $state(untrack(() => $state.snapshot(site.config)));
+  // Profiles elsewhere, one per field; empty fields are left out when saving.
+  let profiles = $state<string[]>(untrack(() => [...(site.config.profiles ?? [])]));
+  let keptProfiles = $derived(profiles.map((p) => p.trim()).filter((p) => p !== ""));
   let saving = $state(false);
 
   let error = $state<string | null>(null);
@@ -38,6 +41,8 @@
     description: orNull(form.description),
     logo: orNull(form.logo),
     icon: orNull(form.icon),
+    // None is left out, as the file leaves it out, so an untouched form has no changes.
+    profiles: keptProfiles.length ? keptProfiles : site.config.profiles,
     base_url: orNull(form.base_url),
     podcast: site.config.podcast,
   });
@@ -133,6 +138,26 @@
         </span>
       </span>
     </label>
+    <div id="site-profiles" class="flex flex-col gap-2">
+      <span class="text-sm">
+        Your profiles elsewhere
+        <span class="block text-base-content/60">
+          Such as https://mastodon.social/@name. Every page names them as yours (rel="me"), so Mastodon shows the site
+          as verified on your profile once the profile links to the site.
+        </span>
+      </span>
+      {#each profiles as _, index (index)}
+        <div class="flex gap-2">
+          <input id="site-profile-{index}" class="input input-sm w-full max-w-xl font-mono" bind:value={profiles[index]}
+            placeholder="https://mastodon.social/@name" aria-label="Profile address" />
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Remove profile"
+            onclick={() => (profiles = profiles.filter((_, i) => i !== index))}>Remove</button>
+        </div>
+      {/each}
+      <div>
+        <button type="button" id="site-add-profile" class="btn btn-sm" onclick={() => (profiles = [...profiles, ""])}>Add a profile</button>
+      </div>
+    </div>
   </section>
 
   <section id="site-search" class="flex flex-col gap-3 border-t border-base-300 pt-6">
@@ -171,7 +196,10 @@
   <div class="flex items-center justify-end gap-2 border-t border-base-300 pt-6">
     {#if changed}
       <span class="text-sm text-warning">Unsaved changes</span>
-      <button type="button" class="btn btn-ghost" onclick={() => (form = $state.snapshot(site.config))}>Discard</button>
+      <button type="button" class="btn btn-ghost" onclick={() => {
+        form = $state.snapshot(site.config);
+        profiles = [...(site.config.profiles ?? [])];
+      }}>Discard</button>
     {:else if savedAt}
       <span class="text-sm text-success">Saved</span>
     {/if}

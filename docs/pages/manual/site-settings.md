@@ -1,6 +1,6 @@
 +++
 title = "Site settings"
-description = "The Site tab: title, language, description and web address, the logo and the site icon, links to other sites, site search and the page width."
+description = "The Site tab: title, language, description and web address, the logo and the site icon, links to other sites and your profiles there, site search and the page width."
 menu = "main"
 weight = 32
 summary = "Title, language, web address, logo, icon, search and page width."
@@ -53,6 +53,21 @@ site icon, the browser tab shows the logo.
 **Mark links to other sites** gives links in text that lead to other
 websites a small arrow, so visitors know they're leaving. Menus and
 buttons stay as they are.
+
+**Your profiles elsewhere** lists your profiles on other sites, such as
+`https://mastodon.social/@name`: **Add a profile**, paste its address.
+Every page then names them as yours, invisibly (`rel="me"`). Mastodon
+uses that to show your website as verified, with a green check, on your
+profile:
+
+1. Add the Mastodon profile here, save and publish.
+2. On Mastodon, edit your profile and put your website's address into
+   one of the extra fields.
+3. Mastodon looks at that page, finds the profile named there, and
+   marks the field as verified. It can take a few minutes.
+
+To also show a *Follow me* link on the site, put an ordinary link into
+the footer or a page.
 
 ## Search
 

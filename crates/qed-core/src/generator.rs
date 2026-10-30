@@ -4298,6 +4298,26 @@ mod tests {
     }
 
     #[test]
+    fn names_the_owners_profiles_for_verification() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.profiles = vec![
+            "https://mastodon.social/@qed".into(),
+            "https://github.com/informatom".into(),
+        ];
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        for page in ["index.html", "blog/about/index.html"] {
+            let html = read(out.path().join(page));
+            assert!(
+                html.contains(r#"<link rel="me" href="https://mastodon.social/@qed">"#)
+                    && html.contains(r#"<link rel="me" href="https://github.com/informatom">"#),
+                "{page}: {html}"
+            );
+        }
+    }
+
+    #[test]
     fn prefers_a_favicon_of_its_own_as_the_tab_icon() {
         let dir = tempfile::tempdir().unwrap();
         let mut site = blog(dir.path());

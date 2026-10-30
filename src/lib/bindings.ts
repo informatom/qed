@@ -1312,6 +1312,12 @@ export type SiteConfig_Deserialize = {
 	 *  visitors with JavaScript. On unless switched off.
 	 */
 	search?: boolean,
+	/**
+	 *  The owner's profiles elsewhere (`https://mastodon.social/@name`):
+	 *  every page names them in `<link rel="me">`, so Mastodon and the like
+	 *  show the site as verified on the profile.
+	 */
+	profiles?: string[],
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 	/**
@@ -1380,6 +1386,12 @@ export type SiteConfig_Serialize = {
 	 *  visitors with JavaScript. On unless switched off.
 	 */
 	search: boolean,
+	/**
+	 *  The owner's profiles elsewhere (`https://mastodon.social/@name`):
+	 *  every page names them in `<link rel="me">`, so Mastodon and the like
+	 *  show the site as verified on the profile.
+	 */
+	profiles?: string[],
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 	/**

@@ -960,6 +960,15 @@ rest is done.
   `static/favicon.ico`, else the logo. The manual's Site settings page
   says so.
 
+- **#140 Mastodon verification.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day: Your profiles
+  elsewhere in the Site tab's Links (`profiles` in site.toml, web
+  addresses only); every page names each in `<link rel="me">`, which
+  Mastodon checks to show the site as verified on the profile. No
+  follow button or Mastodon logo: a follow link is an ordinary link in
+  the footer. The manual's Site settings page says how to verify.
+  Not yet tried against Mastodon: that's part of #147.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

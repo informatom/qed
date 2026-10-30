@@ -41,6 +41,9 @@
   <link rel="apple-touch-icon" href="{{ icon.href }}">
   {%- endif %}
   {%- endif %}
+  {%- for profile in site.profiles %}
+  <link rel="me" href="{{ profile }}">
+  {%- endfor %}
   <meta name="generator" content="q.e.d.">
   {%- if site.search %}
   {#- Before style.css, which sets the search dialog's colors from the

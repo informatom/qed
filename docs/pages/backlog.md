@@ -30,12 +30,6 @@ changes.
 
 #### For sites moved over by hand
 
-- **#140 Mastodon verification.** The old sidebar had a "Follow" button
-  with `rel="me"`, so Mastodon shows the site as verified on the
-  profile. q.e.d. can't set `rel="me"` on a link and has no Mastodon
-  icon; the footer now has a plain link. Idea: a Mastodon profile
-  (or several "me" links) in the Site settings that adds
-  `<link rel="me">` to every page, maybe with a follow link and icon.
 - **#144 Sidebar menu: folding groups and post lists.** The old sidebar
   had groups that fold open and closed (Manuals, Blog, Supported By;
   the current page's group open) and a Blog group listing every post.
@@ -85,6 +79,13 @@ changes.
   `qed mcp`. To check: stdio of a Windows GUI program started by an
   assistant, and what the settings for Claude Desktop and Claude Code
   then point to (the app's own path, per system).
+- **#147 blog.panoptikum.social again, through the MCP server.** After
+  #105: delete the q.e.d. copy of blog.panoptikum.social made by hand on
+  2026-10-30, move the blog over once more with an AI assistant working
+  through the MCP server, publish it, and test the Mastodon
+  verification (#140) against the profile. A test of the MCP server on
+  a real site (62 posts, 12 pages, sidebar menu) and of `rel="me"`.
+  Added by the user on 2026-10-30.
 
 ### Phase 4: Future
 
