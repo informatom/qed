@@ -77,13 +77,20 @@
   {:else if !program}
     <span class="loading loading-spinner loading-sm"></span>
   {:else}
-    <div class="grid gap-4 xl:grid-cols-2">
+    <div class="grid gap-4 xl:grid-cols-3">
       {@render snippet(
         "assistant-desktop",
         "Claude Desktop: add to claude_desktop_config.json (Settings → Developer → Edit Config), then restart it",
         desktop,
       )}
-      {@render snippet("assistant-code", "Claude Code: run once in a terminal", code)}
+      {@render snippet("assistant-code", "Claude Code in a terminal: run once", code)}
+      <!-- The VS Code extension brings its own claude, which often isn't on the PATH;
+           it reads .mcp.json (the same settings as Claude Desktop) from the opened folder. -->
+      {@render snippet(
+        "assistant-vscode",
+        "Claude Code in VS Code: save as .mcp.json in the folder you open in VS Code, then confirm it in Claude Code",
+        desktop,
+      )}
     </div>
     <p class="text-xs text-base-content/60">
       Other assistants that speak the Model Context Protocol work the same way: they start

@@ -41,9 +41,7 @@ are #146 (light and dark mode) and #105 (MCP server).
   `windows_subsystem = "windows"`) when an assistant starts `qed mcp`;
   a test assistant suggested that `site_info` say its page count
   includes posts, that `list_pages` count the posts, and that the format
-  guide mention `authors` and `redirect_from`. To decide: whether App
-  settings should also offer a `.mcp.json` for the site folder, for
-  Claude Code inside VS Code without the `claude` command on the PATH.
+  guide mention `authors` and `redirect_from`.
 
 ### Phase 4: Podcast Publisher Import
 

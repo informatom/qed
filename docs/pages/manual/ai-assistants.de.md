@@ -1,6 +1,6 @@
 +++
 title = "KI-Assistenten"
-description = "Einen KI-Assistenten wie Claude an Ihrer Website arbeiten lassen: was er kann und was nicht, die Einrichtung in Claude Desktop oder Claude Code, und wie Sie seine Änderungen prüfen und rückgängig machen."
+description = "Einen KI-Assistenten wie Claude an Ihrer Website arbeiten lassen: was er kann und was nicht, die Einrichtung in Claude Desktop oder Claude Code (Terminal oder VS Code), und wie Sie seine Änderungen prüfen und rückgängig machen."
 menu = "main"
 weight = 75
 summary = "Einen KI-Assistenten wie Claude Seiten für Sie schreiben und ändern lassen, nach den Regeln von q.e.d."
@@ -59,8 +59,15 @@ boxed = true
    zeigt (**Copy**), speichern Sie und starten Sie Claude Desktop neu.
    Stehen in der Datei schon Server, ergänzen Sie den Eintrag von
    q.e.d. bei den vorhandenen.
-3. Für **Claude Code**: Kopieren Sie den Befehl, den q.e.d. zeigt, und
-   führen Sie ihn einmal in einem Terminal aus.
+3. Für **Claude Code im Terminal**: Kopieren Sie den Befehl, den q.e.d.
+   zeigt, und führen Sie ihn einmal in einem Terminal aus.
+4. Für **Claude Code in VS Code**: Der Befehl aus Schritt 3 funktioniert
+   dort oft nicht, weil die VS-Code-Erweiterung ihr eigenes Claude Code
+   ohne den Befehl `claude` mitbringt. Speichern Sie stattdessen den Teil,
+   den q.e.d. unter *Claude Code in VS Code* zeigt, als Datei namens
+   `.mcp.json` in dem Ordner, den Sie in VS Code öffnen, zum Beispiel im
+   Ordner der Website. Startet Claude Code in diesem Ordner, fragt es
+   einmal, ob es den Server darin verwenden soll; bestätigen Sie das.
 
 Das machen Sie einmal für jede Website, an der der Assistent arbeiten
 soll. Die Einstellungen nennen q.e.d. selbst: Der Assistent startet es

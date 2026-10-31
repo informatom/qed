@@ -1033,7 +1033,8 @@ rest is done.
   changes made meanwhile, the open version closed before deleting or
   moving, every change in the history; a format guide as server
   instructions. App settings shows the settings for Claude Desktop and
-  Claude Code; manual page *AI assistants*. Tested read-only with Claude
+  Claude Code (a command for the terminal, a `.mcp.json` for VS Code,
+  where the extension's own Claude Code often has no `claude` command); manual page *AI assistants*. Tested read-only with Claude
   Code on blog.panoptikum.social; follow-ups in #148. Posts
   [Interlude: MCP servers](blog/2026-10-31-interlude-mcp.md) and
   [One program, two modes](blog/2026-10-31-one-program-two-modes.md).

@@ -1,6 +1,6 @@
 +++
 title = "AI assistants"
-description = "Let an AI assistant such as Claude work on your site: what it can and can't do, setting it up in Claude Desktop or Claude Code, and how to check and undo its changes."
+description = "Let an AI assistant such as Claude work on your site: what it can and can't do, setting it up in Claude Desktop or Claude Code (terminal or VS Code), and how to check and undo its changes."
 menu = "main"
 weight = 75
 summary = "Let an AI assistant such as Claude write and change pages for you, with q.e.d.'s rules."
@@ -57,8 +57,15 @@ boxed = true
    `claude_desktop_config.json`. Paste the part q.e.d. shows (**Copy**),
    save, and restart Claude Desktop. If the file already has servers
    in it, add q.e.d.'s entry to the ones there.
-3. For **Claude Code**: copy the command q.e.d. shows and run it once
-   in a terminal.
+3. For **Claude Code in a terminal**: copy the command q.e.d. shows and
+   run it once in a terminal.
+4. For **Claude Code in VS Code**: the command from step 3 often doesn't
+   work there, because the VS Code extension brings its own Claude Code
+   without the `claude` command. Instead, save the part q.e.d. shows
+   under *Claude Code in VS Code* as a file named `.mcp.json` in the
+   folder you open in VS Code, for example the site's folder. When
+   Claude Code starts in that folder, it asks once whether to use the
+   server in it; say yes.
 
 Do this once for each site you want the assistant to work on. The
 settings name q.e.d. itself: the assistant starts it in the
