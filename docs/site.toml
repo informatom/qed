@@ -6,6 +6,7 @@ theme = "catppuccin-latte"
 base_url = "https://qed.informatom.com/"
 mark_external_links = true
 navigation = "sidebar"
+profiles = ["https://fosstodon.org/@informatom"]
 
 [fonts]
 headings = "Saira Condensed"
