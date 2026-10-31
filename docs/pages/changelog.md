@@ -11,6 +11,31 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.15.0 · 2026-10-31
+
+Six thousand icons, posts with a time, and AI assistants that can do
+more.
+
+- **Tabler icons** (#149): more than 6,000 icons for text and menus
+  instead of 72, filled ones and brand logos among them (such as
+  Mastodon). Search for one by what it shows, at **Icon** in a page's
+  Settings and under every text field. The app's own buttons use them
+  too. Names from before keep working. See
+  [Icons](manual/icons.md) and
+  [Six thousand icons](blog/2026-10-31-six-thousand-icons.md).
+- **Posts with a time** (#150): a post's date can have a time, so feed
+  readers keep the posts of one day in order. New posts get the
+  current time; it's in your computer's time zone. See
+  [What time is it?](blog/2026-10-31-what-time-is-it.md).
+- **Unknown icons noted**: an `:icon-…:` name q.e.d. doesn't know is
+  reported by **Build**, so a typo doesn't go unnoticed.
+- **AI assistants can do more** (#148): change the footer, shared
+  blocks and the site settings (menu, logo, web address, profiles),
+  bring files over at their old addresses (`static/`), give a new post
+  the address it had before, and delete pictures and files nothing uses
+  any more. Everything is checked first and shows in Versions. See
+  [AI assistants](manual/ai-assistants.md).
+
 ## 0.14.0 · 2026-10-31
 
 AI assistants can work on your site.
