@@ -2,6 +2,7 @@
 title = "Done"
 description = "Finished and decided backlog items of q.e.d., and the ones dropped."
 menu = "footer"
+icon = "archive"
 weight = 11
 +++
 

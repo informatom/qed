@@ -2,6 +2,7 @@
 title = "Development"
 description = "How to build q.e.d. from source, run its checks, and test publishing against a local throwaway server."
 menu = "footer"
+icon = "code"
 +++
 
 q.e.d. is a Rust and Tauri desktop app with a Svelte UI. The source is on

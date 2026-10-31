@@ -2,6 +2,7 @@
 title = "Changelog"
 description = "What changed in each release of q.e.d."
 menu = "footer"
+icon = "history"
 weight = 12
 +++
 

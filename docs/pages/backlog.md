@@ -2,6 +2,7 @@
 title = "Backlog"
 description = "Open work and decisions for q.e.d., numbered #nnn."
 menu = "footer"
+icon = "list"
 weight = 10
 +++
 
