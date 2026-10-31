@@ -182,8 +182,8 @@
                 <div class="flex flex-col gap-1">
                   <div class="flex justify-between text-sm">
                     <span>
-                      {STAGES[progress.stage]}{#if progress.stage === "uploading"}
-                        {progress.done_files + 1} of {progress.total_files}{/if}
+                      <!-- The space is written out: Svelte drops the line break here. -->
+                      {STAGES[progress.stage]}{#if progress.stage === "uploading"}{" "}{progress.done_files + 1} of {progress.total_files}{/if}
                     </span>
                     {#if progress.total_bytes}<span>{formatSize(progress.done_bytes)} of {formatSize(progress.total_bytes)}</span>{/if}
                   </div>
