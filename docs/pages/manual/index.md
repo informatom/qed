@@ -3,7 +3,7 @@ title = "Manual"
 description = "How to make and run your website with q.e.d.: pages and blocks, pictures and files, menus, colors and fonts, versions, backups, publishing and podcasts."
 menu = "main"
 icon = "book-open"
-weight = 5
+weight = 20
 summary = "How to make and run your website with q.e.d., step by step."
 back_next = true
 +++

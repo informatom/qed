@@ -4,6 +4,7 @@ menu = "main"
 icon = "pen-line"
 description = "Notes on building q.e.d.: Rust, Tauri, Svelte and TypeScript, explained along the way."
 back_next = true
+weight = 30
 +++
 
 ::: text-image

@@ -1,6 +1,7 @@
 +++
 title = "q.e.d."
 description = "A desktop app for your own website or podcast site: made entirely in the app, without programming, and published to your own webspace."
+menu = "main"
 +++
 
 ::: image
@@ -87,5 +88,5 @@ On any other distribution, download the `.AppImage`, make it executable
 headline = "Learning along the way"
 text = "The blog explains the Rust, Svelte and TypeScript behind q.e.d., step by step, for people who know other languages."
 button_label = "Start with the first post"
-button_link = "/blog/2026-10-21/one-title-three-languages"
+button_link = "/blog/2026-10-21-one-title-three-languages"
 :::

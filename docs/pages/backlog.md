@@ -1,9 +1,9 @@
 +++
 title = "Backlog"
 description = "Open work and decisions for q.e.d., numbered #nnn."
-menu = "footer"
+menu = "main"
 icon = "list"
-weight = 10
+weight = 40
 +++
 
 Open work and open decisions. Items keep their number for good; when one is

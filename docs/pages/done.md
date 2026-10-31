@@ -1,9 +1,9 @@
 +++
 title = "Done"
 description = "Finished and decided backlog items of q.e.d., and the ones dropped."
-menu = "footer"
+menu = "main"
 icon = "archive"
-weight = 11
+weight = 50
 +++
 
 Backlog items that are done, decided or dropped. Open work is in the
