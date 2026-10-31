@@ -1022,6 +1022,22 @@ rest is done.
   manual** in the App tab (automatic: the computer's). Docs site: German
   manual and start page only, which points to the English rest.
 
+- **#105 MCP server.** AI assistants (Claude Desktop, Claude Code and
+  others) work on a site over the Model Context Protocol, with the app's
+  rules. Built 2026-10-29 as a separate program `qed-mcp`, put aside
+  because the sidecar more than doubled the installers, picked up again
+  2026-10-30 and *done 2026-10-31*: `qed-mcp` is a library the app links,
+  and the app answers over stdio when started as `qed mcp <site>`,
+  without a window (release binary 40.6 → 41.9 MB). 13 tools (pages,
+  files, build, versions; no publishing), stamps against overwriting
+  changes made meanwhile, the open version closed before deleting or
+  moving, every change in the history; a format guide as server
+  instructions. App settings shows the settings for Claude Desktop and
+  Claude Code; manual page *AI assistants*. Tested read-only with Claude
+  Code on blog.panoptikum.social; follow-ups in #148. Posts
+  [Interlude: MCP servers](blog/2026-10-31-interlude-mcp.md) and
+  [One program, two modes](blog/2026-10-31-one-program-two-modes.md).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

@@ -26,22 +26,8 @@ In the order to build them (sorted 2026-10-30). Sites in several
 languages (#145) came before the MCP server (#105), since its tools and
 format guide describe the site folder; #145 is done. #138–#144,
 found while moving blog.panoptikum.social over by hand, are done, and so
-is #146 (light and dark mode).
+are #146 (light and dark mode) and #105 (MCP server).
 
-- **#105 MCP server, picked up again.** Dropped on 2026-10-29, back
-  on the list on 2026-10-30: AI assistants (Claude Desktop, Claude
-  Code) working on a site over the Model Context Protocol, with the
-  app's rules. On the branch `mcp-server`, brought up to date with
-  main on 2026-10-31 and made one program: `qed-mcp` is now a library
-  the app links, and the app answers over stdio when started as
-  `qed mcp <site>`, without a window, so qed-core is in the installers
-  once (no sidecar, no extra build step in `release.yml`). App settings
-  shows the settings for Claude Desktop and Claude Code with the app's
-  own path (the AppImage file for an AppImage). Manual page
-  `ai-assistants.md`. To do before merging: try it with Claude Desktop
-  and Claude Code on a real site; check stdio of the Windows build
-  (a GUI program, `windows_subsystem = "windows"`) when an assistant
-  starts it; compare the installer sizes with 0.13.0.
 - **#147 blog.panoptikum.social again, through the MCP server.** After
   #105: delete the q.e.d. copy of blog.panoptikum.social made by hand on
   2026-10-30, move the blog over once more with an AI assistant working
@@ -49,6 +35,15 @@ is #146 (light and dark mode).
   verification (#140) against the profile. A test of the MCP server on
   a real site (62 posts, 12 pages, sidebar menu) and of `rel="me"`.
   Added by the user on 2026-10-30.
+
+- **#148 MCP server follow-ups.** Found while testing #105 on
+  2026-10-31: check stdio of the Windows build (a GUI program,
+  `windows_subsystem = "windows"`) when an assistant starts `qed mcp`;
+  a test assistant suggested that `site_info` say its page count
+  includes posts, that `list_pages` count the posts, and that the format
+  guide mention `authors` and `redirect_from`. To decide: whether App
+  settings should also offer a `.mcp.json` for the site folder, for
+  Claude Code inside VS Code without the `claude` command on the PATH.
 
 ### Phase 4: Podcast Publisher Import
 
