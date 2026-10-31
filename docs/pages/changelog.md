@@ -11,6 +11,29 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.13.0 · 2026-10-31
+
+Sites in several languages, a dark side for every site, and the manual
+in German.
+
+- **Several languages** (#145): add languages in the Site tab, then
+  **Translate** a page from the row of language codes above it. The
+  translation is at `/en/about` beside `/about`; each language has its
+  own menus, post lists and feeds, and a switch in the header leads
+  between them. See [Two languages](blog/2026-10-31-two-languages.md).
+- **Light and dark mode** (#146): **Light and dark mode** in the Theme
+  tab gives the site a second, dark theme with colors of its own.
+  Visitors see the side that matches their system, and three buttons in
+  the header (sun, computer, moon) let them choose. See
+  [Light and dark](blog/2026-10-31-light-and-dark.md).
+- **The manual in German**: every page but Libraries. **Language of the
+  manual** in the App tab picks it; automatically your computer's.
+- **Menus**: in the top bar, a page with pages below it becomes a
+  dropdown; pages in the footer menu show their icons.
+- **Blogs grouped by date**: pages named by a date (`/blog/2026`,
+  `/blog/2026-10-21`) pass their posts on to the blog's one feed, and
+  older and newer links run on across them.
+
 ## 0.12.0 · 2026-10-30
 
 For sites moved over from elsewhere: old addresses and episode guids in
