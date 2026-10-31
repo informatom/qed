@@ -15,8 +15,11 @@ order, or below another page.
 
 :icon-file-plus: **New page** asks for a title and where the page goes (**Below**: the top
 level or another page). Switch on **Blog post** and pick a date to make a
-post: posts are listed by date, newest first, on the page they're below
-(usually the blog), and they get a feed. A blog with many posts can
+post; the time is filled in with the current one. Posts are listed by
+date and time, newest first, on the page they're below (usually the
+blog), and they get a feed. The time keeps posts of one day in order in
+feed readers; it's your computer's time zone, and you can change it or
+leave it empty in the page's Settings tab. A blog with many posts can
 group them with a page per day, month or year below it, named by the
 date (`/blog/2026-10-21`, `/blog/2026`) and with a Post list of its own:
 the posts below those still go into the blog's one feed. The dialog shows the address

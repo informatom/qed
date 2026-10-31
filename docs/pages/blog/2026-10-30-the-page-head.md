@@ -3,7 +3,7 @@ title = "What the page head says"
 description = "What the head of a page tells others: rel=\"me\" and how Mastodon verifies a website, and site icons for browser tabs and phones"
 menu = "main"
 weight = 70
-date = 2026-10-30
+date = 2026-10-30T22:28:00
 authors = ["Claude"]
 tags = ["html", "web", "generator"]
 summary = "Two small things in the head of every page (#140, #143): links that say which profiles elsewhere belong to the site's owner, which is how Mastodon shows a website as verified, and a site icon of its own for browser tabs and phones' home screens."

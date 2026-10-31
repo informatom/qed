@@ -16,9 +16,13 @@ stellen.
 
 :icon-file-plus: **New page** fragt nach einem Titel und wohin die Seite
 kommt (**Below**: oberste Ebene oder eine andere Seite). Schalten Sie
-**Blog post** ein und wählen Sie ein Datum, um einen Beitrag anzulegen:
-Beiträge werden nach Datum gelistet, die neuesten zuerst, auf der Seite,
-unter der sie stehen (meist der Blog), und sie bekommen einen Feed. Ein
+**Blog post** ein und wählen Sie ein Datum, um einen Beitrag anzulegen;
+die Uhrzeit ist mit der aktuellen ausgefüllt. Beiträge werden nach Datum
+und Uhrzeit gelistet, die neuesten zuerst, auf der Seite, unter der sie
+stehen (meist der Blog), und sie bekommen einen Feed. Die Uhrzeit hält
+Beiträge eines Tages in Feed-Readern in der richtigen Reihenfolge; sie
+gilt in der Zeitzone Ihres Computers, und Sie können sie im Tab Settings
+der Seite ändern oder leer lassen. Ein
 Blog mit vielen Beiträgen kann sie mit einer Seite pro Tag, Monat oder
 Jahr darunter gruppieren, benannt nach dem Datum (`/blog/2026-10-21`,
 `/blog/2026`) und mit einer eigenen Post list: Die Beiträge darunter

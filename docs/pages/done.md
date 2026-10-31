@@ -1050,6 +1050,18 @@ rest is done.
   MCP server. The app's buttons use `@tabler/icons-svelte-runes`.
   Post [Six thousand icons](blog/2026-10-31-six-thousand-icons.md).
 
+- **#150 Posts with a time.** Added by the user and *done 2026-10-31*:
+  a post's `date` may have a time (`2026-10-31T18:17:00`), in the
+  computer's time zone at build time (decided by the user), summer time
+  included (jiff); a written offset wins, a date without a time stays
+  midnight UTC. Used in the feeds (`pubDate`, `lastBuildDate`), the
+  player's `publicationDate`, post lists and back/next order. "Today"
+  is the computer's day too. Page settings have a time next to the date;
+  new posts and episodes get the current time; the MCP server's
+  `create_page` takes one. The docs posts got the times of the commits
+  that added them. Post
+  [What time is it?](blog/2026-10-31-what-time-is-it.md).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

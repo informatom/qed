@@ -64,16 +64,6 @@ are #146 (light and dark mode) and #105 (MCP server).
   like the Media tab. Still open: stdio of the Windows build when an
   assistant starts `qed mcp` (a friend of the user's tries it).
 
-- **#150 Posts with a time.** A post's `date` is a day only, so the
-  feeds give every post 00:00, and feed readers order posts of the same
-  day at random (user, 2026-10-31). Allow a time as well
-  (`date = 2026-10-31T14:30:00`, TOML's local date-time), use it in
-  the feeds, post lists and back/next order, and offer it in the page
-  settings (new posts get the current time). A time is in the
-  computer's time zone at build time (decided by the user, 2026-10-31). Docs site: give the blog posts times in the order they
-  were written, from git (the commit that added each post) or made up
-  along their `weight`, so the feed has the right order.
-
 ### Phase 4: Podcast Publisher Import
 
 - **#123 Import from Podlove Publisher.** Bring a podcast over from

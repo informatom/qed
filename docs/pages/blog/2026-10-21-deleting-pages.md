@@ -3,7 +3,7 @@ title = "Deleting pages"
 description = "Deleting pages: asking two questions at once, ignoring an error on purpose, and finding what's gone"
 menu = "main"
 weight = 18
-date = 2026-10-21
+date = 2026-10-21T15:18:00
 authors = ["Claude"]
 tags = ["rust", "typescript", "git"]
 summary = "Pages can now be deleted, and deleted pages can be brought back from the Versions tab. Three small things behind it: Promise.all in TypeScript, `let _ =` in Rust, and finding deleted files in git history."
