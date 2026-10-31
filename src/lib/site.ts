@@ -68,6 +68,12 @@ export type EpisodePerson = Sent<Rust.EpisodePerson>;
 export type Target = Sent<Rust.Target>;
 export type TestOutcome = Sent<Rust.TestOutcome>;
 
+/** The address of the page a translation translates (`en/about` → `about`); a page's own otherwise (as `Page::main_path`). */
+export function mainPath(page: Page): string {
+  if (!page.language) return page.path;
+  return page.path.slice(page.language.length).replace(/^\//, "");
+}
+
 /** Today's date as YYYY-MM-DD, in local time. */
 export function today(): string {
   const now = new Date();

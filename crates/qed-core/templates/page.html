@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="{{ site.language }}" data-theme="{{ site.page_theme() }}">
+<html lang="{{ language }}" data-theme="{{ site.page_theme() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if is_home %}{{ site.title }}{% else %}{{ title }} · {{ site.title }}{% endif %}</title>
+  <title>{% if is_home %}{{ site_title }}{% else %}{{ title }} · {{ site_title }}{% endif %}</title>
   {%- if let Some(description) = description %}
   <meta name="description" content="{{ description }}">
   {%- endif %}
   {%- if let Some(canonical) = canonical %}
   <link rel="canonical" href="{{ canonical }}">
   {%- endif %}
-  <meta property="og:title" content="{% if is_home %}{{ site.title }}{% else %}{{ title }}{% endif %}">
-  <meta property="og:site_name" content="{{ site.title }}">
+  <meta property="og:title" content="{% if is_home %}{{ site_title }}{% else %}{{ title }}{% endif %}">
+  <meta property="og:site_name" content="{{ site_title }}">
   <meta property="og:type" content="{{ og_type }}">
   {%- if let Some(description) = description %}
   <meta property="og:description" content="{{ description }}">
@@ -43,6 +43,9 @@
   {%- endif %}
   {%- for profile in site.profiles %}
   <link rel="me" href="{{ profile }}">
+  {%- endfor %}
+  {%- for alternate in alternates %}
+  <link rel="alternate" hreflang="{{ alternate.code }}" href="{{ alternate.href }}">
   {%- endfor %}
   <meta name="generator" content="q.e.d.">
   {%- if site.search %}
@@ -132,10 +135,10 @@
   <header class="{{ header.bar }}">
     <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
       <a href="{{ home_href }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
-        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="{% if !show_site_title %}{{ site.title }}{% endif %}" class="{{ header.logo }}"
+        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="{% if !show_site_title %}{{ site_title }}{% endif %}" class="{{ header.logo }}"
         {%- if let Some(width) = logo.width %} width="{{ width }}"{% endif %}
         {%- if let Some(height) = logo.height %} height="{{ height }}"{% endif %}>{% endif %}
-        {%- if show_site_title %}{{ site.title }}{% endif %}</a>
+        {%- if show_site_title %}{{ site_title }}{% endif %}</a>
       {%- if !nav.is_empty() && !sidebar %}
       <ul class="hidden flex-wrap items-center gap-x-6 gap-y-1 text-sm md:flex">
         {%- for item in nav %}{% call nav_entry(item, header.current) %}{% endcall %}{% endfor %}
@@ -171,8 +174,17 @@
         {%- endfor %}
       </ul>
       {%- endif %}
-      {%- if site.search || site.dark.is_some() %}
+      {%- if site.search || site.dark.is_some() || !languages.is_empty() %}
       <div class="flex items-center gap-2">
+        {%- if !languages.is_empty() %}
+        {#- The page in the site's other languages: plain links. #}
+        <ul class="flex items-center gap-0.5 text-xs font-semibold">
+          {%- for other in languages %}
+          <li><a href="{{ other.href }}" hreflang="{{ other.code }}" lang="{{ other.code }}" title="{{ other.name }}"
+            class="btn btn-ghost btn-xs{% if other.current %} btn-active{% endif %}"{% if other.current %} aria-current="true"{% endif %}>{{ other.short }}</a></li>
+          {%- endfor %}
+        </ul>
+        {%- endif %}
         {%- if site.search %}
         <pagefind-modal-trigger compact></pagefind-modal-trigger>
         {%- endif %}

@@ -14,6 +14,23 @@
   // Profiles elsewhere, one per field; empty fields are left out when saving.
   let profiles = $state<string[]>(untrack(() => [...(site.config.profiles ?? [])]));
   let keptProfiles = $derived(profiles.map((p) => p.trim()).filter((p) => p !== ""));
+  // Further languages (#145), by code.
+  let newLanguage = $state("");
+  let languageCodes = $derived(Object.keys(form.languages ?? {}).sort());
+  /** Pages per further language, so one with translations isn't removed. */
+  let translated = $derived(
+    site.pages.reduce((counts, page) => (page.language ? counts.set(page.language, (counts.get(page.language) ?? 0) + 1) : counts), new Map<string, number>()),
+  );
+  function addLanguage() {
+    const code = newLanguage.trim().toLowerCase();
+    if (!code || form.languages?.[code]) return;
+    form.languages = { ...(form.languages ?? {}), [code]: { title: null, description: null } };
+    newLanguage = "";
+  }
+  function removeLanguage(code: string) {
+    const { [code]: _, ...rest } = form.languages ?? {};
+    form.languages = rest;
+  }
   let saving = $state(false);
 
   let error = $state<string | null>(null);
@@ -46,6 +63,16 @@
     profiles: keptProfiles.length ? keptProfiles : site.config.profiles,
     base_url: orNull(form.base_url),
     podcast: site.config.podcast,
+    // Empty texts are left out, as the file leaves them out; no further
+    // language at all leaves out the whole field, as Rust does.
+    languages: languageCodes.length
+      ? Object.fromEntries(
+          languageCodes.map((code) => [
+            code,
+            { title: orNull(form.languages?.[code]?.title ?? null), description: orNull(form.languages?.[code]?.description ?? null) },
+          ]),
+        )
+      : (undefined as unknown as SiteConfig["languages"]),
   });
   let changed = $derived(!sameData(edited, site.config));
   trackUnsaved(() => "Site settings", () => changed);
@@ -91,6 +118,35 @@
         <span class="text-sm font-medium">Web address <span class="font-normal text-base-content/50">· for the sitemap and feeds</span></span>
         <input id="site-base-url" class="input w-full" bind:value={form.base_url} placeholder="https://example.com/" />
       </label>
+    </div>
+  </section>
+
+  <section id="site-languages" class="flex flex-col gap-3 border-t border-base-300 pt-6">
+    {@render heading("Languages")}
+    <p class="text-sm text-base-content/60">
+      More languages besides the main one above. A page's translation is made in its Settings tab and has its address
+      below the language's code (/en/about). Pages without a translation simply aren't there in that language; a switch
+      in the header leads between the languages. Title and description are the site's own in that language, if they differ.
+    </p>
+    {#each languageCodes as code (code)}
+      {@const settings = form.languages?.[code]}
+      {#if settings}
+        <div id="site-language-{code}" class="grid items-center gap-2 @3xl:grid-cols-[4rem_1fr_2fr_auto]">
+          <span class="badge badge-outline font-mono uppercase">{code}</span>
+          <input class="input input-sm w-full" bind:value={settings.title} placeholder={form.title} aria-label="Title in {code}" />
+          <input class="input input-sm w-full" bind:value={settings.description} placeholder={form.description ?? "Description"}
+            aria-label="Description in {code}" />
+          <button type="button" class="btn btn-ghost btn-sm" disabled={!!translated.get(code)}
+            title={translated.get(code) ? `${translated.get(code)} translations are in this language; delete those first` : undefined}
+            onclick={() => removeLanguage(code)}>Remove</button>
+        </div>
+      {/if}
+    {/each}
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="site-new-language" class="input input-sm w-28 font-mono" bind:value={newLanguage} placeholder="en"
+        aria-label="Language code" onkeydown={(e) => e.key === "Enter" && (e.preventDefault(), addLanguage())} />
+      <button type="button" id="site-add-language" class="btn btn-sm" disabled={!newLanguage.trim()} onclick={addLanguage}>Add a language</button>
+      <span class="text-xs text-base-content/50">A code such as en, de, fr or pt-br.</span>
     </div>
   </section>
 
@@ -200,6 +256,7 @@
       <button type="button" class="btn btn-ghost" onclick={() => {
         form = $state.snapshot(site.config);
         profiles = [...(site.config.profiles ?? [])];
+        newLanguage = "";
       }}>Discard</button>
     {:else if savedAt}
       <span class="text-sm text-success">Saved</span>

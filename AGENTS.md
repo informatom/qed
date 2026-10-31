@@ -66,7 +66,11 @@ to action, text with image) and icons next to button names
 (`:icon-eye:`), and name buttons exactly as the app does. Screenshots go
 into `docs/media/manual/` and are always taken with the app's own theme
 set to *catppuccin-mocha* (App tab), so they look the same throughout.
-When a change alters what a manual page describes, update the page.
+When a change alters what a manual page describes, update the page, and
+its German translation beside it (`versions.de.md`, #145): German with
+"Sie", button and tab names in English exactly as the app shows them.
+The docs site has German only for the manual and the start page
+(`index.de.md`); the rest (blog, changelog, backlog) stays English.
 `libraries.md` is written by `cargo run -p qed-core --example libraries`;
 run it after adding or updating dependencies (a test fails until then).
 

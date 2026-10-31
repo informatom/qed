@@ -5,6 +5,8 @@
   import History from "@lucide/svelte/icons/history";
   import LayoutList from "@lucide/svelte/icons/layout-list";
   import Settings from "@lucide/svelte/icons/settings";
+  import Languages from "@lucide/svelte/icons/languages";
+  import Plus from "@lucide/svelte/icons/plus";
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import PageVersions from "$lib/PageVersions.svelte";
@@ -24,9 +26,28 @@
     /** The site's podcast settings; null for sites without one. */
     podcast?: Podcast | null;
     contributors?: Contributor[];
+    /** For a site in several languages (#145): the page in each of them, `null` where it has no translation yet. */
+    languages?: { code: string; page: Page | null }[];
+    /** Opens the page in another language. */
+    onopen?: (page: Page) => void;
+    /** Starts the translation into a language. */
+    ontranslate?: (code: string) => void;
   }
 
-  let { page, siteRoot, onsaved, onclose, ondeleted, onmove, dirty = $bindable(false), podcast = null, contributors = [] }: Props = $props();
+  let {
+    page,
+    siteRoot,
+    onsaved,
+    onclose,
+    ondeleted,
+    onmove,
+    dirty = $bindable(false),
+    podcast = null,
+    contributors = [],
+    languages = [],
+    onopen,
+    ontranslate,
+  }: Props = $props();
 
   let tab = $state<"content" | "versions" | "settings">("content");
   let contentDirty = $state(false);
@@ -112,8 +133,8 @@
       </button>
     </div>
     <button type="button" id="move-page-open" class="btn btn-ghost btn-sm btn-square" onclick={onmove}
-      disabled={page.path === "" || dirty}
-      title={page.path === "" ? "The start page always stays at /" : dirty ? "Save your changes first" : "Move or rename"}
+      disabled={page.path === "" || dirty || !!page.language}
+      title={page.path === "" ? "The start page always stays at /" : page.language ? "A translation moves along with its page" : dirty ? "Save your changes first" : "Move or rename"}
       aria-label="Move or rename">
       <FolderInput class="size-4" />
     </button>
@@ -126,6 +147,26 @@
       ✕
     </button>
   </header>
+
+  {#if languages.length > 1}
+    <!-- The page in the site's languages (#145): open one, or start a missing translation. -->
+    <div id="page-languages" class="flex flex-wrap items-center gap-2 text-sm">
+      <Languages class="size-4 text-base-content/60" />
+      {#each languages as language (language.code)}
+        {#if language.page}
+          <button type="button" id="page-language-{language.code}"
+            class={["btn btn-xs font-mono uppercase", language.page.file === page.file ? "btn-primary" : "btn-ghost", language.page.front.draft && "italic"]}
+            title="{language.page.front.title}{language.page.front.draft ? ' (draft)' : ''}"
+            disabled={language.page.file === page.file}
+            onclick={() => language.page && onopen?.(language.page)}>{language.code}</button>
+        {:else}
+          <button type="button" id="translate-{language.code}" class="btn btn-ghost btn-xs" disabled={dirty}
+            title={dirty ? "Save your changes first" : `Start the ${language.code} translation: a copy of this page, as a draft, to translate`}
+            onclick={() => ontranslate?.(language.code)}><Plus class="size-3.5" /><span class="font-mono uppercase">{language.code}</span> Translate</button>
+        {/if}
+      {/each}
+    </div>
+  {/if}
 
   {#if restoredFrom}
     <div id="restored-notice" role="status" class="alert alert-info alert-soft text-sm">

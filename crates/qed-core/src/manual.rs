@@ -11,6 +11,11 @@
 //!
 //! So that links work in both places, manual pages link to each other by
 //! file name (`backups.md`), and to anything else with a full web address.
+//!
+//! The manual is in English, with translations beside the pages
+//! (`backups.de.md`, #145). The app builds it in one language at a time:
+//! a page's translation takes the page's place, and pages without one stay
+//! English, so the links by file name work in every language.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -38,9 +43,30 @@ pub enum ManualError {
     Build(#[from] BuildError),
 }
 
+/// The languages the manual is in: English, and those it has translations
+/// into (`de` for `index.de.md`).
+pub fn languages() -> Vec<String> {
+    let mut codes: Vec<String> = PAGES
+        .files()
+        .filter_map(|file| translation_of(file.path()).map(|(_, code)| code.to_string()))
+        .collect();
+    codes.push("en".to_string());
+    codes.sort();
+    codes.dedup();
+    codes
+}
+
+/// `("backups.md", "de")` for `backups.de.md`; `None` for a page in English.
+fn translation_of(path: &Path) -> Option<(String, &str)> {
+    let name = path.file_name()?.to_str()?.strip_suffix(".md")?;
+    let (stem, code) = name.split_once('.')?;
+    site::is_language_code(code).then(|| (format!("{stem}.md"), code))
+}
+
 /// Writes the manual as a site into `folder` (emptied first) and builds
-/// it, in `theme`, the app's own. Returns where the built manual is.
-pub fn build(folder: &Path, theme: &str) -> Result<BuildReport, ManualError> {
+/// it, in `theme`, the app's own, and in `language` (English where a page
+/// has no translation into it). Returns where the built manual is.
+pub fn build(folder: &Path, theme: &str, language: &str) -> Result<BuildReport, ManualError> {
     let write = |path: &Path, contents: &[u8]| -> Result<(), ManualError> {
         let error = |source| ManualError::Write {
             path: path.to_path_buf(),
@@ -62,14 +88,41 @@ pub fn build(folder: &Path, theme: &str) -> Result<BuildReport, ManualError> {
     } else {
         "light"
     };
+    let language = if languages().iter().any(|code| code == language) {
+        language
+    } else {
+        "en"
+    };
+    let (title, description) = match language {
+        "de" => (
+            "q.e.d.-Handbuch",
+            "Wie Sie Ihre Website mit q.e.d. machen und betreiben.",
+        ),
+        _ => (
+            "q.e.d. manual",
+            "How to make and run your website with q.e.d.",
+        ),
+    };
     let config = format!(
-        "title = \"q.e.d. manual\"\nlanguage = \"en\"\ntheme = \"{theme}\"\nnavigation = \"sidebar\"\n\
-         description = \"How to make and run your website with q.e.d.\"\n"
+        "title = \"{title}\"\nlanguage = \"{language}\"\ntheme = \"{theme}\"\nnavigation = \"sidebar\"\n\
+         description = \"{description}\"\n"
     );
     write(&folder.join(site::CONFIG_FILE), config.as_bytes())?;
     for file in PAGES.files() {
-        let Some(name) = file.path().file_name() else {
+        let Some(name) = file.path().file_name().and_then(|name| name.to_str()) else {
             continue;
+        };
+        // A translation goes in place of its page, in its own language only.
+        let name = match translation_of(file.path()) {
+            Some((page, code)) if code == language => page,
+            Some(_) => continue,
+            None => {
+                let translated = name.replace(".md", &format!(".{language}.md"));
+                if language != "en" && PAGES.get_file(&translated).is_some() {
+                    continue;
+                }
+                name.to_string()
+            }
         };
         // Old addresses only make sense on the docs site.
         let text = without_redirects(file.contents_utf8().unwrap_or_default());
@@ -98,7 +151,7 @@ mod tests {
     #[test]
     fn builds_the_manual_with_working_links() {
         let dir = tempfile::tempdir().unwrap();
-        let report = build(&dir.path().join("manual"), "catppuccin-mocha").unwrap();
+        let report = build(&dir.path().join("manual"), "catppuccin-mocha", "en").unwrap();
         // Links between manual pages, and pictures, all resolve: the
         // build notes nothing missing.
         assert!(
@@ -109,6 +162,23 @@ mod tests {
         let start = fs::read_to_string(report.out_dir.join("index.html")).unwrap();
         assert!(start.contains(r#"data-theme="catppuccin-mocha""#));
         assert!(report.out_dir.join("backups/index.html").is_file());
+    }
+
+    #[test]
+    fn builds_the_manual_in_german_with_english_for_the_rest() {
+        assert_eq!(languages(), ["de", "en"]);
+        let dir = tempfile::tempdir().unwrap();
+        let report = build(&dir.path().join("manual"), "light", "de").unwrap();
+        assert!(
+            !report.notes.iter().any(|note| note.contains(" links to ")),
+            "{:?}",
+            report.notes
+        );
+        let start = fs::read_to_string(report.out_dir.join("index.html")).unwrap();
+        assert!(start.contains(r#"<html lang="de""#) && start.contains("Handbuch"));
+        // Not translated: the libraries page stays English.
+        let libraries = fs::read_to_string(report.out_dir.join("libraries/index.html")).unwrap();
+        assert!(libraries.contains("Libraries"));
     }
 
     #[test]

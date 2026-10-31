@@ -56,9 +56,14 @@ pub const MENU_PATH: &str = "(menu)";
 #[serde(deny_unknown_fields)]
 pub struct SiteConfig {
     pub title: String,
-    /// Language code for the `lang` attribute, e.g. `"de"` or `"en"`.
+    /// Language code for the `lang` attribute, e.g. `"de"` or `"en"`: the
+    /// main language, whose pages are at `/`.
     #[serde(default = "default_language")]
     pub language: String,
+    /// Further languages (#145), by code (`[languages.en]`): a page's
+    /// translation is `about.en.md` beside `about.md`, at `/en/about`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub languages: BTreeMap<String, LanguageSettings>,
     pub description: Option<String>,
     /// An image in `media/`, shown before the title in every page's header
     /// and as the icon in the browser tab. A small square one (an SVG at
@@ -336,6 +341,31 @@ impl HeaderStyle {
     }
 }
 
+/// A further language of the site (`[languages.en]` in `site.toml`): the
+/// site's title and description in it, if they differ.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct LanguageSettings {
+    pub title: Option<String>,
+    pub description: Option<String>,
+}
+
+/// Whether `code` works as a further language's code: lowercase, as file
+/// names are (`en`, `pt-br`).
+pub fn is_language_code(code: &str) -> bool {
+    let mut parts = code.split('-');
+    let main = parts.next().unwrap_or_default();
+    (2..=3).contains(&main.len())
+        && main.bytes().all(|b| b.is_ascii_lowercase())
+        && parts.all(|part| {
+            (2..=8).contains(&part.len())
+                && part
+                    .bytes()
+                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        })
+}
+
 /// The dark side of a site's look (`[dark]` in `site.toml`): the same
 /// settings as the light side at the top of the file, for dark mode.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -489,7 +519,55 @@ pub enum Navigation {
     Sidebar,
 }
 
+impl Page {
+    /// The address of the page in the main language that this one
+    /// translates; for a page in the main language its own.
+    pub fn main_path(&self) -> &str {
+        match &self.language {
+            None => &self.path,
+            Some(language) => {
+                let rest = &self.path[language.len()..];
+                rest.strip_prefix('/').unwrap_or(rest)
+            }
+        }
+    }
+}
+
+/// The address of the page at `main_path` (an address in the main
+/// language) in `language`: `en/about`, or `about` itself for the main
+/// language (`None`).
+pub fn translated_path(main_path: &str, language: Option<&str>) -> String {
+    match (language, main_path) {
+        (None, path) => path.to_string(),
+        (Some(language), "") => language.to_string(),
+        (Some(language), path) => format!("{language}/{path}"),
+    }
+}
+
 impl SiteConfig {
+    /// The language a page is in: its own, or the site's main one.
+    pub fn language_of<'a>(&'a self, page: &'a Page) -> &'a str {
+        page.language.as_deref().unwrap_or(&self.language)
+    }
+
+    /// The site's title in `language` (`None`: the main one).
+    pub fn title_in(&self, language: Option<&str>) -> &str {
+        language
+            .and_then(|code| self.languages.get(code))
+            .and_then(|settings| settings.title.as_deref())
+            .filter(|title| !title.trim().is_empty())
+            .unwrap_or(&self.title)
+    }
+
+    /// The site's description in `language` (`None`: the main one).
+    pub fn description_in(&self, language: Option<&str>) -> Option<&str> {
+        language
+            .and_then(|code| self.languages.get(code))
+            .and_then(|settings| settings.description.as_deref())
+            .filter(|text| !text.trim().is_empty())
+            .or(self.description.as_deref())
+    }
+
     /// The custom theme, if the site uses one (on its light side).
     pub fn custom(&self) -> Option<&CustomTheme> {
         self.light().custom()
@@ -562,6 +640,9 @@ pub struct Site {
     /// The footer from `footer.md`, if the site has one; its `path` is
     /// [`FOOTER_PATH`].
     pub footer: Option<Page>,
+    /// The footer in further languages (#145), from `footer.en.md` and
+    /// so on; pages in a language without one show the main footer.
+    pub footer_translations: Vec<Page>,
     /// The episode layout from `episode.md`, if the site has one; its
     /// `path` is [`EPISODE_LAYOUT_PATH`].
     pub episode_layout: Option<Page>,
@@ -579,8 +660,20 @@ impl Site {
         self.pages
             .iter()
             .chain(self.footer.as_ref())
+            .chain(&self.footer_translations)
             .chain(self.episode_layout.as_ref())
             .chain(&self.shared)
+    }
+
+    /// The footer for a page in `language` (`None`: the main one).
+    pub fn footer_in(&self, language: Option<&str>) -> Option<&Page> {
+        language
+            .and_then(|code| {
+                self.footer_translations
+                    .iter()
+                    .find(|footer| footer.language.as_deref() == Some(code))
+            })
+            .or(self.footer.as_ref())
     }
 }
 
@@ -588,8 +681,12 @@ impl Site {
 #[derive(Debug, Clone, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Page {
-    /// URL path without slashes at either end; `""` is the start page.
+    /// URL path without slashes at either end; `""` is the start page. A
+    /// translation's starts with its language: `en/about`.
     pub path: String,
+    /// The further language a translation is in (`about.en.md`); `None`
+    /// for pages in the site's main language.
+    pub language: Option<String>,
     /// The file, relative to the site folder.
     pub file: PathBuf,
     #[serde(flatten)]
@@ -681,7 +778,17 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
     let mut pages: BTreeMap<String, Page> = BTreeMap::new();
     for file in files {
         let relative = file.strip_prefix(root).unwrap_or(&file).to_path_buf();
-        let path = url_path(&file, &pages_dir, &relative)?;
+        let (path, language) = url_path(&file, &pages_dir, &relative)?;
+        if let Some(code) = &language
+            && !config.languages.contains_key(code)
+        {
+            return Err(SiteError::Invalid {
+                path: relative,
+                message: format!(
+                    "it is a translation into “{code}”, which isn't one of the site's languages (Site → Languages)"
+                ),
+            });
+        }
         let content = page::parse(&read(&file)?).map_err(|error| SiteError::Page {
             path: relative.clone(),
             error,
@@ -698,18 +805,32 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
             path.clone(),
             Page {
                 path,
+                language,
                 file: relative,
                 content,
             },
         );
     }
 
+    let footer_translations = config
+        .languages
+        .keys()
+        .map(|code| {
+            let file = format!("footer.{code}.md");
+            Ok(load_part(root, &file, FOOTER_PATH)?.map(|footer| Page {
+                language: Some(code.clone()),
+                ..footer
+            }))
+        })
+        .filter_map(Result::transpose)
+        .collect::<Result<_, SiteError>>()?;
     Ok(Site {
         root: root.to_path_buf(),
         config,
         pages: pages.into_values().collect(),
         targets: crate::target::load(root)?,
         footer: load_part(root, FOOTER_FILE, FOOTER_PATH)?,
+        footer_translations,
         episode_layout: load_part(root, EPISODE_LAYOUT_FILE, EPISODE_LAYOUT_PATH)?,
         shared: crate::shared::load(root)?,
         contributors: crate::contributors::load(root)?,
@@ -728,6 +849,7 @@ fn load_part(root: &Path, file: &str, path: &str) -> Result<Option<Page>, SiteEr
         error,
     })?;
     Ok(Some(Page {
+        language: None,
         path: path.to_string(),
         file: PathBuf::from(file),
         content,
@@ -828,6 +950,7 @@ pub(crate) fn update_part(
     }
     write_atomically(&full, &written)?;
     Ok(Page {
+        language: None,
         path: path.to_string(),
         file: file.to_path_buf(),
         content: parse(&written)?,
@@ -894,6 +1017,7 @@ pub fn create_page(
     write_new(&root.join(&file), &page_writer::write(&content, None))?;
 
     Ok(Page {
+        language: None,
         path,
         file,
         content,
@@ -1102,6 +1226,34 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
             "profiles: “{profile}” isn't a web address (https://…)"
         )));
     }
+    // A language that still has translations stays: without it, the site
+    // couldn't be opened.
+    let mut files = Vec::new();
+    if root.join(PAGES_DIR).is_dir() {
+        collect_markdown_files(&root.join(PAGES_DIR), &mut files)?;
+    }
+    for file in &files {
+        let relative = file.strip_prefix(root).unwrap_or(file);
+        if let Ok((path, Some(code))) = url_path(file, &root.join(PAGES_DIR), relative)
+            && !config.languages.contains_key(&code)
+        {
+            return Err(invalid(format!(
+                "languages: “{code}” still has translations, such as /{path}; delete those first"
+            )));
+        }
+    }
+    for code in config.languages.keys() {
+        if !is_language_code(code) {
+            return Err(invalid(format!(
+                "languages: “{code}” isn't a language code like en or pt-br (lowercase)"
+            )));
+        }
+        if code.eq_ignore_ascii_case(&config.language) {
+            return Err(invalid(format!(
+                "languages: “{code}” is already the site's main language"
+            )));
+        }
+    }
     if let Some(problem) = config.light().problem() {
         return Err(invalid(problem));
     }
@@ -1157,6 +1309,19 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
         document.as_table_mut(),
         &["custom_theme", "fonts", "colors", "dark", "podcast"],
     );
+    // Each further language as `[languages.en]`, without an empty
+    // `[languages]` above them.
+    if let Some(inline) = document
+        .get_mut("languages")
+        .and_then(|item| item.as_inline_table_mut())
+    {
+        let mut table = std::mem::take(inline).into_table();
+        table.set_implicit(true);
+        let codes: Vec<String> = table.iter().map(|(code, _)| code.to_string()).collect();
+        let keys: Vec<&str> = codes.iter().map(String::as_str).collect();
+        section_tables(&mut table, &keys);
+        document["languages"] = toml_edit::Item::Table(table);
+    }
     if let Some(dark) = document
         .get_mut("dark")
         .and_then(|item| item.as_table_mut())
@@ -1586,6 +1751,49 @@ pub(crate) fn post_list_link(from: &str) -> String {
     format!("/{}", from.trim().trim_matches('/'))
 }
 
+/// Starts the translation of the page in `file` into `language`, one of
+/// the site's further languages (#145): a copy beside it (`about.en.md`
+/// for `about.md`), to be translated. It starts as a draft, so it isn't
+/// published half done, and without the page's old addresses, which stay
+/// with the original.
+pub fn create_translation(site: &Site, file: &Path, language: &str) -> Result<Page, SiteError> {
+    let full = page_file(&site.root, file)?;
+    let invalid = |message: String| SiteError::Invalid {
+        path: file.to_path_buf(),
+        message,
+    };
+    let page = site
+        .pages
+        .iter()
+        .find(|page| page.file == file)
+        .ok_or_else(|| SiteError::NotAPage(file.to_path_buf()))?;
+    if page.language.is_some() {
+        return Err(invalid("it is a translation itself".to_string()));
+    }
+    if !site.config.languages.contains_key(language) {
+        return Err(invalid(format!(
+            "“{language}” isn't one of the site's languages (Site → Languages)"
+        )));
+    }
+    let stem = file
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let new_file = file.with_file_name(format!("{stem}.{language}.md"));
+    let new_full = site.root.join(&new_file);
+    if new_full.exists() {
+        return Err(invalid(format!(
+            "it already has a translation into “{language}”"
+        )));
+    }
+    let original = read(&full)?;
+    let mut content = page.content.clone();
+    content.front.draft = true;
+    content.front.redirect_from.clear();
+    write_atomically(&new_full, &page_writer::write(&content, Some(&original)))?;
+    read_page(&site.root, &new_file)
+}
+
 /// Deletes a page's file. The start page and pages with pages below them
 /// can't be deleted.
 pub fn delete_page(site: &Site, file: &Path) -> Result<(), SiteError> {
@@ -1614,6 +1822,18 @@ pub fn delete_page(site: &Site, file: &Path) -> Result<(), SiteError> {
             below.join(", ")
         )));
     }
+    let translations: Vec<String> = site
+        .pages
+        .iter()
+        .filter(|other| other.language.is_some() && other.main_path() == page.path)
+        .map(|other| format!("/{}", other.path))
+        .collect();
+    if page.language.is_none() && !translations.is_empty() {
+        return Err(invalid(format!(
+            "it has translations ({}); delete those first",
+            translations.join(", ")
+        )));
+    }
     fs::remove_file(&full).map_err(|source| SiteError::Write {
         path: full.clone(),
         source,
@@ -1634,8 +1854,10 @@ pub fn read_page(root: &Path, file: &Path) -> Result<Page, SiteError> {
         path: file.to_path_buf(),
         error,
     })?;
+    let (path, language) = url_path(&full, &root.join(PAGES_DIR), file)?;
     Ok(Page {
-        path: url_path(&full, &root.join(PAGES_DIR), file)?,
+        path,
+        language,
         file: file.to_path_buf(),
         content,
     })
@@ -1701,8 +1923,10 @@ pub(crate) fn update_page(
     let written = page_writer::write(&content, Some(&original));
     write_atomically(&full, &written)?;
 
+    let (path, language) = url_path(&full, &root.join(PAGES_DIR), file)?;
     Ok(Page {
-        path: url_path(&full, &root.join(PAGES_DIR), file)?,
+        path,
+        language,
         file: file.to_path_buf(),
         content: parse(&written)?,
     })
@@ -1763,15 +1987,30 @@ fn collect_markdown_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), Si
 
 /// Works out a page's URL path from its file: `pages/about/team.md` becomes
 /// `about/team`, and `index.md` stands for its folder.
-fn url_path(file: &Path, pages_dir: &Path, relative: &Path) -> Result<String, SiteError> {
+/// A page file's address, and the language of a translation: the file
+/// `about.en.md` is the English one of `about.md`, at `en/about`.
+fn url_path(
+    file: &Path,
+    pages_dir: &Path,
+    relative: &Path,
+) -> Result<(String, Option<String>), SiteError> {
     let inside = file
         .strip_prefix(pages_dir)
         .unwrap_or(file)
         .with_extension("");
     let mut segments = Vec::new();
+    let count = inside.components().count();
+    let mut language = None;
 
-    for component in inside.components() {
-        let name = component.as_os_str().to_string_lossy();
+    for (index, component) in inside.components().enumerate() {
+        let mut name = component.as_os_str().to_string_lossy();
+        if index + 1 == count
+            && let Some((stem, code)) = name.split_once('.')
+            && is_language_code(code)
+        {
+            language = Some(code.to_string());
+            name = stem.to_string().into();
+        }
         let suggestion = slugify(&name);
         if name != suggestion {
             return Err(SiteError::BadFileName {
@@ -1786,7 +2025,10 @@ fn url_path(file: &Path, pages_dir: &Path, relative: &Path) -> Result<String, Si
     if segments.last().is_some_and(|last| last == "index") {
         segments.pop();
     }
-    Ok(segments.join("/"))
+    if let Some(code) = &language {
+        segments.insert(0, code.clone());
+    }
+    Ok((segments.join("/"), language))
 }
 
 #[cfg(test)]
@@ -2168,6 +2410,104 @@ mod tests {
             save_config(dir.path(), &config),
             Err(SiteError::Invalid { .. })
         ));
+    }
+
+    #[test]
+    fn reads_translations_beside_their_pages() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"Seite\"\nlanguage = \"de\"\n"),
+            ("pages/index.md", "+++\ntitle = \"Start\"\n+++\n"),
+            ("pages/index.en.md", "+++\ntitle = \"Home\"\n+++\n"),
+            ("pages/ueber.md", "+++\ntitle = \"Über uns\"\n+++\n"),
+            ("pages/ueber.en.md", "+++\ntitle = \"About us\"\n+++\n"),
+        ]);
+        let error = open(dir.path()).unwrap_err().to_string();
+        assert!(
+            error.contains("isn't one of the site's languages"),
+            "{error}"
+        );
+
+        let mut config = SiteConfig {
+            languages: BTreeMap::from([(
+                "en".to_string(),
+                LanguageSettings {
+                    title: Some("Site".into()),
+                    description: None,
+                },
+            )]),
+            ..toml::from_str("title = \"Seite\"\nlanguage = \"de\"\n").unwrap()
+        };
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains("\n[languages.en]\ntitle = \"Site\"\n"),
+            "{text}"
+        );
+        assert!(!text.contains("[languages]\n"), "{text}");
+
+        let site = open(dir.path()).unwrap();
+        let paths: Vec<(&str, Option<&str>)> = site
+            .pages
+            .iter()
+            .map(|p| (p.path.as_str(), p.language.as_deref()))
+            .collect();
+        assert_eq!(
+            paths,
+            [
+                ("", None),
+                ("en", Some("en")),
+                ("en/ueber", Some("en")),
+                ("ueber", None)
+            ]
+        );
+        let about = site.pages.iter().find(|p| p.path == "en/ueber").unwrap();
+        assert_eq!(about.main_path(), "ueber");
+        assert_eq!(site.config.title_in(Some("en")), "Site");
+        assert_eq!(site.config.title_in(None), "Seite");
+        assert_eq!(translated_path("", Some("en")), "en");
+
+        config
+            .languages
+            .insert("de".into(), LanguageSettings::default());
+        assert!(
+            save_config(dir.path(), &config).is_err(),
+            "de is the main one"
+        );
+    }
+
+    #[test]
+    fn starts_a_translation_as_a_draft_copy() {
+        let dir = site_with(&[
+            (
+                "site.toml",
+                "title = \"S\"\nlanguage = \"de\"\n\n[languages.en]\n",
+            ),
+            ("pages/index.md", "+++\ntitle = \"Start\"\n+++\n"),
+            (
+                "pages/ueber.md",
+                "+++\ntitle = \"Über uns\"\nredirect_from = [\"/alt\"]\n+++\n\nHallo.\n",
+            ),
+        ]);
+        let site = open(dir.path()).unwrap();
+        assert!(create_translation(&site, Path::new("pages/ueber.md"), "fr").is_err());
+        let page = create_translation(&site, Path::new("pages/ueber.md"), "en").unwrap();
+        assert_eq!(page.path, "en/ueber");
+        assert_eq!(page.file, Path::new("pages/ueber.en.md"));
+        assert!(page.content.front.draft);
+        assert!(page.content.front.redirect_from.is_empty());
+        let start = create_translation(&site, Path::new("pages/index.md"), "en").unwrap();
+        assert_eq!(start.path, "en");
+
+        let site = open(dir.path()).unwrap();
+        assert!(create_translation(&site, Path::new("pages/ueber.md"), "en").is_err());
+        let error = delete_page(&site, Path::new("pages/ueber.md")).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("it has translations (/en/ueber)"),
+            "{error}"
+        );
+        delete_page(&site, Path::new("pages/ueber.en.md")).unwrap();
     }
 
     #[test]

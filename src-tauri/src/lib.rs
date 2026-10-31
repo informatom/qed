@@ -351,6 +351,26 @@ async fn pages_linking_to(root: PathBuf, path: String) -> Result<Vec<String>, St
     Ok(site::pages_linking_to(&site, &path))
 }
 
+/// The languages the manual is in, for the App tab's choice.
+#[tauri::command]
+#[specta::specta]
+fn manual_languages() -> Vec<String> {
+    qed_core::manual::languages()
+}
+
+/// Starts a page's translation into `language` (see
+/// `site::create_translation`) and returns it.
+#[tauri::command]
+#[specta::specta]
+async fn create_translation(
+    root: PathBuf,
+    file: PathBuf,
+    language: String,
+) -> Result<Page, String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    site::create_translation(&site, &file, &language).map_err(|error| error.to_string())
+}
+
 /// Deletes a page's file.
 #[tauri::command]
 #[specta::specta]
@@ -461,6 +481,7 @@ struct PreviewInfo {
 async fn open_manual(
     app: AppHandle,
     theme: String,
+    language: String,
     page: Option<String>,
     state: State<'_, ManualState>,
 ) -> Result<(), String> {
@@ -469,15 +490,17 @@ async fn open_manual(
             .0
             .lock()
             .map_err(|_| "manual state is broken".to_string())?;
-        if manual.as_ref().is_none_or(|(built, _)| *built != theme) {
+        let wanted = format!("{theme} {language}");
+        if manual.as_ref().is_none_or(|(built, _)| *built != wanted) {
             let folder = app
                 .path()
                 .app_cache_dir()
                 .map_err(|error| error.to_string())?
                 .join("manual");
-            let report = qed_core::manual::build(&folder, &theme).map_err(|e| e.to_string())?;
+            let report =
+                qed_core::manual::build(&folder, &theme, &language).map_err(|e| e.to_string())?;
             let server = Preview::start(&report.out_dir).map_err(|e| e.to_string())?;
-            *manual = Some((theme, server));
+            *manual = Some((wanted, server));
         }
         manual
             .as_ref()
@@ -1029,6 +1052,8 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             audio_info,
             pages_linking_to,
             delete_page,
+            create_translation,
+            manual_languages,
             move_page,
             set_page_order,
             deleted_pages,

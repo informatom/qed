@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
-  import { ask, open } from "@tauri-apps/plugin-dialog";
+  import { ask, message, open } from "@tauri-apps/plugin-dialog";
   import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
@@ -72,6 +72,7 @@
     BLOCK_NAMES,
     defaultEpisodeLayout,
     pageIcons,
+    mainPath,
     sharedName,
     pageLabel,
     formatLabel,
@@ -190,6 +191,31 @@
     // Reload, so the new page lands in its place in the tree, then open it.
     await load(site.root);
     selectedFile = page.file;
+  }
+
+  /** The open page in each of the site's languages (#145), the main one first. */
+  let pageLanguages = $derived.by(() => {
+    if (!site || !selected || !Object.keys(site.config.languages ?? {}).length) return [];
+    const main = mainPath(selected);
+    const codes: (string | null)[] = [null, ...Object.keys(site.config.languages ?? {}).sort()];
+    return codes.map((code) => ({
+      code: code ?? site!.config.language.toLowerCase(),
+      page: site!.pages.find((p) => mainPath(p) === main && (p.language ?? null) === code) ?? null,
+    }));
+  });
+
+  /** Starts the open page's translation into `code` and opens it. */
+  async function translate(code: string) {
+    if (!site || !selected) return;
+    const original = site.pages.find((p) => !p.language && p.path === mainPath(selected!));
+    if (!original) return;
+    try {
+      const page = await commands.createTranslation(site.root, original.file, code);
+      await load(site.root);
+      selectedFile = page.file;
+    } catch (e) {
+      await message(String(e), { title: "Can't start the translation", kind: "error" });
+    }
   }
 
   async function pageMoved(page: Page) {
@@ -410,10 +436,23 @@
   // unfolded. All folded at first, since a site may have hundreds of pages.
   const unfolded = new SvelteSet<string>();
 
+  // Translations (#145) don't get rows of their own: they hang on their
+  // page's row, as language buttons. One whose page is gone keeps a row.
+  let allPaths = $derived(new Set(site?.pages.map((p) => p.path)));
+  let treePages = $derived((site?.pages ?? []).filter((p) => !p.language || !allPaths.has(mainPath(p))));
+  /** Each page's translations, by its address. */
+  let translations = $derived.by(() => {
+    const byMain = new Map<string, Page[]>();
+    for (const page of site?.pages ?? []) {
+      if (page.language && allPaths.has(mainPath(page))) byMain.set(mainPath(page), [...(byMain.get(mainPath(page)) ?? []), page]);
+    }
+    return byMain;
+  });
+
   /** How many pages lie below each page that has any (all levels). */
   let below = $derived.by(() => {
     const counts = new Map<string, number>();
-    for (const page of site?.pages ?? []) {
+    for (const page of treePages) {
       for (const parent of parents(page.path)) counts.set(parent, (counts.get(parent) ?? 0) + 1);
     }
     return counts;
@@ -431,7 +470,7 @@
   }
 
   // In the order the site shows them (weight, then title; posts by date).
-  let ordered = $derived(site ? treeOrder(site.pages) : []);
+  let ordered = $derived(site ? treeOrder(treePages) : []);
   let shownPages = $derived(ordered.filter((page) => parents(page.path).every((p) => unfolded.has(p))));
 
   // Dragging a page by its handle, as blocks are dragged (BlockList).
@@ -919,6 +958,12 @@
                 </div>
               {/if}
             </button>
+            {#each translations.get(page.path) ?? [] as translation (translation.file)}
+              <button type="button" id="translation-{translation.path}"
+                class={["btn btn-xs shrink-0 font-mono uppercase", translation.file === selectedFile ? "btn-primary" : "btn-ghost", translation.front.draft && "italic opacity-60"]}
+                title="{translation.front.title} (/{translation.path}){translation.front.draft ? ', a draft' : ''}"
+                onclick={() => select(translation.file)}>{translation.language}</button>
+            {/each}
           </li>
         {/each}
         <!-- Shared blocks show on several pages, so they come after them. -->
@@ -1051,6 +1096,9 @@
             onclose={() => select(null)}
             ondeleted={pageDeleted}
             onmove={() => (movingPage = true)}
+            languages={pageLanguages}
+            onopen={(page) => select(page.file)}
+            ontranslate={translate}
             podcast={site.config.podcast}
             contributors={site.contributors}
             bind:dirty={editorDirty}

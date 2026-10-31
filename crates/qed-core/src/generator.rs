@@ -16,9 +16,10 @@
 //!                         also only with `base_url`
 //! ```
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use askama::Template;
 use serde::Serialize;
@@ -39,7 +40,7 @@ use crate::site::{
     ASSETS_DIR, Colors, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
     Surface, ThemeColor,
 };
-use crate::site::{LogoSize, Look, PageWidth};
+use crate::site::{LogoSize, Look, PageWidth, translated_path};
 use crate::slug::slugify;
 
 pub const OUTPUT_DIR: &str = "_site";
@@ -285,8 +286,31 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     let media_dir = site.root.join(MEDIA_DIR);
     let images = Images::new(&media_dir);
     let site_icons = SiteIcons::load(&media_dir);
-    let main_menu = menu(&published, Menu::Main);
-    let footer_menu = menu(&published, Menu::Footer);
+    // Each language's pages (#145): a page sees only those in its own
+    // language, in menus, lists and back and next links.
+    let mut by_language: BTreeMap<Option<&str>, Vec<&Page>> = BTreeMap::new();
+    by_language.insert(None, Vec::new());
+    for page in &published {
+        by_language
+            .entry(page.language.as_deref())
+            .or_default()
+            .push(page);
+    }
+    let menus: BTreeMap<Option<&str>, (Vec<MenuEntry>, Vec<MenuEntry>)> = by_language
+        .iter()
+        .map(|(language, pages)| {
+            (
+                *language,
+                (menu(pages, Menu::Main), menu(pages, Menu::Footer)),
+            )
+        })
+        .collect();
+    let page_paths = Arc::new(
+        published
+            .iter()
+            .map(|page| page.path.clone())
+            .collect::<BTreeSet<String>>(),
+    );
     // Feeds need full addresses, so only a site with a web address gets them.
     // A podcast's episodes get podcast feeds instead (see `feed.rs`).
     let podcast = site.config.podcast.as_ref();
@@ -350,7 +374,9 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         root: &site.root,
         images: &images,
         site_icons: &site_icons,
-        pages: &published,
+        pages: &by_language[&None],
+        all_pages: &published,
+        page_paths: &page_paths,
         feeds: &feeds,
         today,
         language: &site.config.language,
@@ -361,7 +387,14 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     // Whether any page has a formula, for the math font (see below).
     let mut uses_math = false;
     for page in &published {
-        let html = render_page(site, &context, page, &main_menu, &footer_menu, &feeds)?;
+        let language = page.language.as_deref();
+        let (main_menu, footer_menu) = &menus[&language];
+        let in_language = Context {
+            pages: &by_language[&language],
+            language: site.config.language_of(page),
+            ..context
+        };
+        let html = render_page(site, &in_language, page, main_menu, footer_menu, &feeds)?;
         uses_math |= html.contains("<math");
         write(&page_file(out_dir, &page.path), html)?;
         // The player's data for an episode with audio, next to its page.
@@ -392,7 +425,8 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     }
 
     let not_found = not_found_page(site);
-    let html = render_page(site, &context, &not_found, &main_menu, &footer_menu, &feeds)?;
+    let (main_menu, footer_menu) = &menus[&None];
+    let html = render_page(site, &context, &not_found, main_menu, footer_menu, &feeds)?;
     write(&out_dir.join("404.html"), html)?;
 
     let mut redirects = 0;
@@ -571,7 +605,11 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     if let Some(base_url) = &site.config.base_url {
         write(&out_dir.join("sitemap.xml"), sitemap(base_url, &published))?;
         for feed in &feeds {
-            let posts = posts(&published, &feed.page.path, today);
+            let posts = posts(
+                &by_language[&feed.page.language.as_deref()],
+                &feed.page.path,
+                today,
+            );
             write(
                 &out_dir.join(&feed.file),
                 rss(&site.config, base_url, feed, &posts),
@@ -745,6 +783,7 @@ fn not_found_page(site: &Site) -> Page {
         ),
     };
     Page {
+        language: None,
         path: NOT_FOUND_PATH.to_string(),
         file: PathBuf::from("pages/404.md"),
         content: crate::page::PageContent {
@@ -782,8 +821,12 @@ struct Context<'a> {
     images: &'a Images,
     /// The site's own icons, for `:icon-name:` in text.
     site_icons: &'a SiteIcons,
-    /// The pages being built, for Post lists.
+    /// The pages being built in the page's language, for Post lists.
     pages: &'a [&'a Page],
+    /// All pages being built, in every language.
+    all_pages: &'a [&'a Page],
+    /// The addresses of all pages, for links into a page's language.
+    page_paths: &'a Arc<BTreeSet<String>>,
     /// The feeds being written, so a Post list can link its own.
     feeds: &'a [Feed<'a>],
     /// The podcast's feeds, the main format's first.
@@ -796,7 +839,7 @@ struct Context<'a> {
     /// The podcast's contributors, for the Contributors block.
     contributors: &'a [crate::contributors::Contributor],
     today: Date,
-    /// The site's language, for dates.
+    /// The page's language, for dates and the words the site writes.
     language: &'a str,
     /// Rendering the footer: lists come out compact, as plain links.
     footer: bool,
@@ -1026,10 +1069,11 @@ fn feed_file(path: &str) -> String {
 
 /// "Blog · My Site", or just the site's title for posts on the start page.
 fn feed_title(config: &SiteConfig, page: &Page) -> String {
-    if page.path.is_empty() {
-        config.title.clone()
+    let site_title = config.title_in(page.language.as_deref());
+    if page.main_path().is_empty() {
+        site_title.to_string()
     } else {
-        format!("{} · {}", page.content.front.title, config.title)
+        format!("{} · {site_title}", page.content.front.title)
     }
 }
 
@@ -1051,7 +1095,7 @@ fn rss(config: &SiteConfig, base_url: &str, feed: &Feed, posts: &[&Page]) -> Str
         .front
         .description
         .as_deref()
-        .or(config.description.as_deref())
+        .or(config.description_in(page.language.as_deref()))
         .unwrap_or(&feed.title);
     let self_link = format!("{}/{}", base_url.trim_end_matches('/'), feed.file);
     let mut xml = String::from(
@@ -1066,7 +1110,7 @@ fn rss(config: &SiteConfig, base_url: &str, feed: &Feed, posts: &[&Page]) -> Str
         escape_xml(&feed.title),
         escape_xml(&absolute(base_url, &page.path)),
         escape_xml(description),
-        escape_xml(&config.language),
+        escape_xml(config.language_of(page)),
         escape_xml(&self_link),
     ));
     for post in posts {
@@ -1257,11 +1301,15 @@ fn menu(pages: &[&Page], which: Menu) -> Vec<MenuEntry> {
 
     // An entry's parent is the nearest entry above it in the page tree:
     // `blog/first-post` goes under `blog`, if `blog` is in the menu too.
+    // Within one language: a translated start page (`de`) is no parent,
+    // as `/` isn't.
     let parent = |page: &Page| -> Option<usize> {
         entries
             .iter()
             .enumerate()
-            .filter(|(_, other)| other.path != page.path && is_within(&page.path, &other.path))
+            .filter(|(_, other)| {
+                other.path != page.path && is_within(page.main_path(), other.main_path())
+            })
             .max_by_key(|(_, other)| other.path.len())
             .map(|(index, _)| index)
     };
@@ -1380,6 +1428,15 @@ struct PageTemplate<'a> {
     player_script: Option<String>,
     /// The light/dark switch's labels, for a site with dark mode.
     mode_labels: [&'static str; 3],
+    /// The page's language, for `<html lang>`.
+    language: &'a str,
+    /// The site's title in the page's language.
+    site_title: &'a str,
+    /// The language switch: the page in each language (#145).
+    languages: Vec<LanguageLink>,
+    /// `<link rel="alternate" hreflang>`: the page's translations, with
+    /// full addresses.
+    alternates: Vec<LanguageLink>,
     /// The page's content goes into the search index (not the 404 page).
     searchable: bool,
     /// The site footer's blocks, rendered for this page.
@@ -1749,6 +1806,55 @@ struct BlockTemplate<'a> {
 const ZOOM_ABOVE_FULL: u32 = 1300;
 const ZOOM_ABOVE_HALF: u32 = 700;
 
+/// One language in the language switch, or one `hreflang` link.
+struct LanguageLink {
+    /// `de`, `en`, `de-AT`.
+    code: String,
+    /// `DE`, shown in the switch.
+    short: String,
+    /// The language's own name for itself: `Deutsch`.
+    name: String,
+    href: String,
+    current: bool,
+}
+
+/// A language's name for itself, for the switch's tooltip; the code
+/// for others.
+fn language_name(code: &str) -> &str {
+    match code
+        .split(['-', '_'])
+        .next()
+        .unwrap_or_default()
+        .to_lowercase()
+        .as_str()
+    {
+        "de" => "Deutsch",
+        "en" => "English",
+        "fr" => "Français",
+        "es" => "Español",
+        "it" => "Italiano",
+        "nl" => "Nederlands",
+        "pt" => "Português",
+        "pl" => "Polski",
+        "cs" => "Čeština",
+        "sk" => "Slovenčina",
+        "sl" => "Slovenščina",
+        "hr" => "Hrvatski",
+        "hu" => "Magyar",
+        "sv" => "Svenska",
+        "da" => "Dansk",
+        "no" | "nb" => "Norsk",
+        "fi" => "Suomi",
+        "tr" => "Türkçe",
+        "el" => "Ελληνικά",
+        "ru" => "Русский",
+        "uk" => "Українська",
+        "ja" => "日本語",
+        "zh" => "中文",
+        _ => code,
+    }
+}
+
 /// The light/dark switch's labels in the site's language: for the
 /// system's setting, light and dark.
 fn mode_labels(language: &str) -> [&'static str; 3] {
@@ -1899,7 +2005,9 @@ fn hand_made_menu(
                 });
             }
             let (title, href, target) = if let Some(path) = &item.page {
-                let path = crate::site::menu_page_path(path);
+                // A page in the page's language; one without a
+                // translation in it is left out.
+                let path = links.translated(crate::site::menu_page_path(path));
                 let page = pages.iter().find(|page| page.path == path)?;
                 (
                     title.unwrap_or_else(|| page.content.front.title.clone()),
@@ -2365,6 +2473,7 @@ fn contributor_pages(site: &Site) -> Vec<Page> {
     let mut pages = Vec::new();
     if !taken(CONTRIBUTORS_DIR) {
         pages.push(Page {
+            language: None,
             path: CONTRIBUTORS_DIR.to_string(),
             file: PathBuf::from(CONTRIBUTORS_DIR).join("index.md"),
             content: PageContent {
@@ -2403,6 +2512,7 @@ fn contributor_pages(site: &Site) -> Vec<Page> {
             None => Block::Text { markdown: text },
         };
         pages.push(Page {
+            language: None,
             path: path.clone(),
             file: PathBuf::from(CONTRIBUTORS_DIR).join(format!("{}.md", person.id)),
             content: PageContent {
@@ -2916,8 +3026,11 @@ fn render_page(
     } else {
         LinkContext::new(&page.path, &page.file)
     }
-    .with_own_site(config.base_url.as_deref());
+    .with_own_site(config.base_url.as_deref())
+    .in_language(page.language.as_deref(), context.page_paths.clone());
 
+    // A language's start page (`de`) is current only on itself, as `/` is.
+    let home = translated_path("", page.language.as_deref());
     let menu_links = |entries: &[MenuEntry]| -> Vec<MenuLink> {
         entries
             .iter()
@@ -2926,7 +3039,11 @@ fn render_page(
                 href: links.page(&entry.path),
                 level: entry.level,
                 icon: entry.icon,
-                current: is_within(&page.path, &entry.path),
+                current: if entry.path == home {
+                    page.path == home
+                } else {
+                    is_within(&page.path, &entry.path)
+                },
                 exact: page.path == entry.path,
                 heading: false,
                 children: Vec::new(),
@@ -2947,7 +3064,7 @@ fn render_page(
     if let Some(date) = &front.date {
         byline.push(date.date().map_or_else(
             || date.to_string(),
-            |day| calendar::long_date(day, &site.config.language),
+            |day| calendar::long_date(day, context.language),
         ));
     }
     if !front.authors.is_empty() {
@@ -3036,6 +3153,45 @@ fn render_page(
     } else {
         neighbours(page, context, &links)
     };
+    // The feeds of the page's language.
+    let feeds: Vec<&Feed> = feeds
+        .iter()
+        .filter(|feed| feed.page.language == page.language)
+        .collect();
+    // The language switch (#145): the page in each of the site's
+    // languages, or that language's start page where it has no
+    // translation; `hreflang` links name the translations.
+    let mut languages = Vec::new();
+    let mut alternates = Vec::new();
+    if !config.languages.is_empty() && !not_found {
+        let codes = std::iter::once(None).chain(config.languages.keys().map(|c| Some(c.as_str())));
+        for code in codes {
+            let wanted = translated_path(page.main_path(), code);
+            let exists = context.all_pages.iter().any(|p| p.path == wanted);
+            let target = if exists {
+                wanted
+            } else {
+                translated_path("", code)
+            };
+            let lang = code.unwrap_or(&config.language);
+            if exists && let Some(base) = &config.base_url {
+                alternates.push(LanguageLink {
+                    code: lang.to_string(),
+                    short: String::new(),
+                    name: String::new(),
+                    href: absolute(base, &target),
+                    current: false,
+                });
+            }
+            languages.push(LanguageLink {
+                code: lang.to_string(),
+                short: lang.split(['-', '_']).next().unwrap_or(lang).to_uppercase(),
+                name: language_name(lang).to_string(),
+                href: links.page(&target),
+                current: code == page.language.as_deref(),
+            });
+        }
+    }
     let template = PageTemplate {
         neighbours,
         player_script,
@@ -3060,7 +3216,11 @@ fn render_page(
             .podcast_feeds
             .iter()
             .map(|feed| FeedLink {
-                title: format!("{} · {}", feed.label, config.title),
+                title: format!(
+                    "{} · {}",
+                    feed.label,
+                    config.title_in(page.language.as_deref())
+                ),
                 href: format!("{}{}", links.to_root(), feed.file),
                 label: feed.label.clone(),
             })
@@ -3075,9 +3235,9 @@ fn render_page(
             }))
             .collect(),
         rss_icon: RSS_ICON,
-        is_home: page.path.is_empty(),
+        is_home: page.main_path().is_empty(),
         root: links.to_root(),
-        home_href: links.page(""),
+        home_href: links.page(&translated_path("", page.language.as_deref())),
         main_menu: main_links,
         nav,
         footer_menu: menu_links(footer_menu),
@@ -3092,14 +3252,18 @@ fn render_page(
             (PageWidth::Full, _) => "max-w-none",
         },
         header: site_header_classes(config),
-        mode_labels: mode_labels(&config.language),
+        mode_labels: mode_labels(context.language),
+        language: context.language,
+        site_title: config.title_in(page.language.as_deref()),
+        languages,
+        alternates,
         // Without a logo, the title is all the header has.
         show_site_title: config.title_in_header || config.logo.is_none(),
         byline: byline.join(" · "),
         blocks,
         // The footer's blocks, with this page's links (the footer is on
         // every page, so its links are relative to each one).
-        footer_blocks: match &site.footer {
+        footer_blocks: match site.footer_in(page.language.as_deref()) {
             Some(footer) => {
                 let in_footer = Context {
                     footer: true,
@@ -4658,6 +4822,7 @@ mod tests {
         let page = |path: &str, block: &str| {
             let text = format!("+++\ntitle = \"T\"\n+++\n\n::: {block}\n:::\n");
             Page {
+                language: None,
                 path: path.to_string(),
                 file: PathBuf::from("pages/x.md"),
                 content: crate::page::parse(&text).unwrap(),
@@ -4881,6 +5046,114 @@ mod tests {
 
         let about = read(out.path().join("about/index.html"));
         assert!(about.contains(r#"href="../people/zoe/""#), "{about}");
+    }
+
+    #[test]
+    fn builds_a_site_in_two_languages() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write(
+            "site.toml",
+            "title = \"Seite\"\nlanguage = \"de\"\nbase_url = \"https://example.com/\"\n\n[languages.en]\ntitle = \"Site\"\n",
+        );
+        write(
+            "pages/index.md",
+            "+++\ntitle = \"Start\"\n+++\n\n[Über uns](ueber.md), [Nur deutsch](nur.md)\n",
+        );
+        write(
+            "pages/index.en.md",
+            "+++\ntitle = \"Home\"\n+++\n\n[About](ueber.md), [Only German](nur.md)\n",
+        );
+        write(
+            "pages/ueber.md",
+            "+++\ntitle = \"Über uns\"\nmenu = \"main\"\n+++\n",
+        );
+        write(
+            "pages/ueber.en.md",
+            "+++\ntitle = \"About us\"\nmenu = \"main\"\n+++\n",
+        );
+        write(
+            "pages/nur.md",
+            "+++\ntitle = \"Nur deutsch\"\nmenu = \"main\"\n+++\n",
+        );
+        write(
+            "pages/blog.md",
+            "+++\ntitle = \"Blog\"\n+++\n\n::: post-list\n:::\n",
+        );
+        write(
+            "pages/blog.en.md",
+            "+++\ntitle = \"Blog\"\n+++\n\n::: post-list\n:::\n",
+        );
+        write(
+            "pages/blog/2026-01-05-hallo.md",
+            "+++\ntitle = \"Hallo Welt\"\ndate = 2026-01-05\n+++\n",
+        );
+        write(
+            "pages/blog/2026-01-06-hello.en.md",
+            "+++\ntitle = \"Hello world\"\ndate = 2026-01-06\n+++\n",
+        );
+        write("footer.md", "+++\ntitle = \"Fußzeile\"\n+++\n\nUnten\n");
+        write("footer.en.md", "+++\ntitle = \"Footer\"\n+++\n\nBelow\n");
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        let report = build_on(&site, out.path(), TODAY).unwrap();
+        assert_eq!(report.feeds, 2, "one blog feed per language");
+
+        let de = read(out.path().join("index.html"));
+        let en = read(out.path().join("en/index.html"));
+        assert!(de.contains(r#"<html lang="de""#) && en.contains(r#"<html lang="en""#));
+        assert!(
+            de.contains("<title>Seite</title>") && en.contains("<title>Site</title>"),
+            "{en}"
+        );
+        // Links by file name go to the page in the same language, if it has one.
+        assert!(en.contains(r#"href="../en/ueber/">About</a>"#), "{en}");
+        assert!(en.contains(r#"href="../nur/">Only German</a>"#), "{en}");
+        // Each language's own menu: the untranslated page isn't in English.
+        let menu = |html: &str| html.split("</header>").next().unwrap().to_string();
+        assert!(menu(&de).contains("Nur deutsch") && !menu(&en).contains("Nur deutsch"));
+        assert!(menu(&en).contains("About us") && !menu(&en).contains("Über uns"));
+        // The English start page in the menu doesn't hold the English pages.
+        write(
+            "pages/index.en.md",
+            "+++\ntitle = \"Home\"\nmenu = \"main\"\n+++\n",
+        );
+        let site = site::open(dir.path()).unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let about = read(out.path().join("en/ueber/index.html"));
+        assert!(!menu(&about).contains("dropdown"), "{}", menu(&about));
+        // The switch and hreflang links.
+        assert!(
+            en.contains(r#"<a href="../" hreflang="de" lang="de" title="Deutsch""#),
+            "{en}"
+        );
+        assert!(en.contains(r#"<link rel="alternate" hreflang="de" href="https://example.com/">"#));
+        assert!(
+            en.contains(r#"<link rel="alternate" hreflang="en" href="https://example.com/en/">"#)
+        );
+        // A page without a translation: the switch leads to the start page.
+        let only = read(out.path().join("nur/index.html"));
+        assert!(only.contains(r#"<a href="../en/" hreflang="en""#), "{only}");
+        assert!(
+            !only.contains("hreflang=\"en\" href=\"https"),
+            "no alternate for a missing one"
+        );
+        // Post lists, feeds and footers per language.
+        let blog_en = read(out.path().join("en/blog/index.html"));
+        assert!(
+            blog_en.contains("Hello world") && !blog_en.contains("Hallo Welt"),
+            "{blog_en}"
+        );
+        let feed_en = read(out.path().join("en/blog/feed.xml"));
+        assert!(feed_en.contains("Hello world") && !feed_en.contains("Hallo Welt"));
+        assert!(feed_en.contains("<language>en</language>"), "{feed_en}");
+        assert!(read(out.path().join("blog/feed.xml")).contains("<title>Blog · Seite</title>"));
+        assert!(en.contains("Below") && !en.contains("Unten"));
+        assert!(de.contains("Unten"));
     }
 
     #[test]

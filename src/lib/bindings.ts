@@ -185,6 +185,13 @@ export const commands = {
 	/**  Deletes a page's file. */
 	deletePage: (root: string, file: string) => __TAURI_INVOKE<null>("delete_page", { root, file }),
 	/**
+	 *  Starts a page's translation into `language` (see
+	 *  `site::create_translation`) and returns it.
+	 */
+	createTranslation: (root: string, file: string, language: string) => __TAURI_INVOKE<Page>("create_translation", { root, file, language }),
+	/**  The languages the manual is in, for the App tab's choice. */
+	manualLanguages: () => __TAURI_INVOKE<string[]>("manual_languages"),
+	/**
 	 *  Gives a page a new address (see `moving::move_page`) and returns it at
 	 *  its new place.
 	 */
@@ -278,7 +285,7 @@ export const commands = {
 	 *  theme, and served like a preview. Links to other websites open in the
 	 *  browser.
 	 */
-	openManual: (theme: string, page: string | null) => __TAURI_INVOKE<null>("open_manual", { theme, page }),
+	openManual: (theme: string, language: string, page: string | null) => __TAURI_INVOKE<null>("open_manual", { theme, language, page }),
 	/**
 	 *  Closes the open version with a note, as it was last saved; `None` if
 	 *  there's no open version.
@@ -864,6 +871,15 @@ export type Image = {
 	caption: string | null,
 };
 
+/**
+ *  A further language of the site (`[languages.en]` in `site.toml`): the
+ *  site's title and description in it, if they differ.
+ */
+export type LanguageSettings = {
+	title: string | null,
+	description: string | null,
+};
+
 /**  Which of the folders. */
 export type Library = 
 /**  `media/`: images only. */
@@ -970,8 +986,16 @@ export type Navigation = "top" | "sidebar";
 
 /**  One page of a site. */
 export type Page = {
-	/**  URL path without slashes at either end; `""` is the start page. */
+	/**
+	 *  URL path without slashes at either end; `""` is the start page. A
+	 *  translation's starts with its language: `en/about`.
+	 */
 	path: string,
+	/**
+	 *  The further language a translation is in (`about.en.md`); `None`
+	 *  for pages in the site's main language.
+	 */
+	language: string | null,
 	/**  The file, relative to the site folder. */
 	file: string,
 } & PageContent;
@@ -1290,8 +1314,16 @@ export type SiteConfig = SiteConfig_Serialize | SiteConfig_Deserialize;
 /**  Settings from `site.toml`. */
 export type SiteConfig_Deserialize = {
 	title: string,
-	/**  Language code for the `lang` attribute, e.g. `"de"` or `"en"`. */
+	/**
+	 *  Language code for the `lang` attribute, e.g. `"de"` or `"en"`: the
+	 *  main language, whose pages are at `/`.
+	 */
 	language?: string,
+	/**
+	 *  Further languages (#145), by code (`[languages.en]`): a page's
+	 *  translation is `about.en.md` beside `about.md`, at `/en/about`.
+	 */
+	languages?: { [key in string]: LanguageSettings },
 	description: string | null,
 	/**
 	 *  An image in `media/`, shown before the title in every page's header
@@ -1370,8 +1402,16 @@ export type SiteConfig_Deserialize = {
 /**  Settings from `site.toml`. */
 export type SiteConfig_Serialize = {
 	title: string,
-	/**  Language code for the `lang` attribute, e.g. `"de"` or `"en"`. */
+	/**
+	 *  Language code for the `lang` attribute, e.g. `"de"` or `"en"`: the
+	 *  main language, whose pages are at `/`.
+	 */
 	language: string,
+	/**
+	 *  Further languages (#145), by code (`[languages.en]`): a page's
+	 *  translation is `about.en.md` beside `about.md`, at `/en/about`.
+	 */
+	languages?: { [key in string]: LanguageSettings },
 	description: string | null,
 	/**
 	 *  An image in `media/`, shown before the title in every page's header
@@ -1461,6 +1501,11 @@ export type Site_Deserialize = {
 	 */
 	footer: Page | null,
 	/**
+	 *  The footer in further languages (#145), from `footer.en.md` and
+	 *  so on; pages in a language without one show the main footer.
+	 */
+	footer_translations: Page[],
+	/**
 	 *  The episode layout from `episode.md`, if the site has one; its
 	 *  `path` is [`EPISODE_LAYOUT_PATH`].
 	 */
@@ -1487,6 +1532,11 @@ export type Site_Serialize = {
 	 *  [`FOOTER_PATH`].
 	 */
 	footer: Page | null,
+	/**
+	 *  The footer in further languages (#145), from `footer.en.md` and
+	 *  so on; pages in a language without one show the main footer.
+	 */
+	footer_translations: Page[],
 	/**
 	 *  The episode layout from `episode.md`, if the site has one; its
 	 *  `path` is [`EPISODE_LAYOUT_PATH`].
