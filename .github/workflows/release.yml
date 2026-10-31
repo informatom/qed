@@ -79,27 +79,6 @@ jobs:
 
       - run: npm ci
 
-      # qed-mcp (#105) goes into the installers next to q.e.d. Tauri takes
-      # it from src-tauri/binaries/, named after the target it runs on;
-      # for macOS one universal file from both architectures.
-      - name: qed-mcp
-        shell: bash
-        run: |
-          mkdir -p src-tauri/binaries
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            cargo build --release -p qed-mcp --target aarch64-apple-darwin
-            cargo build --release -p qed-mcp --target x86_64-apple-darwin
-            lipo -create -output src-tauri/binaries/qed-mcp-universal-apple-darwin \
-              target/aarch64-apple-darwin/release/qed-mcp target/x86_64-apple-darwin/release/qed-mcp
-          else
-            cargo build --release -p qed-mcp
-            triple=$(rustc -vV | sed -n 's/^host: //p')
-            extension=""
-            if [ "$RUNNER_OS" = "Windows" ]; then extension=".exe"; fi
-            cp "target/release/qed-mcp$extension" "src-tauri/binaries/qed-mcp-$triple$extension"
-          fi
-          ls -l src-tauri/binaries
-
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,10 +1,12 @@
-//! qed-mcp lets an AI assistant (Claude Code, Claude Desktop, …) work on one
-//! q.e.d. site through the Model Context Protocol (#105).
+//! The MCP server (#105): lets an AI assistant (Claude Code, Claude
+//! Desktop, …) work on one q.e.d. site through the Model Context Protocol.
 //!
-//! The assistant starts it with the site folder, `qed-mcp /path/to/site`,
-//! and talks to it over stdin and stdout. It's a second thin shell around
-//! qed-core next to the app, with the app's rules: pages are checked before
-//! they're written, a page that changed since the assistant read it isn't
+//! The assistant starts the app itself as `qed mcp /path/to/site`, and the
+//! app calls [`serve`] instead of opening a window; the two talk over stdin
+//! and stdout. It's a library and not a program of its own, so qed-core
+//! is in the installers once, not twice. Like the app, it's a thin shell
+//! around qed-core, with the app's rules: pages are checked before they're
+//! written, a page that changed since the assistant read it isn't
 //! overwritten, the open version is closed before deleting or moving, and
 //! every change is recorded in the site's history like a save in the app.
 //! It can build the site but not publish it; that stays a click in the app.
@@ -13,11 +15,11 @@
 //! messages for people go to stderr.
 
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
 
 use qed_core::calendar::Date;
 use qed_core::media::{self, Library};
 use qed_core::page::PageDate;
+use qed_core::site::SiteError;
 use qed_core::{editing, generator, history, site, target};
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -292,7 +294,16 @@ impl Qed {
                 (Some(width), Some(height)) => format!(", {width}×{height} px"),
                 _ => String::new(),
             };
-            let used = if file.used_by.is_empty() {
+            // Files set in the site's settings are in use without any page.
+            let settings: Vec<&str> = [
+                (file.site_logo, "the site's logo"),
+                (file.site_icon, "the site's icon"),
+                (file.podcast_cover, "the podcast's cover"),
+            ]
+            .into_iter()
+            .filter_map(|(set, what)| set.then_some(what))
+            .collect();
+            let used = if file.used_by.is_empty() && settings.is_empty() {
                 "unused".to_string()
             } else {
                 // Pages as addresses; the footer and the like as they are.
@@ -304,7 +315,12 @@ impl Qed {
                         false => format!("/{path}"),
                     })
                     .collect();
-                format!("used by {}", pages.join(", "))
+                let all: Vec<String> = settings
+                    .iter()
+                    .map(|what| what.to_string())
+                    .chain(pages)
+                    .collect();
+                format!("in use: {}", all.join(", "))
             };
             out.push_str(&format!(
                 "{} · {} KB{size} · {used}\n",
@@ -418,7 +434,7 @@ impl Qed {
 impl ServerHandler for Qed {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("qed-mcp", env!("CARGO_PKG_VERSION")))
+            .with_server_info(Implementation::new("qed", env!("CARGO_PKG_VERSION")))
             .with_instructions(GUIDE)
     }
 }
@@ -444,30 +460,37 @@ fn parse_date(text: &str) -> Option<PageDate> {
     PageDate::on(Date { year, month, day })
 }
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    let Some(root) = std::env::args_os().nth(1).map(PathBuf::from) else {
-        eprintln!("usage: qed-mcp /path/to/site");
-        return ExitCode::FAILURE;
-    };
-    // Refuse to start for anything but a site, so a wrong path in the
-    // assistant's settings shows up right away.
-    if let Err(error) = site::open(&root) {
-        eprintln!("qed-mcp: {error}");
-        return ExitCode::FAILURE;
-    }
-    let server = match Qed::new(root).serve(rmcp::transport::stdio()).await {
-        Ok(server) => server,
-        Err(error) => {
-            eprintln!("qed-mcp: {error}");
-            return ExitCode::FAILURE;
-        }
-    };
-    match server.waiting().await {
-        Ok(_) => ExitCode::SUCCESS,
-        Err(error) => {
-            eprintln!("qed-mcp: {error}");
-            ExitCode::FAILURE
-        }
-    }
+/// What keeps [`serve`] from starting or running.
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    /// The folder isn't a q.e.d. site: a wrong path in the assistant's
+    /// settings shows up right away.
+    #[error(transparent)]
+    Site(#[from] SiteError),
+    /// The threads that answer the assistant couldn't start.
+    #[error("couldn't start: {0}")]
+    Runtime(#[from] std::io::Error),
+    /// The conversation with the assistant broke off.
+    #[error("{0}")]
+    Protocol(String),
+}
+
+/// Answers the assistant on stdin and stdout, for the site in `root`,
+/// until it hangs up.
+pub fn serve(root: &Path) -> Result<(), Error> {
+    site::open(root)?;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(async {
+        let server = Qed::new(root.to_path_buf())
+            .serve(rmcp::transport::stdio())
+            .await
+            .map_err(|error| Error::Protocol(error.to_string()))?;
+        server
+            .waiting()
+            .await
+            .map_err(|error| Error::Protocol(error.to_string()))?;
+        Ok(())
+    })
 }

@@ -12,18 +12,20 @@
     label?: string;
     header?: HeaderStyle;
     colors?: Colors;
+    /** Whether the theme's page background is dark (the footer is then shaded by default). */
+    dark?: boolean;
   }
 
-  let { theme, variables = [], label = theme, header = "plain", colors }: Props = $props();
+  let { theme, variables = [], label = theme, header = "plain", colors, dark = false }: Props = $props();
   // Inline variables win over the theme's own, as `:root[data-theme]` does on the site.
   let style = $derived(variables.map((v) => `${v.name}: ${v.value}`).join("; "));
 
   /** The swatches in ThemePicker, left to right, and where generated sites use them. */
   let LEGEND = $derived([
-    { color: "Primary", swatch: "bg-primary text-primary-content", uses: usesOf("primary", colors, header) },
-    { color: "Secondary", swatch: "bg-secondary text-secondary-content", uses: usesOf("secondary", colors, header) },
-    { color: "Accent", swatch: "bg-accent text-accent-content", uses: usesOf("accent", colors, header) },
-    { color: "Neutral", swatch: "bg-neutral text-neutral-content", uses: usesOf("neutral", colors, header) },
+    { color: "Primary", swatch: "bg-primary text-primary-content", uses: usesOf("primary", colors, header, dark) },
+    { color: "Secondary", swatch: "bg-secondary text-secondary-content", uses: usesOf("secondary", colors, header, dark) },
+    { color: "Accent", swatch: "bg-accent text-accent-content", uses: usesOf("accent", colors, header, dark) },
+    { color: "Neutral", swatch: "bg-neutral text-neutral-content", uses: usesOf("neutral", colors, header, dark) },
   ]);
 </script>
 
@@ -34,7 +36,7 @@
   <span class="font-medium">Where the theme's colors go <span class="font-normal text-base-content/60">· {label}</span></span>
   <div class="grid items-start gap-4 @lg:grid-cols-[minmax(0,15rem)_1fr]">
     <div data-theme={theme} {style} class="bg-transparent">
-      <SiteSketch {header} {colors} />
+      <SiteSketch {header} {colors} {dark} />
     </div>
     <div class="flex flex-col gap-3">
     {#each LEGEND as entry, i (entry.color)}

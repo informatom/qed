@@ -76,6 +76,7 @@ pub(crate) fn load(root: &Path) -> Result<Vec<Page>, SiteError> {
                     error,
                 })?;
             Ok(Page {
+                language: None,
                 path: path_of(&name),
                 file,
                 content,
@@ -112,6 +113,7 @@ pub fn create(root: &Path, title: &str, blocks: Vec<Block>) -> Result<Page, Site
     };
     site::write_new(&root.join(&file), &page_writer::write(&content, None))?;
     Ok(Page {
+        language: None,
         path: path_of(&name),
         file,
         content,
@@ -221,10 +223,17 @@ pub(crate) fn expanded(site: &Site, notes: &mut Vec<String>) -> Site {
     let parts = expanded
         .footer
         .iter_mut()
+        .chain(&mut expanded.footer_translations)
         .chain(&mut expanded.episode_layout);
     for page in expanded.pages.iter_mut().chain(parts) {
         let mut missing = BTreeSet::new();
-        page.content.blocks = expand(&page.content.blocks, &site.shared, &mut missing);
+        let language = page.language.clone();
+        page.content.blocks = expand(
+            &page.content.blocks,
+            &site.shared,
+            language.as_deref(),
+            &mut missing,
+        );
         for name in missing {
             let place = match page.path.as_str() {
                 FOOTER_PATH => "The footer".to_string(),
@@ -241,13 +250,24 @@ pub(crate) fn expanded(site: &Site, notes: &mut Vec<String>) -> Site {
     expanded
 }
 
-fn expand(blocks: &[Block], pieces: &[Page], missing: &mut BTreeSet<String>) -> Vec<Block> {
+/// `language`: a piece's translation (`teaser.en.md` for `teaser`) wins
+/// on a page in that language.
+fn expand(
+    blocks: &[Block],
+    pieces: &[Page],
+    language: Option<&str>,
+    missing: &mut BTreeSet<String>,
+) -> Vec<Block> {
     let mut out = Vec::new();
     for block in blocks {
         match block {
             Block::Shared(shared) => {
                 let name = shared.name.as_deref().map(str::trim).unwrap_or_default();
-                match pieces.iter().find(|piece| name_of(piece) == name) {
+                let translated = language.and_then(|code| {
+                    let wanted = format!("{name}.{code}");
+                    pieces.iter().find(|piece| name_of(piece) == wanted)
+                });
+                match translated.or_else(|| pieces.iter().find(|piece| name_of(piece) == name)) {
                     // A piece's own Shared blocks are dropped (it can't
                     // hold any), so pieces never include each other.
                     Some(piece) => out.extend(without_shared(piece.content.blocks.clone())),
@@ -260,7 +280,7 @@ fn expand(blocks: &[Block], pieces: &[Page], missing: &mut BTreeSet<String>) -> 
                 // Shared blocks inside columns and sections too.
                 let mut block = other.clone();
                 for inner in block.inner_lists_mut() {
-                    *inner = expand(inner, pieces, missing);
+                    *inner = expand(inner, pieces, language, missing);
                 }
                 out.push(block);
             }
@@ -363,6 +383,7 @@ mod tests {
         create(dir.path(), "Hours", vec![text("9–17"), faq.clone()]).unwrap();
         let mut site = site::open(dir.path()).unwrap();
         site.pages.push(Page {
+            language: None,
             path: "contact".to_string(),
             file: PathBuf::from("pages/contact.md"),
             content: PageContent {

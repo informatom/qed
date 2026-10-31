@@ -66,6 +66,11 @@ export const commands = {
 	 *  out anyway.
 	 */
 	hide_title?: boolean,
+	/**
+	 *  The pages below this one get links to the page before and after
+	 *  them (#136): "Back"/"Next" in their order, "Older"/"Newer" for posts.
+	 */
+	back_next?: boolean,
 	menu?: Menu,
 	/**  A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`. */
 	icon: string | null,
@@ -121,10 +126,10 @@ export const commands = {
 	 */
 	saveSiteConfig: (root: string, config: SiteConfig_Deserialize) => __TAURI_INVOKE<SiteConfig_Serialize>("save_site_config", { root, config }),
 	/**
-	 *  The theme names the app and generated sites can use: daisyUI's and
-	 *  the Catppuccin flavors.
+	 *  The themes the app and generated sites can use (daisyUI's and the
+	 *  Catppuccin flavors), each marked light or dark.
 	 */
-	listThemes: () => __TAURI_INVOKE<string[]>("list_themes"),
+	listThemes: () => __TAURI_INVOKE<ThemeChoice[]>("list_themes"),
 	/**  The CSS variables a custom theme sets, for previews in the app. */
 	customThemeVariables: (custom: CustomTheme) => __TAURI_INVOKE<ThemeVariable[]>("custom_theme_variables", { custom }),
 	/**
@@ -182,6 +187,13 @@ export const commands = {
 	 *  `editing::delete_page`).
 	 */
 	deletePage: (root: string, file: string) => __TAURI_INVOKE<null>("delete_page", { root, file }),
+	/**
+	 *  Starts a page's translation into `language` (see
+	 *  `site::create_translation`) and returns it.
+	 */
+	createTranslation: (root: string, file: string, language: string) => __TAURI_INVOKE<Page>("create_translation", { root, file, language }),
+	/**  The languages the manual is in, for the App tab's choice. */
+	manualLanguages: () => __TAURI_INVOKE<string[]>("manual_languages"),
 	/**
 	 *  Gives a page a new address (see `moving::move_page`) and returns it at
 	 *  its new place; the open version is closed first.
@@ -270,13 +282,20 @@ export const commands = {
 	note: string,
 } | null>("resting_version", { root }),
 	/**
-	 *  Where the `qed-mcp` program is (#105), for the settings an AI assistant
-	 *  needs; `None` if it isn't there (a development build without
-	 *  `cargo build -p qed-mcp`). Installers put it next to q.e.d.'s own
-	 *  program. An AppImage runs from a new temporary folder each time, so
-	 *  there it's copied to the app's data folder, which stays put.
+	 *  The program an AI assistant starts, with `mcp` and the site folder,
+	 *  to work on a site (#105): q.e.d. itself. An AppImage runs from a new
+	 *  temporary folder each time; there it's the AppImage file, which stays
+	 *  put.
 	 */
-	mcpProgram: () => __TAURI_INVOKE<string | null>("mcp_program"),
+	mcpProgram: () => __TAURI_INVOKE<string>("mcp_program"),
+	/**
+	 *  Opens the manual (#110) in a window of its own, at `page` (`versions/`,
+	 *  or empty for its start). It's built from the pages compiled into the
+	 *  app (see `qed_core::manual`), in the app's `theme`, once per run or
+	 *  theme, and served like a preview. Links to other websites open in the
+	 *  browser.
+	 */
+	openManual: (theme: string, language: string, page: string | null) => __TAURI_INVOKE<null>("open_manual", { theme, language, page }),
 	/**
 	 *  Closes the open version with a note, as it was last saved; `None` if
 	 *  there's no open version.
@@ -595,6 +614,38 @@ export type CustomTheme = {
 	corners: Corners | null,
 };
 
+/**
+ *  The dark side of a site's look (`[dark]` in `site.toml`): the same
+ *  settings as the light side at the top of the file, for dark mode.
+ */
+export type DarkSide = DarkSide_Serialize | DarkSide_Deserialize;
+
+/**
+ *  The dark side of a site's look (`[dark]` in `site.toml`): the same
+ *  settings as the light side at the top of the file, for dark mode.
+ */
+export type DarkSide_Deserialize = {
+	/**  A daisyUI theme name, or `custom` for `custom_theme` below. */
+	theme?: string,
+	/**  Own colors for the dark side, used when `theme` is `custom`. */
+	custom_theme: CustomTheme | null,
+	header?: HeaderStyle,
+	colors?: Colors,
+};
+
+/**
+ *  The dark side of a site's look (`[dark]` in `site.toml`): the same
+ *  settings as the light side at the top of the file, for dark mode.
+ */
+export type DarkSide_Serialize = {
+	/**  A daisyUI theme name, or `custom` for `custom_theme` below. */
+	theme: string,
+	/**  Own colors for the dark side, used when `theme` is `custom`. */
+	custom_theme: CustomTheme | null,
+	header: HeaderStyle,
+	colors?: Colors,
+};
+
 /**  A page that a version had and the site folder doesn't any more. */
 export type DeletedPage = {
 	/**  The file, relative to the site folder: `pages/about.md`. */
@@ -752,6 +803,11 @@ export type FrontMatter = {
 	 *  out anyway.
 	 */
 	hide_title?: boolean,
+	/**
+	 *  The pages below this one get links to the page before and after
+	 *  them (#136): "Back"/"Next" in their order, "Older"/"Newer" for posts.
+	 */
+	back_next?: boolean,
 	menu?: Menu,
 	/**  A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`. */
 	icon: string | null,
@@ -825,6 +881,15 @@ export type Image = {
 	caption: string | null,
 };
 
+/**
+ *  A further language of the site (`[languages.en]` in `site.toml`): the
+ *  site's title and description in it, if they differ.
+ */
+export type LanguageSettings = {
+	title: string | null,
+	description: string | null,
+};
+
 /**  Which of the folders. */
 export type Library = 
 /**  `media/`: images only. */
@@ -869,6 +934,8 @@ export type MediaFile = {
 	used_by: string[],
 	/**  The site's logo (Site settings). */
 	site_logo: boolean,
+	/**  The site's icon for browser tabs (Site settings). */
+	site_icon: boolean,
 	/**  The podcast's cover art (Site settings). */
 	podcast_cover: boolean,
 };
@@ -931,8 +998,16 @@ export type Navigation = "top" | "sidebar";
 
 /**  One page of a site. */
 export type Page = {
-	/**  URL path without slashes at either end; `""` is the start page. */
+	/**
+	 *  URL path without slashes at either end; `""` is the start page. A
+	 *  translation's starts with its language: `en/about`.
+	 */
 	path: string,
+	/**
+	 *  The further language a translation is in (`about.en.md`); `None`
+	 *  for pages in the site's main language.
+	 */
+	language: string | null,
 	/**  The file, relative to the site folder. */
 	file: string,
 } & PageContent;
@@ -1251,8 +1326,16 @@ export type SiteConfig = SiteConfig_Serialize | SiteConfig_Deserialize;
 /**  Settings from `site.toml`. */
 export type SiteConfig_Deserialize = {
 	title: string,
-	/**  Language code for the `lang` attribute, e.g. `"de"` or `"en"`. */
+	/**
+	 *  Language code for the `lang` attribute, e.g. `"de"` or `"en"`: the
+	 *  main language, whose pages are at `/`.
+	 */
 	language?: string,
+	/**
+	 *  Further languages (#145), by code (`[languages.en]`): a page's
+	 *  translation is `about.en.md` beside `about.md`, at `/en/about`.
+	 */
+	languages?: { [key in string]: LanguageSettings },
 	description: string | null,
 	/**
 	 *  An image in `media/`, shown before the title in every page's header
@@ -1260,6 +1343,12 @@ export type SiteConfig_Deserialize = {
 	 *  best) works best.
 	 */
 	logo: string | null,
+	/**
+	 *  The icon in the browser tab and on phones' home screens: an SVG, a
+	 *  square PNG or an ICO file in `media/`, used as it is (see
+	 *  [`icon_problem`]). Without one, `static/favicon.ico` or the logo.
+	 */
+	icon: string | null,
 	/**  A daisyUI theme name, or `custom` for `custom_theme`. */
 	theme?: string,
 	/**
@@ -1283,6 +1372,12 @@ export type SiteConfig_Deserialize = {
 	header?: HeaderStyle,
 	/**  Which theme color goes where: links, buttons, boxes, backgrounds. */
 	colors?: Colors,
+	/**
+	 *  A second look for visitors whose system is set to dark (`[dark]`):
+	 *  its own theme, header and colors. With it, pages follow the
+	 *  system's setting and get a light/dark switch in the header (#146).
+	 */
+	dark: DarkSide_Deserialize | null,
 	/**  How tall the logo is in the header. */
 	logo_size?: LogoSize,
 	/**  How wide header, content and footer get on large screens. */
@@ -1299,6 +1394,12 @@ export type SiteConfig_Deserialize = {
 	 *  visitors with JavaScript. On unless switched off.
 	 */
 	search?: boolean,
+	/**
+	 *  The owner's profiles elsewhere (`https://mastodon.social/@name`):
+	 *  every page names them in `<link rel="me">`, so Mastodon and the like
+	 *  show the site as verified on the profile.
+	 */
+	profiles?: string[],
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 	/**
@@ -1313,8 +1414,16 @@ export type SiteConfig_Deserialize = {
 /**  Settings from `site.toml`. */
 export type SiteConfig_Serialize = {
 	title: string,
-	/**  Language code for the `lang` attribute, e.g. `"de"` or `"en"`. */
+	/**
+	 *  Language code for the `lang` attribute, e.g. `"de"` or `"en"`: the
+	 *  main language, whose pages are at `/`.
+	 */
 	language: string,
+	/**
+	 *  Further languages (#145), by code (`[languages.en]`): a page's
+	 *  translation is `about.en.md` beside `about.md`, at `/en/about`.
+	 */
+	languages?: { [key in string]: LanguageSettings },
 	description: string | null,
 	/**
 	 *  An image in `media/`, shown before the title in every page's header
@@ -1322,6 +1431,12 @@ export type SiteConfig_Serialize = {
 	 *  best) works best.
 	 */
 	logo: string | null,
+	/**
+	 *  The icon in the browser tab and on phones' home screens: an SVG, a
+	 *  square PNG or an ICO file in `media/`, used as it is (see
+	 *  [`icon_problem`]). Without one, `static/favicon.ico` or the logo.
+	 */
+	icon: string | null,
 	/**  A daisyUI theme name, or `custom` for `custom_theme`. */
 	theme: string,
 	/**
@@ -1345,6 +1460,12 @@ export type SiteConfig_Serialize = {
 	header: HeaderStyle,
 	/**  Which theme color goes where: links, buttons, boxes, backgrounds. */
 	colors?: Colors,
+	/**
+	 *  A second look for visitors whose system is set to dark (`[dark]`):
+	 *  its own theme, header and colors. With it, pages follow the
+	 *  system's setting and get a light/dark switch in the header (#146).
+	 */
+	dark: DarkSide_Serialize | null,
 	/**  How tall the logo is in the header. */
 	logo_size: LogoSize,
 	/**  How wide header, content and footer get on large screens. */
@@ -1361,6 +1482,12 @@ export type SiteConfig_Serialize = {
 	 *  visitors with JavaScript. On unless switched off.
 	 */
 	search: boolean,
+	/**
+	 *  The owner's profiles elsewhere (`https://mastodon.social/@name`):
+	 *  every page names them in `<link rel="me">`, so Mastodon and the like
+	 *  show the site as verified on the profile.
+	 */
+	profiles?: string[],
 	/**  Self-hosted fonts in `fonts/`; empty keeps the system's. */
 	fonts?: Fonts,
 	/**
@@ -1385,6 +1512,11 @@ export type Site_Deserialize = {
 	 *  [`FOOTER_PATH`].
 	 */
 	footer: Page | null,
+	/**
+	 *  The footer in further languages (#145), from `footer.en.md` and
+	 *  so on; pages in a language without one show the main footer.
+	 */
+	footer_translations: Page[],
 	/**
 	 *  The episode layout from `episode.md`, if the site has one; its
 	 *  `path` is [`EPISODE_LAYOUT_PATH`].
@@ -1412,6 +1544,11 @@ export type Site_Serialize = {
 	 *  [`FOOTER_PATH`].
 	 */
 	footer: Page | null,
+	/**
+	 *  The footer in further languages (#145), from `footer.en.md` and
+	 *  so on; pages in a language without one show the main footer.
+	 */
+	footer_translations: Page[],
 	/**
 	 *  The episode layout from `episode.md`, if the site has one; its
 	 *  `path` is [`EPISODE_LAYOUT_PATH`].
@@ -1469,6 +1606,13 @@ export type TextImage = {
 	image: string | null,
 	alt: string | null,
 	image_side?: Side,
+};
+
+/**  A theme as the app offers it: light ones and dark ones apart. */
+export type ThemeChoice = {
+	name: string,
+	/**  Whether its page background is dark (see [`is_dark`]). */
+	dark: boolean,
 };
 
 /**  One of the theme's four colors. */

@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import PodcastSettings from "$lib/PodcastSettings.svelte";
   import { trackUnsaved } from "$lib/unsaved.svelte";
-  import { commands, type Podcast, type Site, type SiteConfig } from "$lib/site";
+  import { commands, sameData, type Podcast, type Site, type SiteConfig } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -40,7 +40,7 @@
 
   // Only the podcast changes here; everything else is taken as saved.
   let edited = $derived(clean(form));
-  let changed = $derived(JSON.stringify(edited) !== JSON.stringify(site.config.podcast));
+  let changed = $derived(!sameData(edited, site.config.podcast));
   trackUnsaved(() => "Podcast settings", () => changed);
 
   async function save(event: SubmitEvent) {

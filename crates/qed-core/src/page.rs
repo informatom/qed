@@ -41,6 +41,10 @@ pub struct FrontMatter {
     /// out anyway.
     #[serde(default)]
     pub hide_title: bool,
+    /// The pages below this one get links to the page before and after
+    /// them (#136): "Back"/"Next" in their order, "Older"/"Newer" for posts.
+    #[serde(default)]
+    pub back_next: bool,
     #[serde(default)]
     pub menu: Menu,
     /// A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`.

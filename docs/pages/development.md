@@ -1,7 +1,9 @@
 +++
 title = "Development"
 description = "How to build q.e.d. from source, run its checks, and test publishing against a local throwaway server."
-menu = "footer"
+menu = "main"
+icon = "code"
+weight = 10
 +++
 
 q.e.d. is a Rust and Tauri desktop app with a Svelte UI. The source is on
@@ -140,8 +142,10 @@ repository:
    with the password.
 
 The installers aren't signed yet (#070 in the [backlog](backlog.md)), so
-the systems warn before the first start. On macOS, right-click the app,
-choose Open and confirm; or remove the download mark with
+the systems warn before the first start. On macOS 15 and later, open the
+app once, then choose "Open Anyway" in System Settings → Privacy &
+Security (on macOS 14 and older, right-click the app and choose Open);
+or remove the download mark with
 `xattr -d com.apple.quarantine /Applications/qed.app`. On Windows, choose
 "More info" and "Run anyway" in the SmartScreen dialog.
 

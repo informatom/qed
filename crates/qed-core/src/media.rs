@@ -81,6 +81,8 @@ pub struct MediaFile {
     pub used_by: Vec<String>,
     /// The site's logo (Site settings).
     pub site_logo: bool,
+    /// The site's icon for browser tabs (Site settings).
+    pub site_icon: bool,
     /// The podcast's cover art (Site settings).
     pub podcast_cover: bool,
 }
@@ -123,10 +125,12 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
                 .chain(contributor_photo_of(site, library, &name))
                 .collect();
             let site_logo = library == Library::Media && is_site_logo(site, &name);
+            let site_icon = library == Library::Media && is_site_icon(site, &name);
             let podcast_cover = library == Library::Media && is_podcast_cover(site, &name);
             Ok(MediaFile {
                 name,
                 site_logo,
+                site_icon,
                 podcast_cover,
                 size,
                 kind,
@@ -398,6 +402,12 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
             message: "it's the site's logo; choose another one in Site settings first".to_string(),
         });
     }
+    if library == Library::Media && is_site_icon(site, name) {
+        return Err(SiteError::Invalid {
+            path: PathBuf::from(library.dir()).join(name),
+            message: "it's the site's icon; choose another one in Site settings first".to_string(),
+        });
+    }
     if let Some(person) = contributor_photo_of(site, library, name) {
         return Err(SiteError::Invalid {
             path: PathBuf::from(library.dir()).join(name),
@@ -467,6 +477,15 @@ fn is_podcast_cover(site: &Site, name: &str) -> bool {
         .and_then(|podcast| podcast.cover.as_deref())
         .and_then(media_name)
         .is_some_and(|cover| cover == name)
+}
+
+/// Whether `name` in `media/` is the icon set in Site settings.
+fn is_site_icon(site: &Site, name: &str) -> bool {
+    site.config
+        .icon
+        .as_deref()
+        .and_then(media_name)
+        .is_some_and(|icon| icon == name)
 }
 
 /// Whether `name` in `media/` is the logo set in Site settings.
@@ -790,7 +809,9 @@ fn kind_of(name: &str) -> MediaKind {
         .map(|(_, e)| e.to_lowercase())
         .unwrap_or_default();
     match extension.as_str() {
-        "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" | "avif" => MediaKind::Image,
+        // `ico` only for the site icon: browsers show it, the image crate
+        // doesn't read it, so it gets no smaller copies.
+        "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" | "avif" | "ico" => MediaKind::Image,
         "mp3" | "m4a" | "ogg" | "oga" | "opus" | "flac" => MediaKind::Audio,
         "pdf" | "zip" | "doc" | "docx" | "odt" | "xls" | "xlsx" | "ods" | "epub" => {
             MediaKind::Document
@@ -860,15 +881,18 @@ mod tests {
         let dir = site_dir();
         fs::write(
             dir.path().join("site.toml"),
-            "title = \"S\"\nlogo = \"unused.txt\"\n",
+            "title = \"S\"\nlogo = \"unused.txt\"\nicon = \"menu.pdf\"\n",
         )
         .unwrap();
         let site = site::open(dir.path()).unwrap();
 
         let files = list(&site, Library::Media).unwrap();
         assert!(files[3].site_logo && !files[2].site_logo);
+        assert!(files[1].site_icon && !files[3].site_icon);
         let error = delete(&site, Library::Media, "unused.txt").unwrap_err();
         assert!(error.to_string().contains("site's logo"), "{error}");
+        let error = delete(&site, Library::Media, "menu.pdf").unwrap_err();
+        assert!(error.to_string().contains("site's icon"), "{error}");
     }
 
     #[test]

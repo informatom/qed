@@ -12,18 +12,16 @@
 
   let { siteRoot, siteTitle }: Props = $props();
 
-  /** Where qed-mcp is; null while looking or if it's missing. */
+  /** q.e.d.'s own program, which the assistant starts as `qed mcp <site>`; null while looking. */
   let program = $state<string | null>(null);
-  let looked = $state(false);
+  let failed = $state<string | null>(null);
   let copied = $state<string | null>(null);
 
   onMount(async () => {
     try {
       program = await commands.mcpProgram();
-    } catch {
-      program = null;
-    } finally {
-      looked = true;
+    } catch (error) {
+      failed = String(error);
     }
   });
 
@@ -39,9 +37,9 @@
 
   // Claude Desktop reads a JSON file; Claude Code takes a command.
   let desktop = $derived(
-    JSON.stringify({ mcpServers: { [name]: { command: program ?? "", args: [siteRoot] } } }, null, 2),
+    JSON.stringify({ mcpServers: { [name]: { command: program ?? "", args: ["mcp", siteRoot] } } }, null, 2),
   );
-  let code = $derived(`claude mcp add ${name} -- ${quote(program ?? "")} ${quote(siteRoot)}`);
+  let code = $derived(`claude mcp add ${name} -- ${quote(program ?? "")} mcp ${quote(siteRoot)}`);
 
   function quote(text: string): string {
     return /^[\w./:\\-]+$/.test(text) ? text : `"${text.replace(/"/g, '\\"')}"`;
@@ -74,13 +72,10 @@
     can be undone, and it can't publish. If you change the same page in q.e.d. meanwhile, q.e.d. asks which version to
     keep.
   </p>
-  {#if !looked}
-    <span class="loading loading-spinner loading-sm"></span>
+  {#if failed}
+    <div role="alert" class="alert alert-error alert-soft text-sm">Couldn't find q.e.d.'s own program: {failed}</div>
   {:else if !program}
-    <div role="alert" class="alert alert-warning alert-soft text-sm">
-      The qed-mcp program isn't next to q.e.d. Installed versions bring it along; in a development build, make it with
-      <code>cargo build -p qed-mcp</code>.
-    </div>
+    <span class="loading loading-spinner loading-sm"></span>
   {:else}
     <div class="grid gap-4 xl:grid-cols-2">
       {@render snippet(
@@ -92,7 +87,7 @@
     </div>
     <p class="text-xs text-base-content/60">
       Other assistants that speak the Model Context Protocol work the same way: they start
-      <code class="break-all">{program}</code> with this site's folder.
+      <code class="break-all">{program} mcp</code> with this site's folder.
     </p>
   {/if}
 </section>

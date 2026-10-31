@@ -63,6 +63,37 @@ pub fn is_theme(name: &str) -> bool {
     THEMES.contains(&name)
 }
 
+/// A theme as the app offers it: light ones and dark ones apart.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct ThemeChoice {
+    pub name: &'static str,
+    /// Whether its page background is dark (see [`is_dark`]).
+    pub dark: bool,
+}
+
+/// Every theme by name, A to Z, each marked light or dark.
+pub fn choices() -> Vec<ThemeChoice> {
+    let mut choices: Vec<ThemeChoice> = THEMES
+        .iter()
+        .map(|&name| ThemeChoice {
+            name,
+            dark: is_dark(crate::generator::STYLESHEET, name, None),
+        })
+        .collect();
+    choices.sort_by_key(|choice| choice.name);
+    choices
+}
+
+/// Whether the page background (`--color-base-100`) is dark: light text
+/// reads better on it than dark text. For a custom theme its own
+/// background wins over its starting theme's.
+pub fn is_dark(stylesheet: &str, theme: &str, custom: Option<&CustomTheme>) -> bool {
+    color_hex(stylesheet, theme, custom, "--color-base-100")
+        .and_then(|hex| parse_hex(&hex))
+        .is_some_and(|rgb| !is_light(rgb))
+}
+
 /// Colors and corners on top of a theme, from `[custom_theme]` in
 /// `site.toml`. Colors are `#rrggbb` (or `#rgb`); empty ones keep the
 /// starting theme's color.
@@ -225,20 +256,58 @@ pub fn color_hex(
     {
         return Some(format!("#{r:02x}{g:02x}{b:02x}"));
     }
-    // The theme's rule: `…,[data-theme=nord]{color-scheme:light;--color-primary:oklch(…);…}`.
-    let selector = format!("[data-theme={theme}]");
-    let start = stylesheet.find(&selector)?;
-    let open = start + stylesheet[start..].find('{')? + 1;
-    let close = open + stylesheet[open..].find('}')?;
-    let value = stylesheet[open..close].split(';').find_map(|declaration| {
-        let (name, value) = declaration.split_once(':')?;
-        (name.trim() == variable).then(|| value.trim())
-    })?;
+    let value = theme_rule(stylesheet, theme)?
+        .split(';')
+        .find_map(|declaration| {
+            let (name, value) = declaration.split_once(':')?;
+            (name.trim() == variable).then(|| value.trim())
+        })?;
     if let Some([r, g, b]) = parse_hex(value) {
         return Some(format!("#{r:02x}{g:02x}{b:02x}"));
     }
     let [r, g, b] = oklch_to_rgb(value)?;
     Some(format!("#{r:02x}{g:02x}{b:02x}"))
+}
+
+/// What a theme's rule in daisyUI's CSS sets, between the braces:
+/// `color-scheme:light;--color-primary:oklch(…);…` from
+/// `…,[data-theme=nord]{…}`.
+fn theme_rule<'a>(stylesheet: &'a str, theme: &str) -> Option<&'a str> {
+    let selector = format!("[data-theme={theme}]");
+    let start = stylesheet.find(&selector)?;
+    let open = start + stylesheet[start..].find('{')? + 1;
+    let close = open + stylesheet[open..].find('}')?;
+    Some(stylesheet[open..close].trim())
+}
+
+/// The rules that give a site with dark mode (#146) its dark side: the
+/// dark theme's variables, and its custom colors on top, on the page root
+/// while the system is set to dark (unless the visitor picked light) or
+/// the visitor picked dark. Pages keep the light theme in `data-theme`;
+/// these come later in the stylesheet, so they win over it.
+pub fn dark_css(stylesheet: &str, theme: &str, custom: Option<&CustomTheme>) -> String {
+    let mut body: Vec<String> = theme_rule(stylesheet, theme)
+        .unwrap_or_default()
+        .split(';')
+        .map(str::trim)
+        .filter(|declaration| !declaration.is_empty())
+        .map(str::to_string)
+        .collect();
+    if let Some(custom) = custom {
+        body.extend(
+            custom
+                .variables()
+                .into_iter()
+                .map(|var| format!("{}: {}", var.name, var.value)),
+        );
+    }
+    let body = body.join(";\n  ");
+    format!(
+        "\n/* Dark mode, based on {theme} */\n\
+         @media (prefers-color-scheme: dark) {{\n\
+         :root:not([data-mode=light]) {{\n  {body};\n}}\n}}\n\
+         :root[data-mode=dark] {{\n  {body};\n}}\n"
+    )
 }
 
 /// `hex` mixed with `other` (`#rrggbb` both), `amount` of `other` from 0
@@ -341,6 +410,48 @@ fn readable_on(rgb: [u8; 3]) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn tells_dark_themes_from_light_ones_as_daisyui_does() {
+        let stylesheet = crate::generator::STYLESHEET;
+        for choice in choices() {
+            // Each theme says it itself: `[data-theme=nord]{color-scheme:light;…`.
+            let rule = &stylesheet[stylesheet
+                .find(&format!("[data-theme={}]{{", choice.name))
+                .unwrap()..];
+            let scheme_dark = rule[..rule.find('}').unwrap()].contains("color-scheme:dark");
+            assert_eq!(choice.dark, scheme_dark, "{}", choice.name);
+        }
+        assert!(
+            choices()
+                .iter()
+                .any(|c| c.name == "catppuccin-mocha" && c.dark)
+        );
+        let names: Vec<&str> = choices().iter().map(|c| c.name).collect();
+        assert!(names.is_sorted(), "{names:?}");
+        assert!(
+            choices()
+                .iter()
+                .any(|c| c.name == "catppuccin-latte" && !c.dark)
+        );
+
+        let mut custom = CustomTheme {
+            name: None,
+            from: "light".into(),
+            background: None,
+            primary: Some("#ff0000".into()),
+            secondary: None,
+            accent: None,
+            neutral: None,
+            corners: None,
+        };
+        assert!(!is_dark(stylesheet, "light", Some(&custom)));
+        custom.background = Some("#1e1e2e".into());
+        assert!(
+            is_dark(stylesheet, "light", Some(&custom)),
+            "its own background wins"
+        );
+    }
 
     #[test]
     fn turns_theme_colors_into_hex() {

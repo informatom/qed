@@ -64,6 +64,12 @@
   let pages = $derived(
     [...site.pages].filter((p) => !p.front.draft).sort((a, b) => a.path.localeCompare(b.path)),
   );
+  /** Why an entry's page isn't on the website, if it isn't: a draft, or no such page. */
+  function missingPage(path: string): string | null {
+    if (pages.some((p) => p.path === path)) return null;
+    return site.pages.some((p) => p.path === path) ? "This page is a draft" : "There's no such page";
+  }
+
   function pageTitle(path: string | null): string {
     return site.pages.find((p) => p.path === path)?.front.title ?? "";
   }
@@ -132,9 +138,14 @@
     {#if entry.divider}
       <span class="h-px flex-1 bg-base-300"></span>
     {:else if entry.page !== null}
-      <select class="select select-sm w-56" bind:value={entry.page} aria-label="Page">
+      {@const missing = missingPage(entry.page)}
+      <select class="select select-sm w-56" class:select-warning={missing} bind:value={entry.page} aria-label="Page">
+        {#if missing}<option value={entry.page}>/{entry.page} (not on the website)</option>{/if}
         {#each pages as p (p.path)}<option value={p.path}>{p.front.title} · /{p.path}</option>{/each}
       </select>
+      {#if missing}
+        <span class="text-warning text-xs">{missing}, so the menu leaves it out</span>
+      {/if}
       <input class="input input-sm min-w-40 flex-1" bind:value={entry.title} placeholder={pageTitle(entry.page)} aria-label="Title in the menu" />
     {:else if entry.link !== null}
       <input class="input input-sm w-48" bind:value={entry.title} placeholder="Title" aria-label="Title" />

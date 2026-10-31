@@ -1,9 +1,6 @@
 # Rust
 /target/
 
-# qed-mcp, copied in for release bundles (see release.yml)
-/src-tauri/binaries/
-
 # Tauri-generated capability schemas
 /src-tauri/gen/schemas
 

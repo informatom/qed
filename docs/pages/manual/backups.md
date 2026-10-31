@@ -1,8 +1,9 @@
 +++
 title = "Backups"
 description = "How to back up a q.e.d. site and edit it on two computers: push and pull its git repository, and what that leaves out."
-menu = "footer"
-weight = 5
+menu = "main"
+weight = 50
+redirect_from = ["/backups"]
 +++
 
 A q.e.d. site is a folder, and every site folder is a

@@ -3,7 +3,7 @@ members = ["src-tauri", "crates/qed-core", "crates/qed-mcp"]
 resolver = "3"
 
 [workspace.package]
-version = "0.10.0"
+version = "0.13.0"
 edition = "2024"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/informatom/qed"
@@ -35,3 +35,10 @@ moxcms = { opt-level = 3 }
 # WebP copies (#085): libwebp is C, built by the cc crate, which takes
 # the optimization level from here too.
 libwebp-sys = { opt-level = 3 }
+
+# No debug information for the dependencies: nobody steps through them in
+# a debugger, and it was most of target/ (tens of GB across `tauri dev`,
+# tests and clippy). q.e.d.'s own crates keep theirs, so backtraces still
+# show our lines. Settings for a named package above still apply.
+[profile.dev.package."*"]
+debug = false

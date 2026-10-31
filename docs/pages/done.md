@@ -1,8 +1,9 @@
 +++
 title = "Done"
 description = "Finished and decided backlog items of q.e.d., and the ones dropped."
-menu = "footer"
-weight = 11
+menu = "main"
+icon = "archive"
+weight = 50
 +++
 
 Backlog items that are done, decided or dropped. Open work is in the
@@ -352,7 +353,7 @@ rest is done.
   the site's language: German (also `de-AT`), English, French, Spanish,
   Italian, Dutch; English for others. The text now says "q.e.d.", not
   "qed".
-- **#037 Backups.** *Done 2026-10-27*: a [Backups](backups.md) page:
+- **#037 Backups.** *Done 2026-10-27*: a [Backups](manual/backups.md) page:
   a site is a git repository, so a backup is a push to a remote (Codeberg,
   GitHub, a bare repo on one's own server), with full history; what it
   leaves out (targets.toml, keychain secrets, the open version, `_site/`,
@@ -852,6 +853,174 @@ rest is done.
   folders in `static/` count as existing. Found right away: /technik on
   waldgruber.at still links to the deleted /ror-installation. Not done:
   marking such links while editing.
+- **#110 Manual.** A user manual inside the app, also reachable from
+  where a topic comes up, and the same pages on the docs site, for site
+  owners and editors, not developers. *Done 2026-10-29*, post 65:
+  decided that the pages live in `docs/pages/manual/`, compiled into
+  the app (`qed_core::manual`, offline, built in the app's theme, shown
+  in a second window; outside links open in the browser); a life-buoy
+  button next to the preview button and **Manual** links in the tabs.
+  Pages: start, before you start, getting started, pages and blocks (with boxed columns,
+  #113), icons (#114, the full list; a test keeps it complete),
+  pictures and files, site settings, menus (#111), colors and fonts,
+  versions, [Backups](manual/backups.md) (#037, moved there),
+  publishing, podcasts (3-schweinehun.de as the example), moving a site
+  over, license and credits (ideas from jekyll-octopod's manual), the
+  libraries (written by `examples/libraries.rs` from `cargo metadata`
+  and `package.json`; a test keeps it in step), with
+  screenshots in catppuccin-mocha (rule in AGENTS.md).
+  Found on the way: #134, #135.
+- **#136 Back and next links.** Asked for by the user on 2026-10-29
+  after reading the manual, for the blog too, and done the same day.
+  Decided with the user: switched on by a setting on the page above
+  (`back_next = true`, "Back and next links on the pages below"), not
+  site-wide; posts read "← Older" / "Newer →" (newest first, as in a
+  Post list), other pages "← Back" / "Next →" by their order, as in a
+  Page list. Words in German and English. `neighbours` in generator.rs,
+  a `<nav>` at the end of `<main>` in page.html, left out of the search
+  index. On for docs/pages/manual and docs/pages/blog.
+
+- **#142 The start page in a hand-made menu.** Found 2026-10-30 while
+  moving blog.panoptikum.social over, done the same day: a menu entry
+  written by hand as `page = "index"` was left out without a word (the
+  Menu tab writes `""` for the start page). `site::menu_page_path` now
+  reads menu pages like page files (`/`, `index`, `index.md`, `blog/`,
+  `blog.md`, `blog/index`), when `site.toml` is opened, in the build and
+  when pages move. Entries whose page is a draft or doesn't exist are
+  still left out, but the build says so in a note, and the Menu tab
+  shows them with a warning. The manual's Menus page says so.
+
+- **#137 Misleading count before publishing.** Reported by the user on
+  2026-10-29, done 2026-10-30: the Publish dialog listed the site's
+  changed files ("3 files changed"), but publishing uploads every built
+  file that differs on the server, often many more. Now it reads "3 of
+  your files changed since the last publish", with a line below that
+  more files of the website can change (a title shows in every page's
+  menu); the report after publishing says "57 website files uploaded".
+  The manual's Publishing page explains it in a question. Not done:
+  building first to show how many website files will go up; back on the
+  list if the wording isn't enough.
+
+- **#141 Footer color in dark themes.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day: on a theme with a dark
+  page background, the footer is shaded by default instead of the
+  accent color (a pale pink band in catppuccin-mocha); a footer color
+  picked in the Theme tab still wins. `theme::is_dark` decides by the
+  page background (`--color-base-100`), so a custom theme's own
+  background counts; a test checks it agrees with each theme's
+  `color-scheme`. Asked for by the user on the way: the theme pickers
+  (Theme tab and App tab) show the themes under Light and Dark, each
+  A to Z (`theme::choices`, `list_themes`). The manual's Colors and
+  fonts page says both. Groundwork for #146.
+
+- **#134 Old addresses in the page settings.** Found 2026-10-29 while
+  writing the manual, done 2026-10-30: the page's Settings tab lists its
+  old addresses (`redirect_from`) under Old addresses, with Add an
+  address and Remove. Saving tidies them (`site::old_address`: a leading
+  slash, only the path of a full web address pasted from the old site,
+  no `#…` or `?…`, no doubles) and refuses a new one that is another
+  page's address or another page's old address, which the build would
+  stop on or which would lead to two pages. The manual's Moving a site
+  over and Pages and blocks pages say so. On the way, asked for by the user:
+  the short page an old address shows before it sends visitors on takes
+  the theme's background and text color (inline, from `color_hex`), so
+  it doesn't flash white on a dark site.
+
+- **#135 Old episode guids.** Found 2026-10-29 while writing the
+  manual, done 2026-10-30: the guid in an episode's Settings tab has a
+  Change it link that opens a field with a warning (it must match the
+  old feed's `<guid>` exactly; apps take another guid for a new
+  episode). Left empty, the guid stays as it was. Saving trims it and
+  refuses one another episode has already. The manual's Moving a site
+  over says how. The imports (#034, #123) are to carry guids over by
+  themselves; old feed addresses are #124.
+
+- **#138 Line breaks in table cells.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day as decided with the
+  user: four plain HTML tags go through in text, everywhere: `<br>`
+  (also `<br/>`), `<kbd>`, `<sup>` and `<sub>`, without attributes
+  (`markdown::allowed_tag`, written as comrak's `Raw` nodes). Inside
+  code they stay text; any other tag, or one with attributes, stays
+  escaped. The text editor's toolbar has buttons for them after Code
+  (Key, Superscript, Subscript, Line break; OverType's `toolbarButtons`
+  with Lucide icons), and a Code block button next to OverType's inline
+  code, asked for by the user. The manual's Pages and
+  blocks page lists them.
+- **#139 Button and key names in text.** Found and done with #138:
+  `<kbd>` shows as a keycap in the theme's base colors (`.prose kbd` in
+  site.input.css; on colored areas in their text color). Button names
+  stay bold, as in q.e.d.'s own manual.
+
+- **#143 Site icon.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day: `icon` in site.toml, a
+  file from Media picked under Site icon in the Site tab. Decided with
+  the user: q.e.d. makes nothing from it and uses it as it is, so it
+  must be an SVG, a square PNG or an ICO (`site::icon_problem`, checked
+  when saving; Media takes `.ico` now). Pages get `<link rel="icon">`
+  with its type, a PNG also `apple-touch-icon`. Without one, as before:
+  `static/favicon.ico`, else the logo. The manual's Site settings page
+  says so.
+
+- **#140 Mastodon verification.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day: Your profiles
+  elsewhere in the Site tab's Links (`profiles` in site.toml, web
+  addresses only); every page names each in `<link rel="me">`, which
+  Mastodon checks to show the site as verified on the profile. No
+  follow button or Mastodon logo: a follow link is an ordinary link in
+  the footer. The manual's Site settings page says how to verify.
+  Not yet tried against Mastodon: that's part of #147.
+
+- **#144 Sidebar menu: folding groups.** Found 2026-10-30 while moving
+  blog.panoptikum.social over, done the same day as decided with the
+  user: a hand-made menu's groups fold open and closed in the sidebar
+  and in the phones' menu box (daisyUI's collapsible submenu, a
+  `<details>`, no JavaScript). The group of the page being shown starts
+  open, the others closed (also on pages outside every group, as the
+  user wanted). Always so, no setting. No post list in the sidebar: back and
+  next links and the Blog page cover posts. Asked for by the user on
+  the way: the automatic sidebar folds the same way (`folded`): a
+  top-level page with pages below it is a group whose title stays a
+  link (a click beside it folds); the top bar keeps every page.
+
+- **#146 Light and dark mode.** Added by the user 2026-10-30, done
+  2026-10-31 as decided with him: a site can have a dark side, `[dark]`
+  in site.toml, with its own theme, custom colors (`[dark.custom_theme]`),
+  header and colors (`[dark.colors]`); the fonts are shared. Set in the
+  Theme tab: **Light and dark mode** switches it on (the dark side starts
+  with a matching dark theme and the light side's colors), **Light** /
+  **Dark** pick which side the tab edits. Pages keep the light theme in
+  `data-theme`; the dark theme's variables follow in style.css for
+  `prefers-color-scheme: dark` and `data-mode="dark"`. Colors that
+  differ get Tailwind variants `mode-light:` / `mode-dark:` (a test
+  checks every one is in site.css). Without JavaScript the page follows
+  the system; `mode.js` (blocking, in `<head>`) applies a stored choice
+  before the page shows and runs the switch beside the search button:
+  three buttons, sun (light), computer (the system's setting) and moon
+  (dark), the current one highlighted (the user asked for all three to
+  show, 2026-10-31). The player gets
+  `config-dark.json`, redirect pages the dark colors too. The Subscribe
+  button keeps the light side's color.
+
+- **#145 Sites in several languages.** Added by the user 2026-10-30,
+  done 2026-10-31 as decided with him: a translation is `about.en.md`
+  beside `about.md`, at `/en/about` (the main language stays at `/`);
+  further languages under `[languages.en]` in site.toml, with their own
+  site title and description. A page without a translation isn't there
+  in that language. Each language has its own menus, post and page
+  lists, back and next links and feeds; footer (`footer.en.md`) and
+  shared blocks (`teaser.en.md`) per language where they exist. Header
+  switch as plain links (to the same page, else that language's start
+  page), `hreflang` alternates with a web address. Links by file name
+  go to the same language's version; written-out addresses stay exact.
+  Moving a page takes its translations along; one with translations
+  can't be deleted, nor a language with translations removed. App: Site
+  tab Languages, language buttons on page rows, a language bar with
+  **Translate** (a draft copy) above the open page. The episode layout
+  and the podcast stay in the main language. Manual in German (*Sie*,
+  button names in English as in the app) for all pages but Libraries;
+  the app builds it in one language, chosen under **Language of the
+  manual** in the App tab (automatic: the computer's). Docs site: German
+  manual and start page only, which points to the English rest.
 
 ## Dropped
 

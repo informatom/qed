@@ -33,6 +33,7 @@ export type FontInfo = Sent<Rust.FontInfo>;
 export type FontListing = Sent<Rust.FontListing>;
 export type Fonts = Sent<Rust.Fonts>;
 export type ThemeVariable = Sent<Rust.ThemeVariable>;
+export type ThemeChoice = Sent<Rust.ThemeChoice>;
 export type BuildReport = Sent<Rust.BuildReport>;
 export type DeletedPage = Sent<Rust.DeletedPage>;
 export type DiffLine = Sent<Rust.DiffLine>;
@@ -66,6 +67,12 @@ export type ContributorLink = Sent<Rust.ContributorLink>;
 export type EpisodePerson = Sent<Rust.EpisodePerson>;
 export type Target = Sent<Rust.Target>;
 export type TestOutcome = Sent<Rust.TestOutcome>;
+
+/** The address of the page a translation translates (`en/about` → `about`); a page's own otherwise (as `Page::main_path`). */
+export function mainPath(page: Page): string {
+  if (!page.language) return page.path;
+  return page.path.slice(page.language.length).replace(/^\//, "");
+}
 
 /** Today's date as YYYY-MM-DD, in local time. */
 export function today(): string {
@@ -306,6 +313,19 @@ export function formatSize(bytes: number): string {
   if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
   if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} KB`;
   return `${bytes} bytes`;
+}
+
+/**
+ * Whether two values hold the same data, whatever order their keys are in
+ * (`{ a, b }` and `{ b, a }` are the same); keys set to `undefined` count
+ * as missing. For "unsaved changes" checks against what Rust sent.
+ */
+export function sameData(a: unknown, b: unknown): boolean {
+  const sorted = (_key: string, value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)))
+      : value;
+  return JSON.stringify(a, sorted) === JSON.stringify(b, sorted);
 }
 
 export function newSftpTarget(): Target {

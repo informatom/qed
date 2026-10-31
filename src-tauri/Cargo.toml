@@ -18,6 +18,8 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 qed-core = { path = "../crates/qed-core", features = ["specta"] }
+# The MCP server, for `qed mcp` (#105).
+qed-mcp = { path = "../crates/qed-mcp" }
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
@@ -32,3 +34,6 @@ specta = { version = "=2.0.0-rc.25", features = ["derive"] }
 specta-typescript = "=0.0.12"
 tauri-plugin-updater = "2.14.0"
 tauri-plugin-process = "2.4.0"
+
+[dev-dependencies]
+tempfile = "3.27.0"

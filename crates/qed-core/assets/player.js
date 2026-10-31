@@ -44,7 +44,9 @@
       giveUp();
       return;
     }
-    fetch(new URL("podlove-player/config.json", root))
+    // A site with dark mode has settings for it too (mode.js says which).
+    var dark = typeof window.qedMode === "function" && window.qedMode() === "dark";
+    fetch(new URL(dark ? "podlove-player/config-dark.json" : "podlove-player/config.json", root))
       .then(function (response) {
         return response.json();
       })

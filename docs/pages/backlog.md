@@ -1,8 +1,9 @@
 +++
 title = "Backlog"
 description = "Open work and decisions for q.e.d., numbered #nnn."
-menu = "footer"
-weight = 10
+menu = "main"
+icon = "list"
+weight = 40
 +++
 
 Open work and open decisions. Items keep their number for good; when one is
@@ -21,50 +22,36 @@ Nothing open.
 
 ### Phase 3:  In progress
 
-- **#110 Manual.** A user manual inside the app (a *Manual* or *Help*
-  view, also reachable from where a topic comes up, e.g. the Versions tab
-  for backups), and the same pages on the docs site. Written for site
-  owners and editors, not developers. Starts with [Backups](backups.md)
-  (#037); further topics: the first site, pages and blocks, media and
-  files, themes and fonts, versions, publishing, moving a site over,
-  icons in text (`:icon-phone:`, #114, with the list of icons), the
-  hand-made menu (#111), boxed columns (#113). To decide: where the
-  pages live so app and docs site share them (e.g. `docs/pages/manual/`,
-  built into the app), and offline use.
-- **#105 MCP server.** A second thin shell around qed-core next to the Tauri
-  app, so AI assistants (Claude Code, Claude Desktop) can work on a site
-  through the [Model Context Protocol](https://modelcontextprotocol.io): a
-  small crate with the official Rust SDK (`rmcp`), started locally over
-  stdio. Tools such as `list_pages`, `read_page`, `save_blocks`,
-  `create_page`, `move_page`, `list_media`, `import_media`, `build_site`,
-  `list_versions` and `save_version`, with the app's rules: usage checks
-  before deleting, links rewritten on moves, every change recorded in the
-  site's history, so it shows in Versions and can be undone. Decided
-  with the user on 2026-10-29:
-  - A separate small program, `qed-mcp`, started by the assistant over
-    stdio, without the app running; shipped in the installers next to
-    q.e.d. (a Tauri sidecar), and the app shows the settings snippet to
-    paste.
-  - One site per server, its folder given at start
-    (`qed-mcp /path/to/site`); nothing outside that folder.
-  - No publishing: the assistant can build the site and see what changed
-    since the last publish; publishing stays a click in the app, keys
-    stay in the keychain.
-  - The app asks before overwriting: saving a page that changed on disk
-    since it was opened offers to keep either version; page lists reload
-    when the window gets focus. Live file watching only if that's missed.
-    This protects edits by hand and other tools too.
+In the order to build them (sorted 2026-10-30). Sites in several
+languages (#145) came before the MCP server (#105), since its tools and
+format guide describe the site folder; #145 is done. #138–#144,
+found while moving blog.panoptikum.social over by hand, are done, and so
+is #146 (light and dark mode).
 
-### Phase 4: Future
+- **#105 MCP server, picked up again.** Dropped on 2026-10-29, back
+  on the list on 2026-10-30: AI assistants (Claude Desktop, Claude
+  Code) working on a site over the Model Context Protocol, with the
+  app's rules. On the branch `mcp-server`, brought up to date with
+  main on 2026-10-31 and made one program: `qed-mcp` is now a library
+  the app links, and the app answers over stdio when started as
+  `qed mcp <site>`, without a window, so qed-core is in the installers
+  once (no sidecar, no extra build step in `release.yml`). App settings
+  shows the settings for Claude Desktop and Claude Code with the app's
+  own path (the AppImage file for an AppImage). Manual page
+  `ai-assistants.md`. To do before merging: try it with Claude Desktop
+  and Claude Code on a real site; check stdio of the Windows build
+  (a GUI program, `windows_subsystem = "windows"`) when an assistant
+  starts it; compare the installer sizes with 0.13.0.
+- **#147 blog.panoptikum.social again, through the MCP server.** After
+  #105: delete the q.e.d. copy of blog.panoptikum.social made by hand on
+  2026-10-30, move the blog over once more with an AI assistant working
+  through the MCP server, publish it, and test the Mastodon
+  verification (#140) against the profile. A test of the MCP server on
+  a real site (62 posts, 12 pages, sidebar menu) and of `rel="me"`.
+  Added by the user on 2026-10-30.
 
-- **#070 Code signing.** For downloads from the releases page, not app
-  stores. macOS: notarization needs the Apple Developer Program (99 USD
-  a year); without it, macOS 15 and later make people allow the app in
-  System Settings (right-click → Open no longer works). Windows: the
-  SignPath Foundation signs open-source projects for free (builds from
-  CI; check their terms); SmartScreen still warns until the app has a
-  reputation. Updates are already safe through the updater's own
-  signature. Moved here on 2026-10-29: worth it once Mac users come in.
+### Phase 4: Podcast Publisher Import
+
 - **#123 Import from Podlove Publisher.** Bring a podcast over from
   WordPress with the
   [Podlove Publisher](https://podlove.org/podlove-podcast-publisher/)
@@ -90,3 +77,15 @@ Nothing open.
   `.htaccess` with `Redirect 301` rules for Apache hosts (handles query
   strings too), or both. Old feed addresses per format would be a
   podcast setting, filled in by the import.
+
+### Phase 5: Roll out
+
+- **#070 Code signing.** For downloads from the releases page, not app
+  stores. macOS: notarization needs the Apple Developer Program (99 USD
+  a year); without it, macOS 15 and later make people allow the app in
+  System Settings → Privacy & Security → Open Anyway (right-click → Open
+  no longer works; the instructions say so since 2026-10-29). Windows: the
+  SignPath Foundation signs open-source projects for free (builds from
+  CI; check their terms); SmartScreen still warns until the app has a
+  reputation. Updates are already safe through the updater's own
+  signature. Moved here on 2026-10-29: worth it once Mac users come in.

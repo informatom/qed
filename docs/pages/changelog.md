@@ -1,14 +1,111 @@
 +++
 title = "Changelog"
 description = "What changed in each release of q.e.d."
-menu = "footer"
-weight = 12
+menu = "main"
+icon = "history"
+weight = 60
 +++
 
 What each release of q.e.d. brought, newest first. Numbers like #043
 refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
+
+## 0.13.0 · 2026-10-31
+
+Sites in several languages, a dark side for every site, and the manual
+in German.
+
+- **Several languages** (#145): add languages in the Site tab, then
+  **Translate** a page from the row of language codes above it. The
+  translation is at `/en/about` beside `/about`; each language has its
+  own menus, post lists and feeds, and a switch in the header leads
+  between them. See [Two languages](blog/2026-10-31-two-languages.md).
+- **Light and dark mode** (#146): **Light and dark mode** in the Theme
+  tab gives the site a second, dark theme with colors of its own.
+  Visitors see the side that matches their system, and three buttons in
+  the header (sun, computer, moon) let them choose. See
+  [Light and dark](blog/2026-10-31-light-and-dark.md).
+- **The manual in German**: every page but Libraries. **Language of the
+  manual** in the App tab picks it; automatically your computer's.
+- **Menus**: in the top bar, a page with pages below it becomes a
+  dropdown; pages in the footer menu show their icons.
+- **Blogs grouped by date**: pages named by a date (`/blog/2026`,
+  `/blog/2026-10-21`) pass their posts on to the blog's one feed, and
+  older and newer links run on across them.
+
+## 0.12.0 · 2026-10-30
+
+For sites moved over from elsewhere: old addresses and episode guids in
+the app, a site icon, Mastodon verification, keys and formulas in text,
+and menus that fold.
+
+- **Old addresses** (#134): a page's Settings tab lists the addresses it
+  had before, on this site or the old one, and each leads to the page.
+  Add one, or paste a full address from the old website. The short page
+  that sends visitors on now has the site's colors.
+- **Old episode guids** (#135): **Change it** next to an episode's guid
+  carries over the one it had in another system's feed, so podcast apps
+  don't show it as new.
+- **Site icon** (#143): an SVG, a square PNG or an ICO from Media for the
+  browser tab and phones' home screens, used as it is.
+- **Mastodon verification** (#140): your profiles elsewhere, in the Site
+  tab, are named on every page, so Mastodon shows the site as verified.
+- **Keys, super- and subscript, line breaks** (#138, #139): `<kbd>`,
+  `<sup>`, `<sub>` and `<br>` work in text, also in table cells; keys
+  look like keycaps. New toolbar buttons put them in, and one more makes
+  a code block.
+- **Folding sidebar** (#144): groups of the menu fold open and closed;
+  only the one with the page being shown starts open. Pages with pages
+  below them fold the same way.
+- **Light and dark themes apart** (#141): the theme pickers show light
+  and dark themes in two groups, A to Z. On a dark theme the footer is
+  shaded by default instead of a pale band.
+- **Clearer publishing** (#137): the Publish dialog counts your changed
+  files and says that more files of the website can change; the report
+  counts website files.
+- **Manual button**: an open book instead of the life-buoy.
+- Fixed: a menu entry written by hand as `page = "index"` disappeared
+  without a word (#142); entries whose page is missing or a draft are
+  now noted when building and marked in the Menu tab.
+- Fixed: settings showed unsaved changes right after saving when
+  another tab had added colors or fonts.
+
+## 0.11.0 · 2026-10-29
+
+A manual in the app, sections, Catppuccin themes and lighter photos.
+
+- **Manual** (#110): how to make and run a website with q.e.d., for
+  site owners: what you need, getting started, pages and blocks, icons,
+  pictures and files, site settings, menus, colors and fonts, versions,
+  backups, publishing, podcasts, moving a site over, and license and
+  credits. In the app, offline, with
+  the life-buoy button at the top right and the **Manual** links in the
+  tabs; also on this website under [Manual](manual/index.md). See
+  [A manual in the app](blog/2026-10-29-a-manual-in-the-app.md).
+- **Back and next links** (#136): a page setting gives the pages below
+  it links to the page before and after them, at the bottom; posts get
+  Older and Newer. On for the manual and the blog here.
+- **Section block** (#087): a band across the page with a background
+  color or picture, holding other blocks, columns too. See
+  [Sections](blog/2026-10-29-sections.md).
+- **Catppuccin themes** (#132): Latte, Frappé, Macchiato and Mocha, for
+  sites and for the app. See [Catppuccin themes](blog/2026-10-29-catppuccin.md).
+- **WebP copies** (#085): the smaller copies of photos are WebP, about
+  half the size of before. See [WebP copies](blog/2026-10-29-webp-copies.md).
+- **A version per working session** (#083): saves go into one version
+  until you stop for an hour or the next day; then the app asks for a
+  note. See [A version per session](blog/2026-10-29-a-version-per-session.md).
+- **More languages for code** (#106): some 200, among them TypeScript,
+  Svelte, TOML and Elixir. See [More code languages](blog/2026-10-29-more-languages.md).
+- **Notes for missing links** (#133): building the site notes links to
+  pages that don't exist (or are drafts) and to missing pictures and
+  files.
+- **Pages changed outside the app**: when a page was changed in another
+  program since you opened it, saving asks whether to keep yours or
+  take the file's.
+- Fixed: a version stayed "work in progress" after someone committed
+  on top of it with git.
 
 ## 0.10.0 · 2026-10-28
 
@@ -42,7 +139,7 @@ One site on two computers, without the command line.
   computers; if both changed the same page, it changes nothing and says
   which. q.e.d. logs in with its own key, kept in the keychain, and
   checks the server's key on first use, as when publishing. A progress
-  bar shows how far it has got. See [Backups](backups.md).
+  bar shows how far it has got. See [Backups](manual/backups.md).
 - **Get a site from git**: in the site menu and on the start screen.
   Copies a pushed site to this computer with its whole history.
 - **New versions on the remote**: when a site opens, q.e.d. checks its

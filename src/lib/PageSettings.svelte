@@ -6,7 +6,7 @@
   import MediaPicker from "$lib/MediaPicker.svelte";
   import PeopleEditor from "$lib/PeopleEditor.svelte";
   import {
-    commands, formatLabel, pageIcons, podcastFormats, saveChecked,
+    commands, formatLabel, pageIcons, podcastFormats, sameData, saveChecked,
     type AudioFormat, type Contributor, type Episode, type EpisodeAudio, type EpisodeType, type FrontMatter, type Menu, type Page, type Podcast,
   } from "$lib/site";
 
@@ -78,10 +78,15 @@
     return value !== null && value !== "" && Number.isInteger(n) && n >= min ? n : null;
   }
 
+  // The guid is shown, and only typed over on purpose (an old feed's).
+  let changingGuid = $state(false);
+
   function cleanEpisode(episode: Episode | null): Episode | null {
     if (!episode) return null;
     return {
       ...episode,
+      // Left empty, it stays as it was: an empty one would get a new guid.
+      guid: episode.guid.trim() || (page.front.episode?.guid ?? ""),
       season: counted(episode.season, 1),
       // Episode 0 is common: many podcasts start counting there.
       number: counted(episode.number, 0),
@@ -180,6 +185,18 @@
     form.episode.chapters = [...form.episode.chapters, { start: last === "" ? "00:00:00" : last, title: "", link: null }];
   }
 
+  /** An old address as saved (as site::old_address): a path with a leading slash, from a full web address too. */
+  function oldAddress(text: string): string | null {
+    let address = text.trim();
+    const scheme = address.indexOf("://");
+    if (scheme !== -1) {
+      const rest = address.slice(scheme + 3);
+      address = rest.includes("/") ? rest.slice(rest.indexOf("/")) : "";
+    }
+    address = address.split(/[#?]/)[0].replace(/^\/+|\/+$/g, "");
+    return address === "" ? null : `/${address}`;
+  }
+
   // What would be saved, recomputed whenever a field changes.
   let edited: FrontMatter = $derived({
     ...form,
@@ -192,10 +209,11 @@
     weight: Number(form.weight) || 0,
     authors: list(authors),
     tags: list(tags),
+    redirect_from: [...new Set(form.redirect_from.map(oldAddress).filter((a) => a !== null))],
     episode: cleanEpisode(form.episode),
   });
 
-  let changed = $derived(JSON.stringify(edited) !== JSON.stringify(page.front));
+  let changed = $derived(!sameData(edited, page.front));
 
   // Keep the parent informed.
   $effect(() => {
@@ -280,6 +298,10 @@
           <input id="setting-hide-title" type="checkbox" class="toggle" bind:checked={form.hide_title} />
           <span class="text-sm">Hide the title (for pages that start with their own heading)</span>
         </label>
+        <label class="flex items-center gap-3">
+          <input id="setting-back-next" type="checkbox" class="toggle" bind:checked={form.back_next} />
+          <span class="text-sm">Back and next links on the pages below (Older and newer for posts)</span>
+        </label>
       </div>
 
       <fieldset class="flex flex-col gap-2 @xl:col-span-2">
@@ -317,6 +339,27 @@
       </label>
     </section>
 
+    <section id="page-old-addresses" class="flex flex-col gap-2 border-t border-base-300 pt-6">
+      {@render heading("Old addresses")}
+      <p class="text-xs text-base-content/60">
+        Addresses this page had before, on this site or on the one it was moved from, such as
+        <code>/2016/03/28/easterhegg.html</code>. Each one leads visitors and search engines here. Moving or renaming
+        the page in q.e.d. adds its old address by itself.
+      </p>
+      {#each form.redirect_from as _, index (index)}
+        <div class="flex gap-2">
+          <input id="old-address-{index}" class="input input-sm w-full max-w-xl font-mono" bind:value={form.redirect_from[index]}
+            placeholder="/old/address or https://old-site.example/old/address" aria-label="Old address" />
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Remove old address"
+            onclick={() => (form.redirect_from = form.redirect_from.filter((_, i) => i !== index))}>Remove</button>
+        </div>
+      {/each}
+      <div>
+        <button type="button" id="add-old-address" class="btn btn-sm"
+          onclick={() => (form.redirect_from = [...form.redirect_from, ""])}>Add an address</button>
+      </div>
+    </section>
+
     {#if form.episode}
       {@const episode = form.episode}
       <section id="episode-settings" class="grid gap-4 border-t border-base-300 pt-6 @xl:grid-cols-4">
@@ -350,9 +393,25 @@
           <CoverCheck {siteRoot} name={episode.image} />
         </div>
 
-        <p class="text-xs text-base-content/50 @xl:col-span-4">
-          Guid <span id="episode-guid" class="font-mono">{episode.guid}</span> · podcast apps tell episodes apart by it; it never changes.
-        </p>
+        {#if changingGuid}
+          <div class="flex flex-col gap-2 @xl:col-span-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Guid</span>
+              <input id="episode-guid-input" class="input w-full font-mono" bind:value={episode.guid} />
+            </label>
+            <div role="alert" class="alert alert-warning alert-soft text-sm">
+              Only for an episode moved over from another system: type the guid it had there, exactly as in the old
+              feed's &lt;guid&gt;, character for character. Podcast apps take an episode with another guid for a new
+              one, and show it again to everyone who has heard it.
+            </div>
+          </div>
+        {:else}
+          <p class="text-xs text-base-content/50 @xl:col-span-4">
+            Guid <span id="episode-guid" class="font-mono">{episode.guid}</span> · podcast apps tell episodes apart by it, so it stays the same.
+            <button type="button" id="episode-change-guid" class="link" onclick={() => (changingGuid = true)}>Change it</button>
+            for an episode moved over from another system.
+          </p>
+        {/if}
       </section>
 
       <section class="flex flex-col gap-3 border-t border-base-300 pt-6">

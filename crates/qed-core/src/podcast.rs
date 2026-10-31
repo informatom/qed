@@ -1359,6 +1359,38 @@ mod tests {
     }
 
     #[test]
+    fn takes_an_old_guid_but_not_another_episodes() {
+        let dir = podcast_site();
+        let first = create_episode(dir.path(), "Eins", None).unwrap();
+        let second = create_episode(dir.path(), "Zwei", None).unwrap();
+        let with_guid = |page: &Page, guid: &str| {
+            let mut front = page.content.front.clone();
+            front.episode.as_mut().unwrap().guid = guid.to_string();
+            front
+        };
+
+        // From the old feed, character for character (spaces around dropped).
+        let old = "https://old.example.org/?p=123";
+        let saved = site::save_front_matter(
+            dir.path(),
+            &first.file,
+            with_guid(&first, &format!(" {old} ")),
+        )
+        .unwrap();
+        assert_eq!(saved.content.front.episode.unwrap().guid, old);
+
+        let error = site::save_front_matter(dir.path(), &second.file, with_guid(&second, old))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains(
+                "the episode “Eins” has the guid “https://old.example.org/?p=123” already"
+            ),
+            "{error}"
+        );
+    }
+
+    #[test]
     fn counts_on_from_episode_zero() {
         let dir = podcast_site();
         let zero = create_episode(dir.path(), "Nullnummer", Some(0)).unwrap();

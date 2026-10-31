@@ -16,9 +16,10 @@
 //!                         also only with `base_url`
 //! ```
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use askama::Template;
 use serde::Serialize;
@@ -39,7 +40,7 @@ use crate::site::{
     ASSETS_DIR, Colors, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
     Surface, ThemeColor,
 };
-use crate::site::{LogoSize, PageWidth};
+use crate::site::{LogoSize, Look, PageWidth, translated_path};
 use crate::slug::slugify;
 
 pub const OUTPUT_DIR: &str = "_site";
@@ -48,7 +49,7 @@ pub const OUTPUT_DIR: &str = "_site";
 const MARKER: &str = ".qed-build";
 
 /// The stylesheet, compiled by `npm run build:site-css` and built into qed.
-const STYLESHEET: &str = include_str!("../assets/site.css");
+pub(crate) const STYLESHEET: &str = include_str!("../assets/site.css");
 /// For sites with formulas: pulldown-latex's stylesheet and the Latin
 /// Modern Math font; see `assets/pulldown-latex/README.md`.
 const MATH_CSS: &str = include_str!("../assets/pulldown-latex/math.css");
@@ -197,6 +198,33 @@ fn missing_links(site: &Site, published: &[&Page]) -> Vec<String> {
     notes
 }
 
+/// Entries of a hand-made menu whose page isn't on the website: the menu
+/// leaves them out, and this says so.
+fn menu_notes(site: &Site, published: &[&Page], items: &[crate::site::MenuItem]) -> Vec<String> {
+    let mut notes = Vec::new();
+    for item in items {
+        if let Some(written) = &item.page {
+            let path = crate::site::menu_page_path(written);
+            if !published.iter().any(|page| page.path == path) {
+                let problem = if site
+                    .pages
+                    .iter()
+                    .any(|p| p.path == path && p.content.front.draft)
+                {
+                    "that page is a draft and not on the website yet"
+                } else {
+                    "there's no such page"
+                };
+                notes.push(format!(
+                    "The menu has an entry for \"/{path}\", but {problem}; it's left out."
+                ));
+            }
+        }
+        notes.extend(menu_notes(site, published, &item.items));
+    }
+    notes
+}
+
 /// For a link to `/media/…` or `/assets/…` (as written in text), what's
 /// wrong if that file isn't there; `None` if it is, or the link is to
 /// something else.
@@ -254,11 +282,35 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         .chain(&people_pages)
         .collect();
     notes.extend(missing_links(site, &published));
+    notes.extend(menu_notes(site, &published, &site.config.main_menu));
     let media_dir = site.root.join(MEDIA_DIR);
     let images = Images::new(&media_dir);
     let site_icons = SiteIcons::load(&media_dir);
-    let main_menu = menu(&published, Menu::Main);
-    let footer_menu = menu(&published, Menu::Footer);
+    // Each language's pages (#145): a page sees only those in its own
+    // language, in menus, lists and back and next links.
+    let mut by_language: BTreeMap<Option<&str>, Vec<&Page>> = BTreeMap::new();
+    by_language.insert(None, Vec::new());
+    for page in &published {
+        by_language
+            .entry(page.language.as_deref())
+            .or_default()
+            .push(page);
+    }
+    let menus: BTreeMap<Option<&str>, (Vec<MenuEntry>, Vec<MenuEntry>)> = by_language
+        .iter()
+        .map(|(language, pages)| {
+            (
+                *language,
+                (menu(pages, Menu::Main), menu(pages, Menu::Footer)),
+            )
+        })
+        .collect();
+    let page_paths = Arc::new(
+        published
+            .iter()
+            .map(|page| page.path.clone())
+            .collect::<BTreeSet<String>>(),
+    );
     // Feeds need full addresses, so only a site with a web address gets them.
     // A podcast's episodes get podcast feeds instead (see `feed.rs`).
     let podcast = site.config.podcast.as_ref();
@@ -308,18 +360,11 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
         _ => Vec::new(),
     };
-    let colors = color_classes(&site.config.colors);
-    let button_color = crate::theme::color_hex(
-        STYLESHEET,
-        site.config.page_theme(),
-        site.config.custom(),
-        match site.config.colors.buttons.unwrap_or(ThemeColor::Primary) {
-            ThemeColor::Primary => "--color-primary",
-            ThemeColor::Secondary => "--color-secondary",
-            ThemeColor::Accent => "--color-accent",
-            ThemeColor::Neutral => "--color-neutral",
-        },
-    );
+    let light = site.config.light();
+    let dark_look = site.config.dark_look();
+    let dark = light.is_dark();
+    let colors = site_colors(&site.config);
+    let button_color = button_hex(light);
     let context = Context {
         podcast_feeds: &podcast_feeds,
         podcast,
@@ -329,7 +374,9 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         root: &site.root,
         images: &images,
         site_icons: &site_icons,
-        pages: &published,
+        pages: &by_language[&None],
+        all_pages: &published,
+        page_paths: &page_paths,
         feeds: &feeds,
         today,
         language: &site.config.language,
@@ -340,7 +387,14 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     // Whether any page has a formula, for the math font (see below).
     let mut uses_math = false;
     for page in &published {
-        let html = render_page(site, &context, page, &main_menu, &footer_menu, &feeds)?;
+        let language = page.language.as_deref();
+        let (main_menu, footer_menu) = &menus[&language];
+        let in_language = Context {
+            pages: &by_language[&language],
+            language: site.config.language_of(page),
+            ..context
+        };
+        let html = render_page(site, &in_language, page, main_menu, footer_menu, &feeds)?;
         uses_math |= html.contains("<math");
         write(&page_file(out_dir, &page.path), html)?;
         // The player's data for an episode with audio, next to its page.
@@ -360,14 +414,35 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
     }
     if players > 0 {
-        write_player(out_dir, site, &published, today, button_color.as_deref())?;
+        write_player(
+            out_dir,
+            site,
+            &published,
+            today,
+            button_color.as_deref(),
+            dark_look.and_then(button_hex).as_deref(),
+        )?;
     }
 
     let not_found = not_found_page(site);
-    let html = render_page(site, &context, &not_found, &main_menu, &footer_menu, &feeds)?;
+    let (main_menu, footer_menu) = &menus[&None];
+    let html = render_page(site, &context, &not_found, main_menu, footer_menu, &feeds)?;
     write(&out_dir.join("404.html"), html)?;
 
     let mut redirects = 0;
+    let theme_hex = |look: Look, variable: &str, fallback: &str| {
+        look.color_hex(variable)
+            .unwrap_or_else(|| fallback.to_string())
+    };
+    let redirect_background = theme_hex(light, "--color-base-100", "#ffffff");
+    let redirect_text = theme_hex(light, "--color-base-content", "#1d232a");
+    // With dark mode, the dark side's colors when the system is dark.
+    let redirect_dark = dark_look.map(|look| {
+        (
+            theme_hex(look, "--color-base-100", "#1d232a"),
+            theme_hex(look, "--color-base-content", "#ffffff"),
+        )
+    });
     for page in &published {
         for from in &page.content.front.redirect_from {
             let from = from.trim_matches('/');
@@ -389,12 +464,21 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             };
             let links = LinkContext::new(folder, Path::new(""));
             let target = links.page(&page.path);
-            let html = RedirectTemplate { target: &target }
-                .render()
-                .map_err(|source| BuildError::Template {
-                    page: page.path.clone(),
-                    source,
-                })?;
+            let html = RedirectTemplate {
+                target: &target,
+                language: &site.config.language,
+                background: &redirect_background,
+                text: &redirect_text,
+                dark,
+                dark_side: redirect_dark
+                    .as_ref()
+                    .map(|(b, t)| (b.as_str(), t.as_str())),
+            }
+            .render()
+            .map_err(|source| BuildError::Template {
+                page: page.path.clone(),
+                source,
+            })?;
             write(&file, html)?;
             redirects += 1;
         }
@@ -403,7 +487,16 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     // Colors for highlighted code, a custom theme and the site's fonts add
     // to the one stylesheet; the
     // fonts in use are copied next to it.
-    let custom_css = site.config.custom().map(|c| c.css()).unwrap_or_default();
+    let mut custom_css = site.config.custom().map(|c| c.css()).unwrap_or_default();
+    // The dark side comes after the light side's colors, so it wins over them.
+    if let Some(look) = dark_look {
+        custom_css.push_str(&crate::theme::dark_css(
+            STYLESHEET,
+            look.base_theme(),
+            look.custom(),
+        ));
+        write(&out_dir.join(MODE_SCRIPT), MODE_SCRIPT_JS)?;
+    }
     let fonts_css = fonts::css(&site.root, &site.config.fonts);
     // Formulas get LaTeX's look, on sites that have any.
     let math_css = if uses_math {
@@ -512,7 +605,11 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     if let Some(base_url) = &site.config.base_url {
         write(&out_dir.join("sitemap.xml"), sitemap(base_url, &published))?;
         for feed in &feeds {
-            let posts = posts(&published, &feed.page.path, today);
+            let posts = posts(
+                &by_language[&feed.page.language.as_deref()],
+                &feed.page.path,
+                today,
+            );
             write(
                 &out_dir.join(&feed.file),
                 rss(&site.config, base_url, feed, &posts),
@@ -686,6 +783,7 @@ fn not_found_page(site: &Site) -> Page {
         ),
     };
     Page {
+        language: None,
         path: NOT_FOUND_PATH.to_string(),
         file: PathBuf::from("pages/404.md"),
         content: crate::page::PageContent {
@@ -723,8 +821,12 @@ struct Context<'a> {
     images: &'a Images,
     /// The site's own icons, for `:icon-name:` in text.
     site_icons: &'a SiteIcons,
-    /// The pages being built, for Post lists.
+    /// The pages being built in the page's language, for Post lists.
     pages: &'a [&'a Page],
+    /// All pages being built, in every language.
+    all_pages: &'a [&'a Page],
+    /// The addresses of all pages, for links into a page's language.
+    page_paths: &'a Arc<BTreeSet<String>>,
     /// The feeds being written, so a Post list can link its own.
     feeds: &'a [Feed<'a>],
     /// The podcast's feeds, the main format's first.
@@ -737,7 +839,7 @@ struct Context<'a> {
     /// The podcast's contributors, for the Contributors block.
     contributors: &'a [crate::contributors::Contributor],
     today: Date,
-    /// The site's language, for dates.
+    /// The page's language, for dates and the words the site writes.
     language: &'a str,
     /// Rendering the footer: lists come out compact, as plain links.
     footer: bool,
@@ -906,25 +1008,55 @@ struct Feed<'a> {
 }
 
 /// The pages that get a feed: those with at least one post right below
-/// them, so `/blog` does for `/blog/2026-10-21-hello`.
+/// them, so `/blog` does for `/blog/2026-10-21-hello`. Pages named by a
+/// date that group a blog's posts by day, month or year
+/// (`/blog/2026-10-21/hello`) pass them on to the page above: the blog
+/// keeps one feed.
 fn feed_sources<'a>(pages: &[&'a Page], today: Date) -> Vec<&'a Page> {
+    let with_posts: BTreeSet<&str> = pages
+        .iter()
+        .filter(|page| {
+            !page.path.is_empty()
+                && page
+                    .content
+                    .front
+                    .date
+                    .as_ref()
+                    .and_then(|date| date.date())
+                    .is_some_and(|date| date <= today)
+        })
+        .map(|page| feed_parent(&page.path))
+        .collect();
     pages
         .iter()
         .copied()
-        .filter(|parent| {
-            pages.iter().any(|page| {
-                !page.path.is_empty()
-                    && page.path.rsplit_once('/').map_or("", |(up, _)| up) == parent.path
-                    && page
-                        .content
-                        .front
-                        .date
-                        .as_ref()
-                        .and_then(|date| date.date())
-                        .is_some_and(|date| date <= today)
-            })
-        })
+        .filter(|page| with_posts.contains(page.path.as_str()))
         .collect()
+}
+
+/// The page whose feed has the post at `path`: the one above it, past
+/// pages named by a date (`2026`, `2026-10`, `2026-10-21`).
+fn feed_parent(path: &str) -> &str {
+    let mut parent = path.rsplit_once('/').map_or("", |(up, _)| up);
+    while let Some(last) = parent.rsplit('/').next().filter(|_| !parent.is_empty())
+        && is_date_name(last)
+    {
+        parent = parent.rsplit_once('/').map_or("", |(up, _)| up);
+    }
+    parent
+}
+
+/// `2026`, `2026-10` or `2026-10-21`.
+fn is_date_name(name: &str) -> bool {
+    let parts: Vec<&str> = name.split('-').collect();
+    let digits =
+        |part: &str, count: usize| part.len() == count && part.bytes().all(|b| b.is_ascii_digit());
+    match parts.as_slice() {
+        [year] => digits(year, 4),
+        [year, month] => digits(year, 4) && digits(month, 2),
+        [year, month, day] => digits(year, 4) && digits(month, 2) && digits(day, 2),
+        _ => false,
+    }
 }
 
 fn feed_file(path: &str) -> String {
@@ -937,10 +1069,11 @@ fn feed_file(path: &str) -> String {
 
 /// "Blog · My Site", or just the site's title for posts on the start page.
 fn feed_title(config: &SiteConfig, page: &Page) -> String {
-    if page.path.is_empty() {
-        config.title.clone()
+    let site_title = config.title_in(page.language.as_deref());
+    if page.main_path().is_empty() {
+        site_title.to_string()
     } else {
-        format!("{} · {}", page.content.front.title, config.title)
+        format!("{} · {site_title}", page.content.front.title)
     }
 }
 
@@ -962,7 +1095,7 @@ fn rss(config: &SiteConfig, base_url: &str, feed: &Feed, posts: &[&Page]) -> Str
         .front
         .description
         .as_deref()
-        .or(config.description.as_deref())
+        .or(config.description_in(page.language.as_deref()))
         .unwrap_or(&feed.title);
     let self_link = format!("{}/{}", base_url.trim_end_matches('/'), feed.file);
     let mut xml = String::from(
@@ -977,7 +1110,7 @@ fn rss(config: &SiteConfig, base_url: &str, feed: &Feed, posts: &[&Page]) -> Str
         escape_xml(&feed.title),
         escape_xml(&absolute(base_url, &page.path)),
         escape_xml(description),
-        escape_xml(&config.language),
+        escape_xml(config.language_of(page)),
         escape_xml(&self_link),
     ));
     for post in posts {
@@ -1168,11 +1301,15 @@ fn menu(pages: &[&Page], which: Menu) -> Vec<MenuEntry> {
 
     // An entry's parent is the nearest entry above it in the page tree:
     // `blog/first-post` goes under `blog`, if `blog` is in the menu too.
+    // Within one language: a translated start page (`de`) is no parent,
+    // as `/` isn't.
     let parent = |page: &Page| -> Option<usize> {
         entries
             .iter()
             .enumerate()
-            .filter(|(_, other)| other.path != page.path && is_within(&page.path, &other.path))
+            .filter(|(_, other)| {
+                other.path != page.path && is_within(page.main_path(), other.main_path())
+            })
             .max_by_key(|(_, other)| other.path.len())
             .map(|(index, _)| index)
     };
@@ -1252,9 +1389,9 @@ struct PageTemplate<'a> {
     share_image: Option<ShareImage>,
     /// The site's logo, for the header.
     logo: Option<Picture>,
-    /// The browser-tab icon: `favicon.ico` from `static/` if the site has
-    /// one, else the logo.
-    icon: Option<String>,
+    /// The browser-tab icon: the site icon, else `favicon.ico` from
+    /// `static/` if the site has one, else the logo.
+    icon: Option<TabIcon>,
     /// The site's RSS feeds, for `<link rel="alternate">` and the footer.
     feeds: Vec<FeedLink>,
     rss_icon: &'static str,
@@ -1289,21 +1426,198 @@ struct PageTemplate<'a> {
     /// `player.js`, when a block has the Podlove Web Player: loaded in
     /// `<head>`, so it hides the plain player before it shows.
     player_script: Option<String>,
+    /// The light/dark switch's labels, for a site with dark mode.
+    mode_labels: [&'static str; 3],
+    /// The page's language, for `<html lang>`.
+    language: &'a str,
+    /// The site's title in the page's language.
+    site_title: &'a str,
+    /// The language switch: the page in each language (#145).
+    languages: Vec<LanguageLink>,
+    /// `<link rel="alternate" hreflang>`: the page's translations, with
+    /// full addresses.
+    alternates: Vec<LanguageLink>,
     /// The page's content goes into the search index (not the 404 page).
     searchable: bool,
     /// The site footer's blocks, rendered for this page.
     footer_blocks: Vec<String>,
+    /// Links to the page before and after this one (#136), when the page
+    /// above it asks for them.
+    neighbours: Neighbours,
+}
+
+/// The links at the bottom of a page in a series (#136): on the left the
+/// one before (Back, or Older for posts), on the right the one after
+/// (Next, or Newer).
+#[derive(Default)]
+struct Neighbours {
+    left: Option<Neighbour>,
+    right: Option<Neighbour>,
+    /// What the links are, for screen readers: "Back and next".
+    label: String,
+}
+
+struct Neighbour {
+    /// "Back", "Next", "Older" or "Newer", in the site's language.
+    label: &'static str,
+    title: String,
+    href: String,
+}
+
+/// "Back", "Next", "Older", "Newer" and "and", in the site's language.
+fn neighbour_words(language: &str) -> [&'static str; 5] {
+    match language.trim().split(['-', '_']).next().unwrap_or_default() {
+        "de" => ["Zurück", "Weiter", "Älter", "Neuer", "und"],
+        _ => ["Back", "Next", "Older", "Newer", "and"],
+    }
+}
+
+/// The pages before and after `page` among those below the same page, if
+/// that page has `back_next` on. Posts (pages with a date) go newest first
+/// as in a Post list, so the older one is on the left; other pages go by
+/// their order, as in a Page list. A post looks further up for that page:
+/// in a blog with a page per day, its posts run on across the days.
+fn neighbours(page: &Page, context: &Context, links: &LinkContext) -> Neighbours {
+    if page.path.is_empty() {
+        return Neighbours::default();
+    }
+    let dated = page.content.front.date.is_some();
+    // The pages above, nearest first; pages at the top are below the start
+    // page ("").
+    let mut above = Vec::new();
+    let mut path = page.path.as_str();
+    while let Some((parent, _)) = path.rsplit_once('/') {
+        above.push(parent);
+        path = parent;
+    }
+    above.push("");
+    if !dated {
+        above.truncate(1);
+    }
+    let with_back_next = |path: &str| {
+        context
+            .pages
+            .iter()
+            .any(|other| other.path == path && other.content.front.back_next)
+    };
+    let Some(parent) = above.into_iter().find(|path| with_back_next(path)) else {
+        return Neighbours::default();
+    };
+    let [back, next, older, newer, and] = neighbour_words(context.language);
+    let series = if dated {
+        posts(context.pages, parent, context.today)
+    } else {
+        children(context.pages, parent)
+    };
+    let Some(index) = series.iter().position(|other| other.path == page.path) else {
+        return Neighbours::default();
+    };
+    let before = index.checked_sub(1).and_then(|i| series.get(i));
+    let after = series.get(index + 1);
+    let link = |label: &'static str, other: &&Page| Neighbour {
+        label,
+        title: other.content.front.title.clone(),
+        href: links.page(&other.path),
+    };
+    if dated {
+        Neighbours {
+            left: after.map(|other| link(older, other)),
+            right: before.map(|other| link(newer, other)),
+            label: format!("{older} {and} {}", newer.to_lowercase()),
+        }
+    } else {
+        Neighbours {
+            left: before.map(|other| link(back, other)),
+            right: after.map(|other| link(next, other)),
+            label: format!("{back} {and} {}", next.to_lowercase()),
+        }
+    }
 }
 
 /// Tailwind classes for the header, written out in full here so the
 /// stylesheet build finds them (`site.input.css` scans this file).
 struct HeaderClasses {
-    bar: &'static str,
+    bar: String,
     /// The current page in the top menu.
-    current: &'static str,
+    current: String,
     /// The logo: on a colored bar it gets a light backing, so a logo in the
     /// bar's own color doesn't disappear.
-    logo: &'static str,
+    logo: String,
+}
+
+/// The header's classes for both sides of a site with dark mode, or the
+/// only side's.
+fn site_header_classes(config: &SiteConfig) -> HeaderClasses {
+    let light = header_classes(config.header, config.logo_size);
+    match config.dark_look() {
+        None => light,
+        Some(dark) => {
+            let dark = header_classes(dark.header, config.logo_size);
+            HeaderClasses {
+                bar: both_sides(&light.bar, &dark.bar),
+                current: both_sides(&light.current, &dark.current),
+                logo: both_sides(&light.logo, &dark.logo),
+            }
+        }
+    }
+}
+
+/// The classes of both sides in one: those they share as they are, the
+/// others for their side only (`mode-light:bg-accent mode-dark:bg-base-200`,
+/// variants from site.input.css).
+fn both_sides(light: &str, dark: &str) -> String {
+    let (light, dark): (Vec<&str>, Vec<&str>) = (
+        light.split_whitespace().collect(),
+        dark.split_whitespace().collect(),
+    );
+    let mut classes = Vec::new();
+    for class in &light {
+        if dark.contains(class) {
+            classes.push(class.to_string());
+        } else {
+            classes.push(format!("mode-light:{class}"));
+        }
+    }
+    for class in &dark {
+        if !light.contains(class) {
+            classes.push(format!("mode-dark:{class}"));
+        }
+    }
+    classes.join(" ")
+}
+
+/// The site's color classes: for a site with dark mode, both sides'.
+fn site_colors(config: &SiteConfig) -> ColorClasses {
+    let light = config.light();
+    let classes = color_classes(light.colors, light.is_dark());
+    let Some(dark) = config.dark_look() else {
+        return classes;
+    };
+    let other = color_classes(dark.colors, dark.is_dark());
+    ColorClasses {
+        body: both_sides(&classes.body, &other.body),
+        footer: both_sides(&classes.footer, &other.footer),
+        hero: both_sides(&classes.hero, &other.hero),
+        hero_button: both_sides(&classes.hero_button, &other.hero_button),
+        image_button: both_sides(&classes.image_button, &other.image_button),
+        call_to_action: both_sides(&classes.call_to_action, &other.call_to_action),
+        call_to_action_button: both_sides(
+            &classes.call_to_action_button,
+            &other.call_to_action_button,
+        ),
+        boxed: both_sides(&classes.boxed, &other.boxed),
+    }
+}
+
+/// A side's button color as `#rrggbb`, for the player and the Subscribe
+/// button.
+fn button_hex(look: Look) -> Option<String> {
+    look.color_hex(match look.colors.buttons.unwrap_or(ThemeColor::Primary) {
+        ThemeColor::Primary => "--color-primary",
+        ThemeColor::Secondary => "--color-secondary",
+        ThemeColor::Accent => "--color-accent",
+        ThemeColor::Neutral => "--color-neutral",
+    })
 }
 
 fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
@@ -1344,7 +1658,11 @@ fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
             "h-auto max-h-28 w-auto max-w-full object-contain rounded-field bg-base-100 p-1"
         }
     };
-    HeaderClasses { bar, current, logo }
+    HeaderClasses {
+        bar: bar.to_string(),
+        current: current.to_string(),
+        logo: logo.to_string(),
+    }
 }
 
 /// The site's color choices (`[colors]` in `site.toml`) as the classes
@@ -1352,20 +1670,22 @@ fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
 struct ColorClasses {
     /// On `<body>`: the content background and the links' color.
     body: String,
-    footer: &'static str,
-    hero: &'static str,
-    hero_button: &'static str,
+    footer: String,
+    hero: String,
+    hero_button: String,
     /// For a Hero with a background image: any color stands out on it.
-    image_button: &'static str,
-    call_to_action: &'static str,
-    call_to_action_button: &'static str,
-    boxed: &'static str,
+    image_button: String,
+    call_to_action: String,
+    call_to_action_button: String,
+    boxed: String,
 }
 
 /// Whole class names throughout, so Tailwind finds them when it scans this
 /// file. A colored area gets `on-color`: Markdown text in it takes the
-/// area's text color (site.input.css).
-fn color_classes(colors: &Colors) -> ColorClasses {
+/// area's text color (site.input.css). `dark` is whether the theme's page
+/// background is dark: the footer is then shaded by default, not a pale
+/// band of the accent color below a dark page.
+fn color_classes(colors: &Colors, dark: bool) -> ColorClasses {
     let buttons = colors.buttons.unwrap_or(ThemeColor::Primary);
     // A button on a box of its own color would vanish: it's drawn plain.
     let button_on = |surface: Surface| {
@@ -1398,20 +1718,26 @@ fn color_classes(colors: &Colors) -> ColorClasses {
     };
     ColorClasses {
         body: format!("{content}{links}"),
-        footer: match colors.footer.unwrap_or(Surface::Accent) {
-            Surface::Plain => "border-t border-base-300 bg-base-100 text-base-content",
-            other => filled(other),
+        footer: match colors.footer.unwrap_or(if dark {
+            Surface::Shaded
+        } else {
+            Surface::Accent
+        }) {
+            Surface::Plain => "border-t border-base-300 bg-base-100 text-base-content".to_string(),
+            other => filled(other).to_string(),
         },
-        hero: filled(hero),
-        hero_button: button_on(hero),
-        image_button: button_on(Surface::Plain),
-        call_to_action: filled(call_to_action),
-        call_to_action_button: button_on(call_to_action),
+        hero: filled(hero).to_string(),
+        hero_button: button_on(hero).to_string(),
+        image_button: button_on(Surface::Plain).to_string(),
+        call_to_action: filled(call_to_action).to_string(),
+        call_to_action_button: button_on(call_to_action).to_string(),
         boxed: match colors.boxes.unwrap_or(Surface::Plain) {
             // Its own text color too: on a colored section, it would
             // otherwise take the section's light text.
-            Surface::Plain => "border border-base-300 bg-base-100 text-base-content shadow-sm",
-            other => filled(other),
+            Surface::Plain => {
+                "border border-base-300 bg-base-100 text-base-content shadow-sm".to_string()
+            }
+            other => filled(other).to_string(),
         },
     }
 }
@@ -1480,6 +1806,64 @@ struct BlockTemplate<'a> {
 const ZOOM_ABOVE_FULL: u32 = 1300;
 const ZOOM_ABOVE_HALF: u32 = 700;
 
+/// One language in the language switch, or one `hreflang` link.
+struct LanguageLink {
+    /// `de`, `en`, `de-AT`.
+    code: String,
+    /// `DE`, shown in the switch.
+    short: String,
+    /// The language's own name for itself: `Deutsch`.
+    name: String,
+    href: String,
+    current: bool,
+}
+
+/// A language's name for itself, for the switch's tooltip; the code
+/// for others.
+fn language_name(code: &str) -> &str {
+    match code
+        .split(['-', '_'])
+        .next()
+        .unwrap_or_default()
+        .to_lowercase()
+        .as_str()
+    {
+        "de" => "Deutsch",
+        "en" => "English",
+        "fr" => "Français",
+        "es" => "Español",
+        "it" => "Italiano",
+        "nl" => "Nederlands",
+        "pt" => "Português",
+        "pl" => "Polski",
+        "cs" => "Čeština",
+        "sk" => "Slovenčina",
+        "sl" => "Slovenščina",
+        "hr" => "Hrvatski",
+        "hu" => "Magyar",
+        "sv" => "Svenska",
+        "da" => "Dansk",
+        "no" | "nb" => "Norsk",
+        "fi" => "Suomi",
+        "tr" => "Türkçe",
+        "el" => "Ελληνικά",
+        "ru" => "Русский",
+        "uk" => "Українська",
+        "ja" => "日本語",
+        "zh" => "中文",
+        _ => code,
+    }
+}
+
+/// The light/dark switch's labels in the site's language: for the
+/// system's setting, light and dark.
+fn mode_labels(language: &str) -> [&'static str; 3] {
+    match language.split('-').next().unwrap_or_default() {
+        "de" => ["Farben wie im System", "Helle Farben", "Dunkle Farben"],
+        _ => ["Colors as in the system", "Light colors", "Dark colors"],
+    }
+}
+
 /// "Close" in the site's language, for the button over an image shown big.
 fn close_label(language: &str) -> &'static str {
     match language.split('-').next().unwrap_or_default() {
@@ -1488,10 +1872,73 @@ fn close_label(language: &str) -> &'static str {
     }
 }
 
+/// The icon in the browser tab, and for a PNG on phones' home screens.
+struct TabIcon {
+    href: String,
+    /// The file's media type, so browsers needn't fetch one they can't show.
+    mime: &'static str,
+    /// Also `apple-touch-icon`: iPhones take a PNG, not an SVG or ICO.
+    touch: bool,
+}
+
+/// The site icon if there is one (its file in `media/`, as it is), else a
+/// `favicon.ico` of the site's own in `static/`, else the logo; a wide
+/// logo makes a poor tab icon, so the other two win.
+fn tab_icon(site: &Site, links: &LinkContext, images: &Images) -> Option<TabIcon> {
+    let mime = |name: &str| match name
+        .rsplit_once('.')
+        .map(|(_, e)| e.to_lowercase())
+        .as_deref()
+    {
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("ico") => "image/x-icon",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("avif") => "image/avif",
+        _ => "image/jpeg",
+    };
+    if let Some(name) = site
+        .config
+        .icon
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+    {
+        let mime = mime(name);
+        return Some(TabIcon {
+            href: media_link(name, links),
+            mime,
+            touch: mime == "image/png",
+        });
+    }
+    if site.root.join(STATIC_DIR).join("favicon.ico").is_file() {
+        return Some(TabIcon {
+            href: format!("{}favicon.ico", links.to_root()),
+            mime: "image/x-icon",
+            touch: false,
+        });
+    }
+    let logo = site.config.logo.as_deref()?;
+    picture(logo, None, links, images).map(|picture| TabIcon {
+        href: picture.src,
+        mime: mime(logo),
+        touch: false,
+    })
+}
+
 #[derive(Template)]
 #[template(path = "redirect.html")]
 struct RedirectTemplate<'a> {
     target: &'a str,
+    language: &'a str,
+    /// The theme's page background and text, as `#rrggbb`: the page shows
+    /// for a moment, so it shouldn't flash white on a dark site.
+    background: &'a str,
+    text: &'a str,
+    dark: bool,
+    /// Background and text of the dark side, for a site with dark mode.
+    dark_side: Option<(&'a str, &'a str)>,
 }
 
 struct MenuLink {
@@ -1504,8 +1951,13 @@ struct MenuLink {
     current: bool,
     /// Exactly this page is being shown.
     exact: bool,
-    /// A group's title in the sidebar: a heading, not a link.
+    /// A group of a hand-made menu: a title that folds its entries
+    /// (`children`) open and closed, not a link.
     heading: bool,
+    /// A group's entries.
+    children: Vec<MenuLink>,
+    /// A group that starts open (see `sidebar_links`).
+    open: bool,
 }
 
 /// An entry of a hand-made main menu in the top bar: a link, or a group
@@ -1553,12 +2005,14 @@ fn hand_made_menu(
                 });
             }
             let (title, href, target) = if let Some(path) = &item.page {
-                let path = path.trim().trim_matches('/');
+                // A page in the page's language; one without a
+                // translation in it is left out.
+                let path = links.translated(crate::site::menu_page_path(path));
                 let page = pages.iter().find(|page| page.path == path)?;
                 (
                     title.unwrap_or_else(|| page.content.front.title.clone()),
-                    links.page(path),
-                    Some(path.to_string()),
+                    links.page(&path),
+                    Some(path),
                 )
             } else {
                 let link = item.link.as_deref()?.trim();
@@ -1576,32 +2030,55 @@ fn hand_made_menu(
         .collect()
 }
 
+/// The automatic menu for the sidebar: each top-level page with pages
+/// below it becomes a group that folds, its title still a link to the
+/// page. The pages below keep their indentation, one level less inside the
+/// group. Only the group of the page being shown starts open.
+fn folded(links: Vec<MenuLink>) -> Vec<MenuLink> {
+    let mut groups: Vec<MenuLink> = Vec::new();
+    for mut link in links {
+        match groups.last_mut() {
+            Some(parent) if link.level > 0 => {
+                link.level -= 1;
+                parent.heading = true;
+                parent.open = parent.current;
+                parent.children.push(link);
+            }
+            _ => groups.push(link),
+        }
+    }
+    groups
+}
+
 /// A hand-made menu for the sidebar: groups become headings with their
 /// entries below; dividers are left out.
 fn sidebar_links(nav: &[NavItem]) -> Vec<MenuLink> {
-    let mut links = Vec::new();
-    for item in nav {
-        let group = !item.children.is_empty();
-        links.push(MenuLink {
-            title: item.title.clone(),
-            href: item.href.clone(),
-            level: 0,
-            icon: None,
-            current: item.current,
-            exact: item.exact,
-            heading: group,
-        });
-        for child in item.children.iter().filter(|child| !child.divider) {
-            links.push(MenuLink {
-                title: child.title.clone(),
-                href: child.href.clone(),
-                level: 0,
-                icon: None,
-                current: child.current,
-                exact: child.exact,
-                heading: false,
-            });
-        }
+    let link = |item: &NavItem, children: Vec<MenuLink>| MenuLink {
+        title: item.title.clone(),
+        href: item.href.clone(),
+        level: 0,
+        icon: None,
+        current: item.current,
+        exact: item.exact,
+        heading: !children.is_empty(),
+        children,
+        open: false,
+    };
+    let mut links: Vec<MenuLink> = nav
+        .iter()
+        .map(|item| {
+            let children = item
+                .children
+                .iter()
+                .filter(|child| !child.divider)
+                .map(|child| link(child, Vec::new()))
+                .collect();
+            link(item, children)
+        })
+        .collect();
+    // Only the group of the page being shown starts open.
+    for group in links.iter_mut().filter(|l| l.heading) {
+        group.open = group.current;
     }
     links
 }
@@ -1680,6 +2157,10 @@ static PODLOVE_PLAYER: include_dir::Dir<'_> =
 
 /// Where the player goes in the built site, its episode data next to each
 /// episode page, and q.e.d.'s script that starts it.
+/// The light/dark switch (#146), for sites with dark mode; at the site
+/// root, loaded in every page's `<head>`.
+const MODE_SCRIPT: &str = "mode.js";
+const MODE_SCRIPT_JS: &str = include_str!("../assets/mode.js");
 const PLAYER_DIR: &str = "podlove-player";
 const PLAYER_EPISODE: &str = "player.json";
 const PLAYER_SCRIPT: &str = include_str!("../assets/player.js");
@@ -1718,15 +2199,44 @@ const PLAYER_SUBSCRIBE_CLIENTS: [&str; 10] = [
     "rss",
 ];
 
+/// The player's colors: shades of the button color `brand`, with dark
+/// text on light, or light text on dark for dark mode.
+fn player_theme(brand: &str, dark: bool) -> serde_json::Value {
+    let shade = |other: &str, amount: f64| {
+        crate::theme::mix_hex(brand, other, amount).unwrap_or_else(|| brand.to_string())
+    };
+    // The lightest shade is a background; on dark, a dark one.
+    let (contrast, alt, lightest) = if dark {
+        ("#ffffff", "#000000", shade("#000000", 0.8))
+    } else {
+        ("#000000", "#ffffff", shade("#ffffff", 0.9))
+    };
+    serde_json::json!({
+        "tokens": {
+            "brand": brand,
+            "brandDark": shade("#000000", 0.25),
+            "brandDarkest": shade("#000000", 0.6),
+            "brandLightest": lightest,
+            "shadeDark": "#807e7c",
+            "shadeBase": "#807e7c",
+            "contrast": contrast,
+            "alt": alt,
+        }
+    })
+}
+
 /// Writes the player, its settings for the whole site and the script that
 /// starts it into the built site. The theme tokens are shades of the
-/// theme's button color.
+/// theme's button color. A site with dark mode gets a second set of
+/// settings for it, `config-dark.json`, with the dark side's button color
+/// and light text on dark.
 fn write_player(
     out_dir: &Path,
     site: &Site,
     published: &[&Page],
     today: Date,
     button_color: Option<&str>,
+    dark_button_color: Option<&str>,
 ) -> Result<(), BuildError> {
     write_embedded(&PODLOVE_PLAYER, &out_dir.join(PLAYER_DIR))?;
     write(
@@ -1789,21 +2299,17 @@ fn write_player(
         config["playlist"] = format!("{root}{PLAYER_DIR}/{PLAYER_PLAYLIST}").into();
     }
     if let Some(brand) = button_color {
-        let shade = |other: &str, amount: f64| {
-            crate::theme::mix_hex(brand, other, amount).unwrap_or_else(|| brand.to_string())
-        };
-        config["theme"] = serde_json::json!({
-            "tokens": {
-                "brand": brand,
-                "brandDark": shade("#000000", 0.25),
-                "brandDarkest": shade("#000000", 0.6),
-                "brandLightest": shade("#ffffff", 0.9),
-                "shadeDark": "#807e7c",
-                "shadeBase": "#807e7c",
-                "contrast": "#000000",
-                "alt": "#ffffff",
-            }
-        });
+        config["theme"] = player_theme(brand, false);
+    }
+    if site.config.dark.is_some() {
+        let mut dark = config.clone();
+        if let Some(brand) = dark_button_color.or(button_color) {
+            dark["theme"] = player_theme(brand, true);
+        }
+        write(
+            &out_dir.join(PLAYER_DIR).join("config-dark.json"),
+            dark.to_string(),
+        )?;
     }
     write(
         &out_dir.join(PLAYER_DIR).join("config.json"),
@@ -1967,6 +2473,7 @@ fn contributor_pages(site: &Site) -> Vec<Page> {
     let mut pages = Vec::new();
     if !taken(CONTRIBUTORS_DIR) {
         pages.push(Page {
+            language: None,
             path: CONTRIBUTORS_DIR.to_string(),
             file: PathBuf::from(CONTRIBUTORS_DIR).join("index.md"),
             content: PageContent {
@@ -2005,6 +2512,7 @@ fn contributor_pages(site: &Site) -> Vec<Page> {
             None => Block::Text { markdown: text },
         };
         pages.push(Page {
+            language: None,
             path: path.clone(),
             file: PathBuf::from(CONTRIBUTORS_DIR).join(format!("{}.md", person.id)),
             content: PageContent {
@@ -2518,8 +3026,11 @@ fn render_page(
     } else {
         LinkContext::new(&page.path, &page.file)
     }
-    .with_own_site(config.base_url.as_deref());
+    .with_own_site(config.base_url.as_deref())
+    .in_language(page.language.as_deref(), context.page_paths.clone());
 
+    // A language's start page (`de`) is current only on itself, as `/` is.
+    let home = translated_path("", page.language.as_deref());
     let menu_links = |entries: &[MenuEntry]| -> Vec<MenuLink> {
         entries
             .iter()
@@ -2528,9 +3039,15 @@ fn render_page(
                 href: links.page(&entry.path),
                 level: entry.level,
                 icon: entry.icon,
-                current: is_within(&page.path, &entry.path),
+                current: if entry.path == home {
+                    page.path == home
+                } else {
+                    is_within(&page.path, &entry.path)
+                },
                 exact: page.path == entry.path,
                 heading: false,
+                children: Vec::new(),
+                open: false,
             })
             .collect()
     };
@@ -2547,7 +3064,7 @@ fn render_page(
     if let Some(date) = &front.date {
         byline.push(date.date().map_or_else(
             || date.to_string(),
-            |day| calendar::long_date(day, &site.config.language),
+            |day| calendar::long_date(day, context.language),
         ));
     }
     if !front.authors.is_empty() {
@@ -2574,6 +3091,14 @@ fn render_page(
         sidebar_links(&nav)
     };
     let sidebar = config.navigation == Navigation::Sidebar && !main_links.is_empty();
+    // The automatic menu groups pages below a top-level page under it, like
+    // a hand-made one: they fold in the sidebar and are a dropdown in the
+    // top bar.
+    let main_links = if nav.is_empty() {
+        folded(main_links)
+    } else {
+        main_links
+    };
     let failed = |source| BuildError::Template {
         page: page.path.clone(),
         source,
@@ -2623,7 +3148,52 @@ fn render_page(
         .iter()
         .any(|html| html.contains("data-podlove-player"))
         .then(|| format!("{}{PLAYER_FILE}", links.to_root()));
+    let neighbours = if not_found {
+        Neighbours::default()
+    } else {
+        neighbours(page, context, &links)
+    };
+    // The feeds of the page's language.
+    let feeds: Vec<&Feed> = feeds
+        .iter()
+        .filter(|feed| feed.page.language == page.language)
+        .collect();
+    // The language switch (#145): the page in each of the site's
+    // languages, or that language's start page where it has no
+    // translation; `hreflang` links name the translations.
+    let mut languages = Vec::new();
+    let mut alternates = Vec::new();
+    if !config.languages.is_empty() && !not_found {
+        let codes = std::iter::once(None).chain(config.languages.keys().map(|c| Some(c.as_str())));
+        for code in codes {
+            let wanted = translated_path(page.main_path(), code);
+            let exists = context.all_pages.iter().any(|p| p.path == wanted);
+            let target = if exists {
+                wanted
+            } else {
+                translated_path("", code)
+            };
+            let lang = code.unwrap_or(&config.language);
+            if exists && let Some(base) = &config.base_url {
+                alternates.push(LanguageLink {
+                    code: lang.to_string(),
+                    short: String::new(),
+                    name: String::new(),
+                    href: absolute(base, &target),
+                    current: false,
+                });
+            }
+            languages.push(LanguageLink {
+                code: lang.to_string(),
+                short: lang.split(['-', '_']).next().unwrap_or(lang).to_uppercase(),
+                name: language_name(lang).to_string(),
+                href: links.page(&target),
+                current: code == page.language.as_deref(),
+            });
+        }
+    }
     let template = PageTemplate {
+        neighbours,
         player_script,
         searchable: config.search && !not_found,
         colors: context.colors,
@@ -2641,21 +3211,16 @@ fn render_page(
             .logo
             .as_deref()
             .and_then(|name| picture(name, None, &links, context.images)),
-        // A favicon.ico of its own wins: a wide logo makes a poor tab icon.
-        icon: if site.root.join(STATIC_DIR).join("favicon.ico").is_file() {
-            Some(format!("{}favicon.ico", links.to_root()))
-        } else {
-            config
-                .logo
-                .as_deref()
-                .and_then(|name| picture(name, None, &links, context.images))
-                .map(|logo| logo.src)
-        },
+        icon: tab_icon(site, &links, context.images),
         feeds: context
             .podcast_feeds
             .iter()
             .map(|feed| FeedLink {
-                title: format!("{} · {}", feed.label, config.title),
+                title: format!(
+                    "{} · {}",
+                    feed.label,
+                    config.title_in(page.language.as_deref())
+                ),
                 href: format!("{}{}", links.to_root(), feed.file),
                 label: feed.label.clone(),
             })
@@ -2670,9 +3235,9 @@ fn render_page(
             }))
             .collect(),
         rss_icon: RSS_ICON,
-        is_home: page.path.is_empty(),
+        is_home: page.main_path().is_empty(),
         root: links.to_root(),
-        home_href: links.page(""),
+        home_href: links.page(&translated_path("", page.language.as_deref())),
         main_menu: main_links,
         nav,
         footer_menu: menu_links(footer_menu),
@@ -2686,14 +3251,19 @@ fn render_page(
             (PageWidth::Wide, true) => "max-w-7xl",
             (PageWidth::Full, _) => "max-w-none",
         },
-        header: header_classes(config.header, config.logo_size),
+        header: site_header_classes(config),
+        mode_labels: mode_labels(context.language),
+        language: context.language,
+        site_title: config.title_in(page.language.as_deref()),
+        languages,
+        alternates,
         // Without a logo, the title is all the header has.
         show_site_title: config.title_in_header || config.logo.is_none(),
         byline: byline.join(" · "),
         blocks,
         // The footer's blocks, with this page's links (the footer is on
         // every page, so its links are relative to each one).
-        footer_blocks: match &site.footer {
+        footer_blocks: match site.footer_in(page.language.as_deref()) {
             Some(footer) => {
                 let in_footer = Context {
                     footer: true,
@@ -3780,6 +4350,69 @@ mod tests {
     }
 
     #[test]
+    fn puts_pages_below_a_top_level_page_into_a_dropdown() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"S\"\n");
+        write("pages/index.md", "+++\ntitle = \"Home\"\n+++\n");
+        write(
+            "pages/blog.md",
+            "+++\ntitle = \"Blog\"\nmenu = \"main\"\n+++\n",
+        );
+        write(
+            "pages/blog/2026-01-05-first.md",
+            "+++\ntitle = \"First post\"\ndate = 2026-01-05\nmenu = \"main\"\n+++\n",
+        );
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let html = read(
+            out.path()
+                .join(
+                    &site
+                        .pages
+                        .iter()
+                        .find(|p| p.path.starts_with("blog/"))
+                        .unwrap()
+                        .path,
+                )
+                .join("index.html"),
+        );
+        let header = html
+            .split("<header")
+            .nth(1)
+            .and_then(|rest| rest.split("</header>").next())
+            .unwrap();
+        // Blog is a dropdown, with itself first and then its posts.
+        assert!(header.contains("dropdown"), "{header}");
+        let blog = header.find(">Blog</a>").unwrap();
+        let post = header.find(">First post</a>").unwrap();
+        assert!(blog < post, "{header}");
+
+        // The sidebar still has it, below Blog.
+        write("site.toml", "title = \"S\"\nnavigation = \"sidebar\"\n");
+        let site = site::open(dir.path()).unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let html = read(
+            out.path()
+                .join(
+                    &site
+                        .pages
+                        .iter()
+                        .find(|p| p.path.starts_with("blog/"))
+                        .unwrap()
+                        .path,
+                )
+                .join("index.html"),
+        );
+        assert!(html.contains("First post</a>"), "{html}");
+    }
+
+    #[test]
     fn puts_the_main_menu_into_a_sidebar_when_asked() {
         let mut site = demo_site();
         site.config.navigation = Navigation::Sidebar;
@@ -3837,9 +4470,21 @@ mod tests {
         build_into(&site, out.path()).unwrap();
         let html = read(out.path().join("index.html"));
         assert!(
-            html.contains(r#"<li class="ms-4 border-s border-base-300">"#),
-            "{html}"
+            html.contains(r#"<li><details><summary><a href="about/" class="flex items-center gap-2">About</a></summary>"#),
+            "a page with pages below folds, closed elsewhere: {html}"
         );
+        let team = read(out.path().join("about/team/index.html"));
+        assert!(
+            team.contains(r#"<li><details open><summary class="font-semibold"><a href="../../about/" class="flex items-center gap-2">About</a></summary>"#)
+                && team.contains(r#"<a href="../../about/team/" class="menu-active" aria-current="page">"#),
+            "open on a page in it: {team}"
+        );
+
+        // The top bar keeps every page in one row.
+        site.config.navigation = Navigation::Top;
+        build_into(&site, out.path()).unwrap();
+        let html = read(out.path().join("index.html"));
+        assert!(!html.contains("<details><summary><a"), "{html}");
     }
 
     #[test]
@@ -3852,6 +4497,14 @@ mod tests {
         let home = read(out.path().join("index.html"));
         let icon = crate::icons::svg("users").unwrap();
         assert!(home.contains(&format!("{icon}About</a>")), "{home}");
+
+        // In the footer menu too.
+        let about = site.pages.iter_mut().find(|p| p.path == "about").unwrap();
+        about.content.front.menu = Menu::Footer;
+        build_into(&site, out.path()).unwrap();
+        let home = read(out.path().join("index.html"));
+        let footer = home.split("<footer").nth(1).unwrap();
+        assert!(footer.contains(&format!("{icon}About</a>")), "{footer}");
     }
 
     #[test]
@@ -4096,7 +4749,7 @@ mod tests {
 
         let team = read(out.path().join("about/team/index.html"));
         assert!(
-            team.contains(r#"<link rel="icon" href="../../media/mark.svg">"#),
+            team.contains(r#"<link rel="icon" href="../../media/mark.svg" type="image/svg+xml">"#),
             "{team}"
         );
         assert!(team.contains(
@@ -4106,6 +4759,26 @@ mod tests {
         site.config.logo = None;
         build_into(&site, out.path()).unwrap();
         assert!(!read(out.path().join("index.html")).contains("rel=\"icon\""));
+    }
+
+    #[test]
+    fn names_the_owners_profiles_for_verification() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.profiles = vec![
+            "https://mastodon.social/@qed".into(),
+            "https://github.com/informatom".into(),
+        ];
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        for page in ["index.html", "blog/about/index.html"] {
+            let html = read(out.path().join(page));
+            assert!(
+                html.contains(r#"<link rel="me" href="https://mastodon.social/@qed">"#)
+                    && html.contains(r#"<link rel="me" href="https://github.com/informatom">"#),
+                "{page}: {html}"
+            );
+        }
     }
 
     #[test]
@@ -4119,8 +4792,24 @@ mod tests {
         build_on(&site, out.path(), TODAY).unwrap();
         let blog = read(out.path().join("blog/index.html"));
         assert!(
-            blog.contains(r#"<link rel="icon" href="../favicon.ico">"#),
+            blog.contains(r#"<link rel="icon" href="../favicon.ico" type="image/x-icon">"#),
             "{blog}"
+        );
+
+        // A site icon wins over both, as it is; a PNG also for phones.
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        fs::write(dir.path().join("media/tab.png"), b"png").unwrap();
+        site.config.icon = Some("tab.png".into());
+        build_on(&site, out.path(), TODAY).unwrap();
+        let blog = read(out.path().join("blog/index.html"));
+        assert!(
+            blog.contains(r#"<link rel="icon" href="../media/tab.png" type="image/png">"#)
+                && blog.contains(r#"<link rel="apple-touch-icon" href="../media/tab.png">"#),
+            "{blog}"
+        );
+        assert!(
+            out.path().join("media/tab.png").is_file(),
+            "copied with Media"
         );
         assert!(
             blog.contains(r#"<img src="../media/wide.svg""#),
@@ -4133,6 +4822,7 @@ mod tests {
         let page = |path: &str, block: &str| {
             let text = format!("+++\ntitle = \"T\"\n+++\n\n::: {block}\n:::\n");
             Page {
+                language: None,
                 path: path.to_string(),
                 file: PathBuf::from("pages/x.md"),
                 content: crate::page::parse(&text).unwrap(),
@@ -4205,6 +4895,96 @@ mod tests {
     }
 
     #[test]
+    fn links_pages_in_a_series_back_and_next() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"Series\"\nlanguage = \"en\"\n");
+        write("pages/index.md", "+++\ntitle = \"Home\"\n+++\n");
+        write("pages/about.md", "+++\ntitle = \"About\"\n+++\n");
+        write(
+            "pages/manual/index.md",
+            "+++\ntitle = \"Manual\"\nback_next = true\n+++\n",
+        );
+        write(
+            "pages/manual/one.md",
+            "+++\ntitle = \"One\"\nweight = 10\n+++\n",
+        );
+        write(
+            "pages/manual/two.md",
+            "+++\ntitle = \"Two\"\nweight = 20\n+++\n",
+        );
+        write(
+            "pages/manual/three.md",
+            "+++\ntitle = \"Three\"\nweight = 30\n+++\n",
+        );
+        write(
+            "pages/manual/draft.md",
+            "+++\ntitle = \"Draft\"\nweight = 25\ndraft = true\n+++\n",
+        );
+        write(
+            "pages/blog/index.md",
+            "+++\ntitle = \"Blog\"\nback_next = true\n+++\n",
+        );
+        write(
+            "pages/blog/old.md",
+            "+++\ntitle = \"Old\"\ndate = 2025-01-01\n+++\n",
+        );
+        write(
+            "pages/blog/mid.md",
+            "+++\ntitle = \"Mid\"\ndate = 2025-06-01\n+++\n",
+        );
+        write(
+            "pages/blog/new.md",
+            "+++\ntitle = \"New\"\ndate = 2025-12-01\n+++\n",
+        );
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let nav = |path: &str| {
+            let html = read(out.path().join(path).join("index.html"));
+            html.split_once(r#"<nav class="mt-16"#)
+                .map(|(_, rest)| rest.split("</nav>").next().unwrap_or_default().to_string())
+                .unwrap_or_default()
+        };
+
+        // Pages go by their order, drafts left out.
+        let two = nav("manual/two");
+        assert!(two.contains("← Back</span>"), "{two}");
+        assert!(two.contains(r#"href="../../manual/one/""#), "{two}");
+        assert!(two.contains("Next →</span>"), "{two}");
+        assert!(
+            two.contains(">Three</span>") && !two.contains("Draft"),
+            "{two}"
+        );
+        let one = nav("manual/one");
+        assert!(
+            !one.contains("← Back") && one.contains(">Two</span>"),
+            "{one}"
+        );
+        assert!(!nav("manual/three").contains("Next →"));
+
+        // Posts: the older one on the left, the newer on the right.
+        let mid = nav("blog/mid");
+        assert!(
+            mid.contains("← Older</span>") && mid.contains(">Old</span>"),
+            "{mid}"
+        );
+        assert!(
+            mid.contains("Newer →</span>") && mid.contains(">New</span>"),
+            "{mid}"
+        );
+        assert!(mid.contains(r#"aria-label="Older and newer""#), "{mid}");
+
+        // Only below a page that asks for it.
+        assert!(nav("about").is_empty());
+        assert!(nav("manual").is_empty());
+    }
+
+    #[test]
     fn lists_the_pages_below_a_page() {
         let dir = tempfile::tempdir().unwrap();
         let write = |file: &str, text: &str| {
@@ -4266,6 +5046,256 @@ mod tests {
 
         let about = read(out.path().join("about/index.html"));
         assert!(about.contains(r#"href="../people/zoe/""#), "{about}");
+    }
+
+    #[test]
+    fn builds_a_site_in_two_languages() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write(
+            "site.toml",
+            "title = \"Seite\"\nlanguage = \"de\"\nbase_url = \"https://example.com/\"\n\n[languages.en]\ntitle = \"Site\"\n",
+        );
+        write(
+            "pages/index.md",
+            "+++\ntitle = \"Start\"\n+++\n\n[Über uns](ueber.md), [Nur deutsch](nur.md)\n",
+        );
+        write(
+            "pages/index.en.md",
+            "+++\ntitle = \"Home\"\n+++\n\n[About](ueber.md), [Only German](nur.md)\n",
+        );
+        write(
+            "pages/ueber.md",
+            "+++\ntitle = \"Über uns\"\nmenu = \"main\"\n+++\n",
+        );
+        write(
+            "pages/ueber.en.md",
+            "+++\ntitle = \"About us\"\nmenu = \"main\"\n+++\n",
+        );
+        write(
+            "pages/nur.md",
+            "+++\ntitle = \"Nur deutsch\"\nmenu = \"main\"\n+++\n",
+        );
+        write(
+            "pages/blog.md",
+            "+++\ntitle = \"Blog\"\n+++\n\n::: post-list\n:::\n",
+        );
+        write(
+            "pages/blog.en.md",
+            "+++\ntitle = \"Blog\"\n+++\n\n::: post-list\n:::\n",
+        );
+        write(
+            "pages/blog/2026-01-05-hallo.md",
+            "+++\ntitle = \"Hallo Welt\"\ndate = 2026-01-05\n+++\n",
+        );
+        write(
+            "pages/blog/2026-01-06-hello.en.md",
+            "+++\ntitle = \"Hello world\"\ndate = 2026-01-06\n+++\n",
+        );
+        write("footer.md", "+++\ntitle = \"Fußzeile\"\n+++\n\nUnten\n");
+        write("footer.en.md", "+++\ntitle = \"Footer\"\n+++\n\nBelow\n");
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        let report = build_on(&site, out.path(), TODAY).unwrap();
+        assert_eq!(report.feeds, 2, "one blog feed per language");
+
+        let de = read(out.path().join("index.html"));
+        let en = read(out.path().join("en/index.html"));
+        assert!(de.contains(r#"<html lang="de""#) && en.contains(r#"<html lang="en""#));
+        assert!(
+            de.contains("<title>Seite</title>") && en.contains("<title>Site</title>"),
+            "{en}"
+        );
+        // Links by file name go to the page in the same language, if it has one.
+        assert!(en.contains(r#"href="../en/ueber/">About</a>"#), "{en}");
+        assert!(en.contains(r#"href="../nur/">Only German</a>"#), "{en}");
+        // Each language's own menu: the untranslated page isn't in English.
+        let menu = |html: &str| html.split("</header>").next().unwrap().to_string();
+        assert!(menu(&de).contains("Nur deutsch") && !menu(&en).contains("Nur deutsch"));
+        assert!(menu(&en).contains("About us") && !menu(&en).contains("Über uns"));
+        // The English start page in the menu doesn't hold the English pages.
+        write(
+            "pages/index.en.md",
+            "+++\ntitle = \"Home\"\nmenu = \"main\"\n+++\n",
+        );
+        let site = site::open(dir.path()).unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let about = read(out.path().join("en/ueber/index.html"));
+        assert!(!menu(&about).contains("dropdown"), "{}", menu(&about));
+        // The switch and hreflang links.
+        assert!(
+            en.contains(r#"<a href="../" hreflang="de" lang="de" title="Deutsch""#),
+            "{en}"
+        );
+        assert!(en.contains(r#"<link rel="alternate" hreflang="de" href="https://example.com/">"#));
+        assert!(
+            en.contains(r#"<link rel="alternate" hreflang="en" href="https://example.com/en/">"#)
+        );
+        // A page without a translation: the switch leads to the start page.
+        let only = read(out.path().join("nur/index.html"));
+        assert!(only.contains(r#"<a href="../en/" hreflang="en""#), "{only}");
+        assert!(
+            !only.contains("hreflang=\"en\" href=\"https"),
+            "no alternate for a missing one"
+        );
+        // Post lists, feeds and footers per language.
+        let blog_en = read(out.path().join("en/blog/index.html"));
+        assert!(
+            blog_en.contains("Hello world") && !blog_en.contains("Hallo Welt"),
+            "{blog_en}"
+        );
+        let feed_en = read(out.path().join("en/blog/feed.xml"));
+        assert!(feed_en.contains("Hello world") && !feed_en.contains("Hallo Welt"));
+        assert!(feed_en.contains("<language>en</language>"), "{feed_en}");
+        assert!(read(out.path().join("blog/feed.xml")).contains("<title>Blog · Seite</title>"));
+        assert!(en.contains("Below") && !en.contains("Unten"));
+        assert!(de.contains("Unten"));
+    }
+
+    #[test]
+    fn builds_a_dark_side_with_a_switch() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.language = "de".into();
+        site.config.theme = "catppuccin-latte".into();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(!home.contains("mode.js") && !home.contains("mode-switch"));
+        assert!(!home.contains("mode-light:"), "no dark mode, no prefixes");
+        assert!(!out.path().join("mode.js").exists());
+
+        site.config.dark = Some(crate::site::DarkSide {
+            theme: "catppuccin-mocha".into(),
+            custom_theme: None,
+            header: HeaderStyle::Neutral,
+            colors: Colors::default(),
+        });
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(home.contains(r#"data-theme="catppuccin-latte""#));
+        assert!(home.contains(r#"<meta name="color-scheme" content="light dark">"#));
+        assert!(
+            home.contains(r#"<script src="mode.js"></script>"#),
+            "{home}"
+        );
+        assert!(home.contains(r#"id="mode-switch""#) && home.contains("Dunkle Farben"));
+        // The footer: accent on light, shaded on dark (the defaults).
+        assert!(
+            home.contains(r#"<footer class="mode-light:on-color mode-light:bg-accent mode-light:text-accent-content mode-dark:bg-base-200 mode-dark:text-base-content">"#),
+            "{home}"
+        );
+        // The header: plain on light, a neutral bar on dark.
+        assert!(
+            home.contains("mode-dark:bg-neutral mode-dark:text-neutral-content"),
+            "{home}"
+        );
+        assert!(out.path().join("mode.js").exists());
+        let css = read(out.path().join("style.css"));
+        let dark = css
+            .split("/* Dark mode, based on catppuccin-mocha */")
+            .nth(1)
+            .unwrap();
+        assert!(
+            dark.contains(":root:not([data-mode=light]) {\n  color-scheme:dark;"),
+            "{dark}"
+        );
+        assert!(dark.contains(":root[data-mode=dark] {"), "{dark}");
+    }
+
+    #[test]
+    fn every_class_of_either_side_is_in_the_stylesheet() {
+        let surfaces = [
+            Surface::Plain,
+            Surface::Shaded,
+            Surface::Primary,
+            Surface::Secondary,
+            Surface::Accent,
+            Surface::Neutral,
+        ];
+        let colors = [
+            ThemeColor::Primary,
+            ThemeColor::Secondary,
+            ThemeColor::Accent,
+            ThemeColor::Neutral,
+        ];
+        let mut classes = BTreeSet::new();
+        let mut add = |text: &str| classes.extend(text.split_whitespace().map(str::to_string));
+        for (&surface, &color) in surfaces.iter().zip(colors.iter().cycle()) {
+            for dark in [false, true] {
+                let picked = color_classes(
+                    &Colors {
+                        links: Some(color),
+                        buttons: Some(color),
+                        call_to_action: Some(surface),
+                        hero: Some(surface),
+                        boxes: Some(surface),
+                        content: Some(surface),
+                        footer: Some(surface),
+                    },
+                    dark,
+                );
+                for text in [
+                    &picked.body,
+                    &picked.footer,
+                    &picked.hero,
+                    &picked.hero_button,
+                    &picked.image_button,
+                    &picked.call_to_action,
+                    &picked.call_to_action_button,
+                    &picked.boxed,
+                ] {
+                    add(text);
+                }
+            }
+        }
+        for style in [
+            HeaderStyle::Plain,
+            HeaderStyle::Primary,
+            HeaderStyle::Secondary,
+            HeaderStyle::Accent,
+            HeaderStyle::Neutral,
+        ] {
+            for size in [
+                LogoSize::Small,
+                LogoSize::Medium,
+                LogoSize::Large,
+                LogoSize::Original,
+            ] {
+                let header = header_classes(style, size);
+                for text in [&header.bar, &header.current, &header.logo] {
+                    add(text);
+                }
+            }
+        }
+        // Classes that are the same on both sides need no prefix.
+        let shared = [
+            "btn",
+            "h-9",
+            "h-12",
+            "h-16",
+            "h-auto",
+            "max-h-28",
+            "w-auto",
+            "max-w-48",
+            "max-w-64",
+            "max-w-80",
+            "max-w-full",
+            "object-contain",
+        ];
+        for class in classes.iter().filter(|c| !shared.contains(&c.as_str())) {
+            for prefix in ["mode-light", "mode-dark"] {
+                let escaped = format!(".{prefix}\\:{}", class.replace('.', "\\."));
+                assert!(
+                    STYLESHEET.contains(&escaped),
+                    "{prefix}:{class} is missing; add it to @source inline in site.input.css"
+                );
+            }
+        }
     }
 
     #[test]
@@ -4421,12 +5451,23 @@ mod tests {
 
     #[test]
     fn uses_the_chosen_theme_colors() {
-        let defaults = color_classes(&Colors::default());
+        let defaults = color_classes(&Colors::default(), false);
         assert_eq!(
             defaults.body, "bg-base-100",
             "links in primary need no class"
         );
         assert_eq!(defaults.footer, "on-color bg-accent text-accent-content");
+        let dark = color_classes(&Colors::default(), true);
+        assert_eq!(dark.footer, "bg-base-200 text-base-content");
+        let chosen = Colors {
+            footer: Some(Surface::Accent),
+            ..Colors::default()
+        };
+        assert_eq!(
+            color_classes(&chosen, true).footer,
+            "on-color bg-accent text-accent-content",
+            "a footer color that was picked wins"
+        );
         assert_eq!(defaults.hero_button, "btn btn-primary");
         assert_eq!(
             defaults.call_to_action_button, "btn",
@@ -4539,6 +5580,19 @@ mod tests {
             "{top}"
         );
         assert!(out.path().join("news/index.html").is_file());
+        assert!(
+            deep.contains("<style>body{background:#ffffff;") && deep.contains("content=\"light\""),
+            "the theme's colors: {deep}"
+        );
+
+        site.config.theme = "catppuccin-mocha".into();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let dark = read(out.path().join("old.html"));
+        assert!(
+            dark.contains("<style>body{background:#1e1e2e;color:#cdd6f4;")
+                && dark.contains("content=\"dark\""),
+            "{dark}"
+        );
     }
 
     #[test]
@@ -4829,10 +5883,33 @@ mod tests {
                 ..MenuItem::default()
             },
             page("blog", None),
+            page("index", Some("Start")),
             page("gone", None),
+            page("blog/2026-02-02-draft", None),
         ];
         let out = tempfile::tempdir().unwrap();
-        build_on(&site, out.path(), TODAY).unwrap();
+        let report = build_on(&site, out.path(), TODAY).unwrap();
+        assert!(
+            report.notes.contains(
+                &"The menu has an entry for \"/gone\", but there's no such page; it's left out."
+                    .to_string()
+            ),
+            "{:?}",
+            report.notes
+        );
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("\"/blog/2026-02-02-draft\", but that page is a draft")),
+            "{:?}",
+            report.notes
+        );
+        assert!(
+            !report.notes.iter().any(|n| n.contains("\"/\"")),
+            "the start page as `index` is found: {:?}",
+            report.notes
+        );
         let about = read(out.path().join("blog/about/index.html"));
         let header = &about[about.find("<header").unwrap()..about.find("</header>").unwrap()];
         assert!(header.contains("dropdown dropdown-hover"), "{header}");
@@ -4846,12 +5923,38 @@ mod tests {
             "page title by default: {header}"
         );
         assert!(
+            header.contains(">Start</a>"),
+            "`index` is the start page: {header}"
+        );
+        assert!(
             !header.contains("gone"),
             "missing pages are left out: {header}"
         );
         assert!(
-            header.contains(r#"<li class="menu-title mt-2">More</li>"#),
-            "phone menu heading: {header}"
+            header.contains(r#"<li><details open><summary>More</summary>"#),
+            "phone menu group, open on a page in it: {header}"
+        );
+
+        // In the sidebar, groups fold; the current page's starts open.
+        site.config.navigation = Navigation::Sidebar;
+        site.config.main_menu.push(MenuItem {
+            title: Some("Elsewhere".into()),
+            items: vec![page("blog/2026-01-05-old", None)],
+            ..MenuItem::default()
+        });
+        build_on(&site, out.path(), TODAY).unwrap();
+        let about = read(out.path().join("blog/about/index.html"));
+        let sidebar = &about[about.find("aria-label=\"Main menu\"").unwrap()..];
+        assert!(
+            sidebar.contains("<li><details open><summary>More</summary>")
+                && sidebar.contains("<li><details><summary>Elsewhere</summary>"),
+            "{sidebar}"
+        );
+        let home = read(out.path().join("index.html"));
+        assert!(
+            home.contains("<li><details><summary>More</summary>")
+                && home.contains("<li><details><summary>Elsewhere</summary>"),
+            "outside every group, all closed: {home}"
         );
     }
 
@@ -4922,6 +6025,19 @@ mod tests {
         let error = build_into(&demo_site(), out.path()).unwrap_err();
         assert!(matches!(error, BuildError::NotOurs(_)));
         assert!(out.path().join("precious.txt").exists());
+    }
+
+    #[test]
+    fn pages_named_by_a_date_pass_their_posts_on_to_the_feed_above() {
+        assert_eq!(feed_parent("blog/hello"), "blog");
+        assert_eq!(feed_parent("blog/2026-10-21/hello"), "blog");
+        assert_eq!(feed_parent("blog/2026/10/hello"), "blog/2026/10");
+        assert_eq!(feed_parent("blog/2026/2026-10/hello"), "blog");
+        assert_eq!(feed_parent("2026-10-21/hello"), "");
+        assert_eq!(feed_parent("hello"), "");
+        assert_eq!(feed_parent("news/sport/hello"), "news/sport");
+        assert!(is_date_name("2026") && is_date_name("2026-10") && is_date_name("2026-10-21"));
+        assert!(!is_date_name("26-10-21") && !is_date_name("2026-1") && !is_date_name("news"));
     }
 
     #[test]

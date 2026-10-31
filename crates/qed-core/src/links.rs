@@ -4,7 +4,9 @@
 //! root of a domain, in a subfolder such as a GitHub Pages project site, and
 //! in the local preview.
 
+use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 
 use crate::site::{ASSETS_DIR, MEDIA_DIR, PAGES_DIR};
 
@@ -21,6 +23,11 @@ pub struct LinkContext {
     /// The site's own web address (`base_url`): full links to it are
     /// links inside the site.
     own_site: Option<String>,
+    /// The page's further language (#145) and the addresses of the site's
+    /// pages: a link to a page's file (`about.md`) that has a translation
+    /// in that language leads to the translation. An address written out
+    /// (`/about`, `/en/about`) leads exactly there.
+    language: Option<(String, Arc<BTreeSet<String>>)>,
 }
 
 impl LinkContext {
@@ -30,6 +37,7 @@ impl LinkContext {
             page_file: page_file.to_path_buf(),
             root: None,
             own_site: None,
+            language: None,
         }
     }
 
@@ -41,6 +49,30 @@ impl LinkContext {
             page_file: page_file.to_path_buf(),
             root: Some(root.to_string()),
             own_site: None,
+            language: None,
+        }
+    }
+
+    /// Links from a page in a further language (`en`): those to a page
+    /// with a translation in it (one of `paths`, the site's pages) lead to
+    /// the translation.
+    pub fn in_language(mut self, language: Option<&str>, paths: Arc<BTreeSet<String>>) -> Self {
+        self.language = language.map(|code| (code.to_string(), paths));
+        self
+    }
+
+    /// `about` as `en/about` on an English page, if that page exists.
+    pub fn translated(&self, path: String) -> String {
+        match &self.language {
+            Some((code, paths)) => {
+                let translation = crate::site::translated_path(&path, Some(code));
+                if paths.contains(&translation) {
+                    translation
+                } else {
+                    path
+                }
+            }
+            None => path,
         }
     }
 
@@ -194,7 +226,9 @@ impl LinkContext {
     }
 
     /// Resolves a relative `.md` link against this page's file and returns
-    /// the target page's URL path, if it lands inside `pages/`.
+    /// the target page's URL path, if it lands inside `pages/`: a
+    /// translation's own file (`about.en.md`) its own, another file the
+    /// translation in this page's language if there is one.
     fn markdown_target(&self, target: &str) -> Option<String> {
         let folder = self.page_file.parent()?;
         let joined = normalize(&folder.join(target))?;
@@ -203,10 +237,22 @@ impl LinkContext {
             .components()
             .map(|c| c.as_os_str().to_string_lossy().into_owned())
             .collect();
+        let mut language = None;
+        if let Some(last) = segments.last_mut()
+            && let Some((stem, code)) = last.split_once('.')
+            && crate::site::is_language_code(code)
+        {
+            language = Some(code.to_string());
+            *last = stem.to_string();
+        }
         if segments.last().is_some_and(|last| last == "index") {
             segments.pop();
         }
-        Some(segments.join("/"))
+        let path = segments.join("/");
+        Some(match language {
+            Some(code) => crate::site::translated_path(&path, Some(&code)),
+            None => self.translated(path),
+        })
     }
 }
 

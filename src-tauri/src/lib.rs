@@ -3,7 +3,7 @@
 
 mod secrets;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use qed_core::block::Block;
@@ -33,6 +33,10 @@ use tauri::{AppHandle, Manager, State};
 /// turns changing it.
 #[derive(Default)]
 struct PreviewState(Mutex<Option<Preview>>);
+
+/// The built manual and its server, with the theme it was built in.
+#[derive(Default)]
+struct ManualState(Mutex<Option<(String, Preview)>>);
 
 /// The URL slug for a title. The UI calls it as `commands.slugify(title)`.
 #[tauri::command]
@@ -347,6 +351,26 @@ async fn pages_linking_to(root: PathBuf, path: String) -> Result<Vec<String>, St
     Ok(site::pages_linking_to(&site, &path))
 }
 
+/// The languages the manual is in, for the App tab's choice.
+#[tauri::command]
+#[specta::specta]
+fn manual_languages() -> Vec<String> {
+    qed_core::manual::languages()
+}
+
+/// Starts a page's translation into `language` (see
+/// `site::create_translation`) and returns it.
+#[tauri::command]
+#[specta::specta]
+async fn create_translation(
+    root: PathBuf,
+    file: PathBuf,
+    language: String,
+) -> Result<Page, String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    site::create_translation(&site, &file, &language).map_err(|error| error.to_string())
+}
+
 /// Deletes a page's file, after closing the open version (see
 /// `editing::delete_page`).
 #[tauri::command]
@@ -421,6 +445,69 @@ async fn build_site(path: PathBuf) -> Result<BuildReport, String> {
 struct PreviewInfo {
     url: String,
     report: BuildReport,
+}
+
+/// Opens the manual (#110) in a window of its own, at `page` (`versions/`,
+/// or empty for its start). It's built from the pages compiled into the
+/// app (see `qed_core::manual`), in the app's `theme`, once per run or
+/// theme, and served like a preview. Links to other websites open in the
+/// browser.
+#[tauri::command]
+#[specta::specta]
+async fn open_manual(
+    app: AppHandle,
+    theme: String,
+    language: String,
+    page: Option<String>,
+    state: State<'_, ManualState>,
+) -> Result<(), String> {
+    let base = {
+        let mut manual = state
+            .0
+            .lock()
+            .map_err(|_| "manual state is broken".to_string())?;
+        let wanted = format!("{theme} {language}");
+        if manual.as_ref().is_none_or(|(built, _)| *built != wanted) {
+            let folder = app
+                .path()
+                .app_cache_dir()
+                .map_err(|error| error.to_string())?
+                .join("manual");
+            let report =
+                qed_core::manual::build(&folder, &theme, &language).map_err(|e| e.to_string())?;
+            let server = Preview::start(&report.out_dir).map_err(|e| e.to_string())?;
+            *manual = Some((wanted, server));
+        }
+        manual
+            .as_ref()
+            .map(|(_, server)| server.url().to_string())
+            .unwrap_or_default()
+    };
+    let address = format!("{base}{}", page.unwrap_or_default().trim_start_matches('/'));
+    let url: tauri::Url = address.parse().map_err(|error| format!("{error}"))?;
+
+    if let Some(window) = app.get_webview_window("manual") {
+        window.navigate(url).map_err(|error| error.to_string())?;
+        window.show().map_err(|error| error.to_string())?;
+        return window.set_focus().map_err(|error| error.to_string());
+    }
+    let opener = app.clone();
+    tauri::WebviewWindowBuilder::new(&app, "manual", tauri::WebviewUrl::External(url))
+        .title("q.e.d. manual")
+        .inner_size(1100.0, 850.0)
+        .on_navigation(move |target| {
+            // The manual's own pages stay here; anything else goes to the
+            // browser, where it can be read properly.
+            if target.as_str().starts_with(&base) {
+                return true;
+            }
+            use tauri_plugin_opener::OpenerExt;
+            let _ = opener.opener().open_url(target.as_str(), None::<&str>);
+            false
+        })
+        .build()
+        .map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 /// Builds the site and serves it locally.
@@ -513,12 +600,12 @@ fn custom_theme_variables(custom: CustomTheme) -> Vec<ThemeVariable> {
     custom.variables()
 }
 
-/// The theme names the app and generated sites can use: daisyUI's and
-/// the Catppuccin flavors.
+/// The themes the app and generated sites can use (daisyUI's and the
+/// Catppuccin flavors), each marked light or dark.
 #[tauri::command]
 #[specta::specta]
-fn list_themes() -> Vec<&'static str> {
-    qed_core::theme::THEMES.to_vec()
+fn list_themes() -> Vec<qed_core::theme::ThemeChoice> {
+    qed_core::theme::choices()
 }
 
 /// Replaces the site's publish targets in targets.toml.
@@ -695,41 +782,17 @@ async fn close_open_version(root: PathBuf, note: String) -> Result<Option<Versio
     history::close_open_version(&root, &note).map_err(|error| error.to_string())
 }
 
-/// Where the `qed-mcp` program is (#105), for the settings an AI assistant
-/// needs; `None` if it isn't there (a development build without
-/// `cargo build -p qed-mcp`). Installers put it next to q.e.d.'s own
-/// program. An AppImage runs from a new temporary folder each time, so
-/// there it's copied to the app's data folder, which stays put.
+/// The program an AI assistant starts, with `mcp` and the site folder,
+/// to work on a site (#105): q.e.d. itself. An AppImage runs from a new
+/// temporary folder each time; there it's the AppImage file, which stays
+/// put.
 #[tauri::command]
 #[specta::specta]
-fn mcp_program(app: AppHandle) -> Result<Option<PathBuf>, String> {
-    let name = if cfg!(windows) {
-        "qed-mcp.exe"
-    } else {
-        "qed-mcp"
-    };
-    let own = std::env::current_exe().map_err(|error| error.to_string())?;
-    let Some(beside) = own.parent().map(|folder| folder.join(name)) else {
-        return Ok(None);
-    };
-    if !beside.is_file() {
-        return Ok(None);
+fn mcp_program() -> Result<PathBuf, String> {
+    if let Some(appimage) = std::env::var_os("APPIMAGE") {
+        return Ok(PathBuf::from(appimage));
     }
-    if std::env::var_os("APPIMAGE").is_none() {
-        return Ok(Some(beside));
-    }
-    let folder = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
-    std::fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
-    let stable = folder.join(name);
-    // A newer q.e.d. brings a newer qed-mcp: copy whenever they differ.
-    let differs = std::fs::read(&beside).ok() != std::fs::read(&stable).ok();
-    if differs {
-        std::fs::copy(&beside, &stable).map_err(|error| error.to_string())?;
-    }
-    Ok(Some(stable))
+    std::env::current_exe().map_err(|error| error.to_string())
 }
 
 /// The versions of the site, or of one file in it, newest first.
@@ -978,6 +1041,8 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             audio_info,
             pages_linking_to,
             delete_page,
+            create_translation,
+            manual_languages,
             move_page,
             set_page_order,
             deleted_pages,
@@ -989,6 +1054,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             save_version,
             resting_version,
             mcp_program,
+            open_manual,
             close_open_version,
             list_versions,
             page_version,
@@ -1014,6 +1080,23 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
         .dangerously_cast_bigints_to_number()
 }
 
+/// `qed mcp /path/to/site` (#105): serves the site to an AI assistant
+/// over stdin and stdout until it hangs up. Messages for people go to
+/// stderr; stdout belongs to the protocol.
+pub fn serve_mcp(root: Option<std::ffi::OsString>) -> std::process::ExitCode {
+    let Some(root) = root else {
+        eprintln!("usage: qed mcp /path/to/site");
+        return std::process::ExitCode::FAILURE;
+    };
+    match qed_mcp::serve(Path::new(&root)) {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("qed mcp: {error}");
+            std::process::ExitCode::FAILURE
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1026,6 +1109,7 @@ pub fn run() {
         // runs. The very first start uses tauri.conf.json (maximized).
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(PreviewState::default())
+        .manage(ManualState::default())
         .invoke_handler(commands().invoke_handler())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

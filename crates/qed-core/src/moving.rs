@@ -38,6 +38,12 @@ pub fn move_page(site: &Site, file: &Path, parent: &str, slug: &str) -> Result<P
     if page.path.is_empty() {
         return Err(invalid("the start page always stays at /".to_string()));
     }
+    if page.language.is_some() {
+        return Err(invalid(
+            "a translation keeps the address of its page; move that one, and its translations go along"
+                .to_string(),
+        ));
+    }
 
     let slug = slug.trim();
     let clean = slugify(slug);
@@ -172,7 +178,7 @@ fn move_menu_entries(items: &mut [site::MenuItem], new_paths: &BTreeMap<&str, &s
     let mut changed = false;
     for item in items {
         if let Some(page) = &mut item.page
-            && let Some(new) = new_paths.get(page.trim().trim_matches('/'))
+            && let Some(new) = new_paths.get(site::menu_page_path(page).as_str())
         {
             *page = new.to_string();
             changed = true;
@@ -193,23 +199,36 @@ fn move_menu_entries(items: &mut [site::MenuItem], new_paths: &BTreeMap<&str, &s
 
 /// The page and every page below it, with their new paths and files.
 /// Fails if a new address or file is taken.
+/// The pages that move: `page`, those below it, and their translations
+/// (`about.en.md` goes along with `about.md`, #145).
 fn plan(site: &Site, page: &Page, new_path: &str) -> Result<Vec<Move>, SiteError> {
     let below = format!("{}/", page.path);
     let moves: Vec<Move> = site
         .pages
         .iter()
-        .filter(|p| p.path == page.path || p.path.starts_with(&below))
+        .filter(|p| p.main_path() == page.path || p.main_path().starts_with(&below))
         .map(|p| {
-            let path = format!("{new_path}{}", &p.path[page.path.len()..]);
+            let main = format!("{new_path}{}", &p.main_path()[page.path.len()..]);
+            let suffix = p
+                .language
+                .as_deref()
+                .map(|code| format!(".{code}"))
+                .unwrap_or_default();
             // `about/index.md` stays in its own folder, `about.md` doesn't.
-            let file = if p.file.file_name().is_some_and(|name| name == "index.md") {
-                PathBuf::from(PAGES_DIR).join(&path).join("index.md")
+            let index = p
+                .file
+                .file_stem()
+                .is_some_and(|stem| stem.to_string_lossy() == format!("index{suffix}"));
+            let file = if index {
+                PathBuf::from(PAGES_DIR)
+                    .join(&main)
+                    .join(format!("index{suffix}.md"))
             } else {
-                PathBuf::from(PAGES_DIR).join(&path).with_extension("md")
+                PathBuf::from(PAGES_DIR).join(format!("{main}{suffix}.md"))
             };
             Move {
                 old_path: p.path.clone(),
-                new_path: path,
+                new_path: site::translated_path(&main, p.language.as_deref()),
                 old_file: p.file.clone(),
                 new_file: file,
             }
@@ -440,6 +459,45 @@ mod tests {
         assert!(!contact.contains("redirect_from"), "{contact}");
 
         crate::generator::build(&site::open(root).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn takes_translations_along() {
+        let dir = sample();
+        let root = dir.path();
+        fs::write(
+            root.join("site.toml"),
+            format!("{}\n[languages.de]\n", read(root, "site.toml")),
+        )
+        .unwrap();
+        write(
+            root,
+            "pages/about.de.md",
+            "+++\ntitle = \"Über uns\"\n+++\n\nZum [Team](about/team.md).\n",
+        );
+        write(
+            root,
+            "pages/about/team.de.md",
+            "+++\ntitle = \"Team\"\n+++\n",
+        );
+        let site = site::open(root).unwrap();
+        let translation = site.pages.iter().find(|p| p.path == "de/about").unwrap();
+        assert!(move_page(&site, &translation.file, "", "firma").is_err());
+
+        move_page(&site, Path::new("pages/about.md"), "", "company").unwrap();
+        let site = site::open(root).unwrap();
+        let paths: Vec<&str> = site.pages.iter().map(|p| p.path.as_str()).collect();
+        assert!(
+            paths.contains(&"de/company") && paths.contains(&"de/company/team"),
+            "{paths:?}"
+        );
+        let german = read(root, "pages/company.de.md");
+        assert!(
+            german.contains("redirect_from = [\"/de/about\"]"),
+            "{german}"
+        );
+        assert!(read(root, "pages/company/team.de.md").contains("/de/about/team"));
+        crate::generator::build(&site).unwrap();
     }
 
     #[test]

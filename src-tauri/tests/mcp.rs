@@ -1,4 +1,4 @@
-//! Talks to the built qed-mcp the way an assistant does: JSON-RPC lines
+//! Talks to `qed mcp` (#105) the way an assistant does: JSON-RPC lines
 //! over stdin and stdout. This also checks that nothing else is printed to
 //! stdout, which would break the conversation.
 
@@ -16,7 +16,8 @@ struct Session {
 
 impl Session {
     fn start(site: &std::path::Path) -> Session {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_qed-mcp"))
+        let mut child = Command::new(env!("CARGO_BIN_EXE_qed"))
+            .arg("mcp")
             .arg(site)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -36,7 +37,7 @@ impl Session {
             json!({"protocolVersion": "2025-06-18", "capabilities": {},
                    "clientInfo": {"name": "test", "version": "1"}}),
         );
-        assert_eq!(init["result"]["serverInfo"]["name"], "qed-mcp");
+        assert_eq!(init["result"]["serverInfo"]["name"], "qed");
         assert!(
             init["result"]["instructions"]
                 .as_str()

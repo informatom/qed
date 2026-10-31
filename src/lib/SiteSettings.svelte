@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import ImageField from "$lib/ImageField.svelte";
   import { trackUnsaved } from "$lib/unsaved.svelte";
-  import { commands, type Site, type SiteConfig } from "$lib/site";
+  import { commands, sameData, type Site, type SiteConfig } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -11,6 +11,26 @@
 
   let { site, onsaved }: Props = $props();
   let form = $state(untrack(() => $state.snapshot(site.config)));
+  // Profiles elsewhere, one per field; empty fields are left out when saving.
+  let profiles = $state<string[]>(untrack(() => [...(site.config.profiles ?? [])]));
+  let keptProfiles = $derived(profiles.map((p) => p.trim()).filter((p) => p !== ""));
+  // Further languages (#145), by code.
+  let newLanguage = $state("");
+  let languageCodes = $derived(Object.keys(form.languages ?? {}).sort());
+  /** Pages per further language, so one with translations isn't removed. */
+  let translated = $derived(
+    site.pages.reduce((counts, page) => (page.language ? counts.set(page.language, (counts.get(page.language) ?? 0) + 1) : counts), new Map<string, number>()),
+  );
+  function addLanguage() {
+    const code = newLanguage.trim().toLowerCase();
+    if (!code || form.languages?.[code]) return;
+    form.languages = { ...(form.languages ?? {}), [code]: { title: null, description: null } };
+    newLanguage = "";
+  }
+  function removeLanguage(code: string) {
+    const { [code]: _, ...rest } = form.languages ?? {};
+    form.languages = rest;
+  }
   let saving = $state(false);
 
   let error = $state<string | null>(null);
@@ -30,6 +50,7 @@
     saved_themes: site.config.saved_themes,
     header: site.config.header,
     colors: site.config.colors,
+    dark: site.config.dark,
     fonts: site.config.fonts,
     main_menu: site.config.main_menu,
     navigation: site.config.navigation,
@@ -37,10 +58,23 @@
     language: form.language.trim() || "en",
     description: orNull(form.description),
     logo: orNull(form.logo),
+    icon: orNull(form.icon),
+    // None is left out, as the file leaves it out, so an untouched form has no changes.
+    profiles: keptProfiles.length ? keptProfiles : site.config.profiles,
     base_url: orNull(form.base_url),
     podcast: site.config.podcast,
+    // Empty texts are left out, as the file leaves them out; no further
+    // language at all leaves out the whole field, as Rust does.
+    languages: languageCodes.length
+      ? Object.fromEntries(
+          languageCodes.map((code) => [
+            code,
+            { title: orNull(form.languages?.[code]?.title ?? null), description: orNull(form.languages?.[code]?.description ?? null) },
+          ]),
+        )
+      : (undefined as unknown as SiteConfig["languages"]),
   });
-  let changed = $derived(JSON.stringify(edited) !== JSON.stringify(site.config));
+  let changed = $derived(!sameData(edited, site.config));
   trackUnsaved(() => "Site settings", () => changed);
 
   async function save(event: SubmitEvent) {
@@ -87,9 +121,38 @@
     </div>
   </section>
 
+  <section id="site-languages" class="flex flex-col gap-3 border-t border-base-300 pt-6">
+    {@render heading("Languages")}
+    <p class="text-sm text-base-content/60">
+      More languages besides the main one above. A page's translation is made in its Settings tab and has its address
+      below the language's code (/en/about). Pages without a translation simply aren't there in that language; a switch
+      in the header leads between the languages. Title and description are the site's own in that language, if they differ.
+    </p>
+    {#each languageCodes as code (code)}
+      {@const settings = form.languages?.[code]}
+      {#if settings}
+        <div id="site-language-{code}" class="grid items-center gap-2 @3xl:grid-cols-[4rem_1fr_2fr_auto]">
+          <span class="badge badge-outline font-mono uppercase">{code}</span>
+          <input class="input input-sm w-full" bind:value={settings.title} placeholder={form.title} aria-label="Title in {code}" />
+          <input class="input input-sm w-full" bind:value={settings.description} placeholder={form.description ?? "Description"}
+            aria-label="Description in {code}" />
+          <button type="button" class="btn btn-ghost btn-sm" disabled={!!translated.get(code)}
+            title={translated.get(code) ? `${translated.get(code)} translations are in this language; delete those first` : undefined}
+            onclick={() => removeLanguage(code)}>Remove</button>
+        </div>
+      {/if}
+    {/each}
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="site-new-language" class="input input-sm w-28 font-mono" bind:value={newLanguage} placeholder="en"
+        aria-label="Language code" onkeydown={(e) => e.key === "Enter" && (e.preventDefault(), addLanguage())} />
+      <button type="button" id="site-add-language" class="btn btn-sm" disabled={!newLanguage.trim()} onclick={addLanguage}>Add a language</button>
+      <span class="text-xs text-base-content/50">A code such as en, de, fr or pt-br.</span>
+    </div>
+  </section>
+
   <section id="site-logo" class="flex flex-col gap-2 border-t border-base-300 pt-6">
     {@render heading("Logo")}
-    <p class="text-sm text-base-content/60">In the header of every page, and the browser-tab icon unless static/ has a favicon.ico; SVG at best.</p>
+    <p class="text-sm text-base-content/60">In the header of every page; SVG at best. Also the browser-tab icon, unless the site has a site icon or static/ has a favicon.ico.</p>
     <ImageField siteRoot={site.root} bind:value={form.logo} />
     {#if form.logo}
       <div class="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -112,6 +175,15 @@
     {/if}
   </section>
 
+  <section id="site-icon" class="flex flex-col gap-2 border-t border-base-300 pt-6">
+    {@render heading("Site icon")}
+    <p class="text-sm text-base-content/60">
+      The icon in the browser tab and on phones' home screens, used as it is: an SVG, a square PNG (180 × 180 pixels
+      or more, so it's sharp on phones) or an ICO file from Media. Without one, the logo.
+    </p>
+    <ImageField siteRoot={site.root} bind:value={form.icon} />
+  </section>
+
   <section id="site-links" class="flex flex-col gap-3 border-t border-base-300 pt-6">
     {@render heading("Links")}
     <label class="flex items-start gap-3">
@@ -123,6 +195,26 @@
         </span>
       </span>
     </label>
+    <div id="site-profiles" class="flex flex-col gap-2">
+      <span class="text-sm">
+        Your profiles elsewhere
+        <span class="block text-base-content/60">
+          Such as https://mastodon.social/@name. Every page names them as yours (rel="me"), so Mastodon shows the site
+          as verified on your profile once the profile links to the site.
+        </span>
+      </span>
+      {#each profiles as _, index (index)}
+        <div class="flex gap-2">
+          <input id="site-profile-{index}" class="input input-sm w-full max-w-xl font-mono" bind:value={profiles[index]}
+            placeholder="https://mastodon.social/@name" aria-label="Profile address" />
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Remove profile"
+            onclick={() => (profiles = profiles.filter((_, i) => i !== index))}>Remove</button>
+        </div>
+      {/each}
+      <div>
+        <button type="button" id="site-add-profile" class="btn btn-sm" onclick={() => (profiles = [...profiles, ""])}>Add a profile</button>
+      </div>
+    </div>
   </section>
 
   <section id="site-search" class="flex flex-col gap-3 border-t border-base-300 pt-6">
@@ -161,7 +253,11 @@
   <div class="flex items-center justify-end gap-2 border-t border-base-300 pt-6">
     {#if changed}
       <span class="text-sm text-warning">Unsaved changes</span>
-      <button type="button" class="btn btn-ghost" onclick={() => (form = $state.snapshot(site.config))}>Discard</button>
+      <button type="button" class="btn btn-ghost" onclick={() => {
+        form = $state.snapshot(site.config);
+        profiles = [...(site.config.profiles ?? [])];
+        newLanguage = "";
+      }}>Discard</button>
     {:else if savedAt}
       <span class="text-sm text-success">Saved</span>
     {/if}

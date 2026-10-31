@@ -56,14 +56,23 @@ pub const MENU_PATH: &str = "(menu)";
 #[serde(deny_unknown_fields)]
 pub struct SiteConfig {
     pub title: String,
-    /// Language code for the `lang` attribute, e.g. `"de"` or `"en"`.
+    /// Language code for the `lang` attribute, e.g. `"de"` or `"en"`: the
+    /// main language, whose pages are at `/`.
     #[serde(default = "default_language")]
     pub language: String,
+    /// Further languages (#145), by code (`[languages.en]`): a page's
+    /// translation is `about.en.md` beside `about.md`, at `/en/about`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub languages: BTreeMap<String, LanguageSettings>,
     pub description: Option<String>,
     /// An image in `media/`, shown before the title in every page's header
     /// and as the icon in the browser tab. A small square one (an SVG at
     /// best) works best.
     pub logo: Option<String>,
+    /// The icon in the browser tab and on phones' home screens: an SVG, a
+    /// square PNG or an ICO file in `media/`, used as it is (see
+    /// [`icon_problem`]). Without one, `static/favicon.ico` or the logo.
+    pub icon: Option<String>,
     /// A daisyUI theme name, or `custom` for `custom_theme`.
     #[serde(default = "default_theme")]
     pub theme: String,
@@ -86,6 +95,10 @@ pub struct SiteConfig {
     /// Which theme color goes where: links, buttons, boxes, backgrounds.
     #[serde(default, skip_serializing_if = "Colors::is_default")]
     pub colors: Colors,
+    /// A second look for visitors whose system is set to dark (`[dark]`):
+    /// its own theme, header and colors. With it, pages follow the
+    /// system's setting and get a light/dark switch in the header (#146).
+    pub dark: Option<DarkSide>,
     /// How tall the logo is in the header.
     #[serde(default)]
     pub logo_size: LogoSize,
@@ -103,6 +116,11 @@ pub struct SiteConfig {
     /// visitors with JavaScript. On unless switched off.
     #[serde(default = "yes")]
     pub search: bool,
+    /// The owner's profiles elsewhere (`https://mastodon.social/@name`):
+    /// every page names them in `<link rel="me">`, so Mastodon and the like
+    /// show the site as verified on the profile.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub profiles: Vec<String>,
     /// Self-hosted fonts in `fonts/`; empty keeps the system's.
     #[serde(default, skip_serializing_if = "is_default_fonts")]
     pub fonts: Fonts,
@@ -133,6 +151,68 @@ pub struct MenuItem {
     /// The entries of a group.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub items: Vec<MenuItem>,
+}
+
+/// Why `name` in `media_dir` can't be the site icon, if it can't. Browsers
+/// take SVG, PNG and ICO; q.e.d. uses the file as it is, so a PNG must be
+/// square (a browser would squeeze it).
+pub fn icon_problem(media_dir: &Path, name: &str) -> Option<String> {
+    let extension = name
+        .rsplit_once('.')
+        .map(|(_, e)| e.to_lowercase())
+        .unwrap_or_default();
+    if !matches!(extension.as_str(), "svg" | "png" | "ico") {
+        let kind = if extension.is_empty() {
+            "a file without a type".to_string()
+        } else {
+            format!("a {} file", extension.to_uppercase())
+        };
+        return Some(format!(
+            "“{name}” is {kind}; the icon must be an SVG, a PNG or an ICO file"
+        ));
+    }
+    let path = media_dir.join(name);
+    if !path.is_file() {
+        return Some(format!("there's no “{name}” in Media"));
+    }
+    if extension == "png" {
+        match image::image_dimensions(&path) {
+            Ok((width, height)) if width != height => {
+                return Some(format!(
+                    "“{name}” is {width} × {height} pixels; a PNG icon must be square"
+                ));
+            }
+            Ok(_) => {}
+            Err(_) => return Some(format!("“{name}” can't be read as a PNG")),
+        }
+    }
+    None
+}
+
+/// A menu entry's page as the pages' addresses have it, for entries typed
+/// by hand: `/`, `index` and `index.md` are the start page (`""`), and
+/// `/blog/`, `blog.md` and `blog/index` are `blog`, like the page files.
+pub fn menu_page_path(written: &str) -> String {
+    let path = written.trim().trim_matches('/');
+    let path = path.strip_suffix(".md").unwrap_or(path);
+    let path = if path == "index" {
+        ""
+    } else {
+        path.strip_suffix("/index").unwrap_or(path)
+    };
+    path.to_string()
+}
+
+/// Writes every page entry of a hand-made menu the way the pages' addresses
+/// are written (see `menu_page_path`), so the build, the Menu tab and moving
+/// pages find them.
+fn tidy_menu_pages(items: &mut [MenuItem]) {
+    for item in items {
+        if let Some(page) = &mut item.page {
+            *page = menu_page_path(page);
+        }
+        tidy_menu_pages(&mut item.items);
+    }
 }
 
 fn is_false(value: &bool) -> bool {
@@ -261,6 +341,105 @@ impl HeaderStyle {
     }
 }
 
+/// A further language of the site (`[languages.en]` in `site.toml`): the
+/// site's title and description in it, if they differ.
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct LanguageSettings {
+    pub title: Option<String>,
+    pub description: Option<String>,
+}
+
+/// Whether `code` works as a further language's code: lowercase, as file
+/// names are (`en`, `pt-br`).
+pub fn is_language_code(code: &str) -> bool {
+    let mut parts = code.split('-');
+    let main = parts.next().unwrap_or_default();
+    (2..=3).contains(&main.len())
+        && main.bytes().all(|b| b.is_ascii_lowercase())
+        && parts.all(|part| {
+            (2..=8).contains(&part.len())
+                && part
+                    .bytes()
+                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        })
+}
+
+/// The dark side of a site's look (`[dark]` in `site.toml`): the same
+/// settings as the light side at the top of the file, for dark mode.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct DarkSide {
+    /// A daisyUI theme name, or `custom` for `custom_theme` below.
+    #[serde(default = "default_dark_theme")]
+    pub theme: String,
+    /// Own colors for the dark side, used when `theme` is `custom`.
+    pub custom_theme: Option<CustomTheme>,
+    #[serde(default)]
+    pub header: HeaderStyle,
+    #[serde(default, skip_serializing_if = "Colors::is_default")]
+    pub colors: Colors,
+}
+
+/// One side of a site's look: the light one (the top of `site.toml`, also
+/// the only one of a site without dark mode) or the dark one (`[dark]`).
+#[derive(Debug, Clone, Copy)]
+pub struct Look<'a> {
+    pub theme: &'a str,
+    pub custom_theme: Option<&'a CustomTheme>,
+    pub header: HeaderStyle,
+    pub colors: &'a Colors,
+}
+
+impl<'a> Look<'a> {
+    /// The custom theme, if this side uses one.
+    pub fn custom(&self) -> Option<&'a CustomTheme> {
+        self.custom_theme
+            .filter(|_| self.theme == crate::theme::CUSTOM)
+    }
+
+    /// The daisyUI theme it is based on: for a custom theme, the one it
+    /// starts from.
+    pub fn base_theme(&self) -> &'a str {
+        self.custom().map_or(self.theme, |custom| &custom.from)
+    }
+
+    /// Whether its page background is dark (see [`crate::theme::is_dark`]).
+    pub fn is_dark(&self) -> bool {
+        crate::theme::is_dark(
+            crate::generator::STYLESHEET,
+            self.base_theme(),
+            self.custom(),
+        )
+    }
+
+    /// A color of this side as `#rrggbb`, e.g. `--color-primary`.
+    pub fn color_hex(&self, variable: &str) -> Option<String> {
+        crate::theme::color_hex(
+            crate::generator::STYLESHEET,
+            self.base_theme(),
+            self.custom(),
+            variable,
+        )
+    }
+
+    /// Checks the theme name and the custom colors.
+    fn problem(&self) -> Option<String> {
+        if self.theme == crate::theme::CUSTOM {
+            match self.custom_theme {
+                None => Some("the custom theme has no colors yet".to_string()),
+                Some(custom) => custom.check().err().map(|e| e.to_string()),
+            }
+        } else if !crate::theme::is_theme(self.theme) {
+            Some(format!("there is no theme called \"{}\"", self.theme))
+        } else {
+            None
+        }
+    }
+}
+
 /// Which of the theme's colors the site uses where (`[colors]` in
 /// `site.toml`). Empty means the default, which is how sites looked before
 /// these settings existed.
@@ -340,18 +519,86 @@ pub enum Navigation {
     Sidebar,
 }
 
+impl Page {
+    /// The address of the page in the main language that this one
+    /// translates; for a page in the main language its own.
+    pub fn main_path(&self) -> &str {
+        match &self.language {
+            None => &self.path,
+            Some(language) => {
+                let rest = &self.path[language.len()..];
+                rest.strip_prefix('/').unwrap_or(rest)
+            }
+        }
+    }
+}
+
+/// The address of the page at `main_path` (an address in the main
+/// language) in `language`: `en/about`, or `about` itself for the main
+/// language (`None`).
+pub fn translated_path(main_path: &str, language: Option<&str>) -> String {
+    match (language, main_path) {
+        (None, path) => path.to_string(),
+        (Some(language), "") => language.to_string(),
+        (Some(language), path) => format!("{language}/{path}"),
+    }
+}
+
 impl SiteConfig {
-    /// The custom theme, if the site uses one.
+    /// The language a page is in: its own, or the site's main one.
+    pub fn language_of<'a>(&'a self, page: &'a Page) -> &'a str {
+        page.language.as_deref().unwrap_or(&self.language)
+    }
+
+    /// The site's title in `language` (`None`: the main one).
+    pub fn title_in(&self, language: Option<&str>) -> &str {
+        language
+            .and_then(|code| self.languages.get(code))
+            .and_then(|settings| settings.title.as_deref())
+            .filter(|title| !title.trim().is_empty())
+            .unwrap_or(&self.title)
+    }
+
+    /// The site's description in `language` (`None`: the main one).
+    pub fn description_in(&self, language: Option<&str>) -> Option<&str> {
+        language
+            .and_then(|code| self.languages.get(code))
+            .and_then(|settings| settings.description.as_deref())
+            .filter(|text| !text.trim().is_empty())
+            .or(self.description.as_deref())
+    }
+
+    /// The custom theme, if the site uses one (on its light side).
     pub fn custom(&self) -> Option<&CustomTheme> {
-        self.custom_theme
-            .as_ref()
-            .filter(|_| self.theme == crate::theme::CUSTOM)
+        self.light().custom()
     }
 
     /// The daisyUI theme the pages name in `data-theme`: for a custom
-    /// theme, the one it starts from.
+    /// theme, the one it starts from. With dark mode, the light side's;
+    /// the dark side's colors come from rules in the stylesheet.
     pub fn page_theme(&self) -> &str {
-        self.custom().map_or(&self.theme, |custom| &custom.from)
+        self.light().base_theme()
+    }
+
+    /// The light side of the look; for a site without dark mode, its only
+    /// one.
+    pub fn light(&self) -> Look<'_> {
+        Look {
+            theme: &self.theme,
+            custom_theme: self.custom_theme.as_ref(),
+            header: self.header,
+            colors: &self.colors,
+        }
+    }
+
+    /// The dark side, for a site with dark mode.
+    pub fn dark_look(&self) -> Option<Look<'_>> {
+        self.dark.as_ref().map(|dark| Look {
+            theme: &dark.theme,
+            custom_theme: dark.custom_theme.as_ref(),
+            header: dark.header,
+            colors: &dark.colors,
+        })
     }
 }
 
@@ -361,6 +608,23 @@ fn default_language() -> String {
 
 fn default_theme() -> String {
     "light".to_string()
+}
+
+fn default_dark_theme() -> String {
+    "dark".to_string()
+}
+
+/// Writes the named inline tables of `table` as sections of their own.
+fn section_tables(table: &mut toml_edit::Table, keys: &[&str]) {
+    for key in keys {
+        if let Some(inline) = table
+            .get_mut(key)
+            .and_then(|item| item.as_inline_table_mut())
+        {
+            let section = std::mem::take(inline).into_table();
+            table[*key] = toml_edit::Item::Table(section);
+        }
+    }
 }
 
 /// A site folder, read into memory.
@@ -376,6 +640,9 @@ pub struct Site {
     /// The footer from `footer.md`, if the site has one; its `path` is
     /// [`FOOTER_PATH`].
     pub footer: Option<Page>,
+    /// The footer in further languages (#145), from `footer.en.md` and
+    /// so on; pages in a language without one show the main footer.
+    pub footer_translations: Vec<Page>,
     /// The episode layout from `episode.md`, if the site has one; its
     /// `path` is [`EPISODE_LAYOUT_PATH`].
     pub episode_layout: Option<Page>,
@@ -393,8 +660,20 @@ impl Site {
         self.pages
             .iter()
             .chain(self.footer.as_ref())
+            .chain(&self.footer_translations)
             .chain(self.episode_layout.as_ref())
             .chain(&self.shared)
+    }
+
+    /// The footer for a page in `language` (`None`: the main one).
+    pub fn footer_in(&self, language: Option<&str>) -> Option<&Page> {
+        language
+            .and_then(|code| {
+                self.footer_translations
+                    .iter()
+                    .find(|footer| footer.language.as_deref() == Some(code))
+            })
+            .or(self.footer.as_ref())
     }
 }
 
@@ -402,8 +681,12 @@ impl Site {
 #[derive(Debug, Clone, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Page {
-    /// URL path without slashes at either end; `""` is the start page.
+    /// URL path without slashes at either end; `""` is the start page. A
+    /// translation's starts with its language: `en/about`.
     pub path: String,
+    /// The further language a translation is in (`about.en.md`); `None`
+    /// for pages in the site's main language.
+    pub language: Option<String>,
     /// The file, relative to the site folder.
     pub file: PathBuf,
     #[serde(flatten)]
@@ -478,10 +761,12 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
     if !config_path.is_file() {
         return Err(SiteError::NotASite(root.to_path_buf()));
     }
-    let config = toml::from_str(&read(&config_path)?).map_err(|source| SiteError::Config {
-        path: config_path,
-        source,
-    })?;
+    let mut config: SiteConfig =
+        toml::from_str(&read(&config_path)?).map_err(|source| SiteError::Config {
+            path: config_path,
+            source,
+        })?;
+    tidy_menu_pages(&mut config.main_menu);
 
     let mut files = Vec::new();
     let pages_dir = root.join(PAGES_DIR);
@@ -493,7 +778,17 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
     let mut pages: BTreeMap<String, Page> = BTreeMap::new();
     for file in files {
         let relative = file.strip_prefix(root).unwrap_or(&file).to_path_buf();
-        let path = url_path(&file, &pages_dir, &relative)?;
+        let (path, language) = url_path(&file, &pages_dir, &relative)?;
+        if let Some(code) = &language
+            && !config.languages.contains_key(code)
+        {
+            return Err(SiteError::Invalid {
+                path: relative,
+                message: format!(
+                    "it is a translation into “{code}”, which isn't one of the site's languages (Site → Languages)"
+                ),
+            });
+        }
         let content = page::parse(&read(&file)?).map_err(|error| SiteError::Page {
             path: relative.clone(),
             error,
@@ -510,18 +805,32 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
             path.clone(),
             Page {
                 path,
+                language,
                 file: relative,
                 content,
             },
         );
     }
 
+    let footer_translations = config
+        .languages
+        .keys()
+        .map(|code| {
+            let file = format!("footer.{code}.md");
+            Ok(load_part(root, &file, FOOTER_PATH)?.map(|footer| Page {
+                language: Some(code.clone()),
+                ..footer
+            }))
+        })
+        .filter_map(Result::transpose)
+        .collect::<Result<_, SiteError>>()?;
     Ok(Site {
         root: root.to_path_buf(),
         config,
         pages: pages.into_values().collect(),
         targets: crate::target::load(root)?,
         footer: load_part(root, FOOTER_FILE, FOOTER_PATH)?,
+        footer_translations,
         episode_layout: load_part(root, EPISODE_LAYOUT_FILE, EPISODE_LAYOUT_PATH)?,
         shared: crate::shared::load(root)?,
         contributors: crate::contributors::load(root)?,
@@ -540,6 +849,7 @@ fn load_part(root: &Path, file: &str, path: &str) -> Result<Option<Page>, SiteEr
         error,
     })?;
     Ok(Some(Page {
+        language: None,
         path: path.to_string(),
         file: PathBuf::from(file),
         content,
@@ -640,6 +950,7 @@ pub(crate) fn update_part(
     }
     write_atomically(&full, &written)?;
     Ok(Page {
+        language: None,
         path: path.to_string(),
         file: file.to_path_buf(),
         content: parse(&written)?,
@@ -706,6 +1017,7 @@ pub fn create_page(
     write_new(&root.join(&file), &page_writer::write(&content, None))?;
 
     Ok(Page {
+        language: None,
         path,
         file,
         content,
@@ -899,17 +1211,54 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
     if config.title.trim().is_empty() {
         return Err(invalid("a site needs a title".to_string()));
     }
-    if config.theme == crate::theme::CUSTOM {
-        let custom = config
-            .custom_theme
-            .as_ref()
-            .ok_or_else(|| invalid("the custom theme has no colors yet".to_string()))?;
-        custom.check().map_err(|e| invalid(e.to_string()))?;
-    } else if !crate::theme::is_theme(&config.theme) {
+    if let Some(problem) = config
+        .icon
+        .as_deref()
+        .and_then(|icon| icon_problem(&root.join(MEDIA_DIR), icon))
+    {
+        return Err(invalid(format!("site icon: {problem}")));
+    }
+    if let Some(profile) = config.profiles.iter().find(|profile| {
+        !(profile.starts_with("https://") || profile.starts_with("http://"))
+            || profile.contains(char::is_whitespace)
+    }) {
         return Err(invalid(format!(
-            "there is no theme called \"{}\"",
-            config.theme
+            "profiles: “{profile}” isn't a web address (https://…)"
         )));
+    }
+    // A language that still has translations stays: without it, the site
+    // couldn't be opened.
+    let mut files = Vec::new();
+    if root.join(PAGES_DIR).is_dir() {
+        collect_markdown_files(&root.join(PAGES_DIR), &mut files)?;
+    }
+    for file in &files {
+        let relative = file.strip_prefix(root).unwrap_or(file);
+        if let Ok((path, Some(code))) = url_path(file, &root.join(PAGES_DIR), relative)
+            && !config.languages.contains_key(&code)
+        {
+            return Err(invalid(format!(
+                "languages: “{code}” still has translations, such as /{path}; delete those first"
+            )));
+        }
+    }
+    for code in config.languages.keys() {
+        if !is_language_code(code) {
+            return Err(invalid(format!(
+                "languages: “{code}” isn't a language code like en or pt-br (lowercase)"
+            )));
+        }
+        if code.eq_ignore_ascii_case(&config.language) {
+            return Err(invalid(format!(
+                "languages: “{code}” is already the site's main language"
+            )));
+        }
+    }
+    if let Some(problem) = config.light().problem() {
+        return Err(invalid(problem));
+    }
+    if let Some(problem) = config.dark_look().and_then(|dark| dark.problem()) {
+        return Err(invalid(format!("dark mode: {problem}")));
     }
 
     let mut names = std::collections::BTreeSet::new();
@@ -953,15 +1302,44 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
 
     let original = read(&path)?;
     let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
-    // `[custom_theme]`, `[fonts]`, `[colors]` and `[podcast]` as their own sections, easier
-    // to read than one long line.
-    for key in ["custom_theme", "fonts", "colors", "podcast"] {
-        if let Some(inline) = document
-            .get_mut(key)
-            .and_then(|item| item.as_inline_table_mut())
+    // `[custom_theme]`, `[fonts]`, `[colors]`, `[dark]` and `[podcast]` as their own
+    // sections, easier to read than one long line; in `[dark]` its own
+    // `[dark.custom_theme]` and `[dark.colors]`.
+    section_tables(
+        document.as_table_mut(),
+        &["custom_theme", "fonts", "colors", "dark", "podcast"],
+    );
+    // Each further language as `[languages.en]`, without an empty
+    // `[languages]` above them.
+    if let Some(inline) = document
+        .get_mut("languages")
+        .and_then(|item| item.as_inline_table_mut())
+    {
+        let mut table = std::mem::take(inline).into_table();
+        table.set_implicit(true);
+        let codes: Vec<String> = table.iter().map(|(code, _)| code.to_string()).collect();
+        let keys: Vec<&str> = codes.iter().map(String::as_str).collect();
+        section_tables(&mut table, &keys);
+        document["languages"] = toml_edit::Item::Table(table);
+    }
+    if let Some(dark) = document
+        .get_mut("dark")
+        .and_then(|item| item.as_table_mut())
+    {
+        section_tables(dark, &["custom_theme", "colors"]);
+        // The plain header, the default, only if the file names it.
+        let named = original
+            .parse::<toml_edit::DocumentMut>()
+            .ok()
+            .and_then(|doc| doc.get("dark")?.get("header")?.as_str().map(str::to_string))
+            .is_some_and(|header| header == "plain");
+        if config
+            .dark
+            .as_ref()
+            .is_some_and(|d| d.header == HeaderStyle::Plain)
+            && !named
         {
-            let table = std::mem::take(inline).into_table();
-            document[key] = toml_edit::Item::Table(table);
+            dark.remove("header");
         }
     }
     // The menu as `[[main_menu]]` sections, a group's entries as
@@ -1135,11 +1513,114 @@ pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result
             });
         }
         // An episode written by hand may come without one.
-        if episode.guid.trim().is_empty() {
+        episode.guid = episode.guid.trim().to_string();
+        if episode.guid.is_empty() {
             episode.guid = crate::podcast::new_guid();
+        } else {
+            check_episode_guid(root, file, &episode.guid)?;
         }
     }
+    front.redirect_from = front
+        .redirect_from
+        .iter()
+        .filter_map(|address| old_address(address))
+        .fold(Vec::new(), |mut kept, address| {
+            if !kept.contains(&address) {
+                kept.push(address);
+            }
+            kept
+        });
+    check_old_addresses(root, file, &front.redirect_from)?;
     update_page(root, file, |content| content.front = front)
+}
+
+/// An old address as `redirect_from` keeps it: `/2016/03/28/easterhegg.html`.
+/// A full web address (pasted from the old site) keeps only its path;
+/// `#…` and `?…` are dropped, since a redirect page can't tell them apart.
+/// `None` for an empty one.
+pub fn old_address(written: &str) -> Option<String> {
+    let mut address = written.trim();
+    if let Some((_, rest)) = address.split_once("://") {
+        address = rest.find('/').map_or("", |slash| &rest[slash..]);
+    }
+    let address = address.split(['#', '?']).next().unwrap_or_default();
+    let address = address.trim_matches('/');
+    (!address.is_empty()).then(|| format!("/{address}"))
+}
+
+/// Refuses a guid that changed (one carried over from an old feed, typed
+/// in the Settings tab) if another episode has it already: podcast apps
+/// would take the two for one.
+fn check_episode_guid(root: &Path, file: &Path, guid: &str) -> Result<(), SiteError> {
+    let before = read_page(root, file)?.content.front.episode.map(|e| e.guid);
+    if before.as_deref() == Some(guid) {
+        return Ok(());
+    }
+    let site = open(root)?;
+    if let Some(other) = site.pages.iter().find(|page| {
+        page.file != file
+            && page
+                .content
+                .front
+                .episode
+                .as_ref()
+                .is_some_and(|episode| episode.guid.trim() == guid)
+    }) {
+        return Err(SiteError::Invalid {
+            path: file.to_path_buf(),
+            message: format!(
+                "the episode “{}” has the guid “{guid}” already",
+                other.content.front.title
+            ),
+        });
+    }
+    Ok(())
+}
+
+/// Refuses old addresses that are new in `addresses` (not yet in the file)
+/// and belong to another page already: as its address, or as one of its
+/// old addresses. The build would stop on the first, and the second would
+/// lead visitors to one of the two pages at random.
+fn check_old_addresses(root: &Path, file: &Path, addresses: &[String]) -> Result<(), SiteError> {
+    let before = read_page(root, file)?.content.front.redirect_from;
+    let added: Vec<&String> = addresses
+        .iter()
+        .filter(|address| !before.contains(address))
+        .collect();
+    if added.is_empty() {
+        return Ok(());
+    }
+    let site = open(root)?;
+    let invalid = |message: String| SiteError::Invalid {
+        path: file.to_path_buf(),
+        message,
+    };
+    for address in added {
+        let path = address.trim_matches('/');
+        for page in &site.pages {
+            let title = &page.content.front.title;
+            if page.path == path {
+                return Err(invalid(if page.file == file {
+                    format!("“{address}” is this page's own address")
+                } else {
+                    format!("“{address}” is the address of the page “{title}”")
+                }));
+            }
+            if page.file != file
+                && page
+                    .content
+                    .front
+                    .redirect_from
+                    .iter()
+                    .any(|other| other.trim_matches('/') == path)
+            {
+                return Err(invalid(format!(
+                    "“{address}” already leads to the page “{title}”"
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Saves a page's blocks and returns the page as saved.
@@ -1252,7 +1733,7 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
 /// Whether a hand-made menu has an entry for the page at `path`.
 fn menu_links_to(items: &[MenuItem], path: &str) -> bool {
     items.iter().any(|item| {
-        item.page.as_deref().map(|p| p.trim().trim_matches('/')) == Some(path)
+        item.page.as_deref().map(menu_page_path).as_deref() == Some(path)
             || item.link.as_deref().is_some_and(|link| {
                 link.strip_prefix('/').map(|l| {
                     l.split(['#', '?'])
@@ -1268,6 +1749,49 @@ fn menu_links_to(items: &[MenuItem], path: &str) -> bool {
 /// A Post list's or Page list's `from` as a link: `/blog`.
 pub(crate) fn post_list_link(from: &str) -> String {
     format!("/{}", from.trim().trim_matches('/'))
+}
+
+/// Starts the translation of the page in `file` into `language`, one of
+/// the site's further languages (#145): a copy beside it (`about.en.md`
+/// for `about.md`), to be translated. It starts as a draft, so it isn't
+/// published half done, and without the page's old addresses, which stay
+/// with the original.
+pub fn create_translation(site: &Site, file: &Path, language: &str) -> Result<Page, SiteError> {
+    let full = page_file(&site.root, file)?;
+    let invalid = |message: String| SiteError::Invalid {
+        path: file.to_path_buf(),
+        message,
+    };
+    let page = site
+        .pages
+        .iter()
+        .find(|page| page.file == file)
+        .ok_or_else(|| SiteError::NotAPage(file.to_path_buf()))?;
+    if page.language.is_some() {
+        return Err(invalid("it is a translation itself".to_string()));
+    }
+    if !site.config.languages.contains_key(language) {
+        return Err(invalid(format!(
+            "“{language}” isn't one of the site's languages (Site → Languages)"
+        )));
+    }
+    let stem = file
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let new_file = file.with_file_name(format!("{stem}.{language}.md"));
+    let new_full = site.root.join(&new_file);
+    if new_full.exists() {
+        return Err(invalid(format!(
+            "it already has a translation into “{language}”"
+        )));
+    }
+    let original = read(&full)?;
+    let mut content = page.content.clone();
+    content.front.draft = true;
+    content.front.redirect_from.clear();
+    write_atomically(&new_full, &page_writer::write(&content, Some(&original)))?;
+    read_page(&site.root, &new_file)
 }
 
 /// Deletes a page's file. The start page and pages with pages below them
@@ -1298,6 +1822,18 @@ pub fn delete_page(site: &Site, file: &Path) -> Result<(), SiteError> {
             below.join(", ")
         )));
     }
+    let translations: Vec<String> = site
+        .pages
+        .iter()
+        .filter(|other| other.language.is_some() && other.main_path() == page.path)
+        .map(|other| format!("/{}", other.path))
+        .collect();
+    if page.language.is_none() && !translations.is_empty() {
+        return Err(invalid(format!(
+            "it has translations ({}); delete those first",
+            translations.join(", ")
+        )));
+    }
     fs::remove_file(&full).map_err(|source| SiteError::Write {
         path: full.clone(),
         source,
@@ -1318,8 +1854,10 @@ pub fn read_page(root: &Path, file: &Path) -> Result<Page, SiteError> {
         path: file.to_path_buf(),
         error,
     })?;
+    let (path, language) = url_path(&full, &root.join(PAGES_DIR), file)?;
     Ok(Page {
-        path: url_path(&full, &root.join(PAGES_DIR), file)?,
+        path,
+        language,
         file: file.to_path_buf(),
         content,
     })
@@ -1385,8 +1923,10 @@ pub(crate) fn update_page(
     let written = page_writer::write(&content, Some(&original));
     write_atomically(&full, &written)?;
 
+    let (path, language) = url_path(&full, &root.join(PAGES_DIR), file)?;
     Ok(Page {
-        path: url_path(&full, &root.join(PAGES_DIR), file)?,
+        path,
+        language,
         file: file.to_path_buf(),
         content: parse(&written)?,
     })
@@ -1447,15 +1987,30 @@ fn collect_markdown_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), Si
 
 /// Works out a page's URL path from its file: `pages/about/team.md` becomes
 /// `about/team`, and `index.md` stands for its folder.
-fn url_path(file: &Path, pages_dir: &Path, relative: &Path) -> Result<String, SiteError> {
+/// A page file's address, and the language of a translation: the file
+/// `about.en.md` is the English one of `about.md`, at `en/about`.
+fn url_path(
+    file: &Path,
+    pages_dir: &Path,
+    relative: &Path,
+) -> Result<(String, Option<String>), SiteError> {
     let inside = file
         .strip_prefix(pages_dir)
         .unwrap_or(file)
         .with_extension("");
     let mut segments = Vec::new();
+    let count = inside.components().count();
+    let mut language = None;
 
-    for component in inside.components() {
-        let name = component.as_os_str().to_string_lossy();
+    for (index, component) in inside.components().enumerate() {
+        let mut name = component.as_os_str().to_string_lossy();
+        if index + 1 == count
+            && let Some((stem, code)) = name.split_once('.')
+            && is_language_code(code)
+        {
+            language = Some(code.to_string());
+            name = stem.to_string().into();
+        }
         let suggestion = slugify(&name);
         if name != suggestion {
             return Err(SiteError::BadFileName {
@@ -1470,7 +2025,10 @@ fn url_path(file: &Path, pages_dir: &Path, relative: &Path) -> Result<String, Si
     if segments.last().is_some_and(|last| last == "index") {
         segments.pop();
     }
-    Ok(segments.join("/"))
+    if let Some(code) = &language {
+        segments.insert(0, code.clone());
+    }
+    Ok((segments.join("/"), language))
 }
 
 #[cfg(test)]
@@ -1855,6 +2413,156 @@ mod tests {
     }
 
     #[test]
+    fn reads_translations_beside_their_pages() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"Seite\"\nlanguage = \"de\"\n"),
+            ("pages/index.md", "+++\ntitle = \"Start\"\n+++\n"),
+            ("pages/index.en.md", "+++\ntitle = \"Home\"\n+++\n"),
+            ("pages/ueber.md", "+++\ntitle = \"Über uns\"\n+++\n"),
+            ("pages/ueber.en.md", "+++\ntitle = \"About us\"\n+++\n"),
+        ]);
+        let error = open(dir.path()).unwrap_err().to_string();
+        assert!(
+            error.contains("isn't one of the site's languages"),
+            "{error}"
+        );
+
+        let mut config = SiteConfig {
+            languages: BTreeMap::from([(
+                "en".to_string(),
+                LanguageSettings {
+                    title: Some("Site".into()),
+                    description: None,
+                },
+            )]),
+            ..toml::from_str("title = \"Seite\"\nlanguage = \"de\"\n").unwrap()
+        };
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains("\n[languages.en]\ntitle = \"Site\"\n"),
+            "{text}"
+        );
+        assert!(!text.contains("[languages]\n"), "{text}");
+
+        let site = open(dir.path()).unwrap();
+        let paths: Vec<(&str, Option<&str>)> = site
+            .pages
+            .iter()
+            .map(|p| (p.path.as_str(), p.language.as_deref()))
+            .collect();
+        assert_eq!(
+            paths,
+            [
+                ("", None),
+                ("en", Some("en")),
+                ("en/ueber", Some("en")),
+                ("ueber", None)
+            ]
+        );
+        let about = site.pages.iter().find(|p| p.path == "en/ueber").unwrap();
+        assert_eq!(about.main_path(), "ueber");
+        assert_eq!(site.config.title_in(Some("en")), "Site");
+        assert_eq!(site.config.title_in(None), "Seite");
+        assert_eq!(translated_path("", Some("en")), "en");
+
+        config
+            .languages
+            .insert("de".into(), LanguageSettings::default());
+        assert!(
+            save_config(dir.path(), &config).is_err(),
+            "de is the main one"
+        );
+    }
+
+    #[test]
+    fn starts_a_translation_as_a_draft_copy() {
+        let dir = site_with(&[
+            (
+                "site.toml",
+                "title = \"S\"\nlanguage = \"de\"\n\n[languages.en]\n",
+            ),
+            ("pages/index.md", "+++\ntitle = \"Start\"\n+++\n"),
+            (
+                "pages/ueber.md",
+                "+++\ntitle = \"Über uns\"\nredirect_from = [\"/alt\"]\n+++\n\nHallo.\n",
+            ),
+        ]);
+        let site = open(dir.path()).unwrap();
+        assert!(create_translation(&site, Path::new("pages/ueber.md"), "fr").is_err());
+        let page = create_translation(&site, Path::new("pages/ueber.md"), "en").unwrap();
+        assert_eq!(page.path, "en/ueber");
+        assert_eq!(page.file, Path::new("pages/ueber.en.md"));
+        assert!(page.content.front.draft);
+        assert!(page.content.front.redirect_from.is_empty());
+        let start = create_translation(&site, Path::new("pages/index.md"), "en").unwrap();
+        assert_eq!(start.path, "en");
+
+        let site = open(dir.path()).unwrap();
+        assert!(create_translation(&site, Path::new("pages/ueber.md"), "en").is_err());
+        let error = delete_page(&site, Path::new("pages/ueber.md")).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("it has translations (/en/ueber)"),
+            "{error}"
+        );
+        delete_page(&site, Path::new("pages/ueber.en.md")).unwrap();
+    }
+
+    #[test]
+    fn saves_the_dark_side_as_its_own_section() {
+        let dir = site_with(&[("site.toml", "title = \"S\"\ntheme = \"catppuccin-latte\"\n")]);
+        let mut config = open(dir.path()).unwrap().config;
+        config.dark = Some(DarkSide {
+            theme: "nope".into(),
+            custom_theme: None,
+            header: HeaderStyle::Plain,
+            colors: Colors::default(),
+        });
+        let error = save_config(dir.path(), &config).unwrap_err().to_string();
+        assert!(error.contains("dark mode: there is no theme"), "{error}");
+
+        config.dark = Some(DarkSide {
+            theme: "custom".into(),
+            custom_theme: Some(CustomTheme {
+                name: None,
+                from: "catppuccin-mocha".into(),
+                background: None,
+                primary: Some("#ff6600".into()),
+                secondary: None,
+                accent: None,
+                neutral: None,
+                corners: None,
+            }),
+            header: HeaderStyle::Plain,
+            colors: Colors {
+                footer: Some(Surface::Neutral),
+                ..Colors::default()
+            },
+        });
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains(
+                "[dark]\ntheme = \"custom\"\n\n[dark.custom_theme]\nfrom = \"catppuccin-mocha\"\nprimary = \"#ff6600\"\n\n[dark.colors]\nfooter = \"neutral\""
+            ),
+            "{text}"
+        );
+        let reopened = open(dir.path()).unwrap().config;
+        assert_eq!(reopened, config);
+        let dark = reopened.dark_look().unwrap();
+        assert_eq!(dark.base_theme(), "catppuccin-mocha");
+        assert!(dark.is_dark() && !reopened.light().is_dark());
+
+        // Off again: the section goes.
+        config.dark = None;
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(!text.contains("dark"), "{text}");
+    }
+
+    #[test]
     fn saves_a_custom_theme_as_a_table() {
         let dir = site_with(&[("site.toml", "title = \"S\"\n")]);
         let mut config = open(dir.path()).unwrap().config;
@@ -2088,6 +2796,151 @@ mod tests {
                 config.main_menu
             );
         }
+    }
+
+    #[test]
+    fn reads_menu_pages_written_by_hand_like_page_files() {
+        for (written, path) in [
+            ("", ""),
+            ("/", ""),
+            ("index", ""),
+            ("/index.md", ""),
+            ("blog", "blog"),
+            ("/blog/", "blog"),
+            ("blog.md", "blog"),
+            ("blog/index", "blog"),
+            (" about/team ", "about/team"),
+        ] {
+            assert_eq!(menu_page_path(written), path, "{written:?}");
+        }
+        let dir = site_with(&[(
+            "site.toml",
+            "title = \"S\"\n\n[[main_menu]]\npage = \"index\"\n\n[[main_menu]]\ntitle = \"More\"\n\n[[main_menu.items]]\npage = \"/blog/\"\n",
+        )]);
+        let menu = open(dir.path()).unwrap().config.main_menu;
+        assert_eq!(menu[0].page.as_deref(), Some(""));
+        assert_eq!(menu[1].items[0].page.as_deref(), Some("blog"));
+    }
+
+    #[test]
+    fn tidies_old_addresses_and_refuses_ones_taken() {
+        for (written, address) in [
+            ("about", Some("/about")),
+            (
+                " /2016/03/28/easterhegg.html ",
+                Some("/2016/03/28/easterhegg.html"),
+            ),
+            (
+                "https://old.example.org/blog/post/?p=1#top",
+                Some("/blog/post"),
+            ),
+            ("https://old.example.org", None),
+            ("/", None),
+            ("", None),
+        ] {
+            assert_eq!(old_address(written).as_deref(), address, "{written:?}");
+        }
+
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            ("pages/index.md", PAGE),
+            ("pages/about.md", PAGE),
+            (
+                "pages/contact.md",
+                "+++\ntitle = \"Contact\"\nredirect_from = [\"/kontakt\"]\n+++\n",
+            ),
+        ]);
+        let file = Path::new("pages/about.md");
+        let front = |addresses: &[&str]| FrontMatter {
+            title: "About".into(),
+            redirect_from: addresses.iter().map(|a| a.to_string()).collect(),
+            ..FrontMatter::default()
+        };
+        let saved = save_front_matter(
+            dir.path(),
+            file,
+            front(&[
+                "ueber-uns",
+                "/ueber-uns/",
+                "https://old.example.org/team.html",
+                " ",
+            ]),
+        )
+        .unwrap();
+        assert_eq!(
+            saved.content.front.redirect_from,
+            ["/ueber-uns", "/team.html"]
+        );
+
+        for (taken, message) in [
+            ("/contact", "is the address of the page “Contact”"),
+            ("kontakt", "already leads to the page “Contact”"),
+            ("/about", "is this page's own address"),
+        ] {
+            let error = save_front_matter(dir.path(), file, front(&["/ueber-uns", taken]))
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains(message), "{error}");
+        }
+    }
+
+    #[test]
+    fn takes_svg_square_png_and_ico_as_the_site_icon() {
+        let dir = site_with(&[
+            ("site.toml", "title = \"S\""),
+            ("media/icon.svg", "<svg/>"),
+            ("media/favicon.ico", "ico"),
+            ("media/photo.jpg", "jpg"),
+        ]);
+        let media = dir.path().join(MEDIA_DIR);
+        image::RgbaImage::new(64, 64)
+            .save(media.join("square.png"))
+            .unwrap();
+        image::RgbaImage::new(64, 32)
+            .save(media.join("wide.png"))
+            .unwrap();
+        for good in ["icon.svg", "favicon.ico", "square.png"] {
+            assert_eq!(icon_problem(&media, good), None, "{good}");
+        }
+        for (bad, problem) in [
+            (
+                "photo.jpg",
+                "is a JPG file; the icon must be an SVG, a PNG or an ICO file",
+            ),
+            ("wide.png", "is 64 × 32 pixels; a PNG icon must be square"),
+            ("gone.svg", "there's no “gone.svg” in Media"),
+        ] {
+            let found = icon_problem(&media, bad).unwrap_or_default();
+            assert!(found.contains(problem), "{bad}: {found}");
+        }
+
+        let mut config = open(dir.path()).unwrap().config;
+        config.icon = Some("wide.png".into());
+        assert!(save_config(dir.path(), &config).is_err());
+        config.icon = Some("icon.svg".into());
+        save_config(dir.path(), &config).unwrap();
+        assert_eq!(
+            open(dir.path()).unwrap().config.icon.as_deref(),
+            Some("icon.svg")
+        );
+    }
+
+    #[test]
+    fn keeps_profiles_elsewhere_as_web_addresses() {
+        let dir = site_with(&[("site.toml", "title = \"S\"\n")]);
+        let mut config = open(dir.path()).unwrap().config;
+        config.profiles = vec!["https://mastodon.social/@qed".into()];
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains("profiles = [\"https://mastodon.social/@qed\"]"),
+            "{text}"
+        );
+        assert_eq!(open(dir.path()).unwrap().config, config);
+
+        config.profiles = vec!["@qed@mastodon.social".into()];
+        let error = save_config(dir.path(), &config).unwrap_err().to_string();
+        assert!(error.contains("isn't a web address"), "{error}");
     }
 
     #[test]

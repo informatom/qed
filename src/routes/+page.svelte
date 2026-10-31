@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
-  import { ask, open } from "@tauri-apps/plugin-dialog";
+  import { ask, message, open } from "@tauri-apps/plugin-dialog";
   import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
@@ -39,6 +39,9 @@
   import Upload from "@lucide/svelte/icons/upload";
   import AppSettings from "$lib/AppSettings.svelte";
   import AssistantSetup from "$lib/AssistantSetup.svelte";
+  import ManualLink from "$lib/ManualLink.svelte";
+  import BookOpen from "@lucide/svelte/icons/book-open";
+  import { openManual } from "$lib/manual";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
   import PodcastPanel from "$lib/PodcastPanel.svelte";
@@ -70,6 +73,7 @@
     BLOCK_NAMES,
     defaultEpisodeLayout,
     pageIcons,
+    mainPath,
     sharedName,
     pageLabel,
     formatLabel,
@@ -188,6 +192,31 @@
     // Reload, so the new page lands in its place in the tree, then open it.
     await load(site.root);
     selectedFile = page.file;
+  }
+
+  /** The open page in each of the site's languages (#145), the main one first. */
+  let pageLanguages = $derived.by(() => {
+    if (!site || !selected || !Object.keys(site.config.languages ?? {}).length) return [];
+    const main = mainPath(selected);
+    const codes: (string | null)[] = [null, ...Object.keys(site.config.languages ?? {}).sort()];
+    return codes.map((code) => ({
+      code: code ?? site!.config.language.toLowerCase(),
+      page: site!.pages.find((p) => mainPath(p) === main && (p.language ?? null) === code) ?? null,
+    }));
+  });
+
+  /** Starts the open page's translation into `code` and opens it. */
+  async function translate(code: string) {
+    if (!site || !selected) return;
+    const original = site.pages.find((p) => !p.language && p.path === mainPath(selected!));
+    if (!original) return;
+    try {
+      const page = await commands.createTranslation(site.root, original.file, code);
+      await load(site.root);
+      selectedFile = page.file;
+    } catch (e) {
+      await message(String(e), { title: "Can't start the translation", kind: "error" });
+    }
   }
 
   async function pageMoved(page: Page) {
@@ -408,10 +437,23 @@
   // unfolded. All folded at first, since a site may have hundreds of pages.
   const unfolded = new SvelteSet<string>();
 
+  // Translations (#145) don't get rows of their own: they hang on their
+  // page's row, as language buttons. One whose page is gone keeps a row.
+  let allPaths = $derived(new Set(site?.pages.map((p) => p.path)));
+  let treePages = $derived((site?.pages ?? []).filter((p) => !p.language || !allPaths.has(mainPath(p))));
+  /** Each page's translations, by its address. */
+  let translations = $derived.by(() => {
+    const byMain = new Map<string, Page[]>();
+    for (const page of site?.pages ?? []) {
+      if (page.language && allPaths.has(mainPath(page))) byMain.set(mainPath(page), [...(byMain.get(mainPath(page)) ?? []), page]);
+    }
+    return byMain;
+  });
+
   /** How many pages lie below each page that has any (all levels). */
   let below = $derived.by(() => {
     const counts = new Map<string, number>();
-    for (const page of site?.pages ?? []) {
+    for (const page of treePages) {
       for (const parent of parents(page.path)) counts.set(parent, (counts.get(parent) ?? 0) + 1);
     }
     return counts;
@@ -429,7 +471,7 @@
   }
 
   // In the order the site shows them (weight, then title; posts by date).
-  let ordered = $derived(site ? treeOrder(site.pages) : []);
+  let ordered = $derived(site ? treeOrder(treePages) : []);
   let shownPages = $derived(ordered.filter((page) => parents(page.path).every((p) => unfolded.has(p))));
 
   // Dragging a page by its handle, as blocks are dragged (BlockList).
@@ -594,8 +636,14 @@
     <!-- Keeps the room the preview button had in the header; the button
          itself floats in the window's corner, so it stays in reach while
          scrolling. -->
-    <div class="size-10 shrink-0" aria-hidden="true"></div>
+    <div class="h-10 w-22 shrink-0" aria-hidden="true"></div>
     <div class="fixed top-8 right-8 z-40 flex gap-2">
+      <div class="tooltip tooltip-left" data-tip="Manual">
+        <button id="open-manual" class="btn btn-circle shadow-lg" aria-label="Manual"
+          onclick={() => openManual().catch((e) => (error = String(e)))}>
+          <BookOpen class="size-5" />
+        </button>
+      </div>
       {#if site}
         <!-- An icon is enough here; the tooltip and aria-label say what it does. -->
         <div class="tooltip tooltip-left" data-tip={previewTip}>
@@ -715,7 +763,10 @@
         </div>
         <div class="max-w-4xl">
           <section class="flex flex-col gap-3">
-            <h2 class="text-lg font-semibold">Settings</h2>
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-lg font-semibold">Settings</h2>
+              <ManualLink page="site-settings/" topic="Site settings" />
+            </div>
             <SiteSettings {site} onsaved={(config) => {
               if (!site) return;
               site.config = config;
@@ -742,19 +793,31 @@
         <PublishPanel {site} ontargets={(targets) => site && (site.targets = targets)} />
       </div>
       <section id="site-podcast" class={["flex max-w-4xl flex-col gap-3", view !== "podcast" && "hidden"]}>
-        <h2 class="text-lg font-semibold">Podcast</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Podcast</h2>
+          <ManualLink page="podcasts/" topic="Podcasts" />
+        </div>
         <PodcastPanel {site} onsaved={(config) => site && (site.config = config)} />
       </section>
       <section id="site-contributors" class={["flex flex-col gap-3", view !== "contributors" && "hidden"]}>
-        <h2 class="text-lg font-semibold">Contributors</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Contributors</h2>
+          <ManualLink page="podcasts/" topic="Contributors" />
+        </div>
         <ContributorsPanel {site} onchanged={(people) => site && (site.contributors = people)} />
       </section>
       <section id="site-menu" class={["flex max-w-4xl flex-col gap-3", view !== "menu" && "hidden"]}>
-        <h2 class="text-lg font-semibold">Menu</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Menu</h2>
+          <ManualLink page="menus/" topic="Menus" />
+        </div>
         <MenuEditor {site} onsaved={(config) => site && (site.config = config)} />
       </section>
       <section id="site-theme-tab" class={["flex flex-col gap-3", view !== "theme" && "hidden"]}>
-        <h2 class="text-lg font-semibold">Theme</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Theme</h2>
+          <ManualLink page="colors-and-fonts/" topic="Colors and fonts" />
+        </div>
         <SiteTheme {site} onsaved={(config) => site && (site.config = config)} />
       </section>
     {/key}
@@ -791,6 +854,7 @@
       <span class="text-sm text-base-content/60">
         {site.pages.length} pages{draftCount ? `, ${draftCount} drafts` : ""}
       </span>
+      <ManualLink page="pages-and-blocks/" topic="Pages and blocks" />
       {#if below.size}
         <button id="unfold-all" class="btn btn-ghost btn-xs" onclick={() => below.forEach((_, path) => unfolded.add(path))}>
           <ChevronsUpDown class="size-3.5" /> Expand all
@@ -896,6 +960,12 @@
                 </div>
               {/if}
             </button>
+            {#each translations.get(page.path) ?? [] as translation (translation.file)}
+              <button type="button" id="translation-{translation.path}"
+                class={["btn btn-xs shrink-0 font-mono uppercase", translation.file === selectedFile ? "btn-primary" : "btn-ghost", translation.front.draft && "italic opacity-60"]}
+                title="{translation.front.title} (/{translation.path}){translation.front.draft ? ', a draft' : ''}"
+                onclick={() => select(translation.file)}>{translation.language}</button>
+            {/each}
           </li>
         {/each}
         <!-- Shared blocks show on several pages, so they come after them. -->
@@ -1028,6 +1098,9 @@
             onclose={() => select(null)}
             ondeleted={pageDeleted}
             onmove={() => (movingPage = true)}
+            languages={pageLanguages}
+            onopen={(page) => select(page.file)}
+            ontranslate={translate}
             podcast={site.config.podcast}
             contributors={site.contributors}
             bind:dirty={editorDirty}

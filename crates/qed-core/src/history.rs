@@ -688,6 +688,9 @@ pub fn versions(root: &Path, file: Option<&str>) -> Result<Vec<Version>, History
         None => site.prefix.trim_end_matches('/').to_string(),
     };
     let tags = tags_by_commit(repo)?;
+    // Only the newest version can still be open. An older one with the
+    // draft mark was closed by commits made on top of it, outside q.e.d.
+    let open = open_version(&site)?.map(|commit| commit.id());
 
     let mut walk = repo.revwalk()?;
     if walk.push_head().is_err() {
@@ -705,7 +708,9 @@ pub fn versions(root: &Path, file: Option<&str>) -> Result<Vec<Version>, History
             Err(_) => None,
         };
         if now != before {
-            found.push(version(repo, commit.id(), &tags)?);
+            let mut entry = version(repo, commit.id(), &tags)?;
+            entry.open = Some(commit.id()) == open;
+            found.push(entry);
             if found.len() == MAX_VERSIONS {
                 break;
             }
@@ -1395,6 +1400,33 @@ mod tests {
         assert_eq!(closed.summary, "Afternoon intro");
         assert!(!closed.open);
         assert!(close_open_version(dir.path(), "Again").unwrap().is_none());
+    }
+
+    #[test]
+    fn a_draft_with_commits_on_top_is_not_open() {
+        let dir = tempfile::tempdir().unwrap();
+        site(dir.path());
+        start(dir.path()).unwrap();
+        let home = dir.path().join("pages/index.md");
+        fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nDraft.\n").unwrap();
+        record_save(dir.path()).unwrap().unwrap();
+        assert!(versions(dir.path(), None).unwrap()[0].open);
+
+        // Someone commits on top with git, as in a shared repository.
+        let repo = Repository::open(dir.path()).unwrap();
+        fs::write(&home, "+++\ntitle = \"Home\"\n+++\n\nBy hand.\n").unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("pages/index.md")).unwrap();
+        index.write().unwrap();
+        let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        let me = Signature::now("Me", "me@example.com").unwrap();
+        repo.commit(Some("HEAD"), &me, &me, "By hand", &tree, &[&head])
+            .unwrap();
+
+        let all = versions(dir.path(), None).unwrap();
+        assert_eq!(all[0].summary, "By hand");
+        assert!(!all[1].open, "closed by the commit on top");
     }
 
     #[test]

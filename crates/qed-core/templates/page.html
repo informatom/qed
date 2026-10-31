@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="{{ site.language }}" data-theme="{{ site.page_theme() }}">
+<html lang="{{ language }}" data-theme="{{ site.page_theme() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if is_home %}{{ site.title }}{% else %}{{ title }} · {{ site.title }}{% endif %}</title>
+  <title>{% if is_home %}{{ site_title }}{% else %}{{ title }} · {{ site_title }}{% endif %}</title>
   {%- if let Some(description) = description %}
   <meta name="description" content="{{ description }}">
   {%- endif %}
   {%- if let Some(canonical) = canonical %}
   <link rel="canonical" href="{{ canonical }}">
   {%- endif %}
-  <meta property="og:title" content="{% if is_home %}{{ site.title }}{% else %}{{ title }}{% endif %}">
-  <meta property="og:site_name" content="{{ site.title }}">
+  <meta property="og:title" content="{% if is_home %}{{ site_title }}{% else %}{{ title }}{% endif %}">
+  <meta property="og:site_name" content="{{ site_title }}">
   <meta property="og:type" content="{{ og_type }}">
   {%- if let Some(description) = description %}
   <meta property="og:description" content="{{ description }}">
@@ -36,8 +36,17 @@
   <link rel="alternate" type="application/rss+xml" title="{{ feed.title }}" href="{{ feed.href }}">
   {%- endfor %}
   {%- if let Some(icon) = icon %}
-  <link rel="icon" href="{{ icon }}">
+  <link rel="icon" href="{{ icon.href }}" type="{{ icon.mime }}">
+  {%- if icon.touch %}
+  <link rel="apple-touch-icon" href="{{ icon.href }}">
   {%- endif %}
+  {%- endif %}
+  {%- for profile in site.profiles %}
+  <link rel="me" href="{{ profile }}">
+  {%- endfor %}
+  {%- for alternate in alternates %}
+  <link rel="alternate" hreflang="{{ alternate.code }}" href="{{ alternate.href }}">
+  {%- endfor %}
   <meta name="generator" content="q.e.d.">
   {%- if site.search %}
   {#- Before style.css, which sets the search dialog's colors from the
@@ -47,6 +56,12 @@
   <script src="{{ root }}pagefind/pagefind-component-ui.js" defer></script>
   {%- endif %}
   <link rel="stylesheet" href="{{ root }}style.css">
+  {%- if site.dark.is_some() %}
+  {#- Light and dark mode (#146). Not deferred: the visitor's choice is set
+      before the page shows. #}
+  <meta name="color-scheme" content="light dark">
+  <script src="{{ root }}mode.js"></script>
+  {%- endif %}
   {%- if let Some(src) = player_script %}
   {#- Not deferred: it hides the plain player before the page shows. #}
   <script src="{{ src }}"></script>
@@ -57,16 +72,31 @@
 {%- macro search_body() %}
 {%- if searchable %} data-pagefind-body data-pagefind-meta="title:{{ title }}"{% endif %}
 {%- endmacro %}
-{%- macro menu_items(items) %}
-{%- for item in items %}
-{%- if item.heading %}
-<li class="menu-title mt-2">{{ item.title }}</li>
-{%- else %}
+{%- macro menu_link(item) %}
 <li
   {%- if item.level > 0 %} class="ms-4 border-s border-base-300"
   {%- if item.level > 1 %} style="margin-inline-start: {{ item.level }}rem"{% endif %}{% endif %}><a href="{{ item.href }}"
   {%- if item.exact %} class="menu-active" aria-current="page"{% else if item.current %} class="font-semibold"{% endif %}>
   {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
+{%- endmacro %}
+{#- A hand-made menu's group folds open and closed (daisyUI's collapsible
+    submenu, a <details>, so it works without JavaScript). #}
+{%- macro menu_items(items) %}
+{%- for item in items %}
+{%- if item.heading %}
+{#- A hand-made group's title is plain text; a page with pages below it
+    (the automatic menu) stays a link: a click on the title opens the
+    page, one beside it folds the group. #}
+<li><details{% if item.open %} open{% endif %}><summary
+  {%- if !item.href.is_empty() %}{% if item.exact %} class="menu-active"{% else if item.current %} class="font-semibold"{% endif %}{% endif %}>
+  {%- if item.href.is_empty() %}{{ item.title }}{% else %}<a href="{{ item.href }}" class="flex items-center gap-2"{% if item.exact %} aria-current="page"{% endif %}>
+  {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a>{% endif %}</summary>
+  <ul>
+  {%- for child in item.children %}{% call menu_link(child) %}{% endcall %}{% endfor %}
+  </ul>
+</details></li>
+{%- else %}
+{%- call menu_link(item) %}{% endcall %}
 {%- endif %}
 {%- endfor %}
 {%- endmacro %}
@@ -105,10 +135,10 @@
   <header class="{{ header.bar }}">
     <nav class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4">
       <a href="{{ home_href }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
-        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="{% if !show_site_title %}{{ site.title }}{% endif %}" class="{{ header.logo }}"
+        {%- if let Some(logo) = logo %}<img src="{{ logo.src }}" alt="{% if !show_site_title %}{{ site_title }}{% endif %}" class="{{ header.logo }}"
         {%- if let Some(width) = logo.width %} width="{{ width }}"{% endif %}
         {%- if let Some(height) = logo.height %} height="{{ height }}"{% endif %}>{% endif %}
-        {%- if show_site_title %}{{ site.title }}{% endif %}</a>
+        {%- if show_site_title %}{{ site_title }}{% endif %}</a>
       {%- if !nav.is_empty() && !sidebar %}
       <ul class="hidden flex-wrap items-center gap-x-6 gap-y-1 text-sm md:flex">
         {%- for item in nav %}{% call nav_entry(item, header.current) %}{% endcall %}{% endfor %}
@@ -123,13 +153,57 @@
       {%- else if !main_menu.is_empty() && !sidebar %}
       <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {%- for item in main_menu %}
+        {%- if item.children.is_empty() %}
         <li><a href="{{ item.href }}" class="inline-flex items-center gap-1.5 {% if item.current %}{{ header.current }}{% else %}link-hover{% endif %}">
           {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
+        {%- else %}
+        {#- A page with pages below it: a dropdown with the page itself
+            first, then the others; a long one (a blog's posts) scrolls. #}
+        <li class="dropdown dropdown-hover dropdown-end md:dropdown-start">
+          <div tabindex="0" role="button" class="inline-flex cursor-pointer items-center gap-1.5 {% if item.current %}{{ header.current }}{% else %}link-hover{% endif %}">
+            {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}<svg viewBox="0 0 24 24" class="size-3.5 opacity-70" style="fill: none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+          <div tabindex="-1" class="dropdown-content z-30 pt-2">
+            <ul class="menu max-h-[70vh] w-72 flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg">
+              <li><a href="{{ item.href }}"{% if item.exact %} class="menu-active" aria-current="page"{% endif %}>{{ item.title }}</a></li>
+              <li aria-hidden="true" class="pointer-events-none mx-3 my-1.5 h-px bg-base-content/25! opacity-100!"></li>
+              {%- for child in item.children %}{% call menu_link(child) %}{% endcall %}{% endfor %}
+            </ul>
+          </div>
+        </li>
+        {%- endif %}
         {%- endfor %}
       </ul>
       {%- endif %}
-      {%- if site.search %}
-      <pagefind-modal-trigger compact></pagefind-modal-trigger>
+      {%- if site.search || site.dark.is_some() || !languages.is_empty() %}
+      <div class="flex items-center gap-2">
+        {%- if !languages.is_empty() %}
+        {#- The page in the site's other languages: plain links. #}
+        <ul class="flex items-center gap-0.5 text-xs font-semibold">
+          {%- for other in languages %}
+          <li><a href="{{ other.href }}" hreflang="{{ other.code }}" lang="{{ other.code }}" title="{{ other.name }}"
+            class="btn btn-ghost btn-xs{% if other.current %} btn-active{% endif %}"{% if other.current %} aria-current="true"{% endif %}>{{ other.short }}</a></li>
+          {%- endfor %}
+        </ul>
+        {%- endif %}
+        {%- if site.search %}
+        <pagefind-modal-trigger compact></pagefind-modal-trigger>
+        {%- endif %}
+        {%- if site.dark.is_some() %}
+        {#- Light, the system's setting, dark; shown by mode.js. Without
+            JavaScript the page follows the system. #}
+        <div id="mode-switch" class="flex items-center rounded-full border border-current/20 p-0.5" role="group" hidden>
+          <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="light" title="{{ mode_labels[1] }}" aria-label="{{ mode_labels[1] }}" aria-pressed="false">
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+          </button>
+          <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="system" title="{{ mode_labels[0] }}" aria-label="{{ mode_labels[0] }}" aria-pressed="true">
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2" /><line x1="8" x2="16" y1="21" y2="21" /><line x1="12" x2="12" y1="17" y2="21" /></svg>
+          </button>
+          <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="dark" title="{{ mode_labels[2] }}" aria-label="{{ mode_labels[2] }}" aria-pressed="false">
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></svg>
+          </button>
+        </div>
+        {%- endif %}
+      </div>
       {%- endif %}
     </nav>
   </header>
@@ -167,6 +241,23 @@
       {{ html|safe }}
       {%- endfor %}
     </div>
+    {%- if neighbours.left.is_some() || neighbours.right.is_some() %}
+    <!-- Back and next (#136): the pages before and after this one. -->
+    <nav class="mt-16 grid gap-3 border-t border-base-300 pt-6 sm:grid-cols-2" aria-label="{{ neighbours.label }}" data-pagefind-ignore>
+      {%- if let Some(link) = neighbours.left %}
+      <a class="flex flex-col gap-1 rounded-box p-3 no-underline hover:bg-base-200" href="{{ link.href }}">
+        <span class="text-sm text-base-content/60">← {{ link.label }}</span>
+        <span class="font-medium">{{ link.title }}</span>
+      </a>
+      {%- endif %}
+      {%- if let Some(link) = neighbours.right %}
+      <a class="flex flex-col gap-1 rounded-box p-3 text-right no-underline hover:bg-base-200 sm:col-start-2" href="{{ link.href }}">
+        <span class="text-sm text-base-content/60">{{ link.label }} →</span>
+        <span class="font-medium">{{ link.title }}</span>
+      </a>
+      {%- endif %}
+    </nav>
+    {%- endif %}
   </main>
   {%- if sidebar %}
   </div>
@@ -183,7 +274,8 @@
     <div class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-4 px-5 py-6 text-sm">
       <ul class="flex flex-wrap gap-x-6 gap-y-1">
         {%- for item in footer_menu %}
-        <li><a href="{{ item.href }}" class="link-hover">{{ item.title }}</a></li>
+        <li><a href="{{ item.href }}" class="link-hover inline-flex items-center gap-1.5">
+          {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
         {%- endfor %}
         {%- for feed in feeds %}
         <li><a href="{{ feed.href }}" class="link-hover inline-flex items-center gap-1.5" title="{{ feed.title }}">{{ rss_icon|safe }}{{ feed.label }}</a></li>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ManualLink from "$lib/ManualLink.svelte";
   import AudioPreview from "$lib/AudioPreview.svelte";
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
@@ -87,13 +88,20 @@
       let card = folders.get(label);
       if (!card) {
         const name = dir + label;
-        card = { ...file, name, label, size: 0, kind: "other", width: null, height: null, used_by: [], count: 0 };
+        card = {
+          ...file, name, label, size: 0, kind: "other", width: null, height: null, used_by: [], count: 0,
+          site_logo: false, site_icon: false, podcast_cover: false,
+        };
         folders.set(label, card);
         result.push(card);
       }
       card.size += file.size;
       card.count = (card.count ?? 0) + 1;
       for (const page of file.used_by) if (!card.used_by.includes(page)) card.used_by.push(page);
+      // A folder holding a file the settings use can't be deleted either.
+      card.site_logo ||= file.site_logo;
+      card.site_icon ||= file.site_icon;
+      card.podcast_cover ||= file.podcast_cover;
     }
     // Folders first, like a file manager.
     return result.sort((a, b) => Number(b.count !== undefined) - Number(a.count !== undefined));
@@ -159,6 +167,15 @@
     }
   }
 
+  /** What the site's settings use a file for, if anything: its label, and why it can't be deleted. */
+  function setting(file: Card): { label: string; tip: string } | null {
+    if (file.site_logo) return { label: "Site logo", tip: "The site's logo; choose another one in Site settings first" };
+    if (file.site_icon) return { label: "Site icon", tip: "The site's icon; choose another one in Site settings first" };
+    if (file.podcast_cover)
+      return { label: "Podcast cover", tip: "The podcast's cover; choose another one in the Podcast tab first" };
+    return null;
+  }
+
   async function remove(file: Card) {
     const what = file.count === undefined ? "the file" : `the folder and its ${file.count} files`;
     const sure = await ask(`Delete ${file.name}? This removes ${what} from the ${folder} folder.`, {
@@ -203,6 +220,9 @@
     <input id="{library}-search" class="input w-64" type="search" placeholder="Search by name" bind:value={search} />
     <span class="text-sm text-base-content/60">{shown.length} of {files.length} files</span>
     <div class="flex-1"></div>
+    {#if library !== "audio" && library !== "transcripts"}
+      <ManualLink page="pictures-and-files/" topic="Pictures and files" />
+    {/if}
     {#if isStatic}
       <button type="button" id="show-static-folder" class="btn"
         onclick={() => revealItemInDir(`${siteRoot}/static${dir ? `/${dir.slice(0, -1)}` : ""}`)}
@@ -327,8 +347,8 @@
             </span>
             {#if !onpick}
               <div class="mt-1 flex items-center justify-between gap-2">
-                {#if file.site_logo || file.podcast_cover}
-                  <span class="truncate text-xs text-base-content/60">{file.site_logo ? "Site logo" : "Podcast cover"}{file.used_by.length ? ", used on pages" : ""}</span>
+                {#if setting(file)}
+                  <span class="truncate text-xs text-base-content/60">{setting(file)?.label}{file.used_by.length ? ", used on pages" : ""}</span>
                 {:else if file.used_by.length}
                   <span class="truncate text-xs text-base-content/60" title={file.used_by.map(pageLabel).join(", ")}>
                     Used on {file.used_by.length === 1 ? pageLabel(file.used_by[0]) : `${file.used_by.length} pages`}
@@ -339,10 +359,8 @@
                 {:else}
                   <span class="text-xs text-warning">Not used</span>
                 {/if}
-                <button type="button" class="btn btn-ghost btn-xs btn-square text-error" disabled={file.used_by.length > 0 || file.site_logo || file.podcast_cover}
-                  title={file.site_logo || file.podcast_cover
-                    ? file.site_logo ? "The site's logo; choose another one in Site settings first" : "The podcast's cover; choose another one in the Podcast tab first"
-                    : file.used_by.length ? "Linked from a page; remove the link there first" : "Delete"}
+                <button type="button" class="btn btn-ghost btn-xs btn-square text-error" disabled={file.used_by.length > 0 || !!setting(file)}
+                  title={setting(file)?.tip ?? (file.used_by.length ? "Linked from a page; remove the link there first" : "Delete")}
                   aria-label="Delete {file.name}" onclick={() => remove(file)}>
                   <Trash class="size-4" />
                 </button>

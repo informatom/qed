@@ -7,13 +7,15 @@
     header?: HeaderStyle;
     /** The site's color choices; the defaults if missing. */
     colors?: Colors;
+    /** Whether the theme's page background is dark (the footer is then shaded by default). */
+    dark?: boolean;
   }
 
-  let { header = "plain", colors }: Props = $props();
+  let { header = "plain", colors, dark = false }: Props = $props();
 
   let hero = $derived(colorOf(colors, "hero"));
   let callToAction = $derived(colorOf(colors, "call_to_action"));
-  let footer = $derived(colorOf(colors, "footer"));
+  let footer = $derived(colorOf(colors, "footer", dark));
   let links = $derived(colorOf(colors, "links"));
 
   /** The legend's number for a theme color; none for plain and shaded. */

@@ -4779,10 +4779,11 @@ checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
 
 [[package]]
 name = "qed"
-version = "0.10.0"
+version = "0.13.0"
 dependencies = [
  "keyring",
  "qed-core",
+ "qed-mcp",
  "serde",
  "serde_json",
  "specta",
@@ -4795,11 +4796,12 @@ dependencies = [
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
  "tauri-specta",
+ "tempfile",
 ]
 
 [[package]]
 name = "qed-core"
-version = "0.10.0"
+version = "0.13.0"
 dependencies = [
  "askama",
  "catppuccin",
@@ -4837,13 +4839,12 @@ dependencies = [
 
 [[package]]
 name = "qed-mcp"
-version = "0.10.0"
+version = "0.13.0"
 dependencies = [
  "qed-core",
  "rmcp",
  "serde",
- "serde_json",
- "tempfile",
+ "thiserror 2.0.21",
  "tokio",
 ]
 

@@ -5,13 +5,18 @@
   import ThemePicker from "$lib/ThemePicker.svelte";
   import { checkForUpdate, installUpdate, updates } from "$lib/updates.svelte";
   import { applyAppTheme, loadAppTheme, saveAppTheme } from "$lib/appTheme";
-  import { commands } from "$lib/site";
+  import { commands, type ThemeChoice } from "$lib/site";
+  import { loadManualLanguage, saveManualLanguage } from "$lib/manual";
 
-  let themes = $state<string[]>([]);
+  let themes = $state<ThemeChoice[]>([]);
   let theme = $state(loadAppTheme());
+  let manualLanguages = $state<string[]>(["en"]);
+  let manualLanguage = $state(loadManualLanguage() ?? "");
+  const LANGUAGE_NAMES: Record<string, string> = { en: "English", de: "Deutsch" };
 
   onMount(async () => {
     themes = await commands.listThemes();
+    manualLanguages = await commands.manualLanguages();
     updates.version ||= await getVersion();
   });
 
@@ -28,6 +33,19 @@
     Only for this computer, and applied right away. Each website has its own theme, in its Theme tab.
   </p>
   <ThemePicker {themes} bind:value={theme} allowSystem />
+</section>
+
+<section id="app-manual" class="mt-6 flex flex-col items-start gap-2">
+  <h2 class="text-lg font-semibold">Language of the manual</h2>
+  <p class="text-sm text-base-content/60">
+    The manual the Manual buttons open. Automatic takes your computer's language if the manual is in it, else English.
+    Pages not translated yet show in English.
+  </p>
+  <select id="manual-language" class="select select-sm w-56" bind:value={manualLanguage}
+    onchange={() => saveManualLanguage(manualLanguage || null)}>
+    <option value="">Automatic</option>
+    {#each manualLanguages as code (code)}<option value={code}>{LANGUAGE_NAMES[code] ?? code}</option>{/each}
+  </select>
 </section>
 
 <section id="app-updates" class="mt-6 flex flex-col items-start gap-2">
