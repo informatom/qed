@@ -74,10 +74,7 @@ run it after adding or updating dependencies (a test fails until then).
 
 The owner is learning Rust, Svelte and TypeScript through this project. When a
 change introduces a concept new to the project, explain it in a post in
-`docs/pages/blog/YYYY-MM-DD/slug.md` (TOML front matter; the blog has a page
-per day, `docs/pages/blog/YYYY-MM-DD.md` with title `31 October 2026`,
-`menu = "main"`, the next `weight` and a Post list block: make it for
-the first post of a new day), tied to the concrete
+`docs/pages/blog/` (`YYYY-MM-DD-slug.md`, TOML front matter), tied to the concrete
 code, comparing with Elixir where it helps, with links to the official docs.
 Give each post a short `title` that fits the docs site's sidebar (about 25
 characters), the full headline as `description`, `menu = "main"`, the next

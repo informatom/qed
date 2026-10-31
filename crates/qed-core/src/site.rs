@@ -1902,12 +1902,10 @@ mod tests {
             .filter(|p| p.path.starts_with("blog/"))
             .collect();
         assert!(!posts.is_empty());
-        // Posts, and a page per day above them (`blog/2026-10-21`).
         for post in posts {
-            let day_page = post.path.len() == "blog/2026-10-21".len();
             assert!(
-                post.content.front.date.is_some() != day_page,
-                "{} should be a post with a date, or a day page without one",
+                post.content.front.date.is_some(),
+                "{} has no date",
                 post.file.display()
             );
         }

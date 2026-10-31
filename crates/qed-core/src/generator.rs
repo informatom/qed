@@ -5775,16 +5775,9 @@ mod tests {
 
         let post = read(
             out.path()
-                .join("blog/2026-10-21/reading-a-site-folder/index.html"),
+                .join("blog/2026-10-21-reading-a-site-folder/index.html"),
         );
         // A link to another post, written as a .md file, now points at its page.
-        assert!(post.contains(r#"href="../../../blog/2026-10-21/one-title-three-languages/""#));
-        // The blog keeps one feed with every post; the day pages get none.
-        let feed = read(out.path().join("blog/feed.xml"));
-        assert!(feed.contains("/blog/2026-10-31/light-and-dark/"), "{feed}");
-        assert!(!out.path().join("blog/2026-10-21/feed.xml").exists());
-        // Older and newer run on across the days.
-        let first_of_day = read(out.path().join("blog/2026-10-22/index.html"));
-        assert!(!first_of_day.contains("Older"), "a day page is no post");
+        assert!(post.contains(r#"href="../../blog/2026-10-21-one-title-three-languages/""#));
     }
 }
