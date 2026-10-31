@@ -4779,7 +4779,7 @@ checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
 
 [[package]]
 name = "qed"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "keyring",
  "qed-core",
@@ -4801,7 +4801,7 @@ dependencies = [
 
 [[package]]
 name = "qed-core"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "askama",
  "catppuccin",
@@ -4840,7 +4840,7 @@ dependencies = [
 
 [[package]]
 name = "qed-mcp"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "qed-core",
  "rmcp",
