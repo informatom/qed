@@ -1156,12 +1156,7 @@ pub fn create_episode(root: &Path, title: &str, number: Option<u32>) -> Result<P
         .as_ref()
         .map(|podcast| podcast.people.clone())
         .unwrap_or_default();
-    let page = site::create_page(
-        root,
-        EPISODES_PATH,
-        title,
-        PageDate::on(crate::calendar::today()),
-    )?;
+    let page = site::create_page(root, EPISODES_PATH, title, PageDate::now())?;
     site::update_page(root, &page.file, |content| {
         content.front.episode = Some(Episode {
             season,

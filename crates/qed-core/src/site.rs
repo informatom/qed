@@ -1002,7 +1002,7 @@ pub fn create_page_named(
                 });
             }
             match &date {
-                Some(date) => format!("{date}-{slug}"),
+                Some(date) => format!("{}-{slug}", date.day().unwrap_or_default()),
                 None => slug,
             }
         }

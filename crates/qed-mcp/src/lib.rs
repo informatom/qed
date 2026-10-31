@@ -16,7 +16,6 @@
 
 use std::path::{Path, PathBuf};
 
-use qed_core::calendar::Date;
 use qed_core::media::{self, Library};
 use qed_core::page::PageDate;
 use qed_core::site::SiteError;
@@ -102,7 +101,9 @@ struct CreatePage {
     /// `blog` for a post in the blog.
     parent: String,
     title: String,
-    /// `YYYY-MM-DD` makes it a post (or an episode below `episodes`).
+    /// `YYYY-MM-DD` makes it a post (or an episode below `episodes`); with
+    /// a time, `YYYY-MM-DDTHH:MM:SS`, posts of one day keep their order in
+    /// feeds. Without a time, none is written.
     date: Option<String>,
     /// The last part of its address, to keep a name it had elsewhere:
     /// `2016-10-02-beginn`. Left out, it comes from the title, with the
@@ -313,7 +314,11 @@ impl Qed {
     ) -> Reply {
         let date = date
             .as_deref()
-            .map(|date| parse_date(date).ok_or(format!("\"{date}\" isn't a date like 2026-10-29")))
+            .map(|date| {
+                PageDate::parse(date).ok_or(format!(
+                    "\"{date}\" isn't a date like 2026-10-29 or 2026-10-29T14:30:00"
+                ))
+            })
             .transpose()?;
         let page = site::create_page_named(&self.root, &parent, &title, slug.as_deref(), date)
             .map_err(text)?;
@@ -627,15 +632,6 @@ fn parse_library(name: Option<&str>) -> Result<Library, String> {
             "\"{other}\" isn't a library: use media, assets or static"
         )),
     }
-}
-
-/// `2026-10-29` as a page date.
-fn parse_date(text: &str) -> Option<PageDate> {
-    let mut parts = text.trim().splitn(3, '-');
-    let year = parts.next()?.parse().ok()?;
-    let month = parts.next()?.parse().ok()?;
-    let day = parts.next()?.parse().ok()?;
-    PageDate::on(Date { year, month, day })
 }
 
 /// What keeps [`serve`] from starting or running.

@@ -890,12 +890,13 @@ impl Context<'_> {
 }
 
 /// The posts below the page at `parent`, newest first: pages with a date
-/// that isn't after `today`. Posts of the same day go by `weight`, the
-/// higher first: the sidebar shows lower weights first, so the list is the
-/// other way round, like the dates.
+/// that isn't after `today`, later times of a day first (#150). Posts of
+/// the same day and time go by `weight`, the higher first: the sidebar
+/// shows lower weights first, so the list is the other way round, like
+/// the dates.
 fn posts<'a>(pages: &[&'a Page], parent: &str, today: Date) -> Vec<&'a Page> {
     let below = format!("{parent}/");
-    let mut posts: Vec<(Date, &Page)> = pages
+    let mut posts: Vec<((Date, u32), &Page)> = pages
         .iter()
         .copied()
         .filter(|page| {
@@ -906,8 +907,8 @@ fn posts<'a>(pages: &[&'a Page], parent: &str, today: Date) -> Vec<&'a Page> {
             }
         })
         .filter_map(|page| {
-            let date = page.content.front.date.as_ref()?.date()?;
-            (date <= today).then_some((date, page))
+            let key = page.content.front.date.as_ref()?.sort_key()?;
+            (key.0 <= today).then_some((key, page))
         })
         .collect();
     posts.sort_by(|(a, page_a), (b, page_b)| {
@@ -1153,11 +1154,8 @@ fn rss(config: &SiteConfig, base_url: &str, feed: &Feed, posts: &[&Page]) -> Str
              <guid isPermaLink=\"true\">{url}</guid>\n",
             escape_xml(&front.title)
         ));
-        if let Some(date) = front.date.as_ref().and_then(|date| date.date()) {
-            xml.push_str(&format!(
-                "    <pubDate>{}</pubDate>\n",
-                calendar::rfc822(date)
-            ));
+        if let Some(date) = front.date.as_ref().and_then(|date| date.rfc822()) {
+            xml.push_str(&format!("    <pubDate>{date}</pubDate>\n"));
         }
         if let Some(text) = front.summary.as_deref().or(front.description.as_deref()) {
             xml.push_str(&format!(
@@ -2457,7 +2455,7 @@ fn player_episode(
         "title": front.title,
         "subtitle": front.summary.as_deref().unwrap_or(""),
         "summary": front.summary.as_deref().or(front.description.as_deref()).unwrap_or(""),
-        "publicationDate": front.date.as_ref().map(|d| format!("{d}T00:00:00Z")),
+        "publicationDate": front.date.as_ref().and_then(|d| d.iso()),
         "poster": poster,
         "duration": episode
             .duration
@@ -4242,6 +4240,45 @@ mod tests {
         let home = read(out.join("index.html"));
         assert!(home.contains(r#"href="blog/2026-10-21-today/""#), "{home}");
         assert!(!home.contains("Old"), "limit = 1");
+    }
+
+    #[test]
+    fn orders_posts_of_one_day_by_their_time() {
+        let dir = tempfile::tempdir().unwrap();
+        blog(dir.path());
+        // Two more posts on the same day as "Today", with times: the
+        // later one first, though its weight would put it last; a post
+        // without a time counts as midnight.
+        for (file, title, time, weight) in [
+            ("2026-10-21-morning", "Morning", "09:15:00+01:00", 1),
+            ("2026-10-21-evening", "Evening", "18:40:00+01:00", 9),
+        ] {
+            fs::write(
+                dir.path().join(format!("pages/blog/{file}.md")),
+                format!(
+                    "+++\ntitle = \"{title}\"\ndate = 2026-10-21T{time}\nweight = {weight}\n+++\n"
+                ),
+            )
+            .unwrap();
+        }
+        let mut site = site::open(dir.path()).unwrap();
+        site.config.base_url = Some("https://example.com/".into());
+        let out = dir.path().join("_site");
+        build_on(&site, &out, TODAY).unwrap();
+
+        let feed = read(out.join("blog/feed.xml"));
+        let at = |title: &str| feed.find(&format!("<title>{title}</title>")).unwrap();
+        assert!(
+            at("Evening") < at("Morning") && at("Morning") < at("Today"),
+            "{feed}"
+        );
+        assert!(
+            feed.contains("<pubDate>Wed, 21 Oct 2026 18:40:00 +0100</pubDate>"),
+            "{feed}"
+        );
+        let list = read(out.join("blog/index.html"));
+        let at = |title: &str| list.find(&format!(">{title}<")).unwrap();
+        assert!(at("Evening") < at("Morning") && at("Morning") < at("Today"));
     }
 
     #[test]

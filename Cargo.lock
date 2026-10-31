@@ -4814,6 +4814,7 @@ dependencies = [
  "git2",
  "image",
  "include_dir",
+ "jiff",
  "lofty",
  "pagefind",
  "pulldown-latex",

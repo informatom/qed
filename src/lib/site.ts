@@ -81,6 +81,29 @@ export function today(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+/** The time now, "14:30", for new posts (#150). */
+export function timeNow(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+/** A page date's day and time of day: "2026-10-31T14:30:00" gives
+ *  "2026-10-31" and "14:30"; without a time, the time is "". */
+export function splitDate(date: string | null): { day: string; time: string } {
+  const match = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/.exec(date ?? "");
+  return { day: match?.[1] ?? "", time: match?.[2] ?? "" };
+}
+
+/** Day and time as a page date again; `before`, the date as it was, stays
+ *  if neither changed, so its seconds or time zone aren't lost. */
+export function joinDate(day: string, time: string, before: string | null): string | null {
+  if (!day) return null;
+  const old = splitDate(before);
+  if (before && old.day === day && old.time === time) return before;
+  return time ? `${day}T${time}:00` : day;
+}
+
 export type BlockType = Block["type"];
 
 export const BLOCK_NAMES: Record<BlockType, string> = {

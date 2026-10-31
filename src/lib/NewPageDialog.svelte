@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
-  import { commands, today, type Page, type Site } from "$lib/site";
+  import { commands, joinDate, timeNow, today, type Page, type Site } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -17,6 +17,7 @@
   let parent = $state("");
   let isPost = $state(false);
   let date = $state(today());
+  let time = $state(timeNow());
   let slug = $state("");
   let creating = $state(false);
 
@@ -63,7 +64,7 @@
     try {
       const page = episode
         ? await commands.createEpisode(site.root, title, Number.isInteger(number) && number !== null && number >= 0 ? number : null)
-        : await commands.createPage(site.root, parent, title, isPost ? date : null);
+        : await commands.createPage(site.root, parent, title, isPost ? joinDate(date, time, null) : null);
       dialog.close();
       oncreated(page);
     } catch (e) {
@@ -109,6 +110,7 @@
         </label>
         {#if isPost}
           <input id="new-page-date" class="input w-40" type="date" bind:value={date} required />
+          <input id="new-page-time" class="input w-28" type="time" bind:value={time} aria-label="Time" />
         {/if}
       </div>
     </div>

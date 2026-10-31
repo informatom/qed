@@ -1027,7 +1027,10 @@ export type PageContent = {
 };
 
 /**
- *  A TOML date such as `2026-10-21`, written without quotes in the file.
+ *  A TOML date such as `2026-10-21`, written without quotes in the file,
+ *  optionally with a time of day: `2026-10-21T14:30:00` (#150), which is
+ *  in the computer's time zone when the site is built, unless it names
+ *  its own (`2026-10-21T14:30:00+01:00`).
  * 
  *  Reading uses TOML's own date type, which rejects nonsense like
  *  `2026-13-45`. The UI receives it as text, `"2026-10-21"`, and sends it back

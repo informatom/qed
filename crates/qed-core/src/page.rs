@@ -67,7 +67,10 @@ pub struct FrontMatter {
     pub episode: Option<crate::podcast::Episode>,
 }
 
-/// A TOML date such as `2026-10-21`, written without quotes in the file.
+/// A TOML date such as `2026-10-21`, written without quotes in the file,
+/// optionally with a time of day: `2026-10-21T14:30:00` (#150), which is
+/// in the computer's time zone when the site is built, unless it names
+/// its own (`2026-10-21T14:30:00+01:00`).
 ///
 /// Reading uses TOML's own date type, which rejects nonsense like
 /// `2026-13-45`. The UI receives it as text, `"2026-10-21"`, and sends it back
@@ -115,6 +118,97 @@ impl PageDate {
             month: u32::from(date.month),
             day: u32::from(date.day),
         })
+    }
+
+    /// Now, to the minute, in the computer's time zone: for new posts and
+    /// episodes (#150).
+    pub fn now() -> Option<PageDate> {
+        let now = jiff::Zoned::now();
+        format!("{}T{:02}:{:02}:00", now.date(), now.hour(), now.minute())
+            .parse()
+            .ok()
+            .map(PageDate)
+    }
+
+    /// A date written as text, `2026-10-31` or `2026-10-31T14:30:00`;
+    /// `None` for anything else, a bare time included.
+    pub fn parse(text: &str) -> Option<PageDate> {
+        let date: toml::value::Datetime = text.trim().parse().ok()?;
+        date.date.is_some().then_some(PageDate(date))
+    }
+
+    /// The time of day, if one is written: hour, minute, second.
+    pub fn time(&self) -> Option<(u8, u8, u8)> {
+        self.0
+            .time
+            .map(|time| (time.hour, time.minute, time.second.unwrap_or(0)))
+    }
+
+    /// The day alone, `2026-10-21`, as file names of posts begin.
+    pub fn day(&self) -> Option<String> {
+        self.0.date.map(|date| date.to_string())
+    }
+
+    /// For sorting posts: the day, then the second of the day (a post
+    /// without a time counts as midnight).
+    pub fn sort_key(&self) -> Option<(crate::calendar::Date, u32)> {
+        let seconds = self.time().map_or(0, |(hour, minute, second)| {
+            u32::from(hour) * 3600 + u32::from(minute) * 60 + u32::from(second)
+        });
+        Some((self.date()?, seconds))
+    }
+
+    /// As RSS writes dates (RFC 822): `Sat, 31 Oct 2026 14:30:00 +0100`.
+    /// Without a time, midnight UTC, as before #150.
+    pub fn rfc822(&self) -> Option<String> {
+        let date = self.date()?;
+        let (time, offset) = self.time_and_offset(&jiff::tz::TimeZone::system());
+        Some(crate::calendar::rfc822_at(date, time, offset))
+    }
+
+    /// As ISO 8601 writes them: `2026-10-31T14:30:00+01:00`; without a
+    /// time, midnight UTC.
+    pub fn iso(&self) -> Option<String> {
+        let date = self.date()?;
+        let ((hour, minute, second), offset) = self.time_and_offset(&jiff::tz::TimeZone::system());
+        let zone = if offset == 0 {
+            "Z".to_string()
+        } else {
+            let sign = if offset < 0 { '-' } else { '+' };
+            format!("{sign}{:02}:{:02}", offset.abs() / 60, offset.abs() % 60)
+        };
+        Some(format!(
+            "{:04}-{:02}-{:02}T{hour:02}:{minute:02}:{second:02}{zone}",
+            date.year, date.month, date.day
+        ))
+    }
+
+    /// The time of day (midnight without one) and its offset from UTC in
+    /// minutes: the one written, else `zone`'s on that day (summer time
+    /// included), else 0 for a date without a time.
+    fn time_and_offset(&self, zone: &jiff::tz::TimeZone) -> ((u8, u8, u8), i32) {
+        let Some(time) = self.time() else {
+            return ((0, 0, 0), 0);
+        };
+        let written = self.0.offset.map(|offset| match offset {
+            toml::value::Offset::Z => 0,
+            toml::value::Offset::Custom { minutes } => i32::from(minutes),
+        });
+        let offset = written.or_else(|| {
+            let date = self.0.date?;
+            let civil = jiff::civil::DateTime::new(
+                i16::try_from(date.year).ok()?,
+                i8::try_from(date.month).ok()?,
+                i8::try_from(date.day).ok()?,
+                i8::try_from(time.0).ok()?,
+                i8::try_from(time.1).ok()?,
+                i8::try_from(time.2).ok()?,
+                0,
+            )
+            .ok()?;
+            Some(civil.to_zoned(zone.clone()).ok()?.offset().seconds() / 60)
+        });
+        (time, offset.unwrap_or(0))
     }
 }
 
@@ -646,6 +740,31 @@ fn toml_error(error: &toml::de::Error, lines: &[&str], first_line: usize) -> Par
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dates_with_a_time_in_the_computers_time_zone() {
+        let date =
+            |text: &str| -> PageDate { serde_json::from_str(&format!("\"{text}\"")).unwrap() };
+        let vienna = jiff::tz::TimeZone::get("Europe/Vienna").unwrap();
+
+        // Winter and summer time in Vienna; a written offset wins.
+        let winter = date("2026-01-05T14:30:00");
+        assert_eq!(winter.time_and_offset(&vienna), ((14, 30, 0), 60));
+        let summer = date("2026-07-05T14:30:00");
+        assert_eq!(summer.time_and_offset(&vienna), ((14, 30, 0), 120));
+        let written = date("2026-07-05T14:30:00-05:00");
+        assert_eq!(written.time_and_offset(&vienna), ((14, 30, 0), -300));
+        assert_eq!(written.rfc822().unwrap(), "Sun, 05 Jul 2026 14:30:00 -0500");
+        assert_eq!(written.iso().unwrap(), "2026-07-05T14:30:00-05:00");
+
+        // Without a time: midnight UTC, as before.
+        let day = date("2026-07-05");
+        assert_eq!(day.rfc822().unwrap(), "Sun, 05 Jul 2026 00:00:00 +0000");
+        assert_eq!(day.iso().unwrap(), "2026-07-05T00:00:00Z");
+        assert_eq!(day.day().unwrap(), "2026-07-05");
+        assert_eq!(written.day().unwrap(), "2026-07-05");
+        assert!(day.sort_key() < summer.sort_key());
+    }
     use crate::block::{CallToAction, Hero};
 
     fn page(body: &str) -> String {

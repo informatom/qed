@@ -11,7 +11,7 @@
 //! jekyll-octopod could make them) aren't used: Apple Podcasts and most
 //! apps read only the first page, so older episodes would go missing.
 
-use crate::calendar::{self, Date};
+use crate::calendar::Date;
 
 use crate::podcast::{self, AudioFormat, Episode, EpisodeType, Podcast};
 use crate::site::{MEDIA_DIR, Page, SiteConfig};
@@ -169,9 +169,9 @@ fn channel(input: &FeedInput, format: AudioFormat, items: &[String]) -> String {
     if let Some(date) = input
         .episodes
         .first()
-        .and_then(|page| page.content.front.date.as_ref()?.date())
+        .and_then(|page| page.content.front.date.as_ref()?.rfc822())
     {
-        line(tag("lastBuildDate", &calendar::rfc822(date)));
+        line(tag("lastBuildDate", &date));
     }
     for item in items {
         xml.push_str(item);
@@ -207,8 +207,8 @@ fn item(input: &FeedInput, page: &Page, format: AudioFormat) -> Option<String> {
         "<guid isPermaLink=\"false\">{}</guid>",
         escape(&episode.guid)
     ));
-    if let Some(date) = front.date.as_ref().and_then(|d| d.date()) {
-        line(tag("pubDate", &calendar::rfc822(date)));
+    if let Some(date) = front.date.as_ref().and_then(|d| d.rfc822()) {
+        line(tag("pubDate", &date));
     }
     if let Some(text) = front.summary.as_deref().or(front.description.as_deref()) {
         line(tag("description", text));
@@ -358,16 +358,17 @@ fn escape(text: &str) -> String {
 /// the same order and rules as a Post list.
 pub fn feed_episodes<'a>(published: &[&'a Page], today: Date) -> Vec<&'a Page> {
     let prefix = format!("{}/", podcast::EPISODES_PATH);
-    let mut episodes: Vec<(Date, &Page)> = published
+    let mut episodes: Vec<((Date, u32), &Page)> = published
         .iter()
         .copied()
         .filter(|page| page.path.starts_with(&prefix) && page.content.front.episode.is_some())
         .filter_map(|page| {
-            let date = page.content.front.date.as_ref()?.date()?;
-            (date <= today).then_some((date, page))
+            let key = page.content.front.date.as_ref()?.sort_key()?;
+            (key.0 <= today).then_some((key, page))
         })
         .collect();
-    // Episodes of one day: the higher number first.
+    // Later times of a day first; episodes of one day without times: the
+    // higher number first.
     episodes.sort_by(|(a, page_a), (b, page_b)| {
         b.cmp(a)
             .then_with(|| podcast::same_day_order(page_b).cmp(&podcast::same_day_order(page_a)))

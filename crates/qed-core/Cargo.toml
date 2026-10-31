@@ -16,6 +16,8 @@ comrak = { version = "0.57.0", default-features = false, features = ["syntect-fa
 deunicode = "1"
 getrandom = "0.3"
 git2 = { version = "0.21.0", default-features = false, features = ["vendored-libgit2"] }
+# A post's time in the computer's time zone, summer time included (#150).
+jiff = "0.2.38"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 # WebP copies of photos (#085): Google's libwebp, compiled in (C, BSD);
 # the image crate only writes lossless WebP, which is larger than JPEG.

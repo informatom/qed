@@ -7,7 +7,7 @@
   import MediaPicker from "$lib/MediaPicker.svelte";
   import PeopleEditor from "$lib/PeopleEditor.svelte";
   import {
-    commands, formatLabel, iconSvgs, podcastFormats, sameData, saveChecked,
+    commands, formatLabel, iconSvgs, joinDate, podcastFormats, sameData, saveChecked, splitDate, timeNow,
     type AudioFormat, type Contributor, type Episode, type EpisodeAudio, type EpisodeType, type FrontMatter, type Menu, type Page, type Podcast,
   } from "$lib/site";
 
@@ -45,6 +45,9 @@
   let form = $state(initial);
   // Lists are edited as comma-separated text.
   let authors = $state(initial.authors.join(", "));
+  // The date as day and time of day (#150), joined again when saving.
+  let day = $state(splitDate(initial.date).day);
+  let time = $state(splitDate(initial.date).time);
   let tags = $state(initial.tags.join(", "));
 
   // The page's icon now, to show next to "No icon".
@@ -214,7 +217,7 @@
     image: orNull(form.image),
     icon: orNull(form.icon),
     summary: orNull(form.summary),
-    date: orNull(form.date),
+    date: joinDate(day, time, initial.date),
     weight: Number(form.weight) || 0,
     authors: list(authors),
     tags: list(tags),
@@ -329,10 +332,14 @@
 
     <section id="page-post" class="grid gap-4 border-t border-base-300 pt-6 @xl:grid-cols-2">
       {@render heading("Blog post")}
-      <label class="flex flex-col gap-1">
-        <span class="text-sm font-medium">Date</span>
-        <input id="setting-date" class="input w-full" type="date" bind:value={form.date} />
-      </label>
+      <div class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Date and time <span class="font-normal text-base-content/50">· the time orders posts of one day in feeds</span></span>
+        <div class="flex gap-2">
+          <input id="setting-date" class="input w-full" type="date" bind:value={day} aria-label="Date"
+            onchange={() => { if (day && !time) time = timeNow(); }} />
+          <input id="setting-time" class="input w-32" type="time" bind:value={time} aria-label="Time" disabled={!day} />
+        </div>
+      </div>
       <label class="flex flex-col gap-1">
         <span class="text-sm font-medium">Authors</span>
         <input id="setting-authors" class="input w-full" bind:value={authors} placeholder="Comma-separated" />

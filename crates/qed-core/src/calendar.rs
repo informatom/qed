@@ -1,5 +1,7 @@
-//! Calendar dates without a date library: today's date, dates as RSS
-//! wants them, and dates for readers in the site's language. All in UTC.
+//! Calendar dates: today's date, dates as RSS wants them, and dates for
+//! readers in the site's language. Dates are days without a time zone;
+//! "today" and a post's time (see `page::PageDate`) are the computer's,
+//! with jiff for its time zone.
 //!
 //! The conversions between days since 1970 and calendar dates are Howard
 //! Hinnant's, see <https://howardhinnant.github.io/date_algorithms.html>.
@@ -21,9 +23,15 @@ pub fn now_seconds() -> i64 {
         .map_or(0, |time| i64::try_from(time.as_secs()).unwrap_or(0))
 }
 
-/// Today, in UTC.
+/// Today, in the computer's time zone, like the times of posts (#150):
+/// a post written at 00:30 is today's, not tomorrow's.
 pub fn today() -> Date {
-    from_days(now_seconds().div_euclid(86_400))
+    let now = jiff::Zoned::now();
+    Date {
+        year: i64::from(now.year()),
+        month: u32::try_from(now.month()).unwrap_or(1),
+        day: u32::try_from(now.day()).unwrap_or(1),
+    }
 }
 
 /// The date `days` days after 1970-01-01.
@@ -73,13 +81,23 @@ pub fn short_month(date: Date) -> &'static str {
 
 /// A date the way RSS writes it (RFC 822): `Wed, 21 Oct 2026 00:00:00 +0000`.
 pub fn rfc822(date: Date) -> String {
+    rfc822_at(date, (0, 0, 0), 0)
+}
+
+/// A date and time the way RSS writes it, with the time's offset from UTC
+/// in minutes: `Sat, 31 Oct 2026 14:30:00 +0100`.
+pub fn rfc822_at(date: Date, (hour, minute, second): (u8, u8, u8), offset: i32) -> String {
     const WEEKDAYS: [&str; 7] = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"];
     // 1970-01-01 was a Thursday.
     let weekday = WEEKDAYS[usize::try_from(days(date).rem_euclid(7)).unwrap_or(0)];
     let month = short_month(date);
+    let sign = if offset < 0 { '-' } else { '+' };
     format!(
-        "{weekday}, {:02} {month} {:04} 00:00:00 +0000",
-        date.day, date.year
+        "{weekday}, {:02} {month} {:04} {hour:02}:{minute:02}:{second:02} {sign}{:02}{:02}",
+        date.day,
+        date.year,
+        offset.abs() / 60,
+        offset.abs() % 60
     )
 }
 
