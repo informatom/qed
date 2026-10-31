@@ -141,6 +141,35 @@ fn check_links(site: &Site) -> Result<(), BuildError> {
 /// being published), but each one would be a "page not found" for
 /// visitors. `site` has its shared blocks expanded, so their links are
 /// checked where they're shown, with each page's own links.
+/// Notes for `:icon-name:` in text that neither the site nor q.e.d. has:
+/// it stays as text on the page. (A page's own `icon` is checked when the
+/// page is read.)
+fn icon_notes(site: &Site, published: &[&Page], site_icons: &SiteIcons) -> Vec<String> {
+    let checked = published
+        .iter()
+        .copied()
+        .chain(site.footer.as_ref())
+        .chain(site.episode_layout.as_ref());
+    let mut notes = Vec::new();
+    for page in checked {
+        let place = match page.path.as_str() {
+            crate::site::FOOTER_PATH => "The footer".to_string(),
+            crate::site::EPISODE_LAYOUT_PATH => "The episode layout".to_string(),
+            path => format!("/{path}"),
+        };
+        let unknown: BTreeSet<String> = crate::site::markdown_texts(&page.content.blocks)
+            .into_iter()
+            .flat_map(|text| markdown::unknown_icons(text, site_icons))
+            .collect();
+        for name in unknown {
+            notes.push(format!(
+                "{place} uses the icon \"{name}\", which q.e.d. doesn't have; the Icons page of the manual lists them."
+            ));
+        }
+    }
+    notes
+}
+
 fn missing_links(site: &Site, published: &[&Page]) -> Vec<String> {
     let mut exists: BTreeSet<&str> = published.iter().map(|page| page.path.as_str()).collect();
     for page in published {
@@ -286,6 +315,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     let media_dir = site.root.join(MEDIA_DIR);
     let images = Images::new(&media_dir);
     let site_icons = SiteIcons::load(&media_dir);
+    notes.extend(icon_notes(site, &published, &site_icons));
     // Each language's pages (#145): a page sees only those in its own
     // language, in menus, lists and back and next links.
     let mut by_language: BTreeMap<Option<&str>, Vec<&Page>> = BTreeMap::new();
@@ -5754,6 +5784,33 @@ mod tests {
                 r#"The footer links to "/contact", but there's no such page."#,
             ],
             "once each, drafts' own links unchecked"
+        );
+    }
+
+    #[test]
+    fn notes_icons_that_dont_exist() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::write(root.join("site.toml"), "title = \"S\"\n").unwrap();
+        fs::create_dir_all(root.join("pages")).unwrap();
+        fs::create_dir_all(root.join("media/icons")).unwrap();
+        fs::write(root.join("media/icons/rails.svg"), "<svg/>").unwrap();
+        fs::write(
+            root.join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\n:icon-mail: :icon-rails: :icon-envelope: \
+             `:icon-name:`\n\n::: faq\n[[items]]\nquestion = \"Q\"\nanswer = \":icon-envelope: twice, :icon-hause:\"\n:::\n",
+        )
+        .unwrap();
+        let site = site::open(root).unwrap();
+        let report = build_into(&site, &root.join("_site")).unwrap();
+        let notes: Vec<&String> = report.notes.iter().filter(|n| n.contains("icon")).collect();
+        assert_eq!(
+            notes,
+            [
+                r#"/ uses the icon "envelope", which q.e.d. doesn't have; the Icons page of the manual lists them."#,
+                r#"/ uses the icon "hause", which q.e.d. doesn't have; the Icons page of the manual lists them."#,
+            ],
+            "once each; known, own and code ones left alone"
         );
     }
 

@@ -27,9 +27,19 @@ use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
 use rmcp::{ServerHandler, ServiceExt, schemars, tool, tool_handler, tool_router};
 use serde::Deserialize;
 
-/// What the assistant is told when it connects: the page format and the
-/// rules, so it can read and write pages without guessing.
+/// The page format, the settings and the rules, so the assistant can
+/// read and write pages without guessing; the `guide` tool returns it.
 const GUIDE: &str = include_str!("guide.md");
+
+/// What the assistant is told when it connects. Assistants shorten long
+/// instructions (Claude Code cut the whole guide off after about 2 KB),
+/// so this only says what the server is and to read the guide first.
+const INSTRUCTIONS: &str = "This server works on one website made with q.e.d., a desktop app for \
+websites and podcast sites. The site's owner edits it in the app, without programming; you edit \
+the same files through these tools, and every change is recorded in the site's history, where the \
+owner can undo it. Before changing anything, call the guide tool once: it explains the page \
+format, the blocks, the footer, the site settings, links and files, icons and how to work well \
+with the owner. Publishing is the owner's decision, made in the app.";
 
 /// A tool's answer: text for the assistant, or what went wrong, which the
 /// assistant sees as a failed tool call it can react to.
@@ -45,18 +55,28 @@ struct Qed {
 #[derive(Deserialize, schemars::JsonSchema)]
 struct PageFile {
     /// The page file, relative to the site folder, as `list_pages` shows
-    /// it: `pages/about.md`, `pages/blog/2026-10-29-news.md`.
+    /// it: `pages/about.md`, `pages/blog/2026-10-29-news.md`; for
+    /// read_page also `footer.md`, `episode.md` or `shared/teaser.md`.
     file: String,
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
 struct WritePage {
-    /// The page file, as `list_pages` shows it.
+    /// The page file, as `list_pages` shows it, or `footer.md`,
+    /// `footer.en.md`, `episode.md`, `shared/teaser.md`.
     file: String,
     /// The page's whole new text: settings between `+++` lines, then
     /// Markdown and `:::` blocks.
     text: String,
     /// The stamp `read_page` gave with the text this change is based on.
+    stamp: String,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
+struct WriteSettings {
+    /// The whole new text of `site.toml`.
+    text: String,
+    /// The stamp `read_settings` gave with the text this change is based on.
     stamp: String,
 }
 
@@ -68,6 +88,10 @@ struct CreatePage {
     title: String,
     /// `YYYY-MM-DD` makes it a post (or an episode below `episodes`).
     date: Option<String>,
+    /// The last part of its address, to keep a name it had elsewhere:
+    /// `2016-10-02-beginn`. Left out, it comes from the title, with the
+    /// date first for a post.
+    slug: Option<String>,
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
@@ -82,16 +106,22 @@ struct MovePage {
 
 #[derive(Deserialize, schemars::JsonSchema)]
 struct Files {
-    /// `media` (images, the default) or `assets` (files to download).
+    /// `media` (images, the default), `assets` (files to download) or
+    /// `static` (files the website gets as they are).
     library: Option<String>,
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
 struct Import {
-    /// The full path of a file on this computer to copy into the site.
+    /// The full path of a file on this computer to copy into the site; for
+    /// `static`, also a folder, copied with everything in it.
     path: String,
-    /// `media` (images, the default) or `assets` (files to download).
+    /// `media` (images, the default), `assets` (files to download) or
+    /// `static` (files the website gets as they are, at the same address).
     library: Option<String>,
+    /// Only for `static`: the folder in it to copy into, `pdf` or
+    /// `talks/2019`; the top of `static/` if left out.
+    folder: Option<String>,
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
@@ -117,14 +147,21 @@ impl Qed {
     }
 
     #[tool(
-        description = "The site's title, language, theme, web address, whether it's a podcast, how many pages it has, and what changed since the last version."
+        description = "How q.e.d. sites work: the page format and all page settings, every block type, the footer and shared blocks, the site settings (site.toml), links and files, themes and icons, and how to work well with the site's owner. Read it once before changing anything."
+    )]
+    async fn guide(&self) -> Reply {
+        Ok(full_guide())
+    }
+
+    #[tool(
+        description = "The site's title, language, theme, web address, whether it's a podcast, how many pages it has (posts included, and how many of them are posts), and what changed since the last version."
     )]
     async fn site_info(&self) -> Reply {
         let site = site::open(&self.root).map_err(text)?;
         let config = &site.config;
         let status = history::status(&self.root).map_err(text)?;
         let mut out = format!(
-            "Title: {}\nLanguage: {}\nTheme: {}\nWeb address: {}\nPodcast: {}\nPages: {}\nShared blocks: {}\nFooter: {}\n",
+            "Title: {}\nLanguage: {}\nTheme: {}\nWeb address: {}\nPodcast: {}\nPages: {} ({} of them posts)\nShared blocks: {}\nFooter: {}\n",
             config.title,
             config.language,
             config.theme,
@@ -135,6 +172,7 @@ impl Qed {
                 "no"
             },
             site.pages.len(),
+            posts(&site),
             site.shared.len(),
             if site.footer.is_some() {
                 "footer.md"
@@ -151,11 +189,15 @@ impl Qed {
     }
 
     #[tool(
-        description = "Every page with its address, file, title and date; drafts and menus marked. Use the file with read_page, write_page, move_page and delete_page."
+        description = "Every page with its address, file, title and date (a page with a date is a post), first how many pages and posts there are; drafts and menus marked. Use the file with read_page, write_page, move_page and delete_page. At the end the footer, episode layout and shared blocks, for read_page and write_page."
     )]
     async fn list_pages(&self) -> Reply {
         let site = site::open(&self.root).map_err(text)?;
-        let mut out = String::new();
+        let mut out = format!(
+            "{} pages, {} of them posts.\n\n",
+            site.pages.len(),
+            posts(&site)
+        );
         for page in &site.pages {
             let front = &page.content.front;
             let mut marks = Vec::new();
@@ -180,11 +222,32 @@ impl Qed {
                 front.title
             ));
         }
+        let mut parts: Vec<String> = site
+            .footer
+            .iter()
+            .chain(&site.footer_translations)
+            .map(|footer| format!("{} · the footer", footer.file.display()))
+            .collect();
+        if let Some(layout) = &site.episode_layout {
+            parts.push(format!("{} · the episode layout", layout.file.display()));
+        }
+        parts.extend(site.shared.iter().map(|shared| {
+            format!(
+                "{} · shared block \"{}\"",
+                shared.file.display(),
+                shared.content.front.title
+            )
+        }));
+        if parts.is_empty() {
+            out.push_str("\nNo footer or shared blocks yet (footer.md, shared/<name>.md).\n");
+        } else {
+            out.push_str(&format!("\nNot pages:\n{}\n", parts.join("\n")));
+        }
         Ok(out)
     }
 
     #[tool(
-        description = "A page file's whole text (settings between +++ lines, then Markdown and ::: blocks) and its stamp. Pass the stamp to write_page, so a change made meanwhile in the app isn't overwritten."
+        description = "A page file's whole text (settings between +++ lines, then Markdown and ::: blocks) and its stamp. Pass the stamp to write_page, so a change made meanwhile in the app isn't overwritten. Also reads the footer (footer.md, footer.en.md for a language), the episode layout (episode.md) and shared blocks (shared/teaser.md); one that doesn't exist yet reads as empty text."
     )]
     async fn read_page(&self, Parameters(PageFile { file }): Parameters<PageFile>) -> Reply {
         let (content, stamp) = editing::page_text(&self.root, Path::new(&file)).map_err(text)?;
@@ -192,7 +255,7 @@ impl Qed {
     }
 
     #[tool(
-        description = "Replaces a page file's whole text, read with read_page. It must be a valid page with a title; mistakes come back with their line. Refused if the file changed since that read: read it again then. Recorded in the site's history."
+        description = "Replaces a page file's whole text, read with read_page. It must be a valid page with a title; mistakes come back with their line. Refused if the file changed since that read: read it again then. Recorded in the site's history. Also writes the footer, the episode layout and shared blocks (a new shared block is made by writing it; its name is lowercase letters, digits and dashes); for those, empty text removes the file."
     )]
     async fn write_page(
         &self,
@@ -202,6 +265,13 @@ impl Qed {
             stamp,
         }): Parameters<WritePage>,
     ) -> Reply {
+        if editing::is_part(Path::new(&file)) {
+            editing::write_part_text(&self.root, Path::new(&file), &content, &stamp)
+                .map_err(text)?;
+            self.record()?;
+            let (_, stamp) = editing::page_text(&self.root, Path::new(&file)).map_err(text)?;
+            return Ok(format!("Saved {file}. New stamp: {stamp}"));
+        }
         let page = editing::write_page_text(&self.root, Path::new(&file), &content, &stamp)
             .map_err(text)?;
         self.record()?;
@@ -214,7 +284,7 @@ impl Qed {
     }
 
     #[tool(
-        description = "Makes a new page below a parent page, with a title and, for a post, a date. Its file name comes from the title. Returns the new page's file, text and stamp, to fill in with write_page."
+        description = "Makes a new page below a parent page, with a title and, for a post, a date. The last part of its address (and its file name) comes from the title, with the date first for a post, unless slug gives it. Returns the new page's file, text and stamp, to fill in with write_page."
     )]
     async fn create_page(
         &self,
@@ -222,13 +292,15 @@ impl Qed {
             parent,
             title,
             date,
+            slug,
         }): Parameters<CreatePage>,
     ) -> Reply {
         let date = date
             .as_deref()
             .map(|date| parse_date(date).ok_or(format!("\"{date}\" isn't a date like 2026-10-29")))
             .transpose()?;
-        let page = site::create_page(&self.root, &parent, &title, date).map_err(text)?;
+        let page = site::create_page_named(&self.root, &parent, &title, slug.as_deref(), date)
+            .map_err(text)?;
         self.record()?;
         let (content, stamp) = editing::page_text(&self.root, &page.file).map_err(text)?;
         Ok(format!(
@@ -279,7 +351,31 @@ impl Qed {
     }
 
     #[tool(
-        description = "The site's images (library media) or files to download (library assets): name, size, image size, and which pages use each. Images are used in blocks by name (image = \"team.jpg\") and in text as /media/team.jpg."
+        description = "The site's settings, site.toml, as text with its stamp: title, language, logo, theme, web address, menu, footer colors, profiles and more (the guide tool lists them). Pass the stamp to write_settings."
+    )]
+    async fn read_settings(&self) -> Reply {
+        let (content, stamp) = editing::settings_text(&self.root).map_err(text)?;
+        Ok(format!("stamp: {stamp}\n\n{content}"))
+    }
+
+    #[tool(
+        description = "Replaces site.toml's whole text, read with read_settings. Refused if it isn't valid or the site wouldn't open with it (the reason comes back), or if it changed since that read. Keep what you don't change as it is, comments included. Recorded in the site's history."
+    )]
+    async fn write_settings(
+        &self,
+        Parameters(WriteSettings {
+            text: content,
+            stamp,
+        }): Parameters<WriteSettings>,
+    ) -> Reply {
+        editing::write_settings_text(&self.root, &content, &stamp).map_err(text)?;
+        self.record()?;
+        let (_, stamp) = editing::settings_text(&self.root).map_err(text)?;
+        Ok(format!("Saved site.toml. New stamp: {stamp}"))
+    }
+
+    #[tool(
+        description = "The site's images (library media), files to download (library assets) or files the website gets as they are (library static): name, size, image size, and which pages use each. Images are used in blocks by name (image = \"team.jpg\") and in text as /media/team.jpg; static/pdf/talk.pdf is at /pdf/talk.pdf."
     )]
     async fn list_files(&self, Parameters(Files { library }): Parameters<Files>) -> Reply {
         let library = parse_library(library.as_deref())?;
@@ -332,11 +428,26 @@ impl Qed {
     }
 
     #[tool(
-        description = "Copies a file from this computer into the site's images (media) or downloads (assets), with a clean name, which it returns."
+        description = "Copies a file from this computer into the site's images (media) or downloads (assets), with a clean name, which it returns. Into static, a file or a whole folder keeps its name and goes into the given folder, so the website has it at the same address as before: folder pdf puts 33C3.pdf at /pdf/33C3.pdf. Static files are for what must stay as it is, such as old slide shows or verification files; images belong in media."
     )]
-    async fn import_file(&self, Parameters(Import { path, library }): Parameters<Import>) -> Reply {
+    async fn import_file(
+        &self,
+        Parameters(Import {
+            path,
+            library,
+            folder,
+        }): Parameters<Import>,
+    ) -> Reply {
         let library = parse_library(library.as_deref())?;
-        let name = media::import(&self.root, library, Path::new(&path)).map_err(text)?;
+        let source = Path::new(&path);
+        let name = match (library, folder) {
+            (Library::Static, folder) => {
+                media::import_static(&self.root, folder.as_deref().unwrap_or(""), source)
+            }
+            (_, Some(_)) => return Err("a folder can only be given for static".to_string()),
+            (library, None) => media::import(&self.root, library, source),
+        }
+        .map_err(text)?;
         self.record()?;
         Ok(format!("Imported as {name}."))
     }
@@ -435,8 +546,32 @@ impl ServerHandler for Qed {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("qed", env!("CARGO_PKG_VERSION")))
-            .with_instructions(GUIDE)
+            .with_instructions(INSTRUCTIONS)
     }
+}
+
+/// The guide, with the names of q.e.d.'s themes and icons at the end, so
+/// it can't fall behind the app's.
+fn full_guide() -> String {
+    let names: Vec<&str> = qed_core::icons::ICONS
+        .iter()
+        .map(|(name, _)| *name)
+        .collect();
+    format!(
+        "{GUIDE}\n## Themes\n\nFor `theme` in site.toml: {}.\n\n## Icons\n\nFor `:icon-name:` in text and `icon` in page settings: {}. \
+         A site's own icons are the images in `media/icons/`, used by their file name without \
+         the extension (`media/icons/rails.svg` is `:icon-rails:`).\n",
+        qed_core::theme::THEMES.join(", "),
+        names.join(", ")
+    )
+}
+
+/// How many of the site's pages are posts: those with a date.
+fn posts(site: &site::Site) -> usize {
+    site.pages
+        .iter()
+        .filter(|page| page.content.front.date.is_some())
+        .count()
 }
 
 fn text(error: impl std::fmt::Display) -> String {
@@ -447,7 +582,10 @@ fn parse_library(name: Option<&str>) -> Result<Library, String> {
     match name.unwrap_or("media") {
         "media" => Ok(Library::Media),
         "assets" => Ok(Library::Assets),
-        other => Err(format!("\"{other}\" isn't a library: use media or assets")),
+        "static" => Ok(Library::Static),
+        other => Err(format!(
+            "\"{other}\" isn't a library: use media, assets or static"
+        )),
     }
 }
 

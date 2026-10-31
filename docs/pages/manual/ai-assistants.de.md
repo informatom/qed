@@ -31,7 +31,12 @@ boxed = true
 - einer Seite eine neue Adresse geben (Links und Weiterleitungen
   erledigt q.e.d., wie beim Verschieben in der App)
 - Seiten löschen, auf die nichts verlinkt
-- Bilder und Dateien von Ihrem Computer hinzufügen
+- Bilder und Dateien von Ihrem Computer hinzufügen, auch Dateien, die
+  die Website genau so braucht, wie sie sind (etwa alte Foliensätze),
+  unter ihren alten Adressen
+- die Fußzeile, geteilte Blöcke und die Einstellungen der Website ändern
+  (Menü, Logo, Theme, Web-Adresse, Ihre Profile anderswo); die Website
+  muss sich damit öffnen lassen, sonst lehnt q.e.d. ab
 - die Website bauen und kaputte Links melden
 - eine Version mit einer Notiz sichern, was er geändert hat
 

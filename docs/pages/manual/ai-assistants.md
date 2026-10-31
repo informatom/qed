@@ -30,7 +30,12 @@ boxed = true
 - give a page a new address (links and redirects are taken care of, as
   when you move a page in q.e.d.)
 - delete pages that nothing links to
-- add pictures and files from your computer
+- add pictures and files from your computer, and files the website
+  needs exactly as they are (such as old slide shows) at their old
+  addresses
+- change the footer, shared blocks and the site settings (menu, logo,
+  theme, web address, your profiles elsewhere); the site has to open
+  with them, or q.e.d. refuses
 - build the site and report broken links
 - save a version with a note saying what it changed
 

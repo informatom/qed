@@ -6,7 +6,7 @@ use std::sync::OnceLock;
 use comrak::nodes::{AstNode, NodeValue};
 use comrak::options::Plugins;
 use comrak::plugins::syntect::{SyntectAdapter, SyntectAdapterBuilder};
-use comrak::{Arena, Options, format_html_with_plugins, parse_document};
+use comrak::{Arena, Options, format_html, format_html_with_plugins, parse_document};
 
 use crate::icons::{SITE_ICONS_DIR, SiteIcons};
 use crate::images::Images;
@@ -155,6 +155,49 @@ const TEXT_SIZES: &str = "(min-width: 56rem) 56rem, 100vw";
 /// q.e.d.'s (see `icons.rs`). Code is left alone, and so are names that
 /// are in neither.
 fn with_icons(html: &str, links: &LinkContext, site_icons: &SiteIcons) -> String {
+    each_icon(html, |name| {
+        // Names are lowercase letters, digits and dashes, so they need no
+        // escaping in the attribute.
+        if let Some(file) = site_icons.file(name) {
+            let src = links.media(&format!("{SITE_ICONS_DIR}/{file}"));
+            Some(format!(
+                r#"<img class="inline-icon site-icon" src="{src}" alt="" aria-hidden="true">"#
+            ))
+        } else {
+            crate::icons::svg(name)
+                .map(|svg| svg.replacen("class=\"size-4 shrink-0\"", "class=\"inline-icon\"", 1))
+        }
+    })
+}
+
+/// The icon names written as `:icon-name:` in a piece of Markdown, outside
+/// code, that are neither the site's own nor q.e.d.'s: they stay as text
+/// on the page, so the build notes them.
+pub fn unknown_icons(markdown: &str, site_icons: &SiteIcons) -> Vec<String> {
+    if !markdown.contains(":icon-") {
+        return Vec::new();
+    }
+    let options = options();
+    let arena = Arena::new();
+    let root = parse_document(&arena, markdown, &options);
+    let mut html = String::new();
+    if format_html(root, &options, &mut html).is_err() {
+        return Vec::new();
+    }
+    let mut unknown = Vec::new();
+    each_icon(&html, |name| {
+        if site_icons.file(name).is_none() && crate::icons::svg(name).is_none() {
+            unknown.push(name.to_string());
+        }
+        None
+    });
+    unknown
+}
+
+/// Calls `icon` with the name of each `:icon-name:` in `html` outside
+/// `<code>` and `<pre>`, and puts what it returns in its place; where it
+/// returns nothing, the text stays as it is.
+fn each_icon(html: &str, mut icon: impl FnMut(&str) -> Option<String>) -> String {
     if !html.contains(":icon-") {
         return html.to_string();
     }
@@ -189,21 +232,16 @@ fn with_icons(html: &str, links: &LinkContext, site_icons: &SiteIcons) -> String
             rest = after;
             continue;
         }
-        // Names are lowercase letters, digits and dashes, so they need no
-        // escaping in the attribute.
-        if let Some(file) = site_icons.file(name) {
-            let src = links.media(&format!("{SITE_ICONS_DIR}/{file}"));
-            out.push_str(&format!(
-                r#"<img class="inline-icon site-icon" src="{src}" alt="" aria-hidden="true">"#
-            ));
-        } else if let Some(svg) = crate::icons::svg(name) {
-            out.push_str(&svg.replacen("class=\"size-4 shrink-0\"", "class=\"inline-icon\"", 1));
-        } else {
-            out.push_str(":icon-");
-            rest = after;
-            continue;
+        match icon(name) {
+            Some(replacement) => {
+                out.push_str(&replacement);
+                rest = &after[name_len + 1..];
+            }
+            None => {
+                out.push_str(":icon-");
+                rest = after;
+            }
         }
-        rest = &after[name_len + 1..];
     }
     out.push_str(rest);
     out

@@ -1,3 +1,5 @@
+# Working on a q.e.d. site
+
 This server works on one website made with q.e.d., a desktop app for websites and podcast sites. The site's owner edits it in the app, without programming; you edit the same files through these tools. Every change you make is recorded in the site's history, where the owner sees it in the app and can undo it.
 
 ## Pages
@@ -24,6 +26,21 @@ headline = "Welcome"
 text = "Markdown, in a TOML string."
 :::
 ```
+
+All page settings; only `title` is required, and settings left out take their default:
+
+- `title`: the page's title.
+- `description`: one sentence for search engines.
+- `summary`: a short teaser (Markdown) for post lists and feeds.
+- `image`: a file in `media/` that link previews show (on social media, in chat apps); without one, the page's first image.
+- `date`: `2026-10-29`, without quotes; makes the page a post.
+- `authors`: a list of names, `["Stefan Haslinger"]`. `tags`: a list of words.
+- `draft = true`: left out of the built site.
+- `hide_title = true`: no title above the content, for a page that opens with a heading of its own.
+- `menu`: "main" or "footer", for the menus q.e.d. makes by itself. `weight`: order among sibling pages, lower first. `icon`: an icon name (see Icons below), shown in menus.
+- `back_next = true`: the pages below this one get links to the one before and after ("Older"/"Newer" for posts).
+- `redirect_from`: earlier addresses of the page, which then lead to it: `["/2016/10/02/beginn.html", "/old-about"]`. Slashes at either end don't matter. An address ending in `.html` becomes that file, any other a folder with an `index.html`. Only for addresses of pages: an old address of a PDF or image can't be a redirect.
+- `episode`: a table that makes the page a podcast episode; edit episodes in the app.
 
 Every other block is a `:::` container with its fields in TOML. Empty fields are left out. The block types and their fields:
 
@@ -67,11 +84,45 @@ Text and blocks.
 :::::
 ```
 
-Text inside code fences (```) is never read as a block. Markdown text may use `$…$` for math and `:icon-phone:` for icons.
+Text inside code fences (```) is never read as a block. Markdown text may use `$…$` for math and `:icon-phone:` for icons; only the names listed under Icons work, and build_site notes any other.
+
+## Footer, shared blocks, settings
+
+Some files hold blocks but aren't pages; read_page and write_page take them too, and list_pages names them at the end:
+
+- `footer.md`: the blocks at the bottom of every page (`footer.en.md` for a further language). Columns work well there. The footer also shows the footer menu, the pages with `menu = "footer"` (imprint, privacy and the like), below those blocks.
+- `shared/<name>.md`: a shared block, the same blocks on several pages; a page shows it with `::: shared` and `name = "<name>"`.
+- `episode.md`: the layout of podcast episode pages.
+
+The site's own settings are `site.toml`, read with read_settings and written with write_settings. Keep everything you don't change as it is. The settings:
+
+- `title`, `description`, `language` (the main language's code), `base_url` (the web address, `"https://example.com/"`; needed for feeds and the sitemap).
+- `logo` and `icon`: images in `media/` by name; `icon` is the browser-tab icon (an SVG, a square PNG or an ICO).
+- `theme`: one of the names listed under Themes below, or `"custom"` with a `[custom_theme]` table (made in the app's Theme tab). `[dark]` with its own `theme` gives the site a dark side that follows the visitor's system.
+- `navigation`: "top" or "sidebar" for the main menu. `header`: "plain", "primary", "secondary", "accent" or "neutral". `logo_size`: "small", "medium", "large" or "original". `page_width`: "normal", "wide" or "full". `title_in_header`, `search`, `mark_external_links`: true or false.
+- `[colors]`: which theme color goes where: `links`, `buttons`, `call_to_action`, `hero`, `boxes`, `content`, `footer` (`footer = "shaded"`, for example).
+- `profiles`: the owner's profiles elsewhere, `["https://fosstodon.org/@name"]`. Every page links them with `rel="me"`, so Mastodon shows the site as verified on the profile.
+- `[fonts]`: `text` and `headings`, fonts the owner added in the app.
+- `[[main_menu]]`: a menu arranged by hand, entries in order. Each has `page` (a page's address, `""` for the start page) or `link` (any address), an optional `title`, and for a dropdown `[[main_menu.items]]` entries of its own. Without any, the menu is made from the pages' `menu = "main"`.
+
+```
+[[main_menu]]
+title = "About"
+page = ""
+
+[[main_menu]]
+title = "Manuals"
+
+[[main_menu.items]]
+page = "listener-manual"
+```
+
+- `[languages.en]` with `title` and `description`: a further language (translations are `about.en.md` beside `about.md`).
+- `[podcast]`: a podcast's settings; leave them to the app's Podcast tab.
 
 ## Links and files
 
-Link to pages by address (`[About](/about)`) or by file relative to the page (`[About](../about.md)`). Images are in `media/`: in a block by name (`image = "team.jpg"`), in text as `![Our team](/media/team.jpg)`. Files to download are in `assets/` (`/assets/menu.pdf`). Always give images an alt text. Links that leave the site folder aren't allowed; build_site notes links to pages and files that don't exist.
+Link to pages by address (`[About](/about)`) or by file relative to the page (`[About](../about.md)`). Images are in `media/`: in a block by name (`image = "team.jpg"`), in text as `![Our team](/media/team.jpg)`. Files to download are in `assets/` (`/assets/menu.pdf`). Files the website needs exactly as they are, at an address of their own, are in `static/`: `static/talks/sub8.html` is at `/talks/sub8.html`. Use it to keep old addresses of files working (a PDF at `/pdf/33C3.pdf`, old slide shows with their scripts), since redirects only work for pages. A folder in `static/` may share its address with a page (`static/talks/` beside the page `/talks`), as long as it has no `index.html`; links to static files count as working. Always give images an alt text. Links that leave the site folder aren't allowed; build_site notes links to pages and files that don't exist.
 
 ## Working well
 

@@ -34,14 +34,55 @@ are #146 (light and dark mode) and #105 (MCP server).
   through the MCP server, publish it, and test the Mastodon
   verification (#140) against the profile. A test of the MCP server on
   a real site (62 posts, 12 pages, sidebar menu) and of `rel="me"`.
-  Added by the user on 2026-10-30.
+  Added by the user on 2026-10-30. *2026-10-31:* the hand-made copy is
+  gone; a new empty site was made like the app does, and Claude Code
+  (headless, only Read/Glob/Grep on the Jekyll source plus the MCP
+  tools) moved the blog over in 14 minutes: 62 posts, 13 pages, 75
+  images, 2 PDFs, 69 redirects, links rewritten, one version saved.
+  Left for the site owner: site settings (web address, logo, theme,
+  footer, sidebar extras, Mastodon `profiles`), the slide shows in
+  `static/`. Gaps went to #148. Still to do: the user's look in the app,
+  publishing, and the `rel="me"` check.
 
-- **#148 MCP server follow-ups.** Found while testing #105 on
-  2026-10-31: check stdio of the Windows build (a GUI program,
-  `windows_subsystem = "windows"`) when an assistant starts `qed mcp`;
-  a test assistant suggested that `site_info` say its page count
-  includes posts, that `list_pages` count the posts, and that the format
-  guide mention `authors` and `redirect_from`.
+- **#148 MCP server follow-ups.** Found while testing #105 and #147 on
+  2026-10-31. *Done the same day (uncommitted):* `site_info` and
+  `list_pages` count posts; the guide lists all page settings, the
+  site settings, theme and icon names (both generated from q.e.d.'s
+  lists); `create_page` takes a `slug`; `import_file` copies files and
+  folders into `static/` at a given folder, which also keeps old file
+  addresses (`/pdf/33C3.pdf`, redirects only work for pages);
+  `read_page`/`write_page` take the footer, episode layout and shared
+  blocks; `read_settings`/`write_settings` for `site.toml`, refused if
+  the site wouldn't open with it (`editing::write_settings_text`, with
+  the old text put back); the build notes unknown `:icon-…:` in text,
+  for the app too. The guide is now a `guide` tool, and the instructions
+  sent at the start only point to it: Claude Code cut the long
+  instructions off after about 2 KB, so the first assistant never saw
+  most of the guide. No tool for deleting files (decided by the user,
+  2026-10-31); the owner deletes them in the app. Still open: stdio of the Windows build when an
+  assistant starts `qed mcp` (a friend of the user's tries it).
+
+- **#149 Tabler icons.** Switch from Lucide to
+  [Tabler Icons](https://tabler.io/icons) (MIT, about 5,000 outline
+  icons plus filled ones), for sites and for the app's own interface
+  (user, 2026-10-31: clearer to him). Sites: vendor the SVGs into
+  `crates/qed-core/assets/` with a README; a table maps the 72 Lucide
+  names in use today (`house` → `home`, …) so existing sites keep
+  opening; the icon picker gets a search; the manual's Icons page
+  explains the search and links to tabler.io instead of listing every
+  icon (its test changes); the MCP guide's icon list becomes a
+  `find_icons` tool. App: replace `@lucide/svelte` with Tabler's Svelte
+  package (check its Svelte 5 support) or inline SVGs. After #148.
+
+- **#150 Posts with a time.** A post's `date` is a day only, so the
+  feeds give every post 00:00, and feed readers order posts of the same
+  day at random (user, 2026-10-31). Allow a time as well
+  (`date = 2026-10-31T14:30:00`, TOML's local date-time), use it in
+  the feeds, post lists and back/next order, and offer it in the page
+  settings (new posts get the current time). A time is in the
+  computer's time zone at build time (decided by the user, 2026-10-31). Docs site: give the blog posts times in the order they
+  were written, from git (the commit that added each post) or made up
+  along their `weight`, so the feed has the right order.
 
 ### Phase 4: Podcast Publisher Import
 

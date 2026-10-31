@@ -968,17 +968,44 @@ pub fn create_page(
     title: &str,
     date: Option<PageDate>,
 ) -> Result<Page, SiteError> {
+    create_page_named(root, parent, title, None, date)
+}
+
+/// [`create_page`], with the last part of its address given as `slug`
+/// instead of made from the title (and without the date put first): for
+/// a page that keeps the name it had elsewhere, `2016-10-02-beginn`.
+pub fn create_page_named(
+    root: &Path,
+    parent: &str,
+    title: &str,
+    slug: Option<&str>,
+    date: Option<PageDate>,
+) -> Result<Page, SiteError> {
     let title = title.trim();
-    let slug = slugify(title);
-    if slug.is_empty() {
-        return Err(SiteError::Invalid {
-            path: PathBuf::from(PAGES_DIR),
-            message: "the title needs at least one letter or digit".to_string(),
-        });
-    }
-    let name = match &date {
-        Some(date) => format!("{date}-{slug}"),
-        None => slug,
+    let name = match slug {
+        Some(slug) => {
+            let slug = slugify(slug);
+            if slug.is_empty() {
+                return Err(SiteError::Invalid {
+                    path: PathBuf::from(PAGES_DIR),
+                    message: "the address needs at least one letter or digit".to_string(),
+                });
+            }
+            slug
+        }
+        None => {
+            let slug = slugify(title);
+            if slug.is_empty() {
+                return Err(SiteError::Invalid {
+                    path: PathBuf::from(PAGES_DIR),
+                    message: "the title needs at least one letter or digit".to_string(),
+                });
+            }
+            match &date {
+                Some(date) => format!("{date}-{slug}"),
+                None => slug,
+            }
+        }
     };
 
     let parent = parent.trim_matches('/');
@@ -1687,6 +1714,21 @@ pub fn pages_linking_to(site: &Site, path: &str) -> Vec<String> {
 
 /// Every link written in a list of blocks: Markdown links and buttons.
 pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
+    let (texts, mut targets) = texts_and_buttons(blocks);
+    for text in texts {
+        targets.extend(markdown::link_targets(text));
+    }
+    targets
+}
+
+/// The Markdown texts in a list of blocks, columns and sections included.
+pub(crate) fn markdown_texts(blocks: &[Block]) -> Vec<&str> {
+    texts_and_buttons(blocks).0
+}
+
+/// The Markdown texts in a list of blocks, and the links of its buttons
+/// and lists.
+fn texts_and_buttons(blocks: &[Block]) -> (Vec<&str>, Vec<String>) {
     let mut texts: Vec<&str> = Vec::new();
     let mut targets = Vec::new();
     for block in crate::block::all_blocks(blocks) {
@@ -1724,10 +1766,7 @@ pub(crate) fn link_targets(blocks: &[Block]) -> Vec<String> {
             | Block::EpisodeShare => {}
         }
     }
-    for text in texts {
-        targets.extend(markdown::link_targets(text));
-    }
-    targets
+    (texts, targets)
 }
 
 /// Whether a hand-made menu has an entry for the page at `path`.
@@ -2319,11 +2358,24 @@ mod tests {
         );
 
         let date: PageDate = serde_json::from_str("\"2026-10-21\"").unwrap();
-        let post = create_page(dir.path(), "/blog/", "Hello, World!", Some(date)).unwrap();
+        let post = create_page(dir.path(), "/blog/", "Hello, World!", Some(date.clone())).unwrap();
         assert_eq!(post.path, "blog/2026-10-21-hello-world");
         assert_eq!(post.file, Path::new("pages/blog/2026-10-21-hello-world.md"));
 
-        // The site opens with both new pages in it.
+        // With an address of its own, the title doesn't make the name, and
+        // the date isn't put first.
+        let named = create_page_named(
+            dir.path(),
+            "blog",
+            "Panoptikum.social Blog",
+            Some("2016-10-02-Beginn"),
+            Some(date),
+        )
+        .unwrap();
+        assert_eq!(named.path, "blog/2016-10-02-beginn");
+        assert!(create_page_named(dir.path(), "", "X", Some("?!"), None).is_err());
+
+        // The site opens with the new pages in it.
         let paths: Vec<String> = open(dir.path())
             .unwrap()
             .pages
@@ -2332,7 +2384,13 @@ mod tests {
             .collect();
         assert_eq!(
             paths,
-            ["", "blog", "blog/2026-10-21-hello-world", "ueber-uns"]
+            [
+                "",
+                "blog",
+                "blog/2016-10-02-beginn",
+                "blog/2026-10-21-hello-world",
+                "ueber-uns"
+            ]
         );
     }
 

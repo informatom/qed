@@ -38,13 +38,16 @@ impl Session {
                    "clientInfo": {"name": "test", "version": "1"}}),
         );
         assert_eq!(init["result"]["serverInfo"]["name"], "qed");
+        // Short, so assistants don't cut it off; it points to the guide.
+        let instructions = init["result"]["instructions"].as_str().unwrap();
         assert!(
-            init["result"]["instructions"]
-                .as_str()
-                .unwrap()
-                .contains(":::: columns")
+            instructions.len() < 2000 && instructions.contains("guide tool"),
+            "{instructions}"
         );
         session.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+        let (guide, failed) = session.call("guide", json!({}));
+        assert!(!failed && guide.contains(":::: columns") && guide.contains("redirect_from"));
+        assert!(guide.contains("catppuccin-mocha") && guide.contains("book-open"));
         session
     }
 
@@ -155,4 +158,98 @@ fn edits_a_page_with_the_apps_rules() {
 
     let (built, failed) = session.call("build_site", json!({}));
     assert!(!failed && built.starts_with("Built 1 pages"), "{built}");
+}
+
+#[test]
+fn reaches_static_files_the_footer_and_the_settings() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("site");
+    std::fs::create_dir_all(root.join("pages")).unwrap();
+    std::fs::write(root.join("site.toml"), "title = \"Test\"\n").unwrap();
+    std::fs::write(
+        root.join("pages/index.md"),
+        "+++\ntitle = \"Home\"\n+++\n\n:icon-envelope: Mail\n",
+    )
+    .unwrap();
+    std::fs::create_dir_all(root.join("pages/blog")).unwrap();
+    std::fs::write(root.join("pages/blog.md"), "+++\ntitle = \"Blog\"\n+++\n").unwrap();
+    let old = dir.path().join("old");
+    std::fs::create_dir_all(old.join("talks")).unwrap();
+    std::fs::write(old.join("talks/sub8.html"), "<html>slides</html>").unwrap();
+    std::fs::write(old.join("33C3.pdf"), "%PDF").unwrap();
+    let mut session = Session::start(&root);
+
+    // A post that keeps its old name.
+    let (made, failed) = session.call(
+        "create_page",
+        json!({"parent": "blog", "title": "Panoptikum Blog", "date": "2016-10-02",
+               "slug": "2016-10-02-beginn"}),
+    );
+    assert!(
+        !failed && made.starts_with("Made /blog/2016-10-02-beginn"),
+        "{made}"
+    );
+    let (list, _) = session.call("list_pages", json!({}));
+    assert!(list.starts_with("3 pages, 1 of them posts."), "{list}");
+
+    // Files at their old addresses, a folder with everything in it.
+    let (imported, failed) = session.call(
+        "import_file",
+        json!({"path": old.join("33C3.pdf"), "library": "static", "folder": "pdf"}),
+    );
+    assert!(!failed, "{imported}");
+    let (imported, failed) = session.call(
+        "import_file",
+        json!({"path": old.join("talks"), "library": "static"}),
+    );
+    assert!(!failed, "{imported}");
+    assert!(root.join("static/pdf/33C3.pdf").is_file());
+    assert!(root.join("static/talks/sub8.html").is_file());
+    let (refused, failed) = session.call(
+        "import_file",
+        json!({"path": old.join("33C3.pdf"), "library": "assets", "folder": "pdf"}),
+    );
+    assert!(failed, "{refused}");
+
+    // The footer doesn't exist yet: it reads empty, and writing makes it.
+    let (footer, failed) = session.call("read_page", json!({"file": "footer.md"}));
+    assert!(!failed, "{footer}");
+    let stamp = footer.lines().next().unwrap().trim_start_matches("stamp: ");
+    let (saved, failed) = session.call(
+        "write_page",
+        json!({"file": "footer.md", "text": "+++\ntitle = \"Footer\"\n+++\n\n© 2026\n",
+               "stamp": stamp}),
+    );
+    assert!(!failed, "{saved}");
+    let (list, _) = session.call("list_pages", json!({}));
+    assert!(list.contains("footer.md · the footer"), "{list}");
+
+    // Settings: a broken text is refused, a good one saved.
+    let (settings, _) = session.call("read_settings", json!({}));
+    let stamp = settings
+        .lines()
+        .next()
+        .unwrap()
+        .trim_start_matches("stamp: ");
+    let (refused, failed) = session.call(
+        "write_settings",
+        json!({"text": "title = ", "stamp": stamp}),
+    );
+    assert!(failed, "{refused}");
+    let (saved, failed) = session.call(
+        "write_settings",
+        json!({"text": "title = \"Test\"\nprofiles = [\"https://fosstodon.org/@x\"]\n",
+               "stamp": stamp}),
+    );
+    assert!(!failed, "{saved}");
+
+    let (built, failed) = session.call("build_site", json!({}));
+    assert!(!failed, "{built}");
+    assert!(built.contains("uses the icon \"envelope\""), "{built}");
+    let home = std::fs::read_to_string(root.join("_site/index.html")).unwrap();
+    assert!(
+        home.contains(r#"rel="me" href="https://fosstodon.org/@x""#),
+        "{home}"
+    );
+    assert!(root.join("_site/pdf/33C3.pdf").is_file());
 }
