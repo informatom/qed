@@ -150,8 +150,24 @@
       {%- else if !main_menu.is_empty() && !sidebar %}
       <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {%- for item in main_menu %}
+        {%- if item.children.is_empty() %}
         <li><a href="{{ item.href }}" class="inline-flex items-center gap-1.5 {% if item.current %}{{ header.current }}{% else %}link-hover{% endif %}">
           {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
+        {%- else %}
+        {#- A page with pages below it: a dropdown with the page itself
+            first, then the others; a long one (a blog's posts) scrolls. #}
+        <li class="dropdown dropdown-hover dropdown-end md:dropdown-start">
+          <div tabindex="0" role="button" class="inline-flex cursor-pointer items-center gap-1.5 {% if item.current %}{{ header.current }}{% else %}link-hover{% endif %}">
+            {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}<svg viewBox="0 0 24 24" class="size-3.5 opacity-70" style="fill: none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+          <div tabindex="-1" class="dropdown-content z-30 pt-2">
+            <ul class="menu max-h-[70vh] w-72 flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg">
+              <li><a href="{{ item.href }}"{% if item.exact %} class="menu-active" aria-current="page"{% endif %}>{{ item.title }}</a></li>
+              <li aria-hidden="true" class="pointer-events-none mx-3 my-1.5 h-px bg-base-content/25! opacity-100!"></li>
+              {%- for child in item.children %}{% call menu_link(child) %}{% endcall %}{% endfor %}
+            </ul>
+          </div>
+        </li>
+        {%- endif %}
         {%- endfor %}
       </ul>
       {%- endif %}
@@ -246,7 +262,8 @@
     <div class="mx-auto flex w-full {{ width }} flex-wrap items-center justify-between gap-4 px-5 py-6 text-sm">
       <ul class="flex flex-wrap gap-x-6 gap-y-1">
         {%- for item in footer_menu %}
-        <li><a href="{{ item.href }}" class="link-hover">{{ item.title }}</a></li>
+        <li><a href="{{ item.href }}" class="link-hover inline-flex items-center gap-1.5">
+          {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}</a></li>
         {%- endfor %}
         {%- for feed in feeds %}
         <li><a href="{{ feed.href }}" class="link-hover inline-flex items-center gap-1.5" title="{{ feed.title }}">{{ rss_icon|safe }}{{ feed.label }}</a></li>

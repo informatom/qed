@@ -18,6 +18,11 @@ it goes:
 - **Order**: a number; pages with smaller numbers come first.
 - **Icon**: shown next to the page in the menu (see [Icons](icons.md)).
 
+Pages below another page in the menu (a blog's posts, the pages below
+*About*) go with it: in the top bar it becomes a dropdown with the page
+itself first and the others below it; a long one scrolls. In the
+sidebar they fold (see below).
+
 New pages are in no menu until you choose one. The footer menu is
 always made this way; the imprint and privacy pages belong there.
 

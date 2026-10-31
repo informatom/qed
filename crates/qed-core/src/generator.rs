@@ -965,25 +965,55 @@ struct Feed<'a> {
 }
 
 /// The pages that get a feed: those with at least one post right below
-/// them, so `/blog` does for `/blog/2026-10-21-hello`.
+/// them, so `/blog` does for `/blog/2026-10-21-hello`. Pages named by a
+/// date that group a blog's posts by day, month or year
+/// (`/blog/2026-10-21/hello`) pass them on to the page above: the blog
+/// keeps one feed.
 fn feed_sources<'a>(pages: &[&'a Page], today: Date) -> Vec<&'a Page> {
+    let with_posts: BTreeSet<&str> = pages
+        .iter()
+        .filter(|page| {
+            !page.path.is_empty()
+                && page
+                    .content
+                    .front
+                    .date
+                    .as_ref()
+                    .and_then(|date| date.date())
+                    .is_some_and(|date| date <= today)
+        })
+        .map(|page| feed_parent(&page.path))
+        .collect();
     pages
         .iter()
         .copied()
-        .filter(|parent| {
-            pages.iter().any(|page| {
-                !page.path.is_empty()
-                    && page.path.rsplit_once('/').map_or("", |(up, _)| up) == parent.path
-                    && page
-                        .content
-                        .front
-                        .date
-                        .as_ref()
-                        .and_then(|date| date.date())
-                        .is_some_and(|date| date <= today)
-            })
-        })
+        .filter(|page| with_posts.contains(page.path.as_str()))
         .collect()
+}
+
+/// The page whose feed has the post at `path`: the one above it, past
+/// pages named by a date (`2026`, `2026-10`, `2026-10-21`).
+fn feed_parent(path: &str) -> &str {
+    let mut parent = path.rsplit_once('/').map_or("", |(up, _)| up);
+    while let Some(last) = parent.rsplit('/').next().filter(|_| !parent.is_empty())
+        && is_date_name(last)
+    {
+        parent = parent.rsplit_once('/').map_or("", |(up, _)| up);
+    }
+    parent
+}
+
+/// `2026`, `2026-10` or `2026-10-21`.
+fn is_date_name(name: &str) -> bool {
+    let parts: Vec<&str> = name.split('-').collect();
+    let digits =
+        |part: &str, count: usize| part.len() == count && part.bytes().all(|b| b.is_ascii_digit());
+    match parts.as_slice() {
+        [year] => digits(year, 4),
+        [year, month] => digits(year, 4) && digits(month, 2),
+        [year, month, day] => digits(year, 4) && digits(month, 2) && digits(day, 2),
+        _ => false,
+    }
 }
 
 fn feed_file(path: &str) -> String {
@@ -1388,23 +1418,35 @@ fn neighbour_words(language: &str) -> [&'static str; 5] {
 /// The pages before and after `page` among those below the same page, if
 /// that page has `back_next` on. Posts (pages with a date) go newest first
 /// as in a Post list, so the older one is on the left; other pages go by
-/// their order, as in a Page list.
+/// their order, as in a Page list. A post looks further up for that page:
+/// in a blog with a page per day, its posts run on across the days.
 fn neighbours(page: &Page, context: &Context, links: &LinkContext) -> Neighbours {
-    let Some((parent, _)) = page.path.rsplit_once('/').or_else(|| {
-        // Pages at the top are below the start page ("").
-        (!page.path.is_empty()).then_some(("", page.path.as_str()))
-    }) else {
-        return Neighbours::default();
-    };
-    let wanted = context
-        .pages
-        .iter()
-        .any(|other| other.path == parent && other.content.front.back_next);
-    if !wanted {
+    if page.path.is_empty() {
         return Neighbours::default();
     }
-    let [back, next, older, newer, and] = neighbour_words(context.language);
     let dated = page.content.front.date.is_some();
+    // The pages above, nearest first; pages at the top are below the start
+    // page ("").
+    let mut above = Vec::new();
+    let mut path = page.path.as_str();
+    while let Some((parent, _)) = path.rsplit_once('/') {
+        above.push(parent);
+        path = parent;
+    }
+    above.push("");
+    if !dated {
+        above.truncate(1);
+    }
+    let with_back_next = |path: &str| {
+        context
+            .pages
+            .iter()
+            .any(|other| other.path == path && other.content.front.back_next)
+    };
+    let Some(parent) = above.into_iter().find(|path| with_back_next(path)) else {
+        return Neighbours::default();
+    };
+    let [back, next, older, newer, and] = neighbour_words(context.language);
     let series = if dated {
         posts(context.pages, parent, context.today)
     } else {
@@ -2932,9 +2974,10 @@ fn render_page(
         sidebar_links(&nav)
     };
     let sidebar = config.navigation == Navigation::Sidebar && !main_links.is_empty();
-    // In the sidebar, the automatic menu folds like a hand-made one; the
-    // top bar keeps showing every page.
-    let main_links = if sidebar && nav.is_empty() {
+    // The automatic menu groups pages below a top-level page under it, like
+    // a hand-made one: they fold in the sidebar and are a dropdown in the
+    // top bar.
+    let main_links = if nav.is_empty() {
         folded(main_links)
     } else {
         main_links
@@ -4143,6 +4186,69 @@ mod tests {
     }
 
     #[test]
+    fn puts_pages_below_a_top_level_page_into_a_dropdown() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write("site.toml", "title = \"S\"\n");
+        write("pages/index.md", "+++\ntitle = \"Home\"\n+++\n");
+        write(
+            "pages/blog.md",
+            "+++\ntitle = \"Blog\"\nmenu = \"main\"\n+++\n",
+        );
+        write(
+            "pages/blog/2026-01-05-first.md",
+            "+++\ntitle = \"First post\"\ndate = 2026-01-05\nmenu = \"main\"\n+++\n",
+        );
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let html = read(
+            out.path()
+                .join(
+                    &site
+                        .pages
+                        .iter()
+                        .find(|p| p.path.starts_with("blog/"))
+                        .unwrap()
+                        .path,
+                )
+                .join("index.html"),
+        );
+        let header = html
+            .split("<header")
+            .nth(1)
+            .and_then(|rest| rest.split("</header>").next())
+            .unwrap();
+        // Blog is a dropdown, with itself first and then its posts.
+        assert!(header.contains("dropdown"), "{header}");
+        let blog = header.find(">Blog</a>").unwrap();
+        let post = header.find(">First post</a>").unwrap();
+        assert!(blog < post, "{header}");
+
+        // The sidebar still has it, below Blog.
+        write("site.toml", "title = \"S\"\nnavigation = \"sidebar\"\n");
+        let site = site::open(dir.path()).unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let html = read(
+            out.path()
+                .join(
+                    &site
+                        .pages
+                        .iter()
+                        .find(|p| p.path.starts_with("blog/"))
+                        .unwrap()
+                        .path,
+                )
+                .join("index.html"),
+        );
+        assert!(html.contains("First post</a>"), "{html}");
+    }
+
+    #[test]
     fn puts_the_main_menu_into_a_sidebar_when_asked() {
         let mut site = demo_site();
         site.config.navigation = Navigation::Sidebar;
@@ -4227,6 +4333,14 @@ mod tests {
         let home = read(out.path().join("index.html"));
         let icon = crate::icons::svg("users").unwrap();
         assert!(home.contains(&format!("{icon}About</a>")), "{home}");
+
+        // In the footer menu too.
+        let about = site.pages.iter_mut().find(|p| p.path == "about").unwrap();
+        about.content.front.menu = Menu::Footer;
+        build_into(&site, out.path()).unwrap();
+        let home = read(out.path().join("index.html"));
+        let footer = home.split("<footer").nth(1).unwrap();
+        assert!(footer.contains(&format!("{icon}About</a>")), "{footer}");
     }
 
     #[test]
@@ -5641,6 +5755,19 @@ mod tests {
     }
 
     #[test]
+    fn pages_named_by_a_date_pass_their_posts_on_to_the_feed_above() {
+        assert_eq!(feed_parent("blog/hello"), "blog");
+        assert_eq!(feed_parent("blog/2026-10-21/hello"), "blog");
+        assert_eq!(feed_parent("blog/2026/10/hello"), "blog/2026/10");
+        assert_eq!(feed_parent("blog/2026/2026-10/hello"), "blog");
+        assert_eq!(feed_parent("2026-10-21/hello"), "");
+        assert_eq!(feed_parent("hello"), "");
+        assert_eq!(feed_parent("news/sport/hello"), "news/sport");
+        assert!(is_date_name("2026") && is_date_name("2026-10") && is_date_name("2026-10-21"));
+        assert!(!is_date_name("26-10-21") && !is_date_name("2026-1") && !is_date_name("news"));
+    }
+
+    #[test]
     fn builds_the_docs_site() {
         let docs = site::open(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs")).unwrap();
         let out = tempfile::tempdir().unwrap();
@@ -5648,9 +5775,16 @@ mod tests {
 
         let post = read(
             out.path()
-                .join("blog/2026-10-21-reading-a-site-folder/index.html"),
+                .join("blog/2026-10-21/reading-a-site-folder/index.html"),
         );
         // A link to another post, written as a .md file, now points at its page.
-        assert!(post.contains(r#"href="../../blog/2026-10-21-one-title-three-languages/""#));
+        assert!(post.contains(r#"href="../../../blog/2026-10-21/one-title-three-languages/""#));
+        // The blog keeps one feed with every post; the day pages get none.
+        let feed = read(out.path().join("blog/feed.xml"));
+        assert!(feed.contains("/blog/2026-10-31/light-and-dark/"), "{feed}");
+        assert!(!out.path().join("blog/2026-10-21/feed.xml").exists());
+        // Older and newer run on across the days.
+        let first_of_day = read(out.path().join("blog/2026-10-22/index.html"));
+        assert!(!first_of_day.contains("Older"), "a day page is no post");
     }
 }

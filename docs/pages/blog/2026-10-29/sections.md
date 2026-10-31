@@ -1,0 +1,245 @@
++++
+title = "Sections"
+description = "A Section block that holds other blocks: a parser state as an enum instead of a flag, and many mutable borrows into one value at once"
+menu = "main"
+weight = 62
+date = 2026-10-29
+authors = ["Claude"]
+tags = ["rust", "blocks", "borrowing", "parsing"]
+summary = "The new Section block groups blocks on a band with a title, a background color or picture and more or less room (#087). In Rust, the parser learns a third place to be, and one method hands out a mutable reference to every list of blocks inside a block, which replaced six hand-written walks."
+redirect_from = ["/blog/2026-10-29-sections"]
++++
+
+A **Section** groups blocks that belong together: an optional title
+above them, a background (a theme color, a shade, a plain box, or a
+darkened picture), and normal or large spacing (#087). It
+is as wide as the page's content, and it holds any block except another
+Section, Columns included. So three columns on a colored band are now
+one Section with a Columns block inside.
+
+## Showcase
+
+The four bands below are Sections, written into this post like any other
+block.
+
+::::: section
+::: settings
+title = "Three columns on a band"
+background = "primary"
+spacing = "large"
+:::
+
+Background *primary*, spacing *large*, and a Columns block inside.
+
+:::: columns
+::: column
+title = "Title"
+:::
+
+Optional. It stands above the Section's blocks, as large as a heading
+in the text.
+
+::: column
+title = "Background"
+:::
+
+None, a box, shaded, one of the theme's four colors, or a picture from
+Media.
+
+::: column
+title = "Spacing"
+:::
+
+Normal for a group of blocks, large for a band that should stand out.
+::::
+:::::
+
+::::: section
+::: settings
+title = "On a picture"
+image = "mascot-sitting.jpeg"
+spacing = "large"
+:::
+
+A background picture is darkened, and the text on it turns light, so it
+stays readable whatever the picture shows. The picture also counts as
+used in Media, so it can't be deleted while a Section shows it.
+:::::
+
+::::: section
+::: settings
+title = "Shaded, with a call to action"
+background = "shaded"
+:::
+
+A shade darker than the page, for something that belongs together but
+shouldn't shout.
+
+::: call-to-action
+headline = "Nesting started with columns"
+text = "How a block came to hold other blocks in the first place."
+button_label = "Blocks in columns"
+button_link = "../2026-10-21/blocks-in-columns.md"
+:::
+:::::
+
+::::: section
+::: settings
+title = "A box with questions"
+background = "plain"
+:::
+
+::: faq
+[[items]]
+question = "Can a Section go inside a Section?"
+answer = "No. Everything else can, Columns included; a Section inside columns can't either."
+
+[[items]]
+question = "What if a button has the Section's color?"
+answer = "It's drawn plain, so it doesn't vanish into the background."
+:::
+:::::
+
+In the file it nests like Columns (see
+[Blocks in columns](../2026-10-21/blocks-in-columns.md)), one colon more:
+
+```text
+::::: section
+::: settings
+title = "What we do"
+background = "primary"
+:::
+Three things, done well.
+
+:::: columns
+::: column
+:::
+…
+::::
+:::::
+```
+
+The `::: settings` container is optional and comes first, the way
+`::: column` starts each column.
+
+## A flag becomes an enum
+
+The parser in `crates/qed-core/src/page.rs` reads a body of lines into
+blocks. Until now it had one question to answer about where it was:
+inside columns or not, a `bool`:
+
+```rust
+fn parse_body(lines: &[(usize, &str)], in_columns: bool) -> …
+```
+
+With sections there are three places, and each allows different things:
+`::: settings` only in a section, `::: column` only in columns, a section
+only on the page. A second `bool` (`in_section`) would allow a fourth
+combination, both true, which can't happen. An enum names exactly the
+three:
+
+```rust
+enum Inside {
+    Page,
+    Section,
+    Columns,
+}
+```
+
+and the rules read as what they mean:
+
+```rust
+(5, "section") if inside == Inside::Section => {
+    return error("a section can't go inside another section".into());
+}
+```
+
+Call sites read better too: `parse_body(lines, Inside::Columns)` says
+what `parse_body(lines, true)` didn't. Elixir code does the same with
+atoms (`:page`, `:section`, `:columns`); Rust's version also checks every
+`match` covers all three.
+
+## Six walks, one method
+
+Blocks inside columns had to be visited in many places: listing every
+block (for links and images), changing every block (renaming links when
+a page moves), leaving out empty text, expanding shared blocks, renaming
+moved downloads. Each place had its own
+`if let Block::Columns(columns) = block { for column in … }`. A Section
+would have meant a second branch in all of them.
+
+Instead, `Block` in `crates/qed-core/src/block.rs` now says which lists
+of blocks it holds:
+
+```rust
+pub fn inner_lists_mut(&mut self) -> Vec<&mut Vec<Block>> {
+    match self {
+        Block::Columns(columns) => columns.items.iter_mut().map(|c| &mut c.blocks).collect(),
+        Block::Section(section) => vec![&mut section.blocks],
+        _ => Vec::new(),
+    }
+}
+```
+
+and every walk is the same few lines, for any block that holds others:
+
+```rust
+for inner in block.inner_lists_mut() {
+    for_each_block_mut(inner, change);
+}
+```
+
+## Many `&mut` at once
+
+That return type looks like it breaks Rust's main borrowing rule: one
+`&mut` at a time. For three columns it hands out three mutable
+references, all into the same `Columns` value, all alive together.
+
+The rule is really about the same *place*: two `&mut` must never reach
+the same data. Three columns are three different places. The compiler
+can't see that when you index (`&mut items[0]` and `&mut items[1]` look
+alike to it, since an index is only known at run time), but
+[`iter_mut`](https://doc.rust-lang.org/std/primitive.slice.html#method.iter_mut)
+promises it: it gives each element once, so the references never
+overlap. From each `&mut Column` the closure takes `&mut c.blocks`, one
+field, which is also a place of its own. The
+[Rust book](https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#mutable-references)
+explains the rule; slices also have
+[`split_at_mut`](https://doc.rust-lang.org/std/primitive.slice.html#method.split_at_mut)
+for when you need two parts of one list by position.
+
+Taking things out works the same way. `retain_deep` leaves out the
+blocks a test says no to, at every depth:
+
+```rust
+pub(crate) fn retain_deep(mut blocks: Vec<Block>, keep: &impl Fn(&Block) -> bool) -> Vec<Block> {
+    blocks.retain(keep);
+    for block in &mut blocks {
+        for inner in block.inner_lists_mut() {
+            *inner = retain_deep(std::mem::take(inner), keep);
+        }
+    }
+    blocks
+}
+```
+
+`keep` is any function or closure; leaving out empty text is
+`retain_deep(blocks, &|block| !is_empty_text(block))`, leaving out shared
+blocks another closure. `std::mem::take` lifts the inner list out and
+leaves an empty one in its place, so the function can own the list,
+filter it and put the result back (`mem::take` first came up in
+[Four more blocks](../2026-10-21/four-more-blocks.md)).
+
+## On the website
+
+`render_block` in `crates/qed-core/src/generator.rs` renders the
+section's blocks with the same template as every block, then
+`block.html` puts them inside a `<section>` with the section's classes.
+A section in a theme color gets `on-primary` (and so on) as well, and
+one rule in `site.input.css` draws buttons of that same color plain
+inside it, the way Hero and Call to action already avoided a primary
+button on a primary background.
+
+In the app, the Section card holds a block list of its own, the same
+component as the page's (`src/lib/BlockList.svelte`), offered everything
+the page offers except Section.

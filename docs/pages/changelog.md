@@ -59,22 +59,22 @@ A manual in the app, sections, Catppuccin themes and lighter photos.
   credits. In the app, offline, with
   the life-buoy button at the top right and the **Manual** links in the
   tabs; also on this website under [Manual](manual/index.md). See
-  [A manual in the app](blog/2026-10-29-a-manual-in-the-app.md).
+  [A manual in the app](blog/2026-10-29/a-manual-in-the-app.md).
 - **Back and next links** (#136): a page setting gives the pages below
   it links to the page before and after them, at the bottom; posts get
   Older and Newer. On for the manual and the blog here.
 - **Section block** (#087): a band across the page with a background
   color or picture, holding other blocks, columns too. See
-  [Sections](blog/2026-10-29-sections.md).
+  [Sections](blog/2026-10-29/sections.md).
 - **Catppuccin themes** (#132): Latte, Frappé, Macchiato and Mocha, for
-  sites and for the app. See [Catppuccin themes](blog/2026-10-29-catppuccin.md).
+  sites and for the app. See [Catppuccin themes](blog/2026-10-29/catppuccin.md).
 - **WebP copies** (#085): the smaller copies of photos are WebP, about
-  half the size of before. See [WebP copies](blog/2026-10-29-webp-copies.md).
+  half the size of before. See [WebP copies](blog/2026-10-29/webp-copies.md).
 - **A version per working session** (#083): saves go into one version
   until you stop for an hour or the next day; then the app asks for a
-  note. See [A version per session](blog/2026-10-29-a-version-per-session.md).
+  note. See [A version per session](blog/2026-10-29/a-version-per-session.md).
 - **More languages for code** (#106): some 200, among them TypeScript,
-  Svelte, TOML and Elixir. See [More code languages](blog/2026-10-29-more-languages.md).
+  Svelte, TOML and Elixir. See [More code languages](blog/2026-10-29/more-languages.md).
 - **Notes for missing links** (#133): building the site notes links to
   pages that don't exist (or are drafts) and to missing pictures and
   files.
@@ -95,14 +95,14 @@ columns, all drawn when the site is built, without JavaScript.
   On by default; a switch in the Site tab.
 - **Math formulas** (#107): LaTeX in Text blocks, `$…$` in the line and
   `$$…$$` or a ```` ```math ```` block on its own, drawn as MathML in
-  Latin Modern Math. See [Math formulas](blog/2026-10-28-math-formulas.md).
+  Latin Modern Math. See [Math formulas](blog/2026-10-28/math-formulas.md).
 - **Chemistry** (#130): a ```` ```smiles ```` block draws a molecule's
   structure; `\ce{…}` writes chemical formulas and reaction equations.
-  See [Chemistry](blog/2026-10-28-chemistry.md).
+  See [Chemistry](blog/2026-10-28/chemistry.md).
 - **Charts and stratigraphic columns** (#131): a ```` ```chart ```` block
   draws bar, line, pie, scatter and more from a short description; a
   ```` ```strata ```` block draws the layers of an outcrop or borehole.
-  See [Charts and strata](blog/2026-10-28-charts.md).
+  See [Charts and strata](blog/2026-10-28/charts.md).
 - Fixed: after switching sites, Versions and the media tabs showed the
   old site.
 
