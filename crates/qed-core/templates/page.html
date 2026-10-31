@@ -53,6 +53,12 @@
   <script src="{{ root }}pagefind/pagefind-component-ui.js" defer></script>
   {%- endif %}
   <link rel="stylesheet" href="{{ root }}style.css">
+  {%- if site.dark.is_some() %}
+  {#- Light and dark mode (#146). Not deferred: the visitor's choice is set
+      before the page shows. #}
+  <meta name="color-scheme" content="light dark">
+  <script src="{{ root }}mode.js"></script>
+  {%- endif %}
   {%- if let Some(src) = player_script %}
   {#- Not deferred: it hides the plain player before the page shows. #}
   <script src="{{ src }}"></script>
@@ -149,8 +155,27 @@
         {%- endfor %}
       </ul>
       {%- endif %}
-      {%- if site.search %}
-      <pagefind-modal-trigger compact></pagefind-modal-trigger>
+      {%- if site.search || site.dark.is_some() %}
+      <div class="flex items-center gap-2">
+        {%- if site.search %}
+        <pagefind-modal-trigger compact></pagefind-modal-trigger>
+        {%- endif %}
+        {%- if site.dark.is_some() %}
+        {#- Light, the system's setting, dark; shown by mode.js. Without
+            JavaScript the page follows the system. #}
+        <div id="mode-switch" class="flex items-center rounded-full border border-current/20 p-0.5" role="group" hidden>
+          <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="light" title="{{ mode_labels[1] }}" aria-label="{{ mode_labels[1] }}" aria-pressed="false">
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+          </button>
+          <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="system" title="{{ mode_labels[0] }}" aria-label="{{ mode_labels[0] }}" aria-pressed="true">
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2" /><line x1="8" x2="16" y1="21" y2="21" /><line x1="12" x2="12" y1="17" y2="21" /></svg>
+          </button>
+          <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="dark" title="{{ mode_labels[2] }}" aria-label="{{ mode_labels[2] }}" aria-pressed="false">
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></svg>
+          </button>
+        </div>
+        {%- endif %}
+      </div>
       {%- endif %}
     </nav>
   </header>

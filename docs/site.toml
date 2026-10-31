@@ -2,7 +2,7 @@ title = "q.e.d."
 language = "en"
 description = "A desktop app for your own website or podcast site, made without programming. This site is built with q.e.d. itself."
 logo = "logo-mark.svg"
-theme = "catppuccin-mocha"
+theme = "catppuccin-latte"
 base_url = "https://qed.informatom.com/"
 navigation = "sidebar"
 mark_external_links = true
@@ -10,3 +10,6 @@ mark_external_links = true
 [fonts]
 headings = "Saira Condensed"
 text = "Saira"
+
+[dark]
+theme = "catppuccin-mocha"

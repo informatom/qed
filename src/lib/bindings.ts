@@ -597,6 +597,38 @@ export type CustomTheme = {
 	corners: Corners | null,
 };
 
+/**
+ *  The dark side of a site's look (`[dark]` in `site.toml`): the same
+ *  settings as the light side at the top of the file, for dark mode.
+ */
+export type DarkSide = DarkSide_Serialize | DarkSide_Deserialize;
+
+/**
+ *  The dark side of a site's look (`[dark]` in `site.toml`): the same
+ *  settings as the light side at the top of the file, for dark mode.
+ */
+export type DarkSide_Deserialize = {
+	/**  A daisyUI theme name, or `custom` for `custom_theme` below. */
+	theme?: string,
+	/**  Own colors for the dark side, used when `theme` is `custom`. */
+	custom_theme: CustomTheme | null,
+	header?: HeaderStyle,
+	colors?: Colors,
+};
+
+/**
+ *  The dark side of a site's look (`[dark]` in `site.toml`): the same
+ *  settings as the light side at the top of the file, for dark mode.
+ */
+export type DarkSide_Serialize = {
+	/**  A daisyUI theme name, or `custom` for `custom_theme` below. */
+	theme: string,
+	/**  Own colors for the dark side, used when `theme` is `custom`. */
+	custom_theme: CustomTheme | null,
+	header: HeaderStyle,
+	colors?: Colors,
+};
+
 /**  A page that a version had and the site folder doesn't any more. */
 export type DeletedPage = {
 	/**  The file, relative to the site folder: `pages/about.md`. */
@@ -1296,6 +1328,12 @@ export type SiteConfig_Deserialize = {
 	header?: HeaderStyle,
 	/**  Which theme color goes where: links, buttons, boxes, backgrounds. */
 	colors?: Colors,
+	/**
+	 *  A second look for visitors whose system is set to dark (`[dark]`):
+	 *  its own theme, header and colors. With it, pages follow the
+	 *  system's setting and get a light/dark switch in the header (#146).
+	 */
+	dark: DarkSide_Deserialize | null,
 	/**  How tall the logo is in the header. */
 	logo_size?: LogoSize,
 	/**  How wide header, content and footer get on large screens. */
@@ -1370,6 +1408,12 @@ export type SiteConfig_Serialize = {
 	header: HeaderStyle,
 	/**  Which theme color goes where: links, buttons, boxes, backgrounds. */
 	colors?: Colors,
+	/**
+	 *  A second look for visitors whose system is set to dark (`[dark]`):
+	 *  its own theme, header and colors. With it, pages follow the
+	 *  system's setting and get a light/dark switch in the header (#146).
+	 */
+	dark: DarkSide_Serialize | null,
 	/**  How tall the logo is in the header. */
 	logo_size: LogoSize,
 	/**  How wide header, content and footer get on large screens. */

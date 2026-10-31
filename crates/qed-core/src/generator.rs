@@ -39,7 +39,7 @@ use crate::site::{
     ASSETS_DIR, Colors, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
     Surface, ThemeColor,
 };
-use crate::site::{LogoSize, PageWidth};
+use crate::site::{LogoSize, Look, PageWidth};
 use crate::slug::slugify;
 
 pub const OUTPUT_DIR: &str = "_site";
@@ -336,19 +336,11 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
         _ => Vec::new(),
     };
-    let dark = crate::theme::is_dark(STYLESHEET, site.config.page_theme(), site.config.custom());
-    let colors = color_classes(&site.config.colors, dark);
-    let button_color = crate::theme::color_hex(
-        STYLESHEET,
-        site.config.page_theme(),
-        site.config.custom(),
-        match site.config.colors.buttons.unwrap_or(ThemeColor::Primary) {
-            ThemeColor::Primary => "--color-primary",
-            ThemeColor::Secondary => "--color-secondary",
-            ThemeColor::Accent => "--color-accent",
-            ThemeColor::Neutral => "--color-neutral",
-        },
-    );
+    let light = site.config.light();
+    let dark_look = site.config.dark_look();
+    let dark = light.is_dark();
+    let colors = site_colors(&site.config);
+    let button_color = button_hex(light);
     let context = Context {
         podcast_feeds: &podcast_feeds,
         podcast,
@@ -389,7 +381,14 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
         }
     }
     if players > 0 {
-        write_player(out_dir, site, &published, today, button_color.as_deref())?;
+        write_player(
+            out_dir,
+            site,
+            &published,
+            today,
+            button_color.as_deref(),
+            dark_look.and_then(button_hex).as_deref(),
+        )?;
     }
 
     let not_found = not_found_page(site);
@@ -397,17 +396,19 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     write(&out_dir.join("404.html"), html)?;
 
     let mut redirects = 0;
-    let theme_hex = |variable: &str, fallback: &str| {
-        crate::theme::color_hex(
-            STYLESHEET,
-            site.config.page_theme(),
-            site.config.custom(),
-            variable,
-        )
-        .unwrap_or_else(|| fallback.to_string())
+    let theme_hex = |look: Look, variable: &str, fallback: &str| {
+        look.color_hex(variable)
+            .unwrap_or_else(|| fallback.to_string())
     };
-    let redirect_background = theme_hex("--color-base-100", "#ffffff");
-    let redirect_text = theme_hex("--color-base-content", "#1d232a");
+    let redirect_background = theme_hex(light, "--color-base-100", "#ffffff");
+    let redirect_text = theme_hex(light, "--color-base-content", "#1d232a");
+    // With dark mode, the dark side's colors when the system is dark.
+    let redirect_dark = dark_look.map(|look| {
+        (
+            theme_hex(look, "--color-base-100", "#1d232a"),
+            theme_hex(look, "--color-base-content", "#ffffff"),
+        )
+    });
     for page in &published {
         for from in &page.content.front.redirect_from {
             let from = from.trim_matches('/');
@@ -435,6 +436,9 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
                 background: &redirect_background,
                 text: &redirect_text,
                 dark,
+                dark_side: redirect_dark
+                    .as_ref()
+                    .map(|(b, t)| (b.as_str(), t.as_str())),
             }
             .render()
             .map_err(|source| BuildError::Template {
@@ -449,7 +453,16 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     // Colors for highlighted code, a custom theme and the site's fonts add
     // to the one stylesheet; the
     // fonts in use are copied next to it.
-    let custom_css = site.config.custom().map(|c| c.css()).unwrap_or_default();
+    let mut custom_css = site.config.custom().map(|c| c.css()).unwrap_or_default();
+    // The dark side comes after the light side's colors, so it wins over them.
+    if let Some(look) = dark_look {
+        custom_css.push_str(&crate::theme::dark_css(
+            STYLESHEET,
+            look.base_theme(),
+            look.custom(),
+        ));
+        write(&out_dir.join(MODE_SCRIPT), MODE_SCRIPT_JS)?;
+    }
     let fonts_css = fonts::css(&site.root, &site.config.fonts);
     // Formulas get LaTeX's look, on sites that have any.
     let math_css = if uses_math {
@@ -1335,6 +1348,8 @@ struct PageTemplate<'a> {
     /// `player.js`, when a block has the Podlove Web Player: loaded in
     /// `<head>`, so it hides the plain player before it shows.
     player_script: Option<String>,
+    /// The light/dark switch's labels, for a site with dark mode.
+    mode_labels: [&'static str; 3],
     /// The page's content goes into the search index (not the 404 page).
     searchable: bool,
     /// The site footer's blocks, rendered for this page.
@@ -1423,12 +1438,87 @@ fn neighbours(page: &Page, context: &Context, links: &LinkContext) -> Neighbours
 /// Tailwind classes for the header, written out in full here so the
 /// stylesheet build finds them (`site.input.css` scans this file).
 struct HeaderClasses {
-    bar: &'static str,
+    bar: String,
     /// The current page in the top menu.
-    current: &'static str,
+    current: String,
     /// The logo: on a colored bar it gets a light backing, so a logo in the
     /// bar's own color doesn't disappear.
-    logo: &'static str,
+    logo: String,
+}
+
+/// The header's classes for both sides of a site with dark mode, or the
+/// only side's.
+fn site_header_classes(config: &SiteConfig) -> HeaderClasses {
+    let light = header_classes(config.header, config.logo_size);
+    match config.dark_look() {
+        None => light,
+        Some(dark) => {
+            let dark = header_classes(dark.header, config.logo_size);
+            HeaderClasses {
+                bar: both_sides(&light.bar, &dark.bar),
+                current: both_sides(&light.current, &dark.current),
+                logo: both_sides(&light.logo, &dark.logo),
+            }
+        }
+    }
+}
+
+/// The classes of both sides in one: those they share as they are, the
+/// others for their side only (`mode-light:bg-accent mode-dark:bg-base-200`,
+/// variants from site.input.css).
+fn both_sides(light: &str, dark: &str) -> String {
+    let (light, dark): (Vec<&str>, Vec<&str>) = (
+        light.split_whitespace().collect(),
+        dark.split_whitespace().collect(),
+    );
+    let mut classes = Vec::new();
+    for class in &light {
+        if dark.contains(class) {
+            classes.push(class.to_string());
+        } else {
+            classes.push(format!("mode-light:{class}"));
+        }
+    }
+    for class in &dark {
+        if !light.contains(class) {
+            classes.push(format!("mode-dark:{class}"));
+        }
+    }
+    classes.join(" ")
+}
+
+/// The site's color classes: for a site with dark mode, both sides'.
+fn site_colors(config: &SiteConfig) -> ColorClasses {
+    let light = config.light();
+    let classes = color_classes(light.colors, light.is_dark());
+    let Some(dark) = config.dark_look() else {
+        return classes;
+    };
+    let other = color_classes(dark.colors, dark.is_dark());
+    ColorClasses {
+        body: both_sides(&classes.body, &other.body),
+        footer: both_sides(&classes.footer, &other.footer),
+        hero: both_sides(&classes.hero, &other.hero),
+        hero_button: both_sides(&classes.hero_button, &other.hero_button),
+        image_button: both_sides(&classes.image_button, &other.image_button),
+        call_to_action: both_sides(&classes.call_to_action, &other.call_to_action),
+        call_to_action_button: both_sides(
+            &classes.call_to_action_button,
+            &other.call_to_action_button,
+        ),
+        boxed: both_sides(&classes.boxed, &other.boxed),
+    }
+}
+
+/// A side's button color as `#rrggbb`, for the player and the Subscribe
+/// button.
+fn button_hex(look: Look) -> Option<String> {
+    look.color_hex(match look.colors.buttons.unwrap_or(ThemeColor::Primary) {
+        ThemeColor::Primary => "--color-primary",
+        ThemeColor::Secondary => "--color-secondary",
+        ThemeColor::Accent => "--color-accent",
+        ThemeColor::Neutral => "--color-neutral",
+    })
 }
 
 fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
@@ -1469,7 +1559,11 @@ fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
             "h-auto max-h-28 w-auto max-w-full object-contain rounded-field bg-base-100 p-1"
         }
     };
-    HeaderClasses { bar, current, logo }
+    HeaderClasses {
+        bar: bar.to_string(),
+        current: current.to_string(),
+        logo: logo.to_string(),
+    }
 }
 
 /// The site's color choices (`[colors]` in `site.toml`) as the classes
@@ -1477,14 +1571,14 @@ fn header_classes(style: HeaderStyle, size: LogoSize) -> HeaderClasses {
 struct ColorClasses {
     /// On `<body>`: the content background and the links' color.
     body: String,
-    footer: &'static str,
-    hero: &'static str,
-    hero_button: &'static str,
+    footer: String,
+    hero: String,
+    hero_button: String,
     /// For a Hero with a background image: any color stands out on it.
-    image_button: &'static str,
-    call_to_action: &'static str,
-    call_to_action_button: &'static str,
-    boxed: &'static str,
+    image_button: String,
+    call_to_action: String,
+    call_to_action_button: String,
+    boxed: String,
 }
 
 /// Whole class names throughout, so Tailwind finds them when it scans this
@@ -1530,19 +1624,21 @@ fn color_classes(colors: &Colors, dark: bool) -> ColorClasses {
         } else {
             Surface::Accent
         }) {
-            Surface::Plain => "border-t border-base-300 bg-base-100 text-base-content",
-            other => filled(other),
+            Surface::Plain => "border-t border-base-300 bg-base-100 text-base-content".to_string(),
+            other => filled(other).to_string(),
         },
-        hero: filled(hero),
-        hero_button: button_on(hero),
-        image_button: button_on(Surface::Plain),
-        call_to_action: filled(call_to_action),
-        call_to_action_button: button_on(call_to_action),
+        hero: filled(hero).to_string(),
+        hero_button: button_on(hero).to_string(),
+        image_button: button_on(Surface::Plain).to_string(),
+        call_to_action: filled(call_to_action).to_string(),
+        call_to_action_button: button_on(call_to_action).to_string(),
         boxed: match colors.boxes.unwrap_or(Surface::Plain) {
             // Its own text color too: on a colored section, it would
             // otherwise take the section's light text.
-            Surface::Plain => "border border-base-300 bg-base-100 text-base-content shadow-sm",
-            other => filled(other),
+            Surface::Plain => {
+                "border border-base-300 bg-base-100 text-base-content shadow-sm".to_string()
+            }
+            other => filled(other).to_string(),
         },
     }
 }
@@ -1610,6 +1706,15 @@ struct BlockTemplate<'a> {
 /// image's (half of it), by about half again.
 const ZOOM_ABOVE_FULL: u32 = 1300;
 const ZOOM_ABOVE_HALF: u32 = 700;
+
+/// The light/dark switch's labels in the site's language: for the
+/// system's setting, light and dark.
+fn mode_labels(language: &str) -> [&'static str; 3] {
+    match language.split('-').next().unwrap_or_default() {
+        "de" => ["Farben wie im System", "Helle Farben", "Dunkle Farben"],
+        _ => ["Colors as in the system", "Light colors", "Dark colors"],
+    }
+}
 
 /// "Close" in the site's language, for the button over an image shown big.
 fn close_label(language: &str) -> &'static str {
@@ -1684,6 +1789,8 @@ struct RedirectTemplate<'a> {
     background: &'a str,
     text: &'a str,
     dark: bool,
+    /// Background and text of the dark side, for a site with dark mode.
+    dark_side: Option<(&'a str, &'a str)>,
 }
 
 struct MenuLink {
@@ -1900,6 +2007,10 @@ static PODLOVE_PLAYER: include_dir::Dir<'_> =
 
 /// Where the player goes in the built site, its episode data next to each
 /// episode page, and q.e.d.'s script that starts it.
+/// The light/dark switch (#146), for sites with dark mode; at the site
+/// root, loaded in every page's `<head>`.
+const MODE_SCRIPT: &str = "mode.js";
+const MODE_SCRIPT_JS: &str = include_str!("../assets/mode.js");
 const PLAYER_DIR: &str = "podlove-player";
 const PLAYER_EPISODE: &str = "player.json";
 const PLAYER_SCRIPT: &str = include_str!("../assets/player.js");
@@ -1938,15 +2049,44 @@ const PLAYER_SUBSCRIBE_CLIENTS: [&str; 10] = [
     "rss",
 ];
 
+/// The player's colors: shades of the button color `brand`, with dark
+/// text on light, or light text on dark for dark mode.
+fn player_theme(brand: &str, dark: bool) -> serde_json::Value {
+    let shade = |other: &str, amount: f64| {
+        crate::theme::mix_hex(brand, other, amount).unwrap_or_else(|| brand.to_string())
+    };
+    // The lightest shade is a background; on dark, a dark one.
+    let (contrast, alt, lightest) = if dark {
+        ("#ffffff", "#000000", shade("#000000", 0.8))
+    } else {
+        ("#000000", "#ffffff", shade("#ffffff", 0.9))
+    };
+    serde_json::json!({
+        "tokens": {
+            "brand": brand,
+            "brandDark": shade("#000000", 0.25),
+            "brandDarkest": shade("#000000", 0.6),
+            "brandLightest": lightest,
+            "shadeDark": "#807e7c",
+            "shadeBase": "#807e7c",
+            "contrast": contrast,
+            "alt": alt,
+        }
+    })
+}
+
 /// Writes the player, its settings for the whole site and the script that
 /// starts it into the built site. The theme tokens are shades of the
-/// theme's button color.
+/// theme's button color. A site with dark mode gets a second set of
+/// settings for it, `config-dark.json`, with the dark side's button color
+/// and light text on dark.
 fn write_player(
     out_dir: &Path,
     site: &Site,
     published: &[&Page],
     today: Date,
     button_color: Option<&str>,
+    dark_button_color: Option<&str>,
 ) -> Result<(), BuildError> {
     write_embedded(&PODLOVE_PLAYER, &out_dir.join(PLAYER_DIR))?;
     write(
@@ -2009,21 +2149,17 @@ fn write_player(
         config["playlist"] = format!("{root}{PLAYER_DIR}/{PLAYER_PLAYLIST}").into();
     }
     if let Some(brand) = button_color {
-        let shade = |other: &str, amount: f64| {
-            crate::theme::mix_hex(brand, other, amount).unwrap_or_else(|| brand.to_string())
-        };
-        config["theme"] = serde_json::json!({
-            "tokens": {
-                "brand": brand,
-                "brandDark": shade("#000000", 0.25),
-                "brandDarkest": shade("#000000", 0.6),
-                "brandLightest": shade("#ffffff", 0.9),
-                "shadeDark": "#807e7c",
-                "shadeBase": "#807e7c",
-                "contrast": "#000000",
-                "alt": "#ffffff",
-            }
-        });
+        config["theme"] = player_theme(brand, false);
+    }
+    if site.config.dark.is_some() {
+        let mut dark = config.clone();
+        if let Some(brand) = dark_button_color.or(button_color) {
+            dark["theme"] = player_theme(brand, true);
+        }
+        write(
+            &out_dir.join(PLAYER_DIR).join("config-dark.json"),
+            dark.to_string(),
+        )?;
     }
     write(
         &out_dir.join(PLAYER_DIR).join("config.json"),
@@ -2912,7 +3048,8 @@ fn render_page(
             (PageWidth::Wide, true) => "max-w-7xl",
             (PageWidth::Full, _) => "max-w-none",
         },
-        header: header_classes(config.header, config.logo_size),
+        header: site_header_classes(config),
+        mode_labels: mode_labels(&config.language),
         // Without a logo, the title is all the header has.
         show_site_title: config.title_in_header || config.logo.is_none(),
         byline: byline.join(" · "),
@@ -4630,6 +4767,148 @@ mod tests {
 
         let about = read(out.path().join("about/index.html"));
         assert!(about.contains(r#"href="../people/zoe/""#), "{about}");
+    }
+
+    #[test]
+    fn builds_a_dark_side_with_a_switch() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut site = blog(dir.path());
+        site.config.language = "de".into();
+        site.config.theme = "catppuccin-latte".into();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(!home.contains("mode.js") && !home.contains("mode-switch"));
+        assert!(!home.contains("mode-light:"), "no dark mode, no prefixes");
+        assert!(!out.path().join("mode.js").exists());
+
+        site.config.dark = Some(crate::site::DarkSide {
+            theme: "catppuccin-mocha".into(),
+            custom_theme: None,
+            header: HeaderStyle::Neutral,
+            colors: Colors::default(),
+        });
+        build_on(&site, out.path(), TODAY).unwrap();
+        let home = read(out.path().join("index.html"));
+        assert!(home.contains(r#"data-theme="catppuccin-latte""#));
+        assert!(home.contains(r#"<meta name="color-scheme" content="light dark">"#));
+        assert!(
+            home.contains(r#"<script src="mode.js"></script>"#),
+            "{home}"
+        );
+        assert!(home.contains(r#"id="mode-switch""#) && home.contains("Dunkle Farben"));
+        // The footer: accent on light, shaded on dark (the defaults).
+        assert!(
+            home.contains(r#"<footer class="mode-light:on-color mode-light:bg-accent mode-light:text-accent-content mode-dark:bg-base-200 mode-dark:text-base-content">"#),
+            "{home}"
+        );
+        // The header: plain on light, a neutral bar on dark.
+        assert!(
+            home.contains("mode-dark:bg-neutral mode-dark:text-neutral-content"),
+            "{home}"
+        );
+        assert!(out.path().join("mode.js").exists());
+        let css = read(out.path().join("style.css"));
+        let dark = css
+            .split("/* Dark mode, based on catppuccin-mocha */")
+            .nth(1)
+            .unwrap();
+        assert!(
+            dark.contains(":root:not([data-mode=light]) {\n  color-scheme:dark;"),
+            "{dark}"
+        );
+        assert!(dark.contains(":root[data-mode=dark] {"), "{dark}");
+    }
+
+    #[test]
+    fn every_class_of_either_side_is_in_the_stylesheet() {
+        let surfaces = [
+            Surface::Plain,
+            Surface::Shaded,
+            Surface::Primary,
+            Surface::Secondary,
+            Surface::Accent,
+            Surface::Neutral,
+        ];
+        let colors = [
+            ThemeColor::Primary,
+            ThemeColor::Secondary,
+            ThemeColor::Accent,
+            ThemeColor::Neutral,
+        ];
+        let mut classes = BTreeSet::new();
+        let mut add = |text: &str| classes.extend(text.split_whitespace().map(str::to_string));
+        for (&surface, &color) in surfaces.iter().zip(colors.iter().cycle()) {
+            for dark in [false, true] {
+                let picked = color_classes(
+                    &Colors {
+                        links: Some(color),
+                        buttons: Some(color),
+                        call_to_action: Some(surface),
+                        hero: Some(surface),
+                        boxes: Some(surface),
+                        content: Some(surface),
+                        footer: Some(surface),
+                    },
+                    dark,
+                );
+                for text in [
+                    &picked.body,
+                    &picked.footer,
+                    &picked.hero,
+                    &picked.hero_button,
+                    &picked.image_button,
+                    &picked.call_to_action,
+                    &picked.call_to_action_button,
+                    &picked.boxed,
+                ] {
+                    add(text);
+                }
+            }
+        }
+        for style in [
+            HeaderStyle::Plain,
+            HeaderStyle::Primary,
+            HeaderStyle::Secondary,
+            HeaderStyle::Accent,
+            HeaderStyle::Neutral,
+        ] {
+            for size in [
+                LogoSize::Small,
+                LogoSize::Medium,
+                LogoSize::Large,
+                LogoSize::Original,
+            ] {
+                let header = header_classes(style, size);
+                for text in [&header.bar, &header.current, &header.logo] {
+                    add(text);
+                }
+            }
+        }
+        // Classes that are the same on both sides need no prefix.
+        let shared = [
+            "btn",
+            "h-9",
+            "h-12",
+            "h-16",
+            "h-auto",
+            "max-h-28",
+            "w-auto",
+            "max-w-48",
+            "max-w-64",
+            "max-w-80",
+            "max-w-full",
+            "object-contain",
+        ];
+        for class in classes.iter().filter(|c| !shared.contains(&c.as_str())) {
+            for prefix in ["mode-light", "mode-dark"] {
+                let escaped = format!(".{prefix}\\:{}", class.replace('.', "\\."));
+                assert!(
+                    STYLESHEET.contains(&escaped),
+                    "{prefix}:{class} is missing; add it to @source inline in site.input.css"
+                );
+            }
+        }
     }
 
     #[test]

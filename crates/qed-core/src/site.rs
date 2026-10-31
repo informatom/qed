@@ -90,6 +90,10 @@ pub struct SiteConfig {
     /// Which theme color goes where: links, buttons, boxes, backgrounds.
     #[serde(default, skip_serializing_if = "Colors::is_default")]
     pub colors: Colors,
+    /// A second look for visitors whose system is set to dark (`[dark]`):
+    /// its own theme, header and colors. With it, pages follow the
+    /// system's setting and get a light/dark switch in the header (#146).
+    pub dark: Option<DarkSide>,
     /// How tall the logo is in the header.
     #[serde(default)]
     pub logo_size: LogoSize,
@@ -332,6 +336,80 @@ impl HeaderStyle {
     }
 }
 
+/// The dark side of a site's look (`[dark]` in `site.toml`): the same
+/// settings as the light side at the top of the file, for dark mode.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(deny_unknown_fields)]
+pub struct DarkSide {
+    /// A daisyUI theme name, or `custom` for `custom_theme` below.
+    #[serde(default = "default_dark_theme")]
+    pub theme: String,
+    /// Own colors for the dark side, used when `theme` is `custom`.
+    pub custom_theme: Option<CustomTheme>,
+    #[serde(default)]
+    pub header: HeaderStyle,
+    #[serde(default, skip_serializing_if = "Colors::is_default")]
+    pub colors: Colors,
+}
+
+/// One side of a site's look: the light one (the top of `site.toml`, also
+/// the only one of a site without dark mode) or the dark one (`[dark]`).
+#[derive(Debug, Clone, Copy)]
+pub struct Look<'a> {
+    pub theme: &'a str,
+    pub custom_theme: Option<&'a CustomTheme>,
+    pub header: HeaderStyle,
+    pub colors: &'a Colors,
+}
+
+impl<'a> Look<'a> {
+    /// The custom theme, if this side uses one.
+    pub fn custom(&self) -> Option<&'a CustomTheme> {
+        self.custom_theme
+            .filter(|_| self.theme == crate::theme::CUSTOM)
+    }
+
+    /// The daisyUI theme it is based on: for a custom theme, the one it
+    /// starts from.
+    pub fn base_theme(&self) -> &'a str {
+        self.custom().map_or(self.theme, |custom| &custom.from)
+    }
+
+    /// Whether its page background is dark (see [`crate::theme::is_dark`]).
+    pub fn is_dark(&self) -> bool {
+        crate::theme::is_dark(
+            crate::generator::STYLESHEET,
+            self.base_theme(),
+            self.custom(),
+        )
+    }
+
+    /// A color of this side as `#rrggbb`, e.g. `--color-primary`.
+    pub fn color_hex(&self, variable: &str) -> Option<String> {
+        crate::theme::color_hex(
+            crate::generator::STYLESHEET,
+            self.base_theme(),
+            self.custom(),
+            variable,
+        )
+    }
+
+    /// Checks the theme name and the custom colors.
+    fn problem(&self) -> Option<String> {
+        if self.theme == crate::theme::CUSTOM {
+            match self.custom_theme {
+                None => Some("the custom theme has no colors yet".to_string()),
+                Some(custom) => custom.check().err().map(|e| e.to_string()),
+            }
+        } else if !crate::theme::is_theme(self.theme) {
+            Some(format!("there is no theme called \"{}\"", self.theme))
+        } else {
+            None
+        }
+    }
+}
+
 /// Which of the theme's colors the site uses where (`[colors]` in
 /// `site.toml`). Empty means the default, which is how sites looked before
 /// these settings existed.
@@ -412,17 +490,37 @@ pub enum Navigation {
 }
 
 impl SiteConfig {
-    /// The custom theme, if the site uses one.
+    /// The custom theme, if the site uses one (on its light side).
     pub fn custom(&self) -> Option<&CustomTheme> {
-        self.custom_theme
-            .as_ref()
-            .filter(|_| self.theme == crate::theme::CUSTOM)
+        self.light().custom()
     }
 
     /// The daisyUI theme the pages name in `data-theme`: for a custom
-    /// theme, the one it starts from.
+    /// theme, the one it starts from. With dark mode, the light side's;
+    /// the dark side's colors come from rules in the stylesheet.
     pub fn page_theme(&self) -> &str {
-        self.custom().map_or(&self.theme, |custom| &custom.from)
+        self.light().base_theme()
+    }
+
+    /// The light side of the look; for a site without dark mode, its only
+    /// one.
+    pub fn light(&self) -> Look<'_> {
+        Look {
+            theme: &self.theme,
+            custom_theme: self.custom_theme.as_ref(),
+            header: self.header,
+            colors: &self.colors,
+        }
+    }
+
+    /// The dark side, for a site with dark mode.
+    pub fn dark_look(&self) -> Option<Look<'_>> {
+        self.dark.as_ref().map(|dark| Look {
+            theme: &dark.theme,
+            custom_theme: dark.custom_theme.as_ref(),
+            header: dark.header,
+            colors: &dark.colors,
+        })
     }
 }
 
@@ -432,6 +530,23 @@ fn default_language() -> String {
 
 fn default_theme() -> String {
     "light".to_string()
+}
+
+fn default_dark_theme() -> String {
+    "dark".to_string()
+}
+
+/// Writes the named inline tables of `table` as sections of their own.
+fn section_tables(table: &mut toml_edit::Table, keys: &[&str]) {
+    for key in keys {
+        if let Some(inline) = table
+            .get_mut(key)
+            .and_then(|item| item.as_inline_table_mut())
+        {
+            let section = std::mem::take(inline).into_table();
+            table[*key] = toml_edit::Item::Table(section);
+        }
+    }
 }
 
 /// A site folder, read into memory.
@@ -987,17 +1102,11 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
             "profiles: “{profile}” isn't a web address (https://…)"
         )));
     }
-    if config.theme == crate::theme::CUSTOM {
-        let custom = config
-            .custom_theme
-            .as_ref()
-            .ok_or_else(|| invalid("the custom theme has no colors yet".to_string()))?;
-        custom.check().map_err(|e| invalid(e.to_string()))?;
-    } else if !crate::theme::is_theme(&config.theme) {
-        return Err(invalid(format!(
-            "there is no theme called \"{}\"",
-            config.theme
-        )));
+    if let Some(problem) = config.light().problem() {
+        return Err(invalid(problem));
+    }
+    if let Some(problem) = config.dark_look().and_then(|dark| dark.problem()) {
+        return Err(invalid(format!("dark mode: {problem}")));
     }
 
     let mut names = std::collections::BTreeSet::new();
@@ -1041,15 +1150,31 @@ pub fn save_config(root: &Path, config: &SiteConfig) -> Result<SiteConfig, SiteE
 
     let original = read(&path)?;
     let mut document = toml_edit::ser::to_document(config).map_err(|e| invalid(e.to_string()))?;
-    // `[custom_theme]`, `[fonts]`, `[colors]` and `[podcast]` as their own sections, easier
-    // to read than one long line.
-    for key in ["custom_theme", "fonts", "colors", "podcast"] {
-        if let Some(inline) = document
-            .get_mut(key)
-            .and_then(|item| item.as_inline_table_mut())
+    // `[custom_theme]`, `[fonts]`, `[colors]`, `[dark]` and `[podcast]` as their own
+    // sections, easier to read than one long line; in `[dark]` its own
+    // `[dark.custom_theme]` and `[dark.colors]`.
+    section_tables(
+        document.as_table_mut(),
+        &["custom_theme", "fonts", "colors", "dark", "podcast"],
+    );
+    if let Some(dark) = document
+        .get_mut("dark")
+        .and_then(|item| item.as_table_mut())
+    {
+        section_tables(dark, &["custom_theme", "colors"]);
+        // The plain header, the default, only if the file names it.
+        let named = original
+            .parse::<toml_edit::DocumentMut>()
+            .ok()
+            .and_then(|doc| doc.get("dark")?.get("header")?.as_str().map(str::to_string))
+            .is_some_and(|header| header == "plain");
+        if config
+            .dark
+            .as_ref()
+            .is_some_and(|d| d.header == HeaderStyle::Plain)
+            && !named
         {
-            let table = std::mem::take(inline).into_table();
-            document[key] = toml_edit::Item::Table(table);
+            dark.remove("header");
         }
     }
     // The menu as `[[main_menu]]` sections, a group's entries as
@@ -2043,6 +2168,58 @@ mod tests {
             save_config(dir.path(), &config),
             Err(SiteError::Invalid { .. })
         ));
+    }
+
+    #[test]
+    fn saves_the_dark_side_as_its_own_section() {
+        let dir = site_with(&[("site.toml", "title = \"S\"\ntheme = \"catppuccin-latte\"\n")]);
+        let mut config = open(dir.path()).unwrap().config;
+        config.dark = Some(DarkSide {
+            theme: "nope".into(),
+            custom_theme: None,
+            header: HeaderStyle::Plain,
+            colors: Colors::default(),
+        });
+        let error = save_config(dir.path(), &config).unwrap_err().to_string();
+        assert!(error.contains("dark mode: there is no theme"), "{error}");
+
+        config.dark = Some(DarkSide {
+            theme: "custom".into(),
+            custom_theme: Some(CustomTheme {
+                name: None,
+                from: "catppuccin-mocha".into(),
+                background: None,
+                primary: Some("#ff6600".into()),
+                secondary: None,
+                accent: None,
+                neutral: None,
+                corners: None,
+            }),
+            header: HeaderStyle::Plain,
+            colors: Colors {
+                footer: Some(Surface::Neutral),
+                ..Colors::default()
+            },
+        });
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(
+            text.contains(
+                "[dark]\ntheme = \"custom\"\n\n[dark.custom_theme]\nfrom = \"catppuccin-mocha\"\nprimary = \"#ff6600\"\n\n[dark.colors]\nfooter = \"neutral\""
+            ),
+            "{text}"
+        );
+        let reopened = open(dir.path()).unwrap().config;
+        assert_eq!(reopened, config);
+        let dark = reopened.dark_look().unwrap();
+        assert_eq!(dark.base_theme(), "catppuccin-mocha");
+        assert!(dark.is_dark() && !reopened.light().is_dark());
+
+        // Off again: the section goes.
+        config.dark = None;
+        save_config(dir.path(), &config).unwrap();
+        let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        assert!(!text.contains("dark"), "{text}");
     }
 
     #[test]

@@ -5,11 +5,13 @@
   import X from "@lucide/svelte/icons/x";
   import Palette from "@lucide/svelte/icons/palette";
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
+  import Sun from "@lucide/svelte/icons/sun";
+  import Moon from "@lucide/svelte/icons/moon";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import FontPicker from "$lib/FontPicker.svelte";
   import ThemeLegend from "$lib/ThemeLegend.svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
-  import { commands, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type Surface, type ThemeChoice, type ThemeVariable } from "$lib/site";
+  import { commands, type Colors, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type Surface, type ThemeChoice, type ThemeVariable } from "$lib/site";
   import { COLOR_SETTINGS, colorOf, fallbackOf, isDarkHex, SURFACES, THEME_COLORS, type ColorSetting } from "$lib/siteColors";
 
   interface Props {
@@ -21,13 +23,43 @@
   let themes = $state<ThemeChoice[]>([]);
   let error = $state<string | null>(null);
 
-  let isCustom = $derived(site.config.theme === "custom");
+  /** Which side of the look the tab edits: the light one or, with dark mode (`[dark]`), the dark one. */
+  let editing = $state<"light" | "dark">("light");
+  let hasDark = $derived(!!site.config.dark);
+  let onDark = $derived(hasDark && editing === "dark");
+
+  interface Side {
+    theme: string;
+    custom_theme: CustomTheme | null;
+    header: HeaderStyle;
+    colors: Colors;
+  }
+  /** The edited side's theme, custom colors, header and colors. */
+  let side = $derived<Side>(
+    onDark && site.config.dark
+      ? {
+          theme: site.config.dark.theme,
+          custom_theme: site.config.dark.custom_theme,
+          header: site.config.dark.header,
+          colors: site.config.dark.colors ?? ({} as Colors),
+        }
+      : { theme: site.config.theme, custom_theme: site.config.custom_theme, header: site.config.header, colors: site.config.colors },
+  );
+
+  /** The site's settings with `patch` on the edited side (and `extra` besides). */
+  function withSide(patch: Partial<Side>, extra: Partial<SiteConfig> = {}): SiteConfig {
+    const config = $state.snapshot(site.config) as SiteConfig;
+    if (onDark && config.dark) return { ...config, ...extra, dark: { ...config.dark, ...patch } };
+    return { ...config, ...extra, ...patch };
+  }
+
+  let isCustom = $derived(side.theme === "custom");
   /** The custom colors being edited; saved on each finished change. */
   let draft = $state<CustomTheme | null>(null);
   /** Whether the site's page background is dark: a custom background, or the theme's (as theme::is_dark). */
   let dark = $derived(
     (isCustom && draft?.background ? isDarkHex(draft.background) : null) ??
-      themes.find((t) => t.name === (isCustom && draft ? draft.from : site.config.theme))?.dark ??
+      themes.find((t) => t.name === (isCustom && draft ? draft.from : side.theme))?.dark ??
       false,
   );
   let variables = $state<ThemeVariable[]>([]);
@@ -59,19 +91,19 @@
     neutral: "bg-neutral",
   };
   // The theme the swatches are drawn in, as the legend does.
-  let swatchTheme = $derived(isCustom && draft ? draft.from : site.config.theme);
+  let swatchTheme = $derived(isCustom && draft ? draft.from : side.theme);
   let swatchStyle = $derived(variables.map((v) => `${v.name}: ${v.value}`).join("; "));
 
   // The default is saved as nothing, so site.toml only names what was changed.
   function setColor(setting: ColorSetting, value: Surface) {
-    if (colorOf(site.config.colors, setting.key, dark) === value) return;
-    const colors = { ...$state.snapshot(site.config.colors ?? {}), [setting.key]: value === fallbackOf(setting, dark) ? null : value };
-    save({ ...$state.snapshot(site.config), colors: colors as SiteConfig["colors"] });
+    if (colorOf(side.colors, setting.key, dark) === value) return;
+    const colors = { ...$state.snapshot(side.colors ?? {}), [setting.key]: value === fallbackOf(setting, dark) ? null : value };
+    save(withSide({ colors: colors as Colors }));
   }
 
   /** Whether any color, the header included, differs from its default. */
   let colorsChanged = $derived(
-    site.config.header !== "plain" || COLOR_SETTINGS.some((setting) => colorOf(site.config.colors, setting.key, dark) !== fallbackOf(setting, dark)),
+    side.header !== "plain" || COLOR_SETTINGS.some((setting) => colorOf(side.colors, setting.key, dark) !== fallbackOf(setting, dark)),
   );
 
   async function resetColors() {
@@ -81,7 +113,7 @@
       okLabel: "Reset",
       cancelLabel: "Keep",
     });
-    if (sure) save({ ...$state.snapshot(site.config), header: "plain", colors: {} as SiteConfig["colors"] });
+    if (sure) save(withSide({ header: "plain", colors: {} as Colors }));
   }
 
   const CORNERS: { value: Corners | null; label: string }[] = [
@@ -98,7 +130,7 @@
   // Follow what's saved, also after Reload or an edit by hand; otherwise an
   // old copy here would be saved over the file with the next change.
   $effect(() => {
-    const saved = site.config.custom_theme;
+    const saved = side.custom_theme;
     untrack(() => (draft = saved ? $state.snapshot(saved) : null));
   });
 
@@ -193,8 +225,50 @@
   // looks final. Only the theme changes in site.toml; custom colors stay
   // there for later.
   async function pick(theme: string) {
-    if (theme === site.config.theme) return;
-    await save({ ...$state.snapshot(site.config), theme });
+    if (theme === side.theme) return;
+    await save(withSide({ theme }));
+  }
+
+  /** A dark theme to start the dark side with: the light theme's counterpart where there is one. */
+  const DARK_PARTNERS: Record<string, string> = {
+    light: "dark",
+    "catppuccin-latte": "catppuccin-mocha",
+    winter: "night",
+    lofi: "black",
+    corporate: "business",
+    emerald: "forest",
+    garden: "forest",
+    cupcake: "dim",
+    nord: "dim",
+    silk: "abyss",
+    caramellatte: "coffee",
+    autumn: "coffee",
+  };
+
+  /** Turns dark mode on (a dark side that starts with the light side's colors) or off, after asking. */
+  async function setDarkMode(input: HTMLInputElement) {
+    const config = $state.snapshot(site.config) as SiteConfig;
+    if (input.checked) {
+      const light = config.theme === "custom" ? (config.custom_theme?.from ?? "light") : config.theme;
+      await save({
+        ...config,
+        dark: { theme: DARK_PARTNERS[light] ?? "dark", custom_theme: null, header: config.header, colors: { ...config.colors } },
+      });
+      editing = "dark";
+      return;
+    }
+    const sure = await ask("Turn dark mode off? The dark side's theme and colors are removed; the light side stays.", {
+      title: "Light and dark mode",
+      kind: "warning",
+      okLabel: "Turn off",
+      cancelLabel: "Keep",
+    });
+    if (!sure) {
+      input.checked = true;
+      return;
+    }
+    editing = "light";
+    await save({ ...config, dark: null });
   }
 
   /** A theme's colors as #rrggbb, read from the browser: themes define them in oklch. */
@@ -231,7 +305,7 @@
 
   /** Custom colors starting from the theme picked last. */
   async function customize() {
-    const base = site.config.theme === "custom" ? (draft?.from ?? "light") : site.config.theme;
+    const base = side.theme === "custom" ? (draft?.from ?? "light") : side.theme;
     // Colors saved earlier on the same theme are picked up again, not reset.
     if (draft?.from !== base) draft = startFrom(base);
     await saveDraft();
@@ -244,7 +318,7 @@
 
   async function saveDraft() {
     if (!draft) return;
-    await save({ ...$state.snapshot(site.config), theme: "custom", custom_theme: $state.snapshot(draft) });
+    await save(withSide({ theme: "custom", custom_theme: $state.snapshot(draft) }));
   }
 
   async function changeBase(theme: string) {
@@ -269,7 +343,7 @@
     draft.name = name;
     const set = $state.snapshot(draft);
     const saved = taken ? savedSets.map((s) => (s.name === name ? set : s)) : [...savedSets, set];
-    await save({ ...$state.snapshot(site.config), theme: "custom", custom_theme: set, saved_themes: $state.snapshot(saved) });
+    await save(withSide({ theme: "custom", custom_theme: set }, { saved_themes: $state.snapshot(saved) }));
     newName = "";
   }
 
@@ -288,6 +362,27 @@
       <div role="alert" class="alert alert-error alert-soft text-sm">{error}</div>
     {/if}
 
+    <section id="dark-mode" class="flex flex-wrap items-center gap-3 rounded-box border border-base-300 p-3 text-sm">
+      <label class="flex cursor-pointer items-center gap-2 font-medium">
+        <input type="checkbox" id="dark-mode-on" class="toggle toggle-sm" checked={hasDark}
+          onchange={(e) => setDarkMode(e.currentTarget)} />
+        Light and dark mode
+      </label>
+      {#if hasDark}
+        <div id="dark-mode-side" class="join">
+          <button type="button" id="edit-light-side" class={["btn join-item btn-sm", editing === "light" && "btn-active"]}
+            onclick={() => (editing = "light")}><Sun class="size-4" /> Light</button>
+          <button type="button" id="edit-dark-side" class={["btn join-item btn-sm", editing === "dark" && "btn-active"]}
+            onclick={() => (editing = "dark")}><Moon class="size-4" /> Dark</button>
+        </div>
+        <span class="text-xs text-base-content/60">Theme and colors below are for the {editing} side; the fonts for both.</span>
+      {:else}
+        <span class="text-xs text-base-content/60">
+          A second theme with its own colors for visitors whose system is set to dark, and a switch in the header.
+        </span>
+      {/if}
+    </section>
+
     {#snippet swatch(value: Surface)}
       <span data-theme={swatchTheme} style={swatchStyle} class={["size-3 shrink-0 rounded-sm border border-black/20", SWATCHES[value]]}></span>
     {/snippet}
@@ -305,14 +400,14 @@
         <div class="join flex-wrap">
           {#each HEADERS as option (option.value)}
             <button type="button" id="header-{option.value}"
-              class={["btn join-item btn-xs gap-1.5", site.config.header === option.value && "btn-active"]}
-              onclick={() => site.config.header !== option.value && save({ ...$state.snapshot(site.config), header: option.value })}>
+              class={["btn join-item btn-xs gap-1.5", side.header === option.value && "btn-active"]}
+              onclick={() => side.header !== option.value && save(withSide({ header: option.value }))}>
               {@render swatch(option.value)}{option.label}
             </button>
           {/each}
         </div>
         {#each COLOR_SETTINGS as setting (setting.key)}
-          {@const current = colorOf(site.config.colors, setting.key, dark)}
+          {@const current = colorOf(side.colors, setting.key, dark)}
           <span class="text-base-content/80">{setting.label}</span>
           <div id="color-{setting.key}" class="join flex-wrap">
             {#each setting.surface ? SURFACES : THEME_COLORS as value (value)}
@@ -358,12 +453,12 @@
         <Palette class="size-4" />
         <span class="flex-1 font-medium">Custom colors</span>
         {#if !isCustom}
-          {#if draft && draft.from !== site.config.theme}
+          {#if draft && draft.from !== side.theme}
             <button type="button" id="back-to-custom-theme" class="btn btn-ghost btn-sm" onclick={backToSaved}
               title="The custom colors saved earlier, based on {draft.from}">Back to my colors</button>
           {/if}
           <button type="button" id="use-custom-theme" class="btn btn-sm" onclick={customize}>
-            Customize {site.config.theme}
+            Customize {side.theme}
           </button>
         {/if}
       </div>
@@ -449,12 +544,13 @@
       </div>
     </section>
 
-    <ThemePicker {themes} bind:value={() => site.config.theme, (theme) => pick(theme ?? "light")} />
+    <ThemePicker {themes} bind:value={() => side.theme, (theme) => pick(theme ?? (onDark ? "dark" : "light"))} />
   </div>
 
   <!-- Stays in view while the theme list scrolls. -->
   <div class="@container xl:sticky xl:top-4">
-    <ThemeLegend theme={isCustom && draft ? draft.from : site.config.theme} {variables} header={site.config.header} colors={site.config.colors} {dark}
-      label={isCustom && draft ? (draft.name ? `“${draft.name}”, from ${draft.from}` : `custom, from ${draft.from}`) : site.config.theme} />
+    <ThemeLegend theme={isCustom && draft ? draft.from : side.theme} {variables} header={side.header} colors={side.colors} {dark}
+      label={(hasDark ? (onDark ? "Dark: " : "Light: ") : "") +
+        (isCustom && draft ? (draft.name ? `“${draft.name}”, from ${draft.from}` : `custom, from ${draft.from}`) : side.theme)} />
   </div>
 </div>

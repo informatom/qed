@@ -981,6 +981,25 @@ rest is done.
   top-level page with pages below it is a group whose title stays a
   link (a click beside it folds); the top bar keeps every page.
 
+- **#146 Light and dark mode.** Added by the user 2026-10-30, done
+  2026-10-31 as decided with him: a site can have a dark side, `[dark]`
+  in site.toml, with its own theme, custom colors (`[dark.custom_theme]`),
+  header and colors (`[dark.colors]`); the fonts are shared. Set in the
+  Theme tab: **Light and dark mode** switches it on (the dark side starts
+  with a matching dark theme and the light side's colors), **Light** /
+  **Dark** pick which side the tab edits. Pages keep the light theme in
+  `data-theme`; the dark theme's variables follow in style.css for
+  `prefers-color-scheme: dark` and `data-mode="dark"`. Colors that
+  differ get Tailwind variants `mode-light:` / `mode-dark:` (a test
+  checks every one is in site.css). Without JavaScript the page follows
+  the system; `mode.js` (blocking, in `<head>`) applies a stored choice
+  before the page shows and runs the switch beside the search button:
+  three buttons, sun (light), computer (the system's setting) and moon
+  (dark), the current one highlighted (the user asked for all three to
+  show, 2026-10-31). The player gets
+  `config-dark.json`, redirect pages the dark colors too. The Subscribe
+  button keeps the light side's color.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

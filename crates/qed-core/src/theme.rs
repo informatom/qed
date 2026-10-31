@@ -256,20 +256,58 @@ pub fn color_hex(
     {
         return Some(format!("#{r:02x}{g:02x}{b:02x}"));
     }
-    // The theme's rule: `…,[data-theme=nord]{color-scheme:light;--color-primary:oklch(…);…}`.
-    let selector = format!("[data-theme={theme}]");
-    let start = stylesheet.find(&selector)?;
-    let open = start + stylesheet[start..].find('{')? + 1;
-    let close = open + stylesheet[open..].find('}')?;
-    let value = stylesheet[open..close].split(';').find_map(|declaration| {
-        let (name, value) = declaration.split_once(':')?;
-        (name.trim() == variable).then(|| value.trim())
-    })?;
+    let value = theme_rule(stylesheet, theme)?
+        .split(';')
+        .find_map(|declaration| {
+            let (name, value) = declaration.split_once(':')?;
+            (name.trim() == variable).then(|| value.trim())
+        })?;
     if let Some([r, g, b]) = parse_hex(value) {
         return Some(format!("#{r:02x}{g:02x}{b:02x}"));
     }
     let [r, g, b] = oklch_to_rgb(value)?;
     Some(format!("#{r:02x}{g:02x}{b:02x}"))
+}
+
+/// What a theme's rule in daisyUI's CSS sets, between the braces:
+/// `color-scheme:light;--color-primary:oklch(…);…` from
+/// `…,[data-theme=nord]{…}`.
+fn theme_rule<'a>(stylesheet: &'a str, theme: &str) -> Option<&'a str> {
+    let selector = format!("[data-theme={theme}]");
+    let start = stylesheet.find(&selector)?;
+    let open = start + stylesheet[start..].find('{')? + 1;
+    let close = open + stylesheet[open..].find('}')?;
+    Some(stylesheet[open..close].trim())
+}
+
+/// The rules that give a site with dark mode (#146) its dark side: the
+/// dark theme's variables, and its custom colors on top, on the page root
+/// while the system is set to dark (unless the visitor picked light) or
+/// the visitor picked dark. Pages keep the light theme in `data-theme`;
+/// these come later in the stylesheet, so they win over it.
+pub fn dark_css(stylesheet: &str, theme: &str, custom: Option<&CustomTheme>) -> String {
+    let mut body: Vec<String> = theme_rule(stylesheet, theme)
+        .unwrap_or_default()
+        .split(';')
+        .map(str::trim)
+        .filter(|declaration| !declaration.is_empty())
+        .map(str::to_string)
+        .collect();
+    if let Some(custom) = custom {
+        body.extend(
+            custom
+                .variables()
+                .into_iter()
+                .map(|var| format!("{}: {}", var.name, var.value)),
+        );
+    }
+    let body = body.join(";\n  ");
+    format!(
+        "\n/* Dark mode, based on {theme} */\n\
+         @media (prefers-color-scheme: dark) {{\n\
+         :root:not([data-mode=light]) {{\n  {body};\n}}\n}}\n\
+         :root[data-mode=dark] {{\n  {body};\n}}\n"
+    )
 }
 
 /// `hex` mixed with `other` (`#rrggbb` both), `amount` of `other` from 0

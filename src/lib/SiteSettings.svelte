@@ -33,6 +33,7 @@
     saved_themes: site.config.saved_themes,
     header: site.config.header,
     colors: site.config.colors,
+    dark: site.config.dark,
     fonts: site.config.fonts,
     main_menu: site.config.main_menu,
     navigation: site.config.navigation,

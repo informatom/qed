@@ -6,7 +6,8 @@ weight = 36
 summary = "Pick a theme, place its colors, choose fonts, make your own colors."
 +++
 
-How the website looks is set in the **Theme** tab. Everything there is
+How the website looks is set in the **Theme** tab, for a light and,
+if you like, a dark side. Everything there is
 saved as you pick it; preview the site again (:icon-eye:) to see it. On
 the right, a small sketch of a page shows the result while you choose.
 
@@ -34,6 +35,27 @@ the theme's accent is often a pale color that would make a bright band
 below a dark page. On a light theme it's **accent**.
 
 **Reset** puts the header and every color back to the defaults.
+
+## Light and dark mode
+
+Many people set their computer or phone to dark colors, at least in the
+evening. Switch on **Light and dark mode** at the top of the tab, and
+the website gets a second look for them: a dark theme with colors of
+its own. Visitors then see the side that matches their system. Three
+small buttons next to the search in the header (a sun, a computer and a
+moon) let them pick light, their system's setting, or dark; the browser
+remembers the choice for the whole site.
+
+When you switch it on, the dark side starts with a dark theme that suits
+the light one (*catppuccin-mocha* for *catppuccin-latte*, *dark* for
+*light*) and with the same color choices. **Light** and **Dark** next to
+the switch decide which side the rest of the tab changes: the theme,
+the header, the colors and the custom colors each have their own on
+both sides. Saved colors can be used on either side. The fonts are the
+same for both.
+
+Switching it off again removes the dark side's settings; the light side
+stays as it was.
 
 ## Fonts
 
@@ -77,5 +99,9 @@ answer = "The preview shows the site as it was built. Press :icon-eye: again to 
 
 [[items]]
 question = "Can visitors switch between light and dark?"
-answer = "Not yet: the site has the one theme you choose. Pick a light or a dark one, whichever suits it."
+answer = "Yes, with **Light and dark mode** at the top of the Theme tab: a second, dark theme for visitors whose system is set to dark, and a switch in the header. Without it the site has the one theme you choose."
+
+[[items]]
+question = "What do visitors without JavaScript see?"
+answer = "The side that matches their system's setting. Only the switch needs JavaScript; without it, it isn't shown."
 :::

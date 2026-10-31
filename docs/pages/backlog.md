@@ -24,19 +24,9 @@ Nothing open.
 In the order to build them (sorted 2026-10-30). Sites in several
 languages (#145) come before the MCP server (#105), since its tools and
 format guide describe the site folder that #145 changes. #138–#144,
-found while moving blog.panoptikum.social over by hand, are done.
+found while moving blog.panoptikum.social over by hand, are done, and so
+is #146 (light and dark mode).
 
-- **#146 Light and dark mode.** A site with two themes, one light and
-  one dark (e.g. latte and mocha), and a switch on the page for light,
-  dark and the system's setting. Without JavaScript the page follows
-  the system (`prefers-color-scheme`; daisyUI 5 can mark a theme
-  `--prefersdark`); the switch is an optional feature that remembers
-  the choice in the browser and must set it before the page shows, so
-  it doesn't flash in the wrong colors. To decide: the setting in the
-  Site tab (a second theme, off by default), what a custom theme
-  (#101) needs for its dark side, where the switch goes (header,
-  footer), and whether `[colors]` and the footer color are set per
-  mode (see #141). Added by the user on 2026-10-30.
 - **#145 Sites in several languages.** A site in German and English
   (more later), starting with the manual (#110), for which a German
   version was asked for. To decide: how a translation is stored

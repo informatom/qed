@@ -14,17 +14,61 @@
    crate by qed-core (catppuccin_themes.rs); `cargo test` keeps it current. */
 @import "./catppuccin.css";
 
+/* Light and dark mode (#146). A site with a dark side (`[dark]` in
+   site.toml) follows the system's setting; the switch in the header
+   (mode.js) can fix it to light or dark with `data-mode` on <html>. The
+   generator puts `mode-light:` or `mode-dark:` before a color class that
+   differs between the two sides (`mode-light:bg-accent
+   mode-dark:bg-base-200`); the dark side's theme colors come from the
+   rules it adds to style.css (theme::dark_css). */
+@custom-variant mode-light {
+  @media (prefers-color-scheme: light) {
+    :root:not([data-mode="dark"]) & {
+      @slot;
+    }
+  }
+  :root[data-mode="light"] & {
+    @slot;
+  }
+}
+@custom-variant mode-dark {
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-mode="light"]) & {
+      @slot;
+    }
+  }
+  :root[data-mode="dark"] & {
+    @slot;
+  }
+}
+/* Those classes come together in Rust, out of Tailwind's sight: every
+   color class the generator picks (color_classes, header_classes), with
+   either prefix. A test checks that each is in the stylesheet. */
+@source inline("{mode-light:,mode-dark:}{bg-base-100,bg-base-200,bg-primary,bg-secondary,bg-accent,bg-neutral,text-base-content,text-primary-content,text-secondary-content,text-accent-content,text-neutral-content,text-primary,font-semibold,border,border-t,border-b,border-t-4,border-base-300,border-t-accent,border-b-base-300,shadow-sm,on-color,btn-primary,btn-secondary,btn-accent,btn-neutral,content-primary,content-secondary,content-accent,content-neutral,links-secondary,links-accent,links-neutral,underline,decoration-2,underline-offset-4,link-hover,rounded-field,p-0.5,p-1}");
+
+/* The switch: light, the system's setting, dark (mode.js); the current
+   choice stands out, in the header's own text color, so it works on a
+   colored bar too. */
+#mode-switch .btn {
+  border-color: transparent;
+  color: inherit;
+  transition: none;
+}
+#mode-switch .btn[aria-pressed="true"] {
+  background-color: color-mix(in oklab, currentColor 18%, transparent);
+}
+
 /* Theme colors beyond buttons: links in text get an underline in the
    site's link color (primary unless `[colors] links` says otherwise),
    quotes an accent bar. Text itself keeps the base color, so it stays
-   readable in every theme. */
-.links-secondary {
+   readable in every theme. Utilities, so `mode-dark:` works on them. */
+@utility links-secondary {
   --qed-link: var(--color-secondary);
 }
-.links-accent {
+@utility links-accent {
   --qed-link: var(--color-accent);
 }
-.links-neutral {
+@utility links-neutral {
   --qed-link: var(--color-neutral);
 }
 .prose a {
@@ -55,7 +99,6 @@
   text-align: center;
   vertical-align: 0.05em;
 }
-.on-color .prose kbd,
 .site-footer .prose kbd {
   background-color: transparent;
   color: inherit;
@@ -63,16 +106,16 @@
 
 /* `[colors] content`: the page background tinted with a theme color,
    light enough for the base text color to stay readable. */
-.content-primary {
+@utility content-primary {
   background-color: color-mix(in oklab, var(--color-primary) 10%, var(--color-base-100));
 }
-.content-secondary {
+@utility content-secondary {
   background-color: color-mix(in oklab, var(--color-secondary) 10%, var(--color-base-100));
 }
-.content-accent {
+@utility content-accent {
   background-color: color-mix(in oklab, var(--color-accent) 10%, var(--color-base-100));
 }
-.content-neutral {
+@utility content-neutral {
   background-color: color-mix(in oklab, var(--color-neutral) 10%, var(--color-base-100));
 }
 
@@ -83,8 +126,7 @@
 .site-footer .prose {
   font-size: inherit;
 }
-.site-footer .prose,
-.on-color .prose {
+.site-footer .prose {
   color: inherit;
   --tw-prose-body: currentColor;
   --tw-prose-headings: currentColor;
@@ -94,6 +136,23 @@
   --tw-prose-counters: currentColor;
   --tw-prose-quotes: currentColor;
   --tw-prose-hr: currentColor;
+}
+@utility on-color {
+  & .prose {
+    color: inherit;
+    --tw-prose-body: currentColor;
+    --tw-prose-headings: currentColor;
+    --tw-prose-links: currentColor;
+    --tw-prose-bold: currentColor;
+    --tw-prose-bullets: currentColor;
+    --tw-prose-counters: currentColor;
+    --tw-prose-quotes: currentColor;
+    --tw-prose-hr: currentColor;
+  }
+  & .prose kbd {
+    background-color: transparent;
+    color: inherit;
+  }
 }
 /* A button on a section of its own color would vanish: inside a
    section in a theme color (`on-primary` and so on, generator.rs), buttons
