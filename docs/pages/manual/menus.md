@@ -26,6 +26,9 @@ sidebar they fold (see below).
 New pages are in no menu until you choose one. The footer menu is
 always made this way; the imprint and privacy pages belong there.
 
+On a site in several languages, each language has menus of its own,
+from its own pages.
+
 ## In a sidebar
 
 When there are more pages than fit into the top bar, switch on **Show

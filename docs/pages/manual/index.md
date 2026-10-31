@@ -12,7 +12,9 @@ This manual is for the people who make and look after a website with
 q.e.d.: no programming needed, and no need to know how websites work
 inside. The same pages are in the app: the :icon-book-open: **Manual**
 button at the top right opens them in a window of their own, so you can
-read them offline, next to what you're doing.
+read them offline, next to what you're doing. The manual is in English
+and German; **Language of the manual** in the **App** tab picks one
+(automatically your computer's).
 
 - [Before you start](before-you-start.md): what you need (and what you
   don't).

@@ -1001,6 +1001,27 @@ rest is done.
   `config-dark.json`, redirect pages the dark colors too. The Subscribe
   button keeps the light side's color.
 
+- **#145 Sites in several languages.** Added by the user 2026-10-30,
+  done 2026-10-31 as decided with him: a translation is `about.en.md`
+  beside `about.md`, at `/en/about` (the main language stays at `/`);
+  further languages under `[languages.en]` in site.toml, with their own
+  site title and description. A page without a translation isn't there
+  in that language. Each language has its own menus, post and page
+  lists, back and next links and feeds; footer (`footer.en.md`) and
+  shared blocks (`teaser.en.md`) per language where they exist. Header
+  switch as plain links (to the same page, else that language's start
+  page), `hreflang` alternates with a web address. Links by file name
+  go to the same language's version; written-out addresses stay exact.
+  Moving a page takes its translations along; one with translations
+  can't be deleted, nor a language with translations removed. App: Site
+  tab Languages, language buttons on page rows, a language bar with
+  **Translate** (a draft copy) above the open page. The episode layout
+  and the podcast stay in the main language. Manual in German (*Sie*,
+  button names in English as in the app) for all pages but Libraries;
+  the app builds it in one language, chosen under **Language of the
+  manual** in the App tab (automatic: the computer's). Docs site: German
+  manual and start page only, which points to the English rest.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

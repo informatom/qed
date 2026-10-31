@@ -1,6 +1,6 @@
 +++
 title = "Site settings"
-description = "The Site tab: title, language, description and web address, the logo and the site icon, links to other sites and your profiles there, site search and the page width."
+description = "The Site tab: title, language, description and web address, further languages, the logo and the site icon, links to other sites and your profiles there, site search and the page width."
 menu = "main"
 weight = 32
 summary = "Title, language, web address, logo, icon, search and page width."
@@ -21,6 +21,25 @@ you like, then press **Save**; **Discard** forgets the changes.
 - **Web address**: where the site will be online, such as
   `https://example.com/`. Feeds, the sitemap and share links need it;
   fill it in before publishing.
+
+## Languages
+
+A site can be in more than one language: German at `/` and English at
+`/en/`, for example. The language under **General** is the main one;
+add more here with their code (**Add a language**), such as `en`, `fr`
+or `pt-br`. Each can have the site's **title** and **description** in
+it; left empty, the main ones are used.
+
+Then translate pages one by one: open a page and press **Translate**
+next to the language's code above it (see
+[Pages and blocks](pages-and-blocks.md)). A page without a translation
+simply isn't there in that language. Menus, post lists and feeds of
+each language show only its own pages, and a switch in the header
+(*DE EN*) leads to the same page in the other language, or to that
+language's start page where there's none.
+
+A language that still has translations can't be removed; delete those
+first.
 
 ## Logo
 

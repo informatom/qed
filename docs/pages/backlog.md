@@ -23,25 +23,11 @@ Nothing open.
 ### Phase 3:  In progress
 
 In the order to build them (sorted 2026-10-30). Sites in several
-languages (#145) come before the MCP server (#105), since its tools and
-format guide describe the site folder that #145 changes. #138–#144,
+languages (#145) came before the MCP server (#105), since its tools and
+format guide describe the site folder; #145 is done. #138–#144,
 found while moving blog.panoptikum.social over by hand, are done, and so
 is #146 (light and dark mode).
 
-- **#145 Sites in several languages.** A site in German and English
-  (more later), starting with the manual (#110), for which a German
-  version was asked for. To decide: how a translation is stored
-  (`about.md` next to `about.en.md`, or a folder per language), the
-  addresses (the main language at `/`, others under `/en/`), what
-  belongs to each language (title, description, menus, footer, shared
-  blocks, posts, feeds), a language switch in the header (a plain link
-  to the same page in the other language, no JavaScript) and
-  `<link rel="alternate" hreflang>`, how pages without a translation
-  show, and how the app's editor and New page handle it. For the
-  manual compiled into the app: which language the Manual button opens
-  (the app's own texts are English only for now), and how manual pages
-  keep linking to each other by file name in both languages. Added
-  by the user on 2026-10-30.
 - **#105 MCP server, picked up again.** Dropped on 2026-10-29, back
   on the list on 2026-10-30: AI assistants (Claude Desktop, Claude
   Code) working on a site over the Model Context Protocol, with the

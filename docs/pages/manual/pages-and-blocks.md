@@ -160,6 +160,25 @@ The **Settings** tab of a page:
 
 Settings and content are saved separately, each with its own **Save**.
 
+## Translations
+
+On a site with more than one language (see
+[Site settings](site-settings.md)), a row of language codes shows above
+an open page. **Translate** next to a code starts the page's
+translation: a copy of the page, still in the main language and saved
+as a **Draft**, so it isn't published half done. Translate its title
+and blocks, switch off **Draft** in its settings, and it's there, at
+the same address below the language's code (`/en/about` for `/about`).
+
+In the page list, a page's translations show as small codes on its
+row (*EN*); a click opens one. A translation keeps the address of its
+page: moving or renaming the page takes its translations along. A page
+with translations can only be deleted after them.
+
+A link to another page by its file (`[About](about.md)`) leads to the
+translation in the page's own language, when there is one; an address
+written out (`/about`, `/en/about`) leads exactly there.
+
 ## Questions
 
 ::: faq
