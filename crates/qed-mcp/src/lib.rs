@@ -73,6 +73,15 @@ struct WritePage {
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
+struct DeleteFile {
+    /// The file's name as list_files shows it: `team.jpg`, `logos/a.png`;
+    /// in static also a folder.
+    name: String,
+    /// `media` (images, the default), `assets` or `static`.
+    library: Option<String>,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
 struct FindIcons {
     /// Words for what the icon should show: `mail`, `envelope`, `heart
     /// filled`, `mastodon`.
@@ -468,6 +477,20 @@ impl Qed {
         .map_err(text)?;
         self.record()?;
         Ok(format!("Imported as {name}."))
+    }
+
+    #[tool(
+        description = "Deletes a file from the site's images (media), downloads (assets) or static files, in static also a whole folder. Refused while a page, the footer or the site's settings still use it (logo, site icon, podcast cover): change those first. To replace an image, import the new one, point the pages to it, then delete the old one. Recorded in the site's history, so the owner can bring it back."
+    )]
+    async fn delete_file(
+        &self,
+        Parameters(DeleteFile { name, library }): Parameters<DeleteFile>,
+    ) -> Reply {
+        let library = parse_library(library.as_deref())?;
+        let site = site::open(&self.root).map_err(text)?;
+        media::delete(&site, library, &name).map_err(text)?;
+        self.record()?;
+        Ok(format!("Deleted {name}."))
     }
 
     #[tool(

@@ -29,7 +29,8 @@ boxed = true
 - read, write and make pages and posts, with all blocks
 - give a page a new address (links and redirects are taken care of, as
   when you move a page in q.e.d.)
-- delete pages that nothing links to
+- delete pages that nothing links to, and pictures and files that
+  nothing uses any more (to replace screenshots, for example)
 - add pictures and files from your computer, and files the website
   needs exactly as they are (such as old slide shows) at their old
   addresses

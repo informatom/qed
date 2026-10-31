@@ -205,6 +205,21 @@ fn reaches_static_files_the_footer_and_the_settings() {
     assert!(!failed, "{imported}");
     assert!(root.join("static/pdf/33C3.pdf").is_file());
     assert!(root.join("static/talks/sub8.html").is_file());
+
+    // Deleting: a file nothing uses goes; one a page uses stays.
+    std::fs::create_dir_all(root.join("media")).unwrap();
+    std::fs::write(root.join("media/old.png"), "png").unwrap();
+    std::fs::write(root.join("media/used.png"), "png").unwrap();
+    std::fs::write(
+        root.join("pages/blog.md"),
+        "+++\ntitle = \"Blog\"\n+++\n\n![Used](/media/used.png)\n",
+    )
+    .unwrap();
+    let (deleted, failed) = session.call("delete_file", json!({"name": "old.png"}));
+    assert!(!failed && !root.join("media/old.png").exists(), "{deleted}");
+    let (refused, failed) = session.call("delete_file", json!({"name": "used.png"}));
+    assert!(failed && refused.contains("/blog"), "{refused}");
+    assert!(root.join("media/used.png").exists());
     let (refused, failed) = session.call(
         "import_file",
         json!({"path": old.join("33C3.pdf"), "library": "assets", "folder": "pdf"}),

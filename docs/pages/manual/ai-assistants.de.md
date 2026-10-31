@@ -30,7 +30,8 @@ boxed = true
 - Seiten und Beiträge lesen, schreiben und anlegen, mit allen Blöcken
 - einer Seite eine neue Adresse geben (Links und Weiterleitungen
   erledigt q.e.d., wie beim Verschieben in der App)
-- Seiten löschen, auf die nichts verlinkt
+- Seiten löschen, auf die nichts verlinkt, und Bilder und Dateien, die
+  nichts mehr verwendet (etwa um Bildschirmfotos zu ersetzen)
 - Bilder und Dateien von Ihrem Computer hinzufügen, auch Dateien, die
   die Website genau so braucht, wie sie sind (etwa alte Foliensätze),
   unter ihren alten Adressen

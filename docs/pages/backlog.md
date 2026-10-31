@@ -58,8 +58,10 @@ are #146 (light and dark mode) and #105 (MCP server).
   for the app too. The guide is now a `guide` tool, and the instructions
   sent at the start only point to it: Claude Code cut the long
   instructions off after about 2 KB, so the first assistant never saw
-  most of the guide. No tool for deleting files (decided by the user,
-  2026-10-31); the owner deletes them in the app. Still open: stdio of the Windows build when an
+  most of the guide. A tool for deleting files was first left out, then
+  added the same day for replacing screenshots from another project
+  (user): `delete_file`, refused while anything still uses the file,
+  like the Media tab. Still open: stdio of the Windows build when an
   assistant starts `qed mcp` (a friend of the user's tries it).
 
 - **#150 Posts with a time.** A post's `date` is a day only, so the
