@@ -2,11 +2,12 @@
   import { untrack } from "svelte";
   import { onMount } from "svelte";
   import CoverCheck from "$lib/CoverCheck.svelte";
+  import IconSearch from "$lib/IconSearch.svelte";
   import ImageField from "$lib/ImageField.svelte";
   import MediaPicker from "$lib/MediaPicker.svelte";
   import PeopleEditor from "$lib/PeopleEditor.svelte";
   import {
-    commands, formatLabel, pageIcons, podcastFormats, sameData, saveChecked,
+    commands, formatLabel, iconSvgs, podcastFormats, sameData, saveChecked,
     type AudioFormat, type Contributor, type Episode, type EpisodeAudio, type EpisodeType, type FrontMatter, type Menu, type Page, type Podcast,
   } from "$lib/site";
 
@@ -46,9 +47,17 @@
   let authors = $state(initial.authors.join(", "));
   let tags = $state(initial.tags.join(", "));
 
-  let icons = $state<[string, string][]>([]);
-  onMount(async () => {
-    icons = [...(await pageIcons())];
+  // The page's icon now, to show next to "No icon".
+  let iconSvg = $state<string | null>(null);
+  $effect(() => {
+    const name = form.icon;
+    if (!name) {
+      iconSvg = null;
+      return;
+    }
+    iconSvgs([name]).then((found) => {
+      if (form.icon === name) iconSvg = found.get(name) ?? null;
+    });
   });
 
   let saving = $state(false);
@@ -306,16 +315,15 @@
 
       <fieldset class="flex flex-col gap-2 @xl:col-span-2">
         <legend class="mb-1 text-sm font-medium">Icon <span class="font-normal text-base-content/50">· shown in menus</span></legend>
-        <div class="flex flex-wrap gap-1" role="radiogroup">
-          <button type="button" role="radio" aria-checked={!form.icon} onclick={() => (form.icon = null)}
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="setting-no-icon" type="button" onclick={() => (form.icon = null)}
             class={["btn btn-sm", !form.icon ? "btn-primary" : "btn-ghost"]}>No icon</button>
-          {#each icons as [name, svg] (name)}
-            <!-- The SVGs are qed's own built-in icons, so inserting them as HTML is safe. -->
-            <button type="button" role="radio" aria-checked={form.icon === name} title={name} aria-label={name}
-              onclick={() => (form.icon = name)}
-              class={["btn btn-sm btn-square", form.icon === name ? "btn-primary" : "btn-ghost"]}>{@html svg}</button>
-          {/each}
+          {#if form.icon}
+            <!-- q.e.d.'s own built-in SVG, safe to insert. -->
+            <span id="setting-icon-current" class="btn btn-sm btn-primary pointer-events-none gap-1">{@html iconSvg ?? ""}{form.icon}</span>
+          {/if}
         </div>
+        <IconSearch id="setting-icon" selected={form.icon} onpick={(name) => (form.icon = name)} />
       </fieldset>
     </section>
 

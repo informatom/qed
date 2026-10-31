@@ -40,7 +40,7 @@ alt = "The Pages tab of q.e.d.: on the left the list of pages as a tree with the
 caption = "The **Pages** tab: the pages on the left, the one you picked in the editor on the right."
 :::
 
-The buttons next to the tabs move or rename the page (:icon-folder-input:;
+The buttons next to the tabs move or rename the page (:icon-folder-down:;
 it keeps its old address, listed under **Old addresses** in its
 Settings tab, and links to it are updated) and
 delete it (:icon-trash:). The start page can't be moved or deleted.
@@ -120,7 +120,7 @@ with a Columns block inside.
 ## Shared blocks
 
 Some blocks belong on several pages: opening hours, a contact box. Click
-:icon-component: **Make shared** on a block and give it a name: it moves into a shared
+:icon-components: **Make shared** on a block and give it a name: it moves into a shared
 block, and a **Shared block** takes its place. Add it to other pages with
 **Add: Shared block**. Edit it once, under **Shared blocks** in the page
 list, and every page shows the change.

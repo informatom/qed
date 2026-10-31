@@ -1,103 +1,149 @@
-//! Icons for pages: a curated set of [Lucide](https://lucide.dev) icons
-//! (ISC license), built into qed so generated sites get plain SVG and need
-//! no JavaScript. The files are in `assets/icons/`.
+//! Icons for pages, text and menus: the [Tabler icons](https://tabler.io/icons)
+//! (MIT license, #149), about 5,000 outline and 1,000 filled ones, built
+//! into q.e.d. so generated sites get plain SVG and need no JavaScript.
+//! Their shapes are in `assets/tabler/`, one line per icon, made from the
+//! npm package by `npm run build:icons` (see the README there). A filled
+//! icon's name ends in `-filled`: `heart-filled`.
 //!
 //! A site can add its own icons, such as the logos of the tools it talks
 //! about, as image files in `media/icons/` ([`SiteIcons`]).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
+use std::sync::OnceLock;
 
-/// Builds the list of icons from their names: each name becomes a pair of
-/// the name and the file's contents, read while compiling.
-macro_rules! icons {
-    ($($name:literal,)*) => {
-        &[$(($name, include_str!(concat!("../assets/icons/", $name, ".svg")))),*]
-    };
-}
+const OUTLINE: &str = include_str!("../assets/tabler/outline.txt");
+const FILLED: &str = include_str!("../assets/tabler/filled.txt");
+const TAGS: &str = include_str!("../assets/tabler/tags.txt");
 
-/// Name and SVG markup of every icon, sorted by name.
-pub const ICONS: &[(&str, &str)] = icons![
-    "archive",
-    "award",
-    "book-open",
-    "bookmark",
-    "briefcase",
-    "calendar",
-    "camera",
-    "chart-column",
-    "circle-question-mark",
-    "clock",
-    "code",
-    "coffee",
-    "compass",
-    "component",
-    "download",
-    "eye",
-    "file-plus",
-    "file-text",
-    "folder",
-    "folder-input",
-    "gift",
-    "git-branch",
-    "globe",
-    "graduation-cap",
-    "hammer",
-    "handshake",
-    "headphones",
-    "heart",
-    "history",
-    "house",
-    "image",
-    "info",
-    "layers",
-    "leaf",
-    "life-buoy",
-    "lightbulb",
-    "link",
-    "list",
-    "lock",
-    "mail",
-    "map",
-    "map-pin",
-    "megaphone",
-    "message-circle",
-    "mic",
-    "music",
-    "newspaper",
-    "package",
-    "pen-line",
-    "phone",
-    "play",
-    "plus",
-    "podcast",
-    "rocket",
-    "rss",
-    "save",
-    "scale",
-    "search",
-    "settings",
-    "shield",
-    "shopping-cart",
-    "sparkles",
-    "star",
-    "sun",
-    "tag",
-    "trash",
-    "undo",
-    "upload",
-    "user",
-    "users",
-    "video",
-    "wrench",
+/// Before #149 the icons were Lucide's. Sites keep the names they used
+/// then; these are the ones Tabler calls differently, with the Tabler icon
+/// each stands for now. (The other Lucide names are Tabler's too.)
+pub const RENAMED: &[(&str, &str)] = &[
+    ("book-open", "book"),
+    ("chart-column", "chart-bar"),
+    ("circle-question-mark", "help-circle"),
+    ("component", "components"),
+    ("folder-input", "folder-down"),
+    ("globe", "world"),
+    ("graduation-cap", "school"),
+    ("handshake", "heart-handshake"),
+    ("house", "home"),
+    ("image", "photo"),
+    ("info", "info-circle"),
+    ("layers", "stack-2"),
+    ("life-buoy", "lifebuoy"),
+    ("lightbulb", "bulb"),
+    ("megaphone", "speakerphone"),
+    ("mic", "microphone"),
+    ("newspaper", "news"),
+    ("pen-line", "pencil"),
+    ("play", "player-play"),
+    ("podcast", "broadcast"),
+    ("save", "device-floppy"),
+    ("undo", "arrow-back-up"),
+    ("wrench", "tool"),
 ];
 
-/// The SVG for an icon name, if qed has that icon.
-pub fn svg(name: &str) -> Option<&'static str> {
-    ICONS
+/// Every icon's SVG markup by name, made the first time it's needed.
+fn icons() -> &'static BTreeMap<String, String> {
+    static ICONS: OnceLock<BTreeMap<String, String>> = OnceLock::new();
+    ICONS.get_or_init(|| {
+        let mut icons = BTreeMap::new();
+        for (file, filled) in [(OUTLINE, false), (FILLED, true)] {
+            for line in file.lines() {
+                let Some((name, inner)) = line.split_once('\t') else {
+                    continue;
+                };
+                let (name, paint) = if filled {
+                    (format!("{name}-filled"), r#"fill="currentColor" stroke="none""#)
+                } else {
+                    (
+                        name.to_string(),
+                        r#"fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round""#,
+                    )
+                };
+                let svg = format!(
+                    r#"<svg class="size-4 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {paint}>{inner}</svg>"#
+                );
+                icons.insert(name, svg);
+            }
+        }
+        icons
+    })
+}
+
+/// Tabler's search words for each outline icon: its category and tags.
+fn tags() -> &'static HashMap<&'static str, &'static str> {
+    static TAGS_BY_NAME: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+    TAGS_BY_NAME.get_or_init(|| {
+        TAGS.lines()
+            .filter_map(|line| line.split_once('\t'))
+            .collect()
+    })
+}
+
+/// The name an icon has now: Tabler's for an old Lucide name, else as it is.
+pub fn current_name(name: &str) -> &str {
+    RENAMED
         .iter()
-        .find(|(icon, _)| *icon == name)
-        .map(|(_, svg)| svg.trim_end())
+        .find(|(old, _)| *old == name)
+        .map_or(name, |(_, new)| new)
+}
+
+/// The SVG for an icon name, if q.e.d. has that icon. Old Lucide names
+/// (see [`RENAMED`]) still work.
+pub fn svg(name: &str) -> Option<&'static str> {
+    icons().get(current_name(name)).map(String::as_str)
+}
+
+/// Every icon's name, sorted.
+pub fn names() -> impl Iterator<Item = &'static str> {
+    icons().keys().map(String::as_str)
+}
+
+/// How many icons there are.
+pub fn count() -> usize {
+    icons().len()
+}
+
+/// Icon names for a search, best first, at most `limit`: names that are
+/// the word, then those starting with it, containing it, and last those
+/// whose search words have it ("envelope" finds `mail`). Every word of the
+/// search must match. An empty search gives the first `limit` names.
+pub fn search(query: &str, limit: usize) -> Vec<&'static str> {
+    let words: Vec<String> = query
+        .split_whitespace()
+        .map(|word| word.to_lowercase())
+        .collect();
+    let mut found: Vec<(u8, &'static str)> = names()
+        .filter_map(|name| {
+            let base = name.strip_suffix("-filled").unwrap_or(name);
+            let tags = tags().get(base).copied().unwrap_or_default();
+            let mut score = 0;
+            for word in &words {
+                let rank = if name == word || base == word {
+                    0
+                } else if name.starts_with(word.as_str()) {
+                    1
+                } else if name.contains(word.as_str()) {
+                    2
+                } else if tags.split(' ').any(|tag| tag.starts_with(word.as_str())) {
+                    3
+                } else {
+                    return None;
+                };
+                score = score.max(rank);
+            }
+            Some((score, name))
+        })
+        .collect();
+    found.sort_by_key(|(score, name)| (*score, name.ends_with("-filled"), name.len(), *name));
+    found
+        .into_iter()
+        .take(limit)
+        .map(|(_, name)| name)
+        .collect()
 }
 
 /// The folder in `media/` for a site's own icons.
@@ -173,41 +219,44 @@ mod tests {
     }
 
     #[test]
-    fn every_shape_has_its_size() {
-        // Rectangles without width and height (and circles without r)
-        // aren't drawn; an earlier copy of the icons lost them.
-        for (name, svg) in ICONS {
-            for rect in svg.split("<rect").skip(1) {
-                let rect = &rect[..rect.find('>').unwrap()];
-                assert!(
-                    rect.contains("width=") && rect.contains("height="),
-                    "{name}: <rect{rect}>"
-                );
-            }
-            for circle in svg.split("<circle").skip(1) {
-                assert!(
-                    circle[..circle.find('>').unwrap()].contains(" r="),
-                    "{name}"
-                );
-            }
-        }
+    fn has_the_outline_and_filled_icons() {
+        assert!(count() > 6000, "{}", count());
+        let home = svg("home").unwrap();
+        assert!(
+            home.starts_with(r#"<svg class="size-4 shrink-0" aria-hidden="true""#)
+                && home.contains(r#"stroke="currentColor""#)
+                && home.contains("<path d=")
+                && home.ends_with("</svg>"),
+            "{home}"
+        );
+        assert!(
+            svg("heart-filled")
+                .unwrap()
+                .contains(r#"fill="currentColor""#)
+        );
+        assert!(svg("book-closed-nonsense").is_none());
     }
 
     #[test]
-    fn every_icon_is_an_svg() {
-        assert!(ICONS.len() >= 50);
-        for (name, svg) in ICONS {
-            assert!(
-                svg.starts_with("<svg class=\"size-4 shrink-0\" aria-hidden=\"true\""),
-                "{name}"
-            );
-            assert!(svg.trim_end().ends_with("</svg>"), "{name}");
+    fn old_lucide_names_still_work() {
+        for (old, new) in RENAMED {
+            assert!(svg(new).is_some(), "{old} → {new}");
+            assert_eq!(svg(old), svg(new));
         }
+        // Names Lucide and Tabler share need no entry.
+        assert!(svg("mail").is_some() && svg("house").is_some());
+        assert_eq!(current_name("house"), "home");
+        assert_eq!(current_name("mail"), "mail");
     }
 
     #[test]
-    fn finds_icons_by_name() {
-        assert!(svg("book-open").is_some());
-        assert!(svg("book-closed").is_none());
+    fn searches_names_then_search_words() {
+        let found = search("mail", 5);
+        assert_eq!(found[0], "mail");
+        assert!(search("envelope", 50).contains(&"mail"));
+        assert!(search("mastodon", 5).contains(&"brand-mastodon"));
+        assert!(search("heart filled", 5).contains(&"heart-filled"));
+        assert_eq!(search("", 3).len(), 3);
+        assert!(search("qqqzzz", 5).is_empty());
     }
 }

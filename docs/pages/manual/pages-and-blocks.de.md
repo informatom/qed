@@ -47,7 +47,7 @@ caption = "Der Tab **Pages**: links die Seiten, rechts die gewählte im Editor."
 :::
 
 Die Schaltflächen neben den Tabs verschieben oder benennen die Seite um
-(:icon-folder-input:; sie behält ihre alte Adresse, gelistet unter **Old
+(:icon-folder-down:; sie behält ihre alte Adresse, gelistet unter **Old
 addresses** in ihrem Tab Settings, und Links auf sie werden angepasst)
 und löschen sie (:icon-trash:). Die Startseite lässt sich weder
 verschieben noch löschen.
@@ -133,7 +133,7 @@ Columns darin.
 ## Geteilte Blöcke
 
 Manche Blöcke gehören auf mehrere Seiten: Öffnungszeiten, ein
-Kontaktkasten. Klicken Sie :icon-component: **Make shared** an einem
+Kontaktkasten. Klicken Sie :icon-components: **Make shared** an einem
 Block und geben Sie ihm einen Namen: Er wandert in einen geteilten
 Block, und ein **Shared block** tritt an seine Stelle. Fügen Sie ihn mit
 **Add: Shared block** auf anderen Seiten ein. Bearbeiten Sie ihn einmal,

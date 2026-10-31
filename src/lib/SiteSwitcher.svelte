@@ -1,11 +1,11 @@
 <script lang="ts">
-  import Check from "@lucide/svelte/icons/check";
-  import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import FolderOpen from "@lucide/svelte/icons/folder-open";
-  import FolderPlus from "@lucide/svelte/icons/folder-plus";
-  import FolderX from "@lucide/svelte/icons/folder-x";
-  import GitBranch from "@lucide/svelte/icons/git-branch";
-  import X from "@lucide/svelte/icons/x";
+  import Check from "@tabler/icons-svelte-runes/icons/check";
+  import ChevronDown from "@tabler/icons-svelte-runes/icons/chevron-down";
+  import FolderOpen from "@tabler/icons-svelte-runes/icons/folder-open";
+  import FolderPlus from "@tabler/icons-svelte-runes/icons/folder-plus";
+  import FolderX from "@tabler/icons-svelte-runes/icons/folder-x";
+  import GitBranch from "@tabler/icons-svelte-runes/icons/git-branch";
+  import X from "@tabler/icons-svelte-runes/icons/x";
   import type { RecentSite } from "$lib/recentSites";
 
   interface Props {
@@ -45,7 +45,7 @@
           <div class="flex items-center gap-2">
             <button type="button" class="flex min-w-0 flex-1 items-center gap-2 text-start"
               onclick={() => pick(() => onopen(site.path))}>
-              <Check class={["size-4 shrink-0", site.path !== root && "invisible"]} />
+              <Check class="size-4 shrink-0 {site.path !== root ? 'invisible' : ''}" />
               <span class="flex min-w-0 flex-col">
                 <span class="font-medium">{site.title}</span>
                 <span class="truncate font-mono text-xs text-base-content/60">{site.path}</span>

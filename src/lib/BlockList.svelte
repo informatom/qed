@@ -1,13 +1,13 @@
 <script lang="ts">
-  import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import ChevronLeft from "@lucide/svelte/icons/chevron-left";
-  import ChevronRight from "@lucide/svelte/icons/chevron-right";
-  import ChevronUp from "@lucide/svelte/icons/chevron-up";
-  import GripVertical from "@lucide/svelte/icons/grip-vertical";
-  import Component from "@lucide/svelte/icons/component";
-  import ImagePlus from "@lucide/svelte/icons/image-plus";
-  import Plus from "@lucide/svelte/icons/plus";
-  import Trash from "@lucide/svelte/icons/trash";
+  import ChevronDown from "@tabler/icons-svelte-runes/icons/chevron-down";
+  import ChevronLeft from "@tabler/icons-svelte-runes/icons/chevron-left";
+  import ChevronRight from "@tabler/icons-svelte-runes/icons/chevron-right";
+  import ChevronUp from "@tabler/icons-svelte-runes/icons/chevron-up";
+  import GripVertical from "@tabler/icons-svelte-runes/icons/grip-vertical";
+  import Component from "@tabler/icons-svelte-runes/icons/components";
+  import ImagePlus from "@tabler/icons-svelte-runes/icons/photo-plus";
+  import Plus from "@tabler/icons-svelte-runes/icons/plus";
+  import Trash from "@tabler/icons-svelte-runes/icons/trash";
   // A component may use itself: each column holds a BlockList of its own.
   import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import BlockList from "$lib/BlockList.svelte";

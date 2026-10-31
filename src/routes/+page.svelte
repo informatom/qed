@@ -3,44 +3,44 @@
   import { SvelteSet } from "svelte/reactivity";
   import { ask, message, open } from "@tauri-apps/plugin-dialog";
   import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-  import ChevronRight from "@lucide/svelte/icons/chevron-right";
-  import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
-  import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
-  import Eye from "@lucide/svelte/icons/eye";
-  import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
-  import FilePlus from "@lucide/svelte/icons/file-plus";
-  import Mic from "@lucide/svelte/icons/mic";
-  import UsersRound from "@lucide/svelte/icons/users-round";
+  import ChevronRight from "@tabler/icons-svelte-runes/icons/chevron-right";
+  import ChevronsDownUp from "@tabler/icons-svelte-runes/icons/fold";
+  import ChevronsUpDown from "@tabler/icons-svelte-runes/icons/selector";
+  import Eye from "@tabler/icons-svelte-runes/icons/eye";
+  import TriangleAlert from "@tabler/icons-svelte-runes/icons/alert-triangle";
+  import FilePlus from "@tabler/icons-svelte-runes/icons/file-plus";
+  import Mic from "@tabler/icons-svelte-runes/icons/microphone";
+  import UsersRound from "@tabler/icons-svelte-runes/icons/users-group";
   import ContributorsPanel from "$lib/ContributorsPanel.svelte";
-  import Files from "@lucide/svelte/icons/files";
-  import FolderOpen from "@lucide/svelte/icons/folder-open";
-  import FolderPlus from "@lucide/svelte/icons/folder-plus";
-  import GitBranch from "@lucide/svelte/icons/git-branch";
-  import Globe from "@lucide/svelte/icons/globe";
-  import Hammer from "@lucide/svelte/icons/hammer";
-  import History from "@lucide/svelte/icons/history";
-  import FileDown from "@lucide/svelte/icons/file-down";
-  import AudioLines from "@lucide/svelte/icons/audio-lines";
-  import Captions from "@lucide/svelte/icons/captions";
-  import FolderTree from "@lucide/svelte/icons/folder-tree";
-  import PanelBottom from "@lucide/svelte/icons/panel-bottom";
+  import Files from "@tabler/icons-svelte-runes/icons/files";
+  import FolderOpen from "@tabler/icons-svelte-runes/icons/folder-open";
+  import FolderPlus from "@tabler/icons-svelte-runes/icons/folder-plus";
+  import GitBranch from "@tabler/icons-svelte-runes/icons/git-branch";
+  import Globe from "@tabler/icons-svelte-runes/icons/world";
+  import Hammer from "@tabler/icons-svelte-runes/icons/hammer";
+  import History from "@tabler/icons-svelte-runes/icons/history";
+  import FileDown from "@tabler/icons-svelte-runes/icons/file-download";
+  import AudioLines from "@tabler/icons-svelte-runes/icons/wave-sine";
+  import Captions from "@tabler/icons-svelte-runes/icons/badge-cc";
+  import FolderTree from "@tabler/icons-svelte-runes/icons/folders";
+  import PanelBottom from "@tabler/icons-svelte-runes/icons/layout-bottombar";
   import FooterEditor from "$lib/FooterEditor.svelte";
-  import LayoutTemplate from "@lucide/svelte/icons/layout-template";
+  import LayoutTemplate from "@tabler/icons-svelte-runes/icons/template";
   import EpisodeLayoutEditor from "$lib/EpisodeLayoutEditor.svelte";
   import SharedEditor from "$lib/SharedEditor.svelte";
-  import Component from "@lucide/svelte/icons/component";
-  import Plus from "@lucide/svelte/icons/plus";
+  import Component from "@tabler/icons-svelte-runes/icons/components";
+  import Plus from "@tabler/icons-svelte-runes/icons/plus";
   import { provideSharedBlocks, usesShared } from "$lib/sharedBlocks";
-  import Image from "@lucide/svelte/icons/image";
-  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
-  import Settings from "@lucide/svelte/icons/settings";
-  import MenuIcon from "@lucide/svelte/icons/menu";
-  import Palette from "@lucide/svelte/icons/palette";
-  import Upload from "@lucide/svelte/icons/upload";
+  import Image from "@tabler/icons-svelte-runes/icons/photo";
+  import RefreshCw from "@tabler/icons-svelte-runes/icons/refresh";
+  import Settings from "@tabler/icons-svelte-runes/icons/settings";
+  import MenuIcon from "@tabler/icons-svelte-runes/icons/menu-2";
+  import Palette from "@tabler/icons-svelte-runes/icons/palette";
+  import Upload from "@tabler/icons-svelte-runes/icons/upload";
   import AppSettings from "$lib/AppSettings.svelte";
   import AssistantSetup from "$lib/AssistantSetup.svelte";
   import ManualLink from "$lib/ManualLink.svelte";
-  import BookOpen from "@lucide/svelte/icons/book-open";
+  import BookOpen from "@tabler/icons-svelte-runes/icons/book";
   import { openManual } from "$lib/manual";
   import MediaLibrary from "$lib/MediaLibrary.svelte";
   import SiteSettings from "$lib/SiteSettings.svelte";
@@ -61,8 +61,8 @@
   import logoMark from "$lib/assets/logo-mark.svg";
   import UpdateBar from "$lib/UpdateBar.svelte";
   import { checkForUpdate } from "$lib/updates.svelte";
-  import X from "@lucide/svelte/icons/x";
-  import GripVertical from "@lucide/svelte/icons/grip-vertical";
+  import X from "@tabler/icons-svelte-runes/icons/x";
+  import GripVertical from "@tabler/icons-svelte-runes/icons/grip-vertical";
   import { edgeScroll, scrollParent } from "$lib/dragScroll";
   import { parentOf, planDrop, treeOrder, type DropPlan, type Zone } from "$lib/pageTree";
   import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -72,7 +72,7 @@
     commands,
     BLOCK_NAMES,
     defaultEpisodeLayout,
-    pageIcons,
+    iconSvgs,
     mainPath,
     sharedName,
     pageLabel,
@@ -412,10 +412,11 @@
   });
 
   // Reopen the last site once, when the page first appears.
-  // Page icons (SVG by name), for the page list.
+  // Page icons (SVG by name), for the page list: only those the pages use.
   let icons = $state(new Map<string, string>());
-  onMount(async () => {
-    icons = await pageIcons();
+  $effect(() => {
+    const names = (site?.pages ?? []).flatMap((page) => (page.front.icon ? [page.front.icon] : []));
+    iconSvgs(names).then((found) => (icons = found));
   });
 
   // Look for a newer qed once at start; not while developing, where the
@@ -909,7 +910,7 @@
                 aria-expanded={unfolded.has(page.path)}
                 aria-label="{unfolded.has(page.path) ? 'Fold' : 'Unfold'} {page.front.title}"
                 onclick={() => toggle(page.path)}>
-                <ChevronRight class={["size-4 transition-transform", unfolded.has(page.path) && "rotate-90"]} />
+                <ChevronRight class="size-4 transition-transform {unfolded.has(page.path) ? 'rotate-90' : ''}" />
               </button>
             {:else}
               <span class="w-6 shrink-0"></span>

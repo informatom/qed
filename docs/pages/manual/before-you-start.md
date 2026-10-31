@@ -14,7 +14,7 @@ title = "A computer"
 boxed = true
 :::
 
-:icon-house: With macOS (Apple Silicon or Intel), Windows, or Linux
+:icon-home: With macOS (Apple Silicon or Intel), Windows, or Linux
 (Ubuntu 22.04 or newer, or a distribution of the same age). q.e.d. runs
 there, and your site lives there as well: its pages, pictures and
 history.
@@ -24,7 +24,7 @@ title = "Webspace"
 boxed = true
 :::
 
-:icon-globe: Space on a web server that you can reach over **SFTP**, as
+:icon-world: Space on a web server that you can reach over **SFTP**, as
 almost every hosting package offers: a server name, a user name and a
 password or key ([Publishing](publishing.md)). A website from q.e.d.
 needs no more than that.

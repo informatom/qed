@@ -363,12 +363,26 @@ export function transferChannel(onProgress: (t: Transfer) => void = () => {}): C
   return channel;
 }
 
-let iconCache: Promise<Map<string, string>> | null = null;
+const iconCache = new Map<string, string | null>();
 
-/** Page icons by name (SVG markup), loaded once from Rust. */
-export function pageIcons(): Promise<Map<string, string>> {
-  iconCache ??= commands.listIcons().then((list) => new Map(list));
-  return iconCache;
+/** The SVG markup of these icons by name, asking Rust once for each. */
+export async function iconSvgs(names: string[]): Promise<Map<string, string>> {
+  const missing = [...new Set(names)].filter((name) => !iconCache.has(name));
+  if (missing.length > 0) {
+    const found = new Map(await commands.iconSvgs(missing));
+    for (const name of missing) iconCache.set(name, found.get(name) ?? null);
+  }
+  const result = new Map<string, string>();
+  for (const name of names) {
+    const svg = iconCache.get(name);
+    if (svg) result.set(name, svg);
+  }
+  return result;
+}
+
+/** Icons for a search, best first: names and SVG markup. */
+export function searchIcons(query: string, limit = 120): Promise<[string, string][]> {
+  return commands.searchIcons(query, limit);
 }
 
 /** How people call an audio format, in the order the Podcast tab offers them. */

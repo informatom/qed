@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { getVersion } from "@tauri-apps/api/app";
-  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
+  import RefreshCw from "@tabler/icons-svelte-runes/icons/refresh";
   import ThemePicker from "$lib/ThemePicker.svelte";
   import { checkForUpdate, installUpdate, updates } from "$lib/updates.svelte";
   import { applyAppTheme, loadAppTheme, saveAppTheme } from "$lib/appTheme";

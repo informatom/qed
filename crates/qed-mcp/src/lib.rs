@@ -73,6 +73,13 @@ struct WritePage {
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
+struct FindIcons {
+    /// Words for what the icon should show: `mail`, `envelope`, `heart
+    /// filled`, `mastodon`.
+    query: String,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
 struct WriteSettings {
     /// The whole new text of `site.toml`.
     text: String,
@@ -351,6 +358,17 @@ impl Qed {
     }
 
     #[tool(
+        description = "Finds icon names for `:icon-name:` in text and `icon` in page settings, best first (at most 40): by name and by what the icon shows, so envelope finds mail. Every word must match."
+    )]
+    async fn find_icons(&self, Parameters(FindIcons { query }): Parameters<FindIcons>) -> Reply {
+        let names = qed_core::icons::search(&query, 40);
+        if names.is_empty() {
+            return Ok(format!("No icon for \"{query}\". Try another word."));
+        }
+        Ok(names.join(", "))
+    }
+
+    #[tool(
         description = "The site's settings, site.toml, as text with its stamp: title, language, logo, theme, web address, menu, footer colors, profiles and more (the guide tool lists them). Pass the stamp to write_settings."
     )]
     async fn read_settings(&self) -> Reply {
@@ -550,19 +568,18 @@ impl ServerHandler for Qed {
     }
 }
 
-/// The guide, with the names of q.e.d.'s themes and icons at the end, so
-/// it can't fall behind the app's.
+/// The guide, with the names of q.e.d.'s themes at the end, so it can't
+/// fall behind the app's.
 fn full_guide() -> String {
-    let names: Vec<&str> = qed_core::icons::ICONS
-        .iter()
-        .map(|(name, _)| *name)
-        .collect();
     format!(
-        "{GUIDE}\n## Themes\n\nFor `theme` in site.toml: {}.\n\n## Icons\n\nFor `:icon-name:` in text and `icon` in page settings: {}. \
-         A site's own icons are the images in `media/icons/`, used by their file name without \
-         the extension (`media/icons/rails.svg` is `:icon-rails:`).\n",
+        "{GUIDE}\n## Themes\n\nFor `theme` in site.toml: {}.\n\n## Icons\n\nFor `:icon-name:` in text and `icon` in page settings, q.e.d. has the {} Tabler icons \
+         (https://tabler.io/icons): outline ones, and filled ones whose name ends in `-filled` \
+         (`heart-filled`), brand logos among them (`brand-mastodon`, `brand-github`). find_icons \
+         searches them by name and by what they show. A site's own icons are the images in \
+         `media/icons/`, used by their file name without the extension (`media/icons/rails.svg` \
+         is `:icon-rails:`); list_files shows them.\n",
         qed_core::theme::THEMES.join(", "),
-        names.join(", ")
+        qed_core::icons::count()
     )
 }
 

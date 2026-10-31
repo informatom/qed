@@ -840,8 +840,10 @@ fn site_root_path(config: &SiteConfig) -> String {
     format!("/{}", path.trim_matches('/').to_string() + "/").replace("//", "/")
 }
 
-/// Lucide's RSS icon, for feed links.
-const RSS_ICON: &str = include_str!("../assets/icons/rss.svg");
+/// The RSS icon, for feed links.
+fn rss_icon() -> &'static str {
+    crate::icons::svg("rss").unwrap_or_default()
+}
 
 /// What blocks need besides themselves.
 #[derive(Clone, Copy)]
@@ -3264,7 +3266,7 @@ fn render_page(
                 },
             }))
             .collect(),
-        rss_icon: RSS_ICON,
+        rss_icon: rss_icon(),
         is_home: page.main_path().is_empty(),
         root: links.to_root(),
         home_href: links.page(&translated_path("", page.language.as_deref())),
@@ -3365,7 +3367,7 @@ fn block_html(
         block: rendered,
         full_sizes,
         half_sizes,
-        rss_icon: RSS_ICON,
+        rss_icon: rss_icon(),
         close: close_label(context.language),
         colors: context.colors,
     }

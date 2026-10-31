@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ArrowDownToLine from "@lucide/svelte/icons/arrow-down-to-line";
+  import ArrowDownToLine from "@tabler/icons-svelte-runes/icons/arrow-bar-to-down";
   import TransferProgress from "$lib/TransferProgress.svelte";
   import { commands, transferChannel, type RemoteInfo, type Transfer } from "$lib/site";
 

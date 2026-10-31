@@ -4,12 +4,12 @@
   import { onMount } from "svelte";
   import { ask, open } from "@tauri-apps/plugin-dialog";
   import { revealItemInDir } from "@tauri-apps/plugin-opener";
-  import ChevronRight from "@lucide/svelte/icons/chevron-right";
-  import Folder from "@lucide/svelte/icons/folder";
-  import FolderInput from "@lucide/svelte/icons/folder-input";
-  import FolderOpen from "@lucide/svelte/icons/folder-open";
-  import Trash from "@lucide/svelte/icons/trash";
-  import Upload from "@lucide/svelte/icons/upload";
+  import ChevronRight from "@tabler/icons-svelte-runes/icons/chevron-right";
+  import Folder from "@tabler/icons-svelte-runes/icons/folder";
+  import FolderInput from "@tabler/icons-svelte-runes/icons/folder-down";
+  import FolderOpen from "@tabler/icons-svelte-runes/icons/folder-open";
+  import Trash from "@tabler/icons-svelte-runes/icons/trash";
+  import Upload from "@tabler/icons-svelte-runes/icons/upload";
   import ImageViewer from "$lib/ImageViewer.svelte";
   import PdfViewer from "$lib/PdfViewer.svelte";
   import TextViewer from "$lib/TextViewer.svelte";

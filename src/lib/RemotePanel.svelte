@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import ArrowDownToLine from "@lucide/svelte/icons/arrow-down-to-line";
-  import ArrowUpFromLine from "@lucide/svelte/icons/arrow-up-from-line";
-  import Plus from "@lucide/svelte/icons/plus";
-  import Trash from "@lucide/svelte/icons/trash-2";
+  import ArrowDownToLine from "@tabler/icons-svelte-runes/icons/arrow-bar-to-down";
+  import ArrowUpFromLine from "@tabler/icons-svelte-runes/icons/arrow-bar-up";
+  import Plus from "@tabler/icons-svelte-runes/icons/plus";
+  import Trash from "@tabler/icons-svelte-runes/icons/trash";
   import { ask } from "@tauri-apps/plugin-dialog";
   import RemoteKey from "$lib/RemoteKey.svelte";
   import TransferProgress from "$lib/TransferProgress.svelte";

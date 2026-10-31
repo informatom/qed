@@ -1039,6 +1039,17 @@ rest is done.
   [Interlude: MCP servers](blog/2026-10-31-interlude-mcp.md) and
   [One program, two modes](blog/2026-10-31-one-program-two-modes.md).
 
+- **#149 Tabler icons.** Added and *done 2026-10-31*: sites and the app
+  use [Tabler Icons](https://tabler.io/icons) 3.49.0 (MIT) instead of 72
+  Lucide icons: 5,184 outline and 1,054 filled (`heart-filled`), as
+  three text files in `crates/qed-core/assets/tabler/` made by
+  `npm run build:icons`. The 23 Lucide names Tabler calls differently
+  keep working (`icons::RENAMED`); the manual uses Tabler names, which a
+  test checks. Searching by name and Tabler's tags in the page settings
+  and under every text field (`IconSearch.svelte`), `find_icons` in the
+  MCP server. The app's buttons use `@tabler/icons-svelte-runes`.
+  Post [Six thousand icons](blog/2026-10-31-six-thousand-icons.md).
+
 ## Dropped
 
 Not needed in a single-user desktop app:

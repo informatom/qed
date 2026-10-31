@@ -231,16 +231,21 @@ mod tests {
     }
 
     #[test]
-    fn the_icons_page_lists_every_icon() {
-        let page = PAGES
-            .get_file("icons.md")
-            .and_then(|file| file.contents_utf8())
-            .unwrap();
-        for (name, _) in crate::icons::ICONS {
-            assert!(
-                page.contains(&format!("`:icon-{name}:`")),
-                "icons.md doesn't list {name}"
-            );
+    fn the_manual_uses_icons_by_their_tabler_names() {
+        let none = crate::icons::SiteIcons::default();
+        for file in PAGES.files() {
+            let page = file.contents_utf8().unwrap();
+            let path = file.path().display();
+            // Outside code, where they become icons; in code they're examples.
+            let unknown = crate::markdown::unknown_icons(page, &none);
+            assert!(unknown.is_empty(), "{path}: no such icons: {unknown:?}");
+            for (old, new) in crate::icons::RENAMED {
+                let shown = page.replace(&format!("`:icon-{old}:`"), "");
+                assert!(
+                    !shown.contains(&format!(":icon-{old}:")),
+                    "{path}: :icon-{old}: is an old Lucide name; it's {new} now"
+                );
+            }
         }
     }
 }

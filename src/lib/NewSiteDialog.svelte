@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { documentDir, join } from "@tauri-apps/api/path";
-  import FolderOpen from "@lucide/svelte/icons/folder-open";
+  import FolderOpen from "@tabler/icons-svelte-runes/icons/folder-open";
   import { commands } from "$lib/site";
 
   interface Props {

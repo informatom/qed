@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import OverType, { toolbarButtons, type OverTypeInstance, type Theme, type ToolbarButton } from "overtype";
-  import { pageIcons } from "$lib/site";
+  import IconSearch from "$lib/IconSearch.svelte";
 
   interface Props {
     value: string;
@@ -11,17 +11,17 @@
 
   // `$bindable` lets the parent write `bind:value={…}`, like on an <input>.
   let { value = $bindable(), placeholder = "", minHeight = "160px" }: Props = $props();
+  // Several editors can be on one page; this keeps their ids apart.
+  const uid = $props.id();
 
   let element: HTMLDivElement;
 
-  // The icons that `:icon-name:` can put into text, loaded when the hint
-  // is opened; a click copies the code to paste into the text.
-  let icons = $state<[string, string][]>([]);
+  // The icons that `:icon-name:` can put into text, searched in the hint
+  // when it's open; a click copies the code to paste into the text.
+  let iconsOpen = $state(false);
   let copied = $state<string | null>(null);
-  async function showIcons(event: Event) {
-    if ((event.currentTarget as HTMLDetailsElement).open && icons.length === 0) {
-      icons = [...(await pageIcons())];
-    }
+  function showIcons(event: Event) {
+    iconsOpen = (event.currentTarget as HTMLDetailsElement).open;
   }
   async function copy(name: string) {
     const code = `:icon-${name}:`;
@@ -68,10 +68,10 @@
     },
   };
 
-  /** A Lucide icon (https://lucide.dev) as OverType wants it: SVG markup. OverType's
-   *  stylesheet fills toolbar icons, which turns Lucide's outlines into solid shapes;
-   *  the inline style wins over it. */
-  function lucide(...shapes: string[]): string {
+  /** A Tabler icon (https://tabler.io/icons) as OverType wants it: SVG markup. OverType's
+   *  stylesheet fills toolbar icons, which turns outlines into solid shapes; the inline
+   *  style wins over it. */
+  function outline(...shapes: string[]): string {
     return `<svg viewBox="0 0 24 24" style="fill: none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${shapes.join("")}</svg>`;
   }
 
@@ -102,7 +102,7 @@
   const codeBlockButton: ToolbarButton = {
     name: "codeBlock",
     title: "Code block (```)",
-    icon: lucide('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="m10 9-3 3 3 3"/><path d="m14 15 3-3-3-3"/>'),
+    icon: outline('<path d="M14.5 4h2.5a3 3 0 0 1 3 3v10a3 3 0 0 1 -3 3h-10a3 3 0 0 1 -3 -3v-5"/><path d="M6 5l-2 2l2 2"/><path d="M10 9l2 -2l-2 -2"/>'),
     action: ({ editor }) => codeBlock(editor.textarea),
   };
 
@@ -111,35 +111,25 @@
     {
       name: "kbd",
       title: "Key, shown as a keycap (<kbd>)",
-      icon: lucide(
-        '<rect width="20" height="16" x="2" y="4" rx="2"/>',
-        '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/>',
-        '<path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/>',
-      ),
+      icon: outline('<path d="M2 8a2 2 0 0 1 2 -2h16a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2l0 -8"/><path d="M6 10l0 .01"/><path d="M10 10l0 .01"/><path d="M14 10l0 .01"/><path d="M18 10l0 .01"/><path d="M6 14l0 .01"/><path d="M18 14l0 .01"/><path d="M10 14l4 .01"/>'),
       action: ({ editor }) => wrap(editor.textarea, "<kbd>", "</kbd>"),
     },
     {
       name: "sup",
       title: "Superscript, as in m² (<sup>)",
-      icon: lucide(
-        '<path d="m4 19 8-8"/><path d="m12 19-8-8"/>',
-        '<path d="M20 12h-4c0-1.5.442-2 1.5-2.5S20 8.334 20 7.002c0-.472-.17-.93-.484-1.29a2.105 2.105 0 0 0-2.617-.436c-.42.239-.738.614-.899 1.06"/>',
-      ),
+      icon: outline('<path d="M5 7l8 10m-8 0l8 -10"/><path d="M21 11h-4l3.5 -4a1.73 1.73 0 0 0 -3.5 -2"/>'),
       action: ({ editor }) => wrap(editor.textarea, "<sup>", "</sup>"),
     },
     {
       name: "sub",
       title: "Subscript, as in CO₂ (<sub>)",
-      icon: lucide(
-        '<path d="m4 5 8 8"/><path d="m12 5-8 8"/>',
-        '<path d="M20 19h-4c0-1.5.44-2 1.5-2.5S20 15.33 20 14c0-.47-.17-.93-.48-1.29a2.11 2.11 0 0 0-2.62-.44c-.42.24-.74.62-.9 1.07"/>',
-      ),
+      icon: outline('<path d="M5 7l8 10m-8 0l8 -10"/><path d="M21 20h-4l3.5 -4a1.73 1.73 0 0 0 -3.5 -2"/>'),
       action: ({ editor }) => wrap(editor.textarea, "<sub>", "</sub>"),
     },
     {
       name: "br",
       title: "Line break, also in a table cell (<br>)",
-      icon: lucide('<path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/>'),
+      icon: outline('<path d="M18 6v6a3 3 0 0 1 -3 3h-10l4 -4m0 8l-4 -4"/>'),
       action: ({ editor }) => wrap(editor.textarea, "<br>"),
     },
   ];
@@ -195,13 +185,8 @@
   <summary class="cursor-pointer select-none">Icons in text: <code>:icon-phone:</code> and so on</summary>
   <div class="mt-2 flex flex-col gap-2">
     <p>Write the code where the icon should go; on the website it shows as tall as the text. Click an icon to copy its code{#if copied}: <span class="text-success">copied {copied}</span>{/if}.</p>
-    <div class="flex flex-wrap gap-1">
-      {#each icons as [name, svg] (name)}
-        <button type="button" class="btn btn-ghost btn-xs gap-1 font-normal" title=":icon-{name}:" onclick={() => copy(name)}>
-          <!-- q.e.d.'s own built-in SVG, safe to insert. -->
-          {@html svg}{name}
-        </button>
-      {/each}
-    </div>
+    {#if iconsOpen}
+      <IconSearch id="markdown-icon-{uid}" names onpick={copy} />
+    {/if}
   </div>
 </details>

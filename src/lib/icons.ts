@@ -1,29 +1,29 @@
-// Lucide icons (https://lucide.dev, ISC license). Each icon is imported on
+// Tabler icons (https://tabler.io/icons, MIT license). Each icon is imported on
 // its own, so only the ones used end up in the app.
 import type { Component as IconComponent } from "svelte";
-import CircleQuestionMark from "@lucide/svelte/icons/circle-question-mark";
-import Columns3 from "@lucide/svelte/icons/columns-3";
-import Component from "@lucide/svelte/icons/component";
-import Download from "@lucide/svelte/icons/download";
-import Group from "@lucide/svelte/icons/group";
-import Image from "@lucide/svelte/icons/image";
-import Images from "@lucide/svelte/icons/images";
-import List from "@lucide/svelte/icons/list";
-import ListTree from "@lucide/svelte/icons/list-tree";
-import SquarePlay from "@lucide/svelte/icons/square-play";
-import Megaphone from "@lucide/svelte/icons/megaphone";
-import Newspaper from "@lucide/svelte/icons/newspaper";
-import PanelTop from "@lucide/svelte/icons/panel-top";
-import Type from "@lucide/svelte/icons/type";
-import Mic from "@lucide/svelte/icons/mic";
-import AudioLines from "@lucide/svelte/icons/audio-lines";
-import Captions from "@lucide/svelte/icons/captions";
-import ListOrdered from "@lucide/svelte/icons/list-ordered";
-import NotebookText from "@lucide/svelte/icons/notebook-text";
-import Share2 from "@lucide/svelte/icons/share-2";
-import Users from "@lucide/svelte/icons/users";
-import Rss from "@lucide/svelte/icons/rss";
-import UsersRound from "@lucide/svelte/icons/users-round";
+import CircleQuestionMark from "@tabler/icons-svelte-runes/icons/help-circle";
+import Columns3 from "@tabler/icons-svelte-runes/icons/columns-3";
+import Component from "@tabler/icons-svelte-runes/icons/components";
+import Download from "@tabler/icons-svelte-runes/icons/download";
+import Group from "@tabler/icons-svelte-runes/icons/section";
+import Image from "@tabler/icons-svelte-runes/icons/photo";
+import Images from "@tabler/icons-svelte-runes/icons/library-photo";
+import List from "@tabler/icons-svelte-runes/icons/list";
+import ListTree from "@tabler/icons-svelte-runes/icons/list-tree";
+import SquarePlay from "@tabler/icons-svelte-runes/icons/movie";
+import Megaphone from "@tabler/icons-svelte-runes/icons/speakerphone";
+import Newspaper from "@tabler/icons-svelte-runes/icons/news";
+import PanelTop from "@tabler/icons-svelte-runes/icons/layout-navbar";
+import Type from "@tabler/icons-svelte-runes/icons/typography";
+import Mic from "@tabler/icons-svelte-runes/icons/microphone";
+import AudioLines from "@tabler/icons-svelte-runes/icons/wave-sine";
+import Captions from "@tabler/icons-svelte-runes/icons/badge-cc";
+import ListOrdered from "@tabler/icons-svelte-runes/icons/list-numbers";
+import NotebookText from "@tabler/icons-svelte-runes/icons/notebook";
+import Share2 from "@tabler/icons-svelte-runes/icons/share";
+import Users from "@tabler/icons-svelte-runes/icons/users";
+import Rss from "@tabler/icons-svelte-runes/icons/rss";
+import UsersRound from "@tabler/icons-svelte-runes/icons/users-group";
 import type { BlockType } from "$lib/site";
 
 /** One icon per block type, for the Add row and the block cards. */

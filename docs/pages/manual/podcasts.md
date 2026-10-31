@@ -26,7 +26,7 @@ title = "About"
 boxed = true
 :::
 
-:icon-podcast: **Name in podcast apps** (the site's title if empty),
+:icon-broadcast: **Name in podcast apps** (the site's title if empty),
 **Author** (shown below the name) and **Description**.
 
 3 Schweinehunde: "Birgit, Dominic, Stefan und Steve" as author.
@@ -48,7 +48,7 @@ title = "Cover art"
 boxed = true
 :::
 
-:icon-image: A square picture, 1400 to 3000 pixels, JPEG or PNG. Podcast
+:icon-photo: A square picture, 1400 to 3000 pixels, JPEG or PNG. Podcast
 apps show it everywhere. q.e.d. checks it against Apple's rules.
 ::::
 
@@ -100,7 +100,7 @@ episodes.
 
 ## A new episode
 
-:icon-mic: **New episode** in the Pages tab asks for the title and the
+:icon-microphone: **New episode** in the Pages tab asks for the title and the
 number; it counts on from the last episode. The episode is dated today
 and goes below `/episodes`.
 

@@ -1,9 +1,9 @@
 <script lang="ts">
   import ManualLink from "$lib/ManualLink.svelte";
   import { onMount } from "svelte";
-  import History from "@lucide/svelte/icons/history";
-  import Save from "@lucide/svelte/icons/save";
-  import Undo from "@lucide/svelte/icons/undo-2";
+  import History from "@tabler/icons-svelte-runes/icons/history";
+  import Save from "@tabler/icons-svelte-runes/icons/device-floppy";
+  import Undo from "@tabler/icons-svelte-runes/icons/arrow-back-up";
   import { ask } from "@tauri-apps/plugin-dialog";
   import RemotePanel from "$lib/RemotePanel.svelte";
   import { commands, formatTime, versionLabel, type DeletedPage, type HistoryStatus, type Version } from "$lib/site";

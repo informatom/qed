@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ask } from "@tauri-apps/plugin-dialog";
-  import Plus from "@lucide/svelte/icons/plus";
-  import UserRound from "@lucide/svelte/icons/user-round";
+  import Plus from "@tabler/icons-svelte-runes/icons/plus";
+  import UserRound from "@tabler/icons-svelte-runes/icons/user";
   import ImageField from "$lib/ImageField.svelte";
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
   import { trackUnsaved } from "$lib/unsaved.svelte";

@@ -105,7 +105,7 @@ JavaScript packages that are part of the app's screens.
 
 | Package | Version | License | What it does |
 | --- | --- | --- | --- |
-| [@lucide/svelte](https://www.npmjs.com/package/@lucide/svelte) | 1.61.0 | ISC | A Lucide icon library package for Svelte applications. |
+| [@tabler/icons-svelte-runes](https://www.npmjs.com/package/@tabler/icons-svelte-runes) | 3.49.0 | MIT | A set of free MIT-licensed high-quality SVG icons for Svelte 5+ using runes |
 | [@tauri-apps/api](https://www.npmjs.com/package/@tauri-apps/api) | 2.12.4 | Apache-2.0 OR MIT | Tauri API definitions |
 | [@tauri-apps/plugin-dialog](https://www.npmjs.com/package/@tauri-apps/plugin-dialog) | 2.8.3 | Apache-2.0 OR MIT |  |
 | [@tauri-apps/plugin-opener](https://www.npmjs.com/package/@tauri-apps/plugin-opener) | 2.7.2 | Apache-2.0 OR MIT | Open files and URLs using their default application. |
@@ -125,6 +125,7 @@ every website too.
 | [@sveltejs/adapter-static](https://www.npmjs.com/package/@sveltejs/adapter-static) | 3.0.10 | MIT | Adapter for SvelteKit apps that prerenders your entire site as a collection of static files |
 | [@sveltejs/kit](https://www.npmjs.com/package/@sveltejs/kit) | 2.70.3 | MIT | SvelteKit is the fastest way to build Svelte apps |
 | [@sveltejs/vite-plugin-svelte](https://www.npmjs.com/package/@sveltejs/vite-plugin-svelte) | 7.3.1 | MIT |  |
+| [@tabler/icons](https://www.npmjs.com/package/@tabler/icons) | 3.49.0 | MIT | A set of free MIT-licensed high-quality SVG icons for you to use in your web projects. |
 | [@tailwindcss/cli](https://www.npmjs.com/package/@tailwindcss/cli) | 4.3.3 | MIT | A utility-first CSS framework for rapidly building custom user interfaces. |
 | [@tailwindcss/typography](https://www.npmjs.com/package/@tailwindcss/typography) | 0.5.20 | MIT | A Tailwind CSS plugin for automatically styling plain HTML content with beautiful typographic defaults. |
 | [@tailwindcss/vite](https://www.npmjs.com/package/@tailwindcss/vite) | 4.3.3 | MIT | A utility-first CSS framework for rapidly building custom user interfaces. |

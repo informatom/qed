@@ -47,7 +47,7 @@ pub struct FrontMatter {
     pub back_next: bool,
     #[serde(default)]
     pub menu: Menu,
-    /// A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`.
+    /// A Tabler icon name from qed's set, shown in menus: `icon = "book"`.
     pub icon: Option<String>,
     /// Sort order among sibling pages; lower comes first.
     #[serde(default)]

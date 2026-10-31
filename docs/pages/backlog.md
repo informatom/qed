@@ -62,18 +62,6 @@ are #146 (light and dark mode) and #105 (MCP server).
   2026-10-31); the owner deletes them in the app. Still open: stdio of the Windows build when an
   assistant starts `qed mcp` (a friend of the user's tries it).
 
-- **#149 Tabler icons.** Switch from Lucide to
-  [Tabler Icons](https://tabler.io/icons) (MIT, about 5,000 outline
-  icons plus filled ones), for sites and for the app's own interface
-  (user, 2026-10-31: clearer to him). Sites: vendor the SVGs into
-  `crates/qed-core/assets/` with a README; a table maps the 72 Lucide
-  names in use today (`house` → `home`, …) so existing sites keep
-  opening; the icon picker gets a search; the manual's Icons page
-  explains the search and links to tabler.io instead of listing every
-  icon (its test changes); the MCP guide's icon list becomes a
-  `find_icons` tool. App: replace `@lucide/svelte` with Tabler's Svelte
-  package (check its Svelte 5 support) or inline SVGs. After #148.
-
 - **#150 Posts with a time.** A post's `date` is a day only, so the
   feeds give every post 00:00, and feed readers order posts of the same
   day at random (user, 2026-10-31). Allow a time as well
@@ -111,6 +99,12 @@ are #146 (light and dark mode) and #105 (MCP server).
   `.htaccess` with `Redirect 301` rules for Apache hosts (handles query
   strings too), or both. Old feed addresses per format would be a
   podcast setting, filled in by the import.
+
+- **#151 New manual screenshots.** The screenshots in
+  `docs/media/manual/` still show the app's Lucide icons from before
+  #149, and the theme tab is slightly older than that. Retake them all
+  (theme *catppuccin-mocha*, as AGENTS.md says) at the end of phase 4,
+  when its changes to the app are in (user, 2026-10-31).
 
 ### Phase 5: Roll out
 

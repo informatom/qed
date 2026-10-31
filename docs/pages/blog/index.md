@@ -1,7 +1,7 @@
 +++
 title = "Blog"
 menu = "main"
-icon = "pen-line"
+icon = "pencil"
 description = "Notes on building q.e.d.: Rust, Tauri, Svelte and TypeScript, explained along the way."
 back_next = true
 weight = 30

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import KeyRound from "@lucide/svelte/icons/key-round";
+  import KeyRound from "@tabler/icons-svelte-runes/icons/key";
   import { ask } from "@tauri-apps/plugin-dialog";
   import { commands } from "$lib/site";
 

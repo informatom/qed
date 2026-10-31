@@ -3,11 +3,11 @@
   import { untrack } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
-  import Pencil from "@lucide/svelte/icons/pencil";
-  import PlugZap from "@lucide/svelte/icons/plug-zap";
-  import Plus from "@lucide/svelte/icons/plus";
-  import Trash from "@lucide/svelte/icons/trash";
-  import Upload from "@lucide/svelte/icons/upload";
+  import Pencil from "@tabler/icons-svelte-runes/icons/pencil";
+  import PlugZap from "@tabler/icons-svelte-runes/icons/plug-connected";
+  import Plus from "@tabler/icons-svelte-runes/icons/plus";
+  import Trash from "@tabler/icons-svelte-runes/icons/trash";
+  import Upload from "@tabler/icons-svelte-runes/icons/upload";
   import PublishDialog from "$lib/PublishDialog.svelte";
   import TargetForm from "$lib/TargetForm.svelte";
   import {

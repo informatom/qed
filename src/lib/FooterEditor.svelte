@@ -1,5 +1,5 @@
 <script lang="ts">
-  import X from "@lucide/svelte/icons/x";
+  import X from "@tabler/icons-svelte-runes/icons/x";
   import BlockEditor from "$lib/BlockEditor.svelte";
   import { commands, type Block } from "$lib/site";
 

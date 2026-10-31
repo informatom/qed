@@ -12,11 +12,12 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
     "check:all": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && npm run check",
+    "build:icons": "node scripts/tabler-icons.mjs",
     "build:site-css": "tailwindcss -i crates/qed-core/assets/site.input.css -o crates/qed-core/assets/site.css --minify"
   },
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "@lucide/svelte": "^1.61.0",
+    "@tabler/icons-svelte-runes": "3.49.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.8.3",
     "@tauri-apps/plugin-opener": "^2",
@@ -28,6 +29,7 @@
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.65.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@tabler/icons": "3.49.0",
     "@tailwindcss/cli": "^4.3.3",
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.3",

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
-  import History from "@lucide/svelte/icons/history";
+  import History from "@tabler/icons-svelte-runes/icons/history";
   import { commands, formatTime, versionLabel, type DiffLine, type Page, type PageContent, type Version } from "$lib/site";
 
   interface Props {

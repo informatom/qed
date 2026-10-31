@@ -37,7 +37,7 @@ All page settings; only `title` is required, and settings left out take their de
 - `authors`: a list of names, `["Stefan Haslinger"]`. `tags`: a list of words.
 - `draft = true`: left out of the built site.
 - `hide_title = true`: no title above the content, for a page that opens with a heading of its own.
-- `menu`: "main" or "footer", for the menus q.e.d. makes by itself. `weight`: order among sibling pages, lower first. `icon`: an icon name (see Icons below), shown in menus.
+- `menu`: "main" or "footer", for the menus q.e.d. makes by itself. `weight`: order among sibling pages, lower first. `icon`: an icon name (see Icons below; find_icons finds them), shown in menus.
 - `back_next = true`: the pages below this one get links to the one before and after ("Older"/"Newer" for posts).
 - `redirect_from`: earlier addresses of the page, which then lead to it: `["/2016/10/02/beginn.html", "/old-about"]`. Slashes at either end don't matter. An address ending in `.html` becomes that file, any other a folder with an `index.html`. Only for addresses of pages: an old address of a PDF or image can't be a redirect.
 - `episode`: a table that makes the page a podcast episode; edit episodes in the app.
@@ -84,7 +84,7 @@ Text and blocks.
 :::::
 ```
 
-Text inside code fences (```) is never read as a block. Markdown text may use `$…$` for math and `:icon-phone:` for icons; only the names listed under Icons work, and build_site notes any other.
+Text inside code fences (```) is never read as a block. Markdown text may use `$…$` for math and `:icon-phone:` for icons; find_icons finds the names, and build_site notes any that don't exist.
 
 ## Footer, shared blocks, settings
 

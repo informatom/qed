@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Upload from "@lucide/svelte/icons/upload";
+  import Upload from "@tabler/icons-svelte-runes/icons/upload";
   import {
     commands,
     formatTime,

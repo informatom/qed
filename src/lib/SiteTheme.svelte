@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
-  import Save from "@lucide/svelte/icons/save";
-  import X from "@lucide/svelte/icons/x";
-  import Palette from "@lucide/svelte/icons/palette";
-  import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
-  import Sun from "@lucide/svelte/icons/sun";
-  import Moon from "@lucide/svelte/icons/moon";
+  import Save from "@tabler/icons-svelte-runes/icons/device-floppy";
+  import X from "@tabler/icons-svelte-runes/icons/x";
+  import Palette from "@tabler/icons-svelte-runes/icons/palette";
+  import RotateCcw from "@tabler/icons-svelte-runes/icons/rotate";
+  import Sun from "@tabler/icons-svelte-runes/icons/sun";
+  import Moon from "@tabler/icons-svelte-runes/icons/moon";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import FontPicker from "$lib/FontPicker.svelte";
   import ThemeLegend from "$lib/ThemeLegend.svelte";

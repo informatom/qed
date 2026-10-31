@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import ExternalLink from "@lucide/svelte/icons/external-link";
+  import ExternalLink from "@tabler/icons-svelte-runes/icons/external-link";
   import { commands, libraryUrl, type Library } from "$lib/site";
 
   interface Props {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BookOpen from "@lucide/svelte/icons/book-open";
+  import BookOpen from "@tabler/icons-svelte-runes/icons/book";
   import { openManual } from "$lib/manual";
 
   interface Props {

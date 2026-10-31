@@ -553,13 +553,28 @@ async fn save_site_config(root: PathBuf, config: SiteConfig) -> Result<SiteConfi
     Ok(saved)
 }
 
-/// The page icons: names and SVG markup, from qed's built-in set.
+/// Icons for a search (see `icons::search`): names and SVG markup, best
+/// first, at most `limit`.
 #[tauri::command]
 #[specta::specta]
-fn list_icons() -> Vec<(&'static str, &'static str)> {
-    qed_core::icons::ICONS
-        .iter()
-        .map(|(name, svg)| (*name, svg.trim_end()))
+fn search_icons(query: String, limit: u32) -> Vec<(String, String)> {
+    qed_core::icons::search(&query, limit as usize)
+        .into_iter()
+        .filter_map(|name| Some((name.to_string(), qed_core::icons::svg(name)?.to_string())))
+        .collect()
+}
+
+/// The SVG markup of these icons, by the names asked for (old Lucide
+/// names too); names that aren't icons are left out.
+#[tauri::command]
+#[specta::specta]
+fn icon_svgs(names: Vec<String>) -> Vec<(String, String)> {
+    names
+        .into_iter()
+        .filter_map(|name| {
+            let svg = qed_core::icons::svg(&name)?.to_string();
+            Some((name, svg))
+        })
         .collect()
 }
 
@@ -1027,7 +1042,8 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             fetch_video,
             list_fonts,
             download_font,
-            list_icons,
+            search_icons,
+            icon_svgs,
             save_targets,
             set_target_password,
             target_secrets,

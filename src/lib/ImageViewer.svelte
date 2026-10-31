@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
-  import ChevronLeft from "@lucide/svelte/icons/chevron-left";
-  import ChevronRight from "@lucide/svelte/icons/chevron-right";
-  import X from "@lucide/svelte/icons/x";
+  import ChevronLeft from "@tabler/icons-svelte-runes/icons/chevron-left";
+  import ChevronRight from "@tabler/icons-svelte-runes/icons/chevron-right";
+  import X from "@tabler/icons-svelte-runes/icons/x";
   import { formatSize, libraryUrl, type Library, type MediaFile } from "$lib/site";
 
   interface Props {

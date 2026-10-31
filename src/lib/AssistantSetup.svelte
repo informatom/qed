@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Check from "@lucide/svelte/icons/check";
-  import Copy from "@lucide/svelte/icons/copy";
+  import Check from "@tabler/icons-svelte-runes/icons/check";
+  import Copy from "@tabler/icons-svelte-runes/icons/copy";
   import { commands } from "$lib/site";
 
   interface Props {

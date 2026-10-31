@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Play from "@lucide/svelte/icons/play";
+  import Play from "@tabler/icons-svelte-runes/icons/player-play";
   import { commands, type Library } from "$lib/site";
 
   interface Props {

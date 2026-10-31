@@ -53,7 +53,7 @@ title = "The whole site"
 boxed = true
 :::
 
-:icon-undo: **Go back** next to a version in the **Versions** tab puts
+:icon-arrow-back-up: **Go back** next to a version in the **Versions** tab puts
 every page, picture and file back the way it was then. The present is
 saved as a version first, so you can come back to it the same way.
 ::::
@@ -61,7 +61,7 @@ saved as a version first, so you can come back to it the same way.
 ## Deleted pages
 
 Under **Deleted pages**, the **Versions** tab lists pages that were
-deleted, with the last version that still had them. :icon-undo:
+deleted, with the last version that still had them. :icon-arrow-back-up:
 **Restore** brings one back as it was before it was deleted.
 
 ::: call-to-action

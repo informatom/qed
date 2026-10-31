@@ -1,10 +1,10 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
-  import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import ChevronUp from "@lucide/svelte/icons/chevron-up";
-  import Plus from "@lucide/svelte/icons/plus";
-  import Trash from "@lucide/svelte/icons/trash";
+  import ChevronDown from "@tabler/icons-svelte-runes/icons/chevron-down";
+  import ChevronUp from "@tabler/icons-svelte-runes/icons/chevron-up";
+  import Plus from "@tabler/icons-svelte-runes/icons/plus";
+  import Trash from "@tabler/icons-svelte-runes/icons/trash";
   import { commands, type Site, type SiteConfig } from "$lib/site";
   import { trackUnsaved } from "$lib/unsaved.svelte";
 

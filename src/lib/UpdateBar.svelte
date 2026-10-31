@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Download from "@lucide/svelte/icons/download";
+  import Download from "@tabler/icons-svelte-runes/icons/download";
   import { formatSize } from "$lib/site";
   import { installUpdate, updates } from "$lib/updates.svelte";
 

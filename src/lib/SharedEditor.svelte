@@ -1,8 +1,8 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
-  import Trash from "@lucide/svelte/icons/trash";
-  import X from "@lucide/svelte/icons/x";
+  import Trash from "@tabler/icons-svelte-runes/icons/trash";
+  import X from "@tabler/icons-svelte-runes/icons/x";
   import BlockEditor from "$lib/BlockEditor.svelte";
   import { provideSharedBlocks, sharedBlocks } from "$lib/sharedBlocks";
   import { commands, pageLabel, sharedName, type Page } from "$lib/site";

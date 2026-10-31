@@ -111,7 +111,7 @@
 {%- else %}
 <li class="dropdown dropdown-hover dropdown-end md:dropdown-start">
   <div tabindex="0" role="button" class="inline-flex cursor-pointer items-center gap-1 {% if item.current %}{{ current_class }}{% else %}link-hover{% endif %}">
-    {{- item.title }}<svg viewBox="0 0 24 24" class="size-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+    {{- item.title }}<svg viewBox="0 0 24 24" class="size-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div>
   {#- The box hangs in a transparent frame that starts right below the
       title: its top padding is the gap, so the pointer never leaves the
       dropdown on its way down (hover would end and close it). #}
@@ -161,7 +161,7 @@
             first, then the others; a long one (a blog's posts) scrolls. #}
         <li class="dropdown dropdown-hover dropdown-end md:dropdown-start">
           <div tabindex="0" role="button" class="inline-flex cursor-pointer items-center gap-1.5 {% if item.current %}{{ header.current }}{% else %}link-hover{% endif %}">
-            {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}<svg viewBox="0 0 24 24" class="size-3.5 opacity-70" style="fill: none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+            {%- if let Some(icon) = item.icon %}{{ icon|safe }}{% endif %}{{ item.title }}<svg viewBox="0 0 24 24" class="size-3.5 opacity-70" style="fill: none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></div>
           <div tabindex="-1" class="dropdown-content z-30 pt-2">
             <ul class="menu max-h-[70vh] w-72 flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-lg">
               <li><a href="{{ item.href }}"{% if item.exact %} class="menu-active" aria-current="page"{% endif %}>{{ item.title }}</a></li>
@@ -193,13 +193,13 @@
             JavaScript the page follows the system. #}
         <div id="mode-switch" class="flex items-center rounded-full border border-current/20 p-0.5" role="group" hidden>
           <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="light" title="{{ mode_labels[1] }}" aria-label="{{ mode_labels[1] }}" aria-pressed="false">
-            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"/></svg>
           </button>
           <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="system" title="{{ mode_labels[0] }}" aria-label="{{ mode_labels[0] }}" aria-pressed="true">
-            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2" /><line x1="8" x2="16" y1="21" y2="21" /><line x1="12" x2="12" y1="17" y2="21" /></svg>
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/></svg>
           </button>
           <button type="button" class="btn btn-ghost btn-xs btn-circle" data-choice="dark" title="{{ mode_labels[2] }}" aria-label="{{ mode_labels[2] }}" aria-pressed="false">
-            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></svg>
+            <svg class="size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="fill: none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454l0 .008"/></svg>
           </button>
         </div>
         {%- endif %}

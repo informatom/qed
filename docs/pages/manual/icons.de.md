@@ -1,14 +1,31 @@
 +++
 title = "Icons"
-description = "Die Icons, die q.e.d. mitbringt, für Text und Menüs, und wie Sie eigene hinzufügen."
+description = "Die mehr als 6.000 Icons, die q.e.d. mitbringt, für Text und Menüs: eines finden, es schreiben, und eigene hinzufügen."
 menu = "main"
 weight = 25
-summary = "Die Icons für Text und Menüs, und Ihre eigenen."
+summary = "Über 6.000 Icons für Text und Menüs, und Ihre eigenen."
 +++
 
 Icons stehen im Text und neben Seiten in Menüs. Sie werden in der Farbe
 des Textes gezeichnet, so hoch wie die Buchstaben, und brauchen nichts
-von anderen Websites.
+von anderen Websites. q.e.d. bringt die
+[Tabler-Icons](https://tabler.io/icons) mit: mehr als 5.000 als Umriss
+gezeichnete und 1.000 gefüllte, darunter Logos von Marken und Diensten,
+etwa :icon-brand-mastodon: Mastodon.
+
+## Ein Icon finden
+
+Suchen Sie danach, was es zeigt. Die Suche kennt mehr als die Namen:
+*envelope* findet :icon-mail: `mail`, *house* findet :icon-home: `home`.
+Die Suchwörter sind englisch. Suchen können Sie an zwei Stellen in q.e.d.:
+
+- unter **Icons in text** unter jedem Textfeld; ein Klick kopiert den
+  Code, den Sie dann in den Text einfügen
+- im Tab **Settings** einer Seite, bei **Icon**
+
+[tabler.io/icons](https://tabler.io/icons) zeigt ebenfalls alle Icons
+mit ihren Namen. Der Name eines gefüllten Icons endet auf `-filled`:
+:icon-heart: `heart` und :icon-heart-filled: `heart-filled`.
 
 ## Im Text
 
@@ -23,96 +40,40 @@ Eine Zeile wie
 
 erscheint als :icon-phone: 01 234 56 78 · :icon-mail: hallo@example.com.
 
+Einen Namen, den q.e.d. nicht kennt, zeigt die Seite als Text, und
+**Build** weist darauf hin, damit ein Tippfehler nicht unbemerkt bleibt.
+
 ## Neben einer Seite in Menüs
 
-Der Tab **Settings** einer Seite hat **Icon**: Wählen Sie eines, und es
-steht neben der Seite in den Menüs. **No icon** nimmt es wieder weg.
+Der Tab **Settings** einer Seite hat **Icon**: Suchen Sie eines und
+klicken Sie es an, dann steht es neben der Seite in den Menüs. **No
+icon** nimmt es wieder weg.
 
 ## Eigene Icons
 
-Für Logos und Bilder, die nicht in der Liste sind, etwa das Logo eines
+Für Logos und Bilder, die nicht dabei sind, etwa das Logo eines
 Programms, über das Sie schreiben: Legen Sie eine Bilddatei (am besten
 SVG) in den Ordner `icons` im Ordner `media` der Website. **Show in file
 manager** im Tab Media öffnet ihn. `rails.svg` dort schreiben Sie
 `:icon-rails:`. Eigene Icons behalten ihre eigenen Farben.
 
-## Alle Icons
+## Einige für den Anfang
 
-| Icon | Schreibweise |
-| --- | --- |
-| :icon-archive: | `:icon-archive:` |
-| :icon-award: | `:icon-award:` |
-| :icon-book-open: | `:icon-book-open:` |
-| :icon-bookmark: | `:icon-bookmark:` |
-| :icon-briefcase: | `:icon-briefcase:` |
-| :icon-calendar: | `:icon-calendar:` |
-| :icon-camera: | `:icon-camera:` |
-| :icon-chart-column: | `:icon-chart-column:` |
-| :icon-circle-question-mark: | `:icon-circle-question-mark:` |
-| :icon-clock: | `:icon-clock:` |
-| :icon-code: | `:icon-code:` |
-| :icon-coffee: | `:icon-coffee:` |
-| :icon-compass: | `:icon-compass:` |
-| :icon-component: | `:icon-component:` |
-| :icon-download: | `:icon-download:` |
-| :icon-eye: | `:icon-eye:` |
-| :icon-file-plus: | `:icon-file-plus:` |
-| :icon-file-text: | `:icon-file-text:` |
-| :icon-folder: | `:icon-folder:` |
-| :icon-folder-input: | `:icon-folder-input:` |
-| :icon-gift: | `:icon-gift:` |
-| :icon-git-branch: | `:icon-git-branch:` |
-| :icon-globe: | `:icon-globe:` |
-| :icon-graduation-cap: | `:icon-graduation-cap:` |
-| :icon-hammer: | `:icon-hammer:` |
-| :icon-handshake: | `:icon-handshake:` |
-| :icon-headphones: | `:icon-headphones:` |
-| :icon-heart: | `:icon-heart:` |
-| :icon-history: | `:icon-history:` |
-| :icon-house: | `:icon-house:` |
-| :icon-image: | `:icon-image:` |
-| :icon-info: | `:icon-info:` |
-| :icon-layers: | `:icon-layers:` |
-| :icon-leaf: | `:icon-leaf:` |
-| :icon-life-buoy: | `:icon-life-buoy:` |
-| :icon-lightbulb: | `:icon-lightbulb:` |
-| :icon-link: | `:icon-link:` |
-| :icon-list: | `:icon-list:` |
-| :icon-lock: | `:icon-lock:` |
-| :icon-mail: | `:icon-mail:` |
-| :icon-map: | `:icon-map:` |
-| :icon-map-pin: | `:icon-map-pin:` |
-| :icon-megaphone: | `:icon-megaphone:` |
-| :icon-message-circle: | `:icon-message-circle:` |
-| :icon-mic: | `:icon-mic:` |
-| :icon-music: | `:icon-music:` |
-| :icon-newspaper: | `:icon-newspaper:` |
-| :icon-package: | `:icon-package:` |
-| :icon-pen-line: | `:icon-pen-line:` |
-| :icon-phone: | `:icon-phone:` |
-| :icon-play: | `:icon-play:` |
-| :icon-plus: | `:icon-plus:` |
-| :icon-podcast: | `:icon-podcast:` |
-| :icon-rocket: | `:icon-rocket:` |
-| :icon-rss: | `:icon-rss:` |
-| :icon-save: | `:icon-save:` |
-| :icon-scale: | `:icon-scale:` |
-| :icon-search: | `:icon-search:` |
-| :icon-settings: | `:icon-settings:` |
-| :icon-shield: | `:icon-shield:` |
-| :icon-shopping-cart: | `:icon-shopping-cart:` |
-| :icon-sparkles: | `:icon-sparkles:` |
-| :icon-star: | `:icon-star:` |
-| :icon-sun: | `:icon-sun:` |
-| :icon-tag: | `:icon-tag:` |
-| :icon-trash: | `:icon-trash:` |
-| :icon-undo: | `:icon-undo:` |
-| :icon-upload: | `:icon-upload:` |
-| :icon-user: | `:icon-user:` |
-| :icon-users: | `:icon-users:` |
-| :icon-video: | `:icon-video:` |
-| :icon-wrench: | `:icon-wrench:` |
+| Icon | Schreiben | | Icon | Schreiben |
+| --- | --- | --- | --- | --- |
+| :icon-mail: | `:icon-mail:` | | :icon-phone: | `:icon-phone:` |
+| :icon-map-pin: | `:icon-map-pin:` | | :icon-clock: | `:icon-clock:` |
+| :icon-calendar: | `:icon-calendar:` | | :icon-home: | `:icon-home:` |
+| :icon-info-circle: | `:icon-info-circle:` | | :icon-help-circle: | `:icon-help-circle:` |
+| :icon-download: | `:icon-download:` | | :icon-link: | `:icon-link:` |
+| :icon-rss: | `:icon-rss:` | | :icon-microphone: | `:icon-microphone:` |
+| :icon-headphones: | `:icon-headphones:` | | :icon-book: | `:icon-book:` |
+| :icon-heart-filled: | `:icon-heart-filled:` | | :icon-star-filled: | `:icon-star-filled:` |
+| :icon-brand-mastodon: | `:icon-brand-mastodon:` | | :icon-brand-github: | `:icon-brand-github:` |
 
-Die Icons stammen von [Lucide](https://lucide.dev). Fehlt eines? Fragen
-Sie auf [GitHub](https://github.com/informatom/qed/issues) danach: Es
-lassen sich mehr hinzufügen.
+## Websites von vor Version 0.15
+
+Bis Version 0.14 hatte q.e.d. 72 Icons von [Lucide](https://lucide.dev).
+Ihre Namen funktionieren weiter: Eine Seite mit `:icon-house:` oder dem
+Icon `house` zeigt jetzt :icon-home: `home`. Neue Icons wählen Sie mit
+ihren Tabler-Namen.

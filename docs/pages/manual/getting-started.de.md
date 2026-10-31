@@ -102,7 +102,7 @@ die Änderung zu sehen.
 
 ## Speichern
 
-:icon-save: Nichts ist gespeichert, bis Sie **Save** drücken. Ein Punkt
+:icon-device-floppy: Nichts ist gespeichert, bis Sie **Save** drücken. Ein Punkt
 an einem Tab und die Worte *Unsaved changes* zeigen, dass etwas zu
 speichern ist, und **Discard** verwirft es. Jedes Speichern bleibt in
 der Geschichte der Website erhalten, Sie können also immer zurück; siehe
@@ -110,7 +110,7 @@ der Geschichte der Website erhalten, Sie können also immer zurück; siehe
 
 ## Dieses Handbuch
 
-:icon-book-open: **Manual**, neben der Vorschau-Schaltfläche, öffnet
+:icon-book: **Manual**, neben der Vorschau-Schaltfläche, öffnet
 dieses Handbuch in einem eigenen Fenster, für Ihre Version von q.e.d.,
 ohne Internetverbindung. Manche Stellen in der App verlinken die Seite,
 die sie erklärt.

@@ -47,7 +47,7 @@ impl Session {
         session.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
         let (guide, failed) = session.call("guide", json!({}));
         assert!(!failed && guide.contains(":::: columns") && guide.contains("redirect_from"));
-        assert!(guide.contains("catppuccin-mocha") && guide.contains("book-open"));
+        assert!(guide.contains("catppuccin-mocha") && guide.contains("brand-mastodon"));
         session
     }
 
@@ -242,6 +242,9 @@ fn reaches_static_files_the_footer_and_the_settings() {
                "stamp": stamp}),
     );
     assert!(!failed, "{saved}");
+
+    let (icons, _) = session.call("find_icons", json!({"query": "envelope"}));
+    assert!(icons.split(", ").any(|name| name == "mail"), "{icons}");
 
     let (built, failed) = session.call("build_site", json!({}));
     assert!(!failed, "{built}");

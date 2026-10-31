@@ -25,7 +25,7 @@ moves over by hand, page by page. That's also a good moment to tidy up.
    download into Downloads ([Pictures and files](pictures-and-files.md)).
 3. **Make the pages**, each at its old address where you can: the
    **New page** dialog shows the address it will get, and
-   :icon-folder-input: moves or renames a page. Copy the text over and
+   :icon-folder-down: moves or renames a page. Copy the text over and
    add headings, links and pictures again.
 4. **Rebuild the look**: a theme, the colors of your logo and your fonts
    ([Colors and fonts](colors-and-fonts.md)), and the menu

@@ -56,7 +56,7 @@ title = "Die ganze Website"
 boxed = true
 :::
 
-:icon-undo: **Go back** neben einer Version im Tab **Versions** stellt
+:icon-arrow-back-up: **Go back** neben einer Version im Tab **Versions** stellt
 jede Seite, jedes Bild und jede Datei so wieder her, wie sie damals
 waren. Der jetzige Stand wird vorher als Version gespeichert, Sie
 kommen also auf demselben Weg zu ihm zurück.
@@ -65,7 +65,7 @@ kommen also auf demselben Weg zu ihm zurück.
 ## Gelöschte Seiten
 
 Unter **Deleted pages** listet der Tab **Versions** gelöschte Seiten,
-mit der letzten Version, die sie noch hatte. :icon-undo: **Restore**
+mit der letzten Version, die sie noch hatte. :icon-arrow-back-up: **Restore**
 holt eine so zurück, wie sie vor dem Löschen war.
 
 ::: call-to-action

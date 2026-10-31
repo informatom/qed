@@ -2,7 +2,7 @@
 title = "Handbuch"
 description = "Wie Sie Ihre Website mit q.e.d. machen und betreiben: Seiten und Blöcke, Bilder und Dateien, Menüs, Farben und Schriften, Versionen, Sicherungen, Veröffentlichen und Podcasts."
 menu = "main"
-icon = "book-open"
+icon = "book"
 weight = 20
 summary = "Wie Sie Ihre Website mit q.e.d. machen und betreiben, Schritt für Schritt."
 back_next = true
@@ -11,7 +11,7 @@ back_next = true
 Dieses Handbuch ist für alle, die mit q.e.d. eine Website machen und
 pflegen: Programmieren ist nicht nötig, und Sie müssen nicht wissen, wie
 Websites innen funktionieren. Dieselben Seiten sind auch in der App: Die
-Schaltfläche :icon-book-open: **Manual** oben rechts öffnet sie in einem
+Schaltfläche :icon-book: **Manual** oben rechts öffnet sie in einem
 eigenen Fenster, sodass Sie sie offline lesen können, neben dem, was Sie
 gerade tun. Das Handbuch gibt es auf Englisch und Deutsch; **Language of
 the manual** im Tab **App** wählt die Sprache (von selbst die Ihres

@@ -2,7 +2,7 @@
 title = "Manual"
 description = "How to make and run your website with q.e.d.: pages and blocks, pictures and files, menus, colors and fonts, versions, backups, publishing and podcasts."
 menu = "main"
-icon = "book-open"
+icon = "book"
 weight = 20
 summary = "How to make and run your website with q.e.d., step by step."
 back_next = true
@@ -10,7 +10,7 @@ back_next = true
 
 This manual is for the people who make and look after a website with
 q.e.d.: no programming needed, and no need to know how websites work
-inside. The same pages are in the app: the :icon-book-open: **Manual**
+inside. The same pages are in the app: the :icon-book: **Manual**
 button at the top right opens them in a window of their own, so you can
 read them offline, next to what you're doing. The manual is in English
 and German; **Language of the manual** in the **App** tab picks one

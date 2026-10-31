@@ -41,7 +41,7 @@ geschrieben haben, bleiben dort.
 | [Podlove Web Player](https://podlove.org/podlove-web-player/) 5.13.0 | Episoden eines Podcasts | MIT |
 | [Podlove Subscribe Button](https://podlove.org/podlove-subscribe-button/) | der Block Subscribe | MIT |
 | [Pagefind](https://pagefind.app/) | die Suche | MIT |
-| Icons von [Lucide](https://lucide.dev) | Icons in Text und Menüs | ISC |
+| Icons von [Tabler](https://tabler.io/icons) 3.49.0 | Icons in Text und Menüs | MIT |
 | [Tailwind CSS](https://tailwindcss.com/) und [daisyUI](https://daisyui.com/) | das Stylesheet und die Themes | MIT |
 | [Catppuccin](https://catppuccin.com/) | die vier Catppuccin-Themes | MIT |
 | [Latin Modern Math](https://www.gust.org.pl/projects/e-foundry/lm-math) | mathematische Formeln | GUST Font License |
@@ -64,7 +64,7 @@ q.e.d. steht auf den Schultern vieler Projekte. Besonders:
   aus denen die App gemacht ist, und **[Svelte](https://svelte.dev/)**
   für ihre Oberfläche.
 - **[libgit2](https://libgit2.org/)**, das die Versionen bewahrt,
-  **[Lucide](https://lucide.dev)**, **[daisyUI](https://daisyui.com/)**,
+  **[Tabler Icons](https://tabler.io/icons)** (und davor **[Lucide](https://lucide.dev)**), **[daisyUI](https://daisyui.com/)**,
   **[Pagefind](https://pagefind.app/)**, **[Fontsource](https://fontsource.org/)**
   und **[Catppuccin](https://catppuccin.com/)**.
 

@@ -1,12 +1,12 @@
 <script lang="ts">
   import { ask, message } from "@tauri-apps/plugin-dialog";
-  import FolderInput from "@lucide/svelte/icons/folder-input";
-  import Trash from "@lucide/svelte/icons/trash";
-  import History from "@lucide/svelte/icons/history";
-  import LayoutList from "@lucide/svelte/icons/layout-list";
-  import Settings from "@lucide/svelte/icons/settings";
-  import Languages from "@lucide/svelte/icons/languages";
-  import Plus from "@lucide/svelte/icons/plus";
+  import FolderInput from "@tabler/icons-svelte-runes/icons/folder-down";
+  import Trash from "@tabler/icons-svelte-runes/icons/trash";
+  import History from "@tabler/icons-svelte-runes/icons/history";
+  import LayoutList from "@tabler/icons-svelte-runes/icons/layout-list";
+  import Settings from "@tabler/icons-svelte-runes/icons/settings";
+  import Languages from "@tabler/icons-svelte-runes/icons/language";
+  import Plus from "@tabler/icons-svelte-runes/icons/plus";
   import BlockEditor from "$lib/BlockEditor.svelte";
   import PageSettings from "$lib/PageSettings.svelte";
   import PageVersions from "$lib/PageVersions.svelte";

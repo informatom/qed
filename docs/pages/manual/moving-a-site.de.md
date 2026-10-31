@@ -28,7 +28,7 @@ ein guter Moment zum Aufräumen.
    ([Bilder und Dateien](pictures-and-files.md)).
 3. **Legen Sie die Seiten an**, jede möglichst unter ihrer alten
    Adresse: Der Dialog **New page** zeigt die Adresse, die sie bekommt,
-   und :icon-folder-input: verschiebt oder benennt eine Seite um.
+   und :icon-folder-down: verschiebt oder benennt eine Seite um.
    Kopieren Sie den Text herüber und fügen Sie Überschriften, Links und
    Bilder wieder ein.
 4. **Bauen Sie das Aussehen nach**: ein Theme, die Farben Ihres Logos

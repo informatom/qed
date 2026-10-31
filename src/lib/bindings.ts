@@ -72,7 +72,7 @@ export const commands = {
 	 */
 	back_next?: boolean,
 	menu?: Menu,
-	/**  A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`. */
+	/**  A Tabler icon name from qed's set, shown in menus: `icon = "book"`. */
 	icon: string | null,
 	/**  Sort order among sibling pages; lower comes first. */
 	weight?: number,
@@ -141,8 +141,16 @@ export const commands = {
 	listFonts: () => __TAURI_INVOKE<FontListing[]>("list_fonts"),
 	/**  Downloads a font into the site's `fonts/` folder. */
 	downloadFont: (root: string, family: string) => __TAURI_INVOKE<FontInfo>("download_font", { root, family }),
-	/**  The page icons: names and SVG markup, from qed's built-in set. */
-	listIcons: () => __TAURI_INVOKE<([string, string])[]>("list_icons"),
+	/**
+	 *  Icons for a search (see `icons::search`): names and SVG markup, best
+	 *  first, at most `limit`.
+	 */
+	searchIcons: (query: string, limit: number) => __TAURI_INVOKE<([string, string])[]>("search_icons", { query, limit }),
+	/**
+	 *  The SVG markup of these icons, by the names asked for (old Lucide
+	 *  names too); names that aren't icons are left out.
+	 */
+	iconSvgs: (names: string[]) => __TAURI_INVOKE<([string, string])[]>("icon_svgs", { names }),
 	/**  Replaces the site's publish targets in targets.toml. */
 	saveTargets: (root: string, targets: Target[]) => __TAURI_INVOKE<null>("save_targets", { root, targets }),
 	/**  Saves a target's password in the keychain. */
@@ -809,7 +817,7 @@ export type FrontMatter = {
 	 */
 	back_next?: boolean,
 	menu?: Menu,
-	/**  A Lucide icon name from qed's set, shown in menus: `icon = "book-open"`. */
+	/**  A Tabler icon name from qed's set, shown in menus: `icon = "book"`. */
 	icon: string | null,
 	/**  Sort order among sibling pages; lower comes first. */
 	weight?: number,

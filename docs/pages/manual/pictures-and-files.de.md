@@ -14,7 +14,7 @@ title = "Media"
 boxed = true
 :::
 
-:icon-image: Bilder: Fotos, Logos, Illustrationen. JPEG, PNG, GIF, WebP
+:icon-photo: Bilder: Fotos, Logos, Illustrationen. JPEG, PNG, GIF, WebP
 und SVG, und ICO für das [Website-Icon](site-settings.md).
 
 ::: column
