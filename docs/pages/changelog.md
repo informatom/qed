@@ -11,6 +11,25 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.14.0 · 2026-10-31
+
+AI assistants can work on your site.
+
+- **AI assistants** (#105): an assistant such as Claude (Claude Desktop,
+  Claude Code) can read, write, move and delete pages, add pictures,
+  build the site and save versions, with q.e.d.'s rules: pages are
+  checked first, your own changes aren't overwritten, everything shows
+  in Versions, and publishing stays with you. **AI assistants** in the
+  App tab has the settings to copy, for Claude Desktop and for Claude
+  Code in a terminal or in VS Code; see
+  [AI assistants](manual/ai-assistants.md) in the manual.
+  The assistant starts q.e.d. itself in the background, so the
+  installers stay about the same size. See
+  [Interlude: MCP servers](blog/2026-10-31-interlude-mcp.md) and
+  [One program, two modes](blog/2026-10-31-one-program-two-modes.md).
+- **Site icon kept**: the Media tab shows the site icon as such and
+  doesn't delete it while Site settings uses it.
+
 ## 0.13.0 · 2026-10-31
 
 Sites in several languages, a dark side for every site, and the manual
