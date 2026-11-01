@@ -1039,6 +1039,20 @@ rest is done.
   [Interlude: MCP servers](blog/2026-10-31-interlude-mcp.md) and
   [One program, two modes](blog/2026-10-31-one-program-two-modes.md).
 
+- **#147 blog.panoptikum.social again, through the MCP server.** A
+  test of the MCP server (#105) on a real site and of `rel="me"` (#140).
+  Added by the user on 2026-10-30. On 2026-10-31 the copy made by hand
+  was deleted, a new empty site made like the app does, and Claude Code
+  (headless, only Read/Glob/Grep on the Jekyll source plus the MCP
+  tools) moved the blog over in 14 minutes: 62 posts, 13 pages, 75
+  images, 2 PDFs, 69 redirects, links rewritten, one version saved; a
+  second run did slide shows, PDFs at their old addresses, logo, footer
+  and top menu. The owner set web address, themes and the Mastodon
+  profile. *Done 2026-11-01*: the MCP server works well (user), and
+  blog.panoptikum.social runs in production on the q.e.d. site, and
+  Mastodon verified it through the site's `<link rel="me">`. Gaps went
+  to #148.
+
 - **#149 Tabler icons.** Added and *done 2026-10-31*: sites and the app
   use [Tabler Icons](https://tabler.io/icons) 3.49.0 (MIT) instead of 72
   Lucide icons: 5,184 outline and 1,054 filled (`heart-filled`), as

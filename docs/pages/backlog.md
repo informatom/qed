@@ -26,23 +26,8 @@ In the order to build them (sorted 2026-10-30). Sites in several
 languages (#145) came before the MCP server (#105), since its tools and
 format guide describe the site folder; #145 is done. #138–#144,
 found while moving blog.panoptikum.social over by hand, are done, and so
-are #146 (light and dark mode) and #105 (MCP server).
-
-- **#147 blog.panoptikum.social again, through the MCP server.** After
-  #105: delete the q.e.d. copy of blog.panoptikum.social made by hand on
-  2026-10-30, move the blog over once more with an AI assistant working
-  through the MCP server, publish it, and test the Mastodon
-  verification (#140) against the profile. A test of the MCP server on
-  a real site (62 posts, 12 pages, sidebar menu) and of `rel="me"`.
-  Added by the user on 2026-10-30. *2026-10-31:* the hand-made copy is
-  gone; a new empty site was made like the app does, and Claude Code
-  (headless, only Read/Glob/Grep on the Jekyll source plus the MCP
-  tools) moved the blog over in 14 minutes: 62 posts, 13 pages, 75
-  images, 2 PDFs, 69 redirects, links rewritten, one version saved.
-  Left for the site owner: site settings (web address, logo, theme,
-  footer, sidebar extras, Mastodon `profiles`), the slide shows in
-  `static/`. Gaps went to #148. Still to do: the user's look in the app,
-  publishing, and the `rel="me"` check.
+are #146 (light and dark mode), #105 (MCP server) and #147
+(blog.panoptikum.social through the MCP server).
 
 - **#148 MCP server follow-ups.** Found while testing #105 and #147 on
   2026-10-31. *Done the same day (uncommitted):* `site_info` and
