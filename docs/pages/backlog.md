@@ -51,7 +51,11 @@ are #146 (light and dark mode), #105 (MCP server) and #147
   *2026-11-01:* how to test it is in [Development](development.md)
   (*Testing the MCP server*): `dev/mcp-smoke.py` starts `qed mcp` like
   an assistant, and the *MCP on Windows* workflow runs it against an
-  installed release on GitHub's Windows machines.
+  installed release on GitHub's Windows machines. First run the same
+  day, against v0.15.0: passed (handshake, 18 tools, `site_info`, ends
+  when stdin closes), so the Windows release answers over stdio. Still
+  open: a real assistant on Windows, which also tests the settings App
+  settings shows (quoting in `claude mcp add`).
 
 ### Phase 4: Podcast Publisher Import
 
