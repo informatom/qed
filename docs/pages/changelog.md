@@ -11,6 +11,20 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.16.0 · 2026-11-01
+
+Pictures cut where you want.
+
+- **Where pictures are cut** (#152): galleries, tiles and the Hero cut
+  pictures around the middle. For a picture where that loses the
+  important part, such as a portrait's head, click it in the Media tab,
+  then :icon-crop: **Crop**, and click the spot that must stay visible;
+  a square beside it shows the result, and the choice counts everywhere
+  the picture is used. See [Pictures and files](manual/pictures-and-files.md)
+  and [Where to cut a picture](blog/2026-11-01-where-to-cut.md).
+- **Publishing** shows the space before the upload count again
+  ("Uploading 3 of 40").
+
 ## 0.15.0 · 2026-10-31
 
 Six thousand icons, posts with a time, and AI assistants that can do
