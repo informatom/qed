@@ -48,6 +48,10 @@ are #146 (light and dark mode), #105 (MCP server) and #147
   (user): `delete_file`, refused while anything still uses the file,
   like the Media tab. Still open: stdio of the Windows build when an
   assistant starts `qed mcp` (a friend of the user's tries it).
+  *2026-11-01:* how to test it is in [Development](development.md)
+  (*Testing the MCP server*): `dev/mcp-smoke.py` starts `qed mcp` like
+  an assistant, and the *MCP on Windows* workflow runs it against an
+  installed release on GitHub's Windows machines.
 
 ### Phase 4: Podcast Publisher Import
 

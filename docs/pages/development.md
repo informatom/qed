@@ -73,6 +73,60 @@ docker compose -f dev/test-server/compose.yml up -d
 cargo test -p qed-core --test test_server -- --ignored --test-threads=1
 ```
 
+## Testing the MCP server
+
+AI assistants work on a site through `qed mcp <site folder>`: the app
+itself, started without a window, answering over stdin and stdout (see
+the manual's [AI assistants](manual/ai-assistants.md) for the user's
+side). The tools do their work through qed-core, which `cargo test`
+covers. Whether the program answers when an assistant starts it is
+checked by `dev/mcp-smoke.py`. It starts q.e.d. with pipes for stdin,
+stdout and stderr, as Claude Desktop and Claude Code do, makes the
+opening handshake, lists the tools, calls `site_info`, closes stdin and
+expects the program to end. It only reads, so any site will do:
+
+```sh
+python3 dev/mcp-smoke.py target/debug/qed docs
+```
+
+Instead of `target/debug/qed`, give it an installed copy: the
+`.AppImage` on Linux, `/Applications/qed.app/Contents/MacOS/qed` on
+macOS, `%LOCALAPPDATA%\qed\qed.exe` on Windows. The program path is
+the one App settings shows under the assistant settings.
+
+### Windows
+
+Windows needs its own test. Release builds there are window programs
+(`windows_subsystem = "windows"` in `src-tauri/src/main.rs`), so no
+console window opens next to the app. Such a program has no console of
+its own, and it can still use pipes a caller hands it, which is how an
+assistant starts it. A debug build is a console program, so it doesn't
+show whether this works: test an installed release.
+
+Without a Windows computer, use GitHub Actions: under Actions → *MCP on
+Windows* → *Run workflow* (`.github/workflows/mcp-windows.yml`). It
+installs a published release on a fresh Windows machine without
+questions (the latest, or the tag you give) and runs `dev/mcp-smoke.py`
+against it on the `docs` folder.
+
+On a Windows computer, install q.e.d., then run the script against
+`%LOCALAPPDATA%\qed\qed.exe`. Don't judge by typing `qed mcp …` into
+cmd or PowerShell: they don't wait for window programs and don't show
+what they print, so it looks as if nothing happened, even when all is
+well.
+
+Then try it with a real assistant, which also tests the settings App
+settings shows. In Claude Desktop, put them into the configuration
+file (Settings → Developer → Edit Config) and restart it; the q.e.d.
+server should appear with its tools. Ask for something small, like the
+site's title, then for a new page, and check in q.e.d. that the page
+and a version for it are there. If the server doesn't appear, Claude
+Desktop's log for it is in `%APPDATA%\Claude\logs\`
+(`mcp-server-<name>.log`), with whatever q.e.d. wrote to stderr. In
+Claude Code, run the `claude mcp add` command from App settings in
+PowerShell and cmd; paths in `C:\Program Files\…` or with spaces in
+the site folder are where the quoting can break.
+
 ## Releasing
 
 Installers are built by GitHub Actions

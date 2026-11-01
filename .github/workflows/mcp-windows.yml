@@ -1,0 +1,51 @@
+# Installs a published Windows release on a fresh Windows machine and starts
+# `qed mcp` the way an AI assistant does (#148): release builds are window
+# programs without a console, and must still answer over stdin and stdout.
+# Started by hand (Actions → MCP on Windows → Run workflow). See "Testing
+# the MCP server" in docs/pages/development.md.
+
+name: MCP on Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag to test (v0.15.0); empty for the latest"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    steps:
+      # The script and the docs site, as the site to serve.
+      - uses: actions/checkout@v5
+
+      - name: Download the installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $tag = "${{ inputs.version }}"
+          if (-not $tag) { $tag = gh release view --json tagName -q .tagName }
+          echo "Testing $tag"
+          gh release download $tag --pattern "*-setup.exe" --dir installer
+
+      # /S: the NSIS installer without questions. It installs for the
+      # current user, into %LOCALAPPDATA%\qed.
+      - name: Install
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem installer\*-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList "/S" -Wait
+          $qed = Get-ChildItem -Path "$env:LOCALAPPDATA\qed", "$env:ProgramFiles\qed" -Filter qed.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $qed) { throw "qed.exe not found after installing" }
+          echo "Installed: $($qed.FullName)"
+          "QED=$($qed.FullName)" >> $env:GITHUB_ENV
+
+      - name: Start qed mcp like an assistant
+        shell: pwsh
+        run: python dev/mcp-smoke.py "$env:QED" docs
