@@ -68,6 +68,17 @@ alt = "The Media tab of q.e.d.: a search field, the Import images button, and th
 image_side = "right"
 :::
 
+## Where pictures are cut
+
+Galleries, tiles in post and page lists, and the Hero block show
+pictures cut to fit, a Gallery as squares. q.e.d. cuts around the
+middle, which suits most pictures. When it doesn't, say for a portrait
+that loses the head, choose the spot yourself: click the picture in the
+Media tab to show it big, click :icon-crop: **Crop**, then click the
+spot that must stay visible. A square beside it shows the result, and
+the choice counts everywhere the picture is used. :icon-focus-centered:
+**Middle** goes back to cutting around the middle.
+
 ## Files to download
 
 The **Download** block offers one file from Downloads, with its type and

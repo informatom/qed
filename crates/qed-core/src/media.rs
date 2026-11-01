@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::block::{self, Block};
 use crate::icons;
 use crate::markdown;
+use crate::media_settings::{self, Focus};
 use crate::site::{self, ASSETS_DIR, MEDIA_DIR, Page, STATIC_DIR, Site, SiteError};
 use crate::slug::slugify;
 
@@ -85,6 +86,8 @@ pub struct MediaFile {
     pub site_icon: bool,
     /// The podcast's cover art (Site settings).
     pub podcast_cover: bool,
+    /// Where an image is cut to fit, from `media.toml`; `None`: the middle.
+    pub focus: Option<Focus>,
 }
 
 /// Lists every file in one of the folders, sorted by name.
@@ -127,7 +130,12 @@ pub fn list(site: &Site, library: Library) -> Result<Vec<MediaFile>, SiteError> 
             let site_logo = library == Library::Media && is_site_logo(site, &name);
             let site_icon = library == Library::Media && is_site_icon(site, &name);
             let podcast_cover = library == Library::Media && is_podcast_cover(site, &name);
+            let focus = match library {
+                Library::Media => site.media.get(&name).and_then(|image| image.focus),
+                _ => None,
+            };
             Ok(MediaFile {
+                focus,
                 name,
                 site_logo,
                 site_icon,
@@ -447,6 +455,9 @@ pub fn delete(site: &Site, library: Library, name: &str) -> Result<(), SiteError
             break;
         }
         dir = folder.parent();
+    }
+    if library == Library::Media {
+        media_settings::forget(&site.root, name)?;
     }
     Ok(())
 }
@@ -927,7 +938,13 @@ mod tests {
     #[test]
     fn deletes_only_unused_files() {
         let dir = site_dir();
+        let focus = Some(Focus { x: 20, y: 30 });
+        media_settings::set_focus(dir.path(), "team.png", focus).unwrap();
+        media_settings::set_focus(dir.path(), "unused.txt", focus).unwrap();
         let site = site::open(dir.path()).unwrap();
+        let listed = list(&site, Library::Media).unwrap();
+        let team = listed.iter().find(|file| file.name == "team.png").unwrap();
+        assert_eq!(team.focus, focus);
 
         let error = delete(&site, Library::Media, "team.png").unwrap_err();
         assert!(error.to_string().contains("still used by /"), "{error}");
@@ -935,6 +952,9 @@ mod tests {
 
         delete(&site, Library::Media, "unused.txt").unwrap();
         assert!(!dir.path().join("media/unused.txt").exists());
+        // Its focus goes with it; the one of the image still used stays.
+        let settings = media_settings::load(dir.path()).unwrap();
+        assert_eq!(settings.keys().collect::<Vec<_>>(), ["team.png"]);
 
         assert!(delete(&site, Library::Media, "../site.toml").is_err());
     }

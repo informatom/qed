@@ -49,6 +49,7 @@ export type RestingVersion = Sent<Rust.RestingVersion>;
 export type FrontMatter = Sent<Rust.FrontMatter>;
 export type Gallery = Sent<Rust.Gallery>;
 export type MediaFile = Sent<Rust.MediaFile>;
+export type Focus = Sent<Rust.Focus>;
 export type Page = Sent<Rust.Page>;
 export type PreviewInfo = Sent<Rust.PreviewInfo>;
 export type Progress = Sent<Rust.Progress>;

@@ -1075,6 +1075,36 @@ rest is done.
   `create_page` takes one. The docs posts got the times of the commits
   that added them. Post
   [What time is it?](blog/2026-10-31-what-time-is-it.md).
+- **#152 Choose the square crop per image.** Requested 2026-11-01
+  (user). Where pictures show as squares (Gallery blocks, `tiles` in
+  Post list and Page list), they are cut from the middle: CSS
+  `object-cover` in `templates/block.html`, the image copies themselves
+  aren't cut. That stays the default, since it fits most pictures, but
+  for single images it should be possible to change it later, e.g. a
+  portrait where the middle cuts off the head. *Decided 2026-11-01
+  (user):* the setting belongs to the image, not to its use in a
+  block. It's kept in a new `media.toml` at the top of the site folder,
+  keyed by the file name under `media/`, not in `site.toml`: that stays
+  settings only (Settings tab, `read_settings`/`write_settings`), only
+  the Media tab writes `media.toml`, and it has room for more per-image
+  data later (credit, default alt text). Images without an entry are
+  cut from the middle. Idea: a focal point (or top/middle/bottom,
+  left/middle/right) set in the Media tab and written as
+  `object-position`, so every square of that image follows it.
+  Renaming or deleting an image in the Media tab must update or remove
+  its entry. The site folder format, the MCP guide and the site checks
+  need to know the new file. *Done 2026-11-01*, tested by the user:
+  `qed_core::media_settings` reads and writes `media.toml`
+  (`["portrait.jpg"]` with `focus = { x = 50, y = 20 }`, via
+  `toml_edit`; the middle removes the entry, an empty file is deleted);
+  the site won't open with a broken one. `Site::media` holds it, the
+  generator writes `style="object-position: …"` on every picture with
+  a focus (Gallery, tiles, Hero, Text with image, contributor photos).
+  The Media tab's big view has **Crop**: click the spot, a square beside
+  it shows the result, **Middle** resets; the cards follow the focus.
+  Deleting an image (app or `delete_file`) forgets its entry. Manual
+  (*Where pictures are cut*, en + de), MCP guide and blog post
+  [Where to cut a picture](blog/2026-11-01-where-to-cut.md).
 
 ## Dropped
 

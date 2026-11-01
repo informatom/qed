@@ -39,6 +39,11 @@ export const commands = {
 	openLibraryFile: (root: string, library: Library, name: string) => __TAURI_INVOKE<null>("open_library_file", { root, library, name }),
 	/**  Deletes a file (or a folder in `static/`) that no page uses. */
 	deleteMedia: (root: string, library: Library, name: string) => __TAURI_INVOKE<null>("delete_media", { root, library, name }),
+	/**  Sets where an image in `media/` is cut to fit (#152); `None`: the middle. */
+	setImageFocus: (root: string, name: string, focus: {
+	x: number,
+	y: number,
+} | null) => __TAURI_INVOKE<null>("set_image_focus", { root, name, focus }),
 	/**
 	 *  Moves the files in `media/` that aren't images into `assets/` and
 	 *  updates the pages; returns how many moved.
@@ -761,6 +766,15 @@ export type FaqItem = {
 	answer?: string,
 };
 
+/**
+ *  The spot that stays visible when an image is cut to fit, in percent
+ *  of its width (`x`, from the left) and height (`y`, from the top).
+ */
+export type Focus = {
+	x: number,
+	y: number,
+};
+
 /**  What `fonts/<id>/font.toml` keeps about a downloaded font. */
 export type FontInfo = {
 	id: string,
@@ -889,6 +903,11 @@ export type Image = {
 	caption: string | null,
 };
 
+/**  What `media.toml` says about one image. */
+export type ImageSettings = {
+	focus: Focus | null,
+};
+
 /**
  *  A further language of the site (`[languages.en]` in `site.toml`): the
  *  site's title and description in it, if they differ.
@@ -946,6 +965,8 @@ export type MediaFile = {
 	site_icon: boolean,
 	/**  The podcast's cover art (Site settings). */
 	podcast_cover: boolean,
+	/**  Where an image is cut to fit, from `media.toml`; `None`: the middle. */
+	focus: Focus | null,
 };
 
 /**  What kind of file a media file is, judged by its extension. */
@@ -1540,6 +1561,8 @@ export type Site_Deserialize = {
 	 *  see `contributors.rs`.
 	 */
 	contributors: Contributor[],
+	/**  Settings for single images, from `media.toml` (#152). */
+	media: { [key in string]: ImageSettings },
 };
 
 /**  A site folder, read into memory. */
@@ -1572,6 +1595,8 @@ export type Site_Serialize = {
 	 *  see `contributors.rs`.
 	 */
 	contributors: Contributor[],
+	/**  Settings for single images, from `media.toml` (#152). */
+	media: { [key in string]: ImageSettings },
 };
 
 /**  The room around a section's blocks. */

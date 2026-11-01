@@ -72,6 +72,18 @@ alt = "Der Tab Media von q.e.d.: ein Suchfeld, die Schaltfläche Import images, 
 image_side = "right"
 :::
 
+## Wo Bilder beschnitten werden
+
+Galerien, Kacheln in Beitrags- und Seitenlisten und der Block Hero
+zeigen Bilder zugeschnitten, eine Gallery als Quadrate. q.e.d. schneidet
+um die Mitte herum, und das passt für die meisten Bilder. Wenn nicht,
+etwa bei einem Porträt, dem der Kopf fehlt, wählen Sie die Stelle
+selbst: Klicken Sie das Bild im Tab Media an, damit es groß erscheint,
+klicken Sie auf :icon-crop: **Crop** und dann auf die Stelle, die
+sichtbar bleiben muss. Ein Quadrat daneben zeigt das Ergebnis, und die
+Wahl gilt überall, wo das Bild verwendet wird. :icon-focus-centered:
+**Middle** schneidet wieder um die Mitte.
+
 ## Dateien zum Herunterladen
 
 Der Block **Download** bietet eine Datei aus Downloads an, mit Typ und

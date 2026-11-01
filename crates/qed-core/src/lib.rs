@@ -19,6 +19,7 @@ pub mod links;
 pub mod manual;
 pub mod markdown;
 pub mod media;
+pub mod media_settings;
 pub mod moving;
 pub mod page;
 pub mod page_writer;

@@ -13,7 +13,7 @@
   import ImageViewer from "$lib/ImageViewer.svelte";
   import PdfViewer from "$lib/PdfViewer.svelte";
   import TextViewer from "$lib/TextViewer.svelte";
-  import { commands, formatSize, libraryUrl, pageLabel, type Library, type MediaFile, type MediaKind } from "$lib/site";
+  import { commands, formatSize, libraryUrl, pageLabel, type Focus, type Library, type MediaFile, type MediaKind } from "$lib/site";
 
   interface Props {
     siteRoot: string;
@@ -90,7 +90,7 @@
         const name = dir + label;
         card = {
           ...file, name, label, size: 0, kind: "other", width: null, height: null, used_by: [], count: 0,
-          site_logo: false, site_icon: false, podcast_cover: false,
+          site_logo: false, site_icon: false, podcast_cover: false, focus: null,
         };
         folders.set(label, card);
         result.push(card);
@@ -191,6 +191,12 @@
     } catch (e) {
       error = String(e);
     }
+  }
+
+  /** Saves where an image is cut to fit (#152), then shows it on the cards. */
+  async function saveFocus(name: string, focus: Focus | null) {
+    await commands.setImageFocus(siteRoot, name, focus);
+    await refresh();
   }
 
   // Sites from before assets/ kept downloads in media/.
@@ -324,7 +330,8 @@
                 <span class="text-xs">{file.count} {file.count === 1 ? "file" : "files"}</span>
               </span>
             {:else if file.kind === "image"}
-              <img src={libraryUrl(siteRoot, library, file.name)} alt="" loading="lazy" class="h-full w-full object-cover" />
+              <img src={libraryUrl(siteRoot, library, file.name)} alt="" loading="lazy" class="h-full w-full object-cover"
+                style:object-position={file.focus ? `${file.focus.x}% ${file.focus.y}%` : undefined} />
             {:else}
               <span class="flex h-full items-center justify-center font-mono text-2xl text-base-content/40 uppercase">
                 {file.name.split(".").pop()}
@@ -376,6 +383,7 @@
 {#if viewing}
   <ImageViewer {siteRoot} {library} start={viewing}
     images={cards.filter((card) => card.kind === "image" && card.count === undefined)}
+    onfocus={library === "media" && !onpick ? saveFocus : undefined}
     onclose={() => (viewing = null)} />
 {/if}
 

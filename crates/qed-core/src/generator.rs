@@ -313,7 +313,7 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
     notes.extend(missing_links(site, &published));
     notes.extend(menu_notes(site, &published, &site.config.main_menu));
     let media_dir = site.root.join(MEDIA_DIR);
-    let images = Images::new(&media_dir);
+    let images = Images::new(&media_dir).with_settings(site.media.clone());
     let site_icons = SiteIcons::load(&media_dir);
     notes.extend(icon_notes(site, &published, &site_icons));
     // Each language's pages (#145): a page sees only those in its own
@@ -2790,6 +2790,9 @@ pub(crate) struct Picture {
     /// Set when a click shows the image big over the page (see
     /// [`Picture::zoomable_above`]).
     zoom: Option<Zoom>,
+    /// Where it's cut where it doesn't fit its place, as CSS
+    /// `object-position` (`50% 20%`), if not around the middle (#152).
+    focus: Option<String>,
 }
 
 /// The image shown big over the page, in a popover with this `id`.
@@ -3909,6 +3912,9 @@ pub(crate) fn picture(
         alt: alt.unwrap_or_default().to_string(),
         width: info.as_ref().map(|(_, info)| info.width),
         height: info.as_ref().map(|(_, info)| info.height),
+        focus: media_name(name)
+            .and_then(|file| images.focus(file))
+            .map(|focus| focus.css()),
     })
 }
 
@@ -4618,6 +4624,45 @@ mod tests {
                 r#"<img src="media/small.png" alt="" width="300" height="200" loading="lazy""#
             ),
             "{home}"
+        );
+    }
+
+    #[test]
+    fn cuts_images_around_their_focus() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("pages")).unwrap();
+        fs::create_dir_all(dir.path().join("media")).unwrap();
+        fs::write(dir.path().join("site.toml"), "title = \"Photos\"\n").unwrap();
+        fs::write(
+            dir.path().join("pages/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\n::: gallery\n[[images]]\nimage = \"tall.png\"\n\n[[images]]\nimage = \"plain.png\"\n:::\n",
+        )
+        .unwrap();
+        for name in ["tall.png", "plain.png"] {
+            image::RgbImage::new(200, 400)
+                .save(dir.path().join("media").join(name))
+                .unwrap();
+        }
+        crate::media_settings::set_focus(
+            dir.path(),
+            "tall.png",
+            Some(crate::media_settings::Focus { x: 50, y: 15 }),
+        )
+        .unwrap();
+
+        let site = site::open(dir.path()).unwrap();
+        let out = dir.path().join("_site");
+        build_into(&site, &out).unwrap();
+        let home = read(out.join("index.html"));
+        assert!(
+            home.contains(r#"<img src="media/tall.png" alt="" width="200" height="400" style="object-position: 50% 15%""#),
+            "{home}"
+        );
+        assert!(
+            home.contains(
+                r#"<img src="media/plain.png" alt="" width="200" height="400" loading="lazy""#
+            ),
+            "no focus: around the middle, as before"
         );
     }
 

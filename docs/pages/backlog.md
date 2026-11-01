@@ -26,8 +26,9 @@ In the order to build them (sorted 2026-10-30). Sites in several
 languages (#145) came before the MCP server (#105), since its tools and
 format guide describe the site folder; #145 is done. #138–#144,
 found while moving blog.panoptikum.social over by hand, are done, and so
-are #146 (light and dark mode), #105 (MCP server) and #147
-(blog.panoptikum.social through the MCP server).
+are #146 (light and dark mode), #105 (MCP server), #147
+(blog.panoptikum.social through the MCP server) and #152 (where a
+picture is cut to a square).
 
 - **#148 MCP server follow-ups.** Found while testing #105 and #147 on
   2026-10-31. *Done the same day (uncommitted):* `site_info` and

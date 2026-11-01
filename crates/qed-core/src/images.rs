@@ -32,6 +32,8 @@ use image::metadata::Orientation;
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader};
 use sha2::{Digest, Sha256};
 
+use crate::media_settings::{Focus, MediaSettings};
+
 /// The widths of the smaller copies, in pixels: phones, the content column,
 /// and the content column on sharp screens (and hero backgrounds).
 pub const WIDTHS: [u32; 3] = [480, 960, 1600];
@@ -84,6 +86,8 @@ pub struct Images {
     used: RefCell<BTreeMap<String, Option<ImageInfo>>>,
     /// Photos used as share images, with the width of their JPEG copy.
     shared: RefCell<BTreeSet<(String, u32)>>,
+    /// Settings for single images, from `media.toml` (#152).
+    settings: MediaSettings,
 }
 
 impl Images {
@@ -92,7 +96,23 @@ impl Images {
             media_dir: media_dir.to_path_buf(),
             used: RefCell::new(BTreeMap::new()),
             shared: RefCell::new(BTreeSet::new()),
+            settings: MediaSettings::new(),
         }
+    }
+
+    /// With the settings of single images from `media.toml`.
+    pub fn with_settings(mut self, settings: MediaSettings) -> Self {
+        self.settings = settings;
+        self
+    }
+
+    /// Where `name` (a path inside `media/`) is cut to fit, if not around
+    /// the middle.
+    pub fn focus(&self, name: &str) -> Option<Focus> {
+        self.settings
+            .get(name)
+            .and_then(|image| image.focus)
+            .filter(|focus| *focus != Focus::MIDDLE)
     }
 
     pub fn media_dir(&self) -> &Path {

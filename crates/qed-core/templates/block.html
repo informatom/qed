@@ -6,7 +6,8 @@
 <img src="{{ picture.src }}" alt="{{ picture.alt }}"
   {%- if let Some(srcset) = picture.srcset %} srcset="{{ srcset }}" sizes="{{ sizes }}"{% endif %}
   {%- if let Some(width) = picture.width %} width="{{ width }}"{% endif %}
-  {%- if let Some(height) = picture.height %} height="{{ height }}"{% endif %} loading="{{ loading }}" class="{{ classes }}">
+  {%- if let Some(height) = picture.height %} height="{{ height }}"{% endif %}
+  {%- if let Some(focus) = picture.focus %} style="object-position: {{ focus }}"{% endif %} loading="{{ loading }}" class="{{ classes }}">
 {%- endmacro %}
 {#- An image that opens big over the page when clicked, if it's zoomable:
     the browser's popover (`popovertarget`), no JavaScript. Esc, a click on
@@ -86,7 +87,7 @@
     <li>
       <a href="{{ person.href }}" class="group flex items-center gap-3">
         {%- if let Some(picture) = person.picture %}
-        <img src="{{ picture.src }}"{% if let Some(srcset) = picture.srcset %} srcset="{{ srcset }}" sizes="3rem"{% endif %} alt="" class="size-12 rounded-full object-cover" loading="lazy">
+        <img src="{{ picture.src }}"{% if let Some(srcset) = picture.srcset %} srcset="{{ srcset }}" sizes="3rem"{% endif %} alt=""{% if let Some(focus) = picture.focus %} style="object-position: {{ focus }}"{% endif %} class="size-12 rounded-full object-cover" loading="lazy">
         {%- endif %}
         <span class="flex flex-col leading-tight">
           <span class="font-medium group-hover:underline">{{ person.name }}</span>

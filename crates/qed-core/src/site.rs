@@ -651,6 +651,8 @@ pub struct Site {
     /// The podcast's contributors from `contributors/`, sorted by name;
     /// see `contributors.rs`.
     pub contributors: Vec<crate::contributors::Contributor>,
+    /// Settings for single images, from `media.toml` (#152).
+    pub media: crate::media_settings::MediaSettings,
 }
 
 impl Site {
@@ -834,6 +836,7 @@ pub fn open(root: &Path) -> Result<Site, SiteError> {
         episode_layout: load_part(root, EPISODE_LAYOUT_FILE, EPISODE_LAYOUT_PATH)?,
         shared: crate::shared::load(root)?,
         contributors: crate::contributors::load(root)?,
+        media: crate::media_settings::load(root)?,
     })
 }
 

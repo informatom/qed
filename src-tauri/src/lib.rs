@@ -15,6 +15,7 @@ use qed_core::history::{
     self, DeletedPage, DiffLine, HistoryStatus, RestingVersion, SincePublish, Version,
 };
 use qed_core::media::{self, Library, MediaFile};
+use qed_core::media_settings::{self, Focus};
 use qed_core::page::{FrontMatter, PageContent, PageDate};
 use qed_core::podcast;
 use qed_core::preview::Preview;
@@ -159,6 +160,15 @@ async fn import_static(
 async fn delete_media(root: PathBuf, library: Library, name: String) -> Result<(), String> {
     let site = site::open(&root).map_err(|error| error.to_string())?;
     media::delete(&site, library, &name).map_err(|error| error.to_string())?;
+    record(&root);
+    Ok(())
+}
+
+/// Sets where an image in `media/` is cut to fit (#152); `None`: the middle.
+#[tauri::command]
+#[specta::specta]
+async fn set_image_focus(root: PathBuf, name: String, focus: Option<Focus>) -> Result<(), String> {
+    media_settings::set_focus(&root, &name, focus).map_err(|error| error.to_string())?;
     record(&root);
     Ok(())
 }
@@ -1025,6 +1035,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             read_library_file,
             open_library_file,
             delete_media,
+            set_image_focus,
             move_documents_to_assets,
             save_page_settings,
             save_page_blocks,

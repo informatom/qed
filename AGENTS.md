@@ -31,7 +31,7 @@ There is no database. A site is a folder: `site.toml`, Markdown pages and
 posts (plus `footer.md` for the site footer's blocks and `shared/*.md`
 for shared blocks shown on several pages) with TOML front matter (`+++`), block containers (`::: type` … `:::`;
 Columns use `:::: columns` with `::: column` lines inside) inside the
-Markdown, `media/` (images), `assets/` (files to download) and `static/` (copied into
+Markdown, `media/` (images, with `media.toml` for single images' settings such as where they're cut, #152), `assets/` (files to download) and `static/` (copied into
 the built site as it is) and `fonts/` (self-hosted fonts from Fontsource). History is git.
 Secrets (SSH keys, tokens) live in the OS keychain, never in the site folder.
 
