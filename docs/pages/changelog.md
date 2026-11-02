@@ -11,6 +11,22 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.17.0 · 2026-11-02
+
+AI assistants get icons right and can translate.
+
+- **Icons in the right place** (#148): when an AI assistant saves a
+  page, q.e.d. tells it about icons that would show as `:icon-…:` text:
+  names that don't exist, and icons in titles, headlines, button labels
+  or questions, where icons don't work. The assistant fixes them
+  without you having to point them out.
+- **Translations by AI assistants** (#148): an assistant can add a
+  language and translate pages into it. Each translation starts as a
+  draft, as when you press **Translate**. See
+  [AI assistants](manual/ai-assistants.md).
+- **Tested on Windows**: AI assistants work with q.e.d. on Windows, in
+  Claude Desktop and in Claude Code.
+
 ## 0.16.0 · 2026-11-01
 
 Pictures cut where you want.

@@ -1053,6 +1053,46 @@ rest is done.
   Mastodon verified it through the site's `<link rel="me">`. Gaps went
   to #148.
 
+- **#148 MCP server follow-ups.** Found while testing #105 and #147 on
+  2026-10-31. *Done the same day:* `site_info` and
+  `list_pages` count posts; the guide lists all page settings, the
+  site settings, theme and icon names (both generated from q.e.d.'s
+  lists); `create_page` takes a `slug`; `import_file` copies files and
+  folders into `static/` at a given folder, which also keeps old file
+  addresses (`/pdf/33C3.pdf`, redirects only work for pages);
+  `read_page`/`write_page` take the footer, episode layout and shared
+  blocks; `read_settings`/`write_settings` for `site.toml`, refused if
+  the site wouldn't open with it (`editing::write_settings_text`, with
+  the old text put back); the build notes unknown `:icon-…:` in text,
+  for the app too. The guide is now a `guide` tool, and the instructions
+  sent at the start only point to it: Claude Code cut the long
+  instructions off after about 2 KB, so the first assistant never saw
+  most of the guide. A tool for deleting files was first left out, then
+  added the same day for replacing screenshots from another project
+  (user): `delete_file`, refused while anything still uses the file,
+  like the Media tab. Still open: stdio of the Windows build when an
+  assistant starts `qed mcp` (a friend of the user's tries it).
+  *2026-11-01:* how to test it is in [Development](development.md)
+  (*Testing the MCP server*): `dev/mcp-smoke.py` starts `qed mcp` like
+  an assistant, and the *MCP on Windows* workflow runs it against an
+  installed release on GitHub's Windows machines. First run the same
+  day, against v0.15.0: passed (handshake, 18 tools, `site_info`, ends
+  when stdin closes), so the Windows release answers over stdio. Still
+  open: a real assistant on Windows, which also tests the settings App
+  settings shows (quoting in `claude mcp add`).
+  *2026-11-02:* the user made a site with Claude Desktop on Windows, so
+  a real assistant works there. Two struggles, both fixed the same day:
+  icons first showed as `:icon-…:` text (it found out only when told);
+  write_page now notes icon names that don't exist and icons in fields
+  that show plain text (titles, headlines, button labels, questions),
+  and the guide says where icons work (`editing::icon_notes`). For a
+  second language it had no way to make translations; a new
+  `create_translation` tool makes the draft copy like the app's
+  **Translate**, `site_info` names the further languages, and the guide
+  has a *Languages* section (add `[languages.xx]` first, take out
+  `draft = true` when translated). *Done 2026-11-02*: the user tried
+  `claude mcp add` on Windows too, and it works.
+
 - **#149 Tabler icons.** Added and *done 2026-10-31*: sites and the app
   use [Tabler Icons](https://tabler.io/icons) 3.49.0 (MIT) instead of 72
   Lucide icons: 5,184 outline and 1,054 filled (`heart-filled`), as
@@ -1105,6 +1145,18 @@ rest is done.
   Deleting an image (app or `delete_file`) forgets its entry. Manual
   (*Where pictures are cut*, en + de), MCP guide and blog post
   [Where to cut a picture](blog/2026-11-01-where-to-cut.md).
+
+- **Phase 3: Beyond the basics.** Everything after podcasting that
+  the owner's own sites and tests asked for: push and pull with git
+  (#129), site search (#108), math, chemistry and charts (#107, #130,
+  #131), Catppuccin themes (#132), the manual (#110), back and next
+  links (#136), what moving blog.panoptikum.social over by hand brought
+  (#134, #135, #137–#144), light and dark mode (#146), sites in several
+  languages (#145), the MCP server for AI assistants (#105, #147,
+  #148), Tabler icons (#149), posts with a time (#150) and where a
+  picture is cut (#152). *All done 2026-11-02*, released in 0.9.0 to
+  0.16.0; the last item, #148, closed when the user had made a site
+  with Claude Desktop on Windows.
 
 ## Dropped
 
