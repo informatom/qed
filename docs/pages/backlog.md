@@ -57,6 +57,18 @@ picture is cut to a square).
   when stdin closes), so the Windows release answers over stdio. Still
   open: a real assistant on Windows, which also tests the settings App
   settings shows (quoting in `claude mcp add`).
+  *2026-11-02:* the user made a site with Claude Desktop on Windows, so
+  a real assistant works there. Two struggles, both fixed the same day:
+  icons first showed as `:icon-…:` text (it found out only when told);
+  write_page now notes icon names that don't exist and icons in fields
+  that show plain text (titles, headlines, button labels, questions),
+  and the guide says where icons work (`editing::icon_notes`). For a
+  second language it had no way to make translations; a new
+  `create_translation` tool makes the draft copy like the app's
+  **Translate**, `site_info` names the further languages, and the guide
+  has a *Languages* section (add `[languages.xx]` first, take out
+  `draft = true` when translated). Still open: `claude mcp add` on
+  Windows.
 
 ### Phase 4: Podcast Publisher Import
 

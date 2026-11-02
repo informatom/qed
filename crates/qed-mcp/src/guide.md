@@ -84,7 +84,7 @@ Text and blocks.
 :::::
 ```
 
-Text inside code fences (```) is never read as a block. Markdown text may use `$…$` for math and `:icon-phone:` for icons; find_icons finds the names, and build_site notes any that don't exist.
+Text inside code fences (```) is never read as a block. Markdown text may use `$…$` for math and `:icon-phone:` for icons; find_icons finds the names. Icons only work in Markdown text: Text blocks, the `text` of hero, call-to-action and text-image, image captions, FAQ answers and `summary`. In titles, headlines, button labels, questions and column titles `:icon-…:` stays as text; for an icon beside a page in menus, set the page's `icon`. write_page notes icons that would stay text.
 
 ## Footer, shared blocks, settings
 
@@ -117,8 +117,25 @@ title = "Manuals"
 page = "listener-manual"
 ```
 
-- `[languages.en]` with `title` and `description`: a further language (translations are `about.en.md` beside `about.md`).
+- `[languages.en]` with `title` and `description`: a further language; see Languages below.
 - `[podcast]`: a podcast's settings; leave them to the app's Podcast tab.
+
+## Languages
+
+A site can be in several languages: the main one (`language` in site.toml) at `/`, each further one below its code (`/en/`). For a site in two languages:
+
+1. Add the language to site.toml with write_settings, with the site's title (and description) in it:
+
+   ```
+   [languages.en]
+   title = "My site"
+   ```
+
+2. Make each page's translation with create_translation (`pages/about.md` and `en` give `pages/about.en.md`, at `/en/about`); the start page's is `pages/index.en.md`, at `/en/`. Don't write `.en.md` files any other way.
+3. A translation starts as a draft copy. Translate its title and text with write_page and take out `draft = true`, or it isn't on the website.
+4. The footer in that language is `footer.en.md` (write it with write_page); without one, pages in that language show the main footer.
+
+Menus, post lists and feeds of each language show only its own pages; a page without a translation isn't there in that language. A switch in the header leads between the languages by itself, so don't make links or menu entries for that. Links in a translation point to the main language's file (`[About](about.md)`) and lead to its translation where there is one.
 
 ## Links and files
 

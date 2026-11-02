@@ -112,6 +112,15 @@ struct CreatePage {
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
+struct Translation {
+    /// The page in the main language, as `list_pages` shows it:
+    /// `pages/about.md`, `pages/index.md` for the start page.
+    file: String,
+    /// The further language's code, as in `[languages.en]`: `en`.
+    language: String,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
 struct MovePage {
     /// The page file, as `list_pages` shows it.
     file: String,
@@ -171,7 +180,7 @@ impl Qed {
     }
 
     #[tool(
-        description = "The site's title, language, theme, web address, whether it's a podcast, how many pages it has (posts included, and how many of them are posts), and what changed since the last version."
+        description = "The site's title, language and further languages, theme, web address, whether it's a podcast, how many pages it has (posts included, and how many of them are posts), and what changed since the last version."
     )]
     async fn site_info(&self) -> Reply {
         let site = site::open(&self.root).map_err(text)?;
@@ -197,6 +206,13 @@ impl Qed {
                 "none"
             },
         );
+        if !config.languages.is_empty() {
+            let codes: Vec<&str> = config.languages.keys().map(String::as_str).collect();
+            out.push_str(&format!(
+                "Further languages: {} (create_translation makes a page's translation)\n",
+                codes.join(", ")
+            ));
+        }
         if !status.tracked {
             out.push_str("History: none; changes aren't recorded as versions.\n");
         } else if status.open || !status.changes.is_empty() {
@@ -287,16 +303,26 @@ impl Qed {
                 .map_err(text)?;
             self.record()?;
             let (_, stamp) = editing::page_text(&self.root, Path::new(&file)).map_err(text)?;
-            return Ok(format!("Saved {file}. New stamp: {stamp}"));
+            let notes = qed_core::page::parse(&content)
+                .map(|parsed| editing::icon_notes(&self.root, &parsed, &content))
+                .unwrap_or_default();
+            return Ok(with_notes(
+                format!("Saved {file}. New stamp: {stamp}"),
+                &notes,
+            ));
         }
         let page = editing::write_page_text(&self.root, Path::new(&file), &content, &stamp)
             .map_err(text)?;
         self.record()?;
         let (_, stamp) = editing::page_text(&self.root, &page.file).map_err(text)?;
-        Ok(format!(
-            "Saved /{} ({} blocks). New stamp: {stamp}",
-            page.path,
-            page.content.blocks.len()
+        let notes = editing::icon_notes(&self.root, &page.content, &content);
+        Ok(with_notes(
+            format!(
+                "Saved /{} ({} blocks). New stamp: {stamp}",
+                page.path,
+                page.content.blocks.len()
+            ),
+            &notes,
         ))
     }
 
@@ -326,6 +352,25 @@ impl Qed {
         let (content, stamp) = editing::page_text(&self.root, &page.file).map_err(text)?;
         Ok(format!(
             "Made /{} in {}.\nstamp: {stamp}\n\n{content}",
+            page.path,
+            page.file.display()
+        ))
+    }
+
+    #[tool(
+        description = "Makes a page's translation into one of the site's further languages (`[languages.en]` in site.toml; add the language with write_settings first): `pages/about.en.md` beside `pages/about.md`, at /en/about. It starts as a draft copy of the page; translate it with write_page and take out `draft = true` when it's done, or it isn't on the website. Returns the new file, text and stamp."
+    )]
+    async fn create_translation(
+        &self,
+        Parameters(Translation { file, language }): Parameters<Translation>,
+    ) -> Reply {
+        let site = site::open(&self.root).map_err(text)?;
+        let page =
+            site::create_translation(&site, Path::new(&file), language.trim()).map_err(text)?;
+        self.record()?;
+        let (content, stamp) = editing::page_text(&self.root, &page.file).map_err(text)?;
+        Ok(format!(
+            "Made /{} in {} (a draft).\nstamp: {stamp}\n\n{content}",
             page.path,
             page.file.display()
         ))
@@ -609,6 +654,15 @@ fn full_guide() -> String {
         qed_core::theme::THEMES.join(", "),
         qed_core::icons::count()
     )
+}
+
+/// A tool's answer with notes to act on after it, if there are any.
+fn with_notes(answer: String, notes: &[String]) -> String {
+    if notes.is_empty() {
+        answer
+    } else {
+        format!("{answer}\n\nTo fix:\n- {}", notes.join("\n- "))
+    }
 }
 
 /// How many of the site's pages are posts: those with a date.

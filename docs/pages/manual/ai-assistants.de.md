@@ -28,6 +28,9 @@ boxed = true
 :::
 
 - Seiten und Beiträge lesen, schreiben und anlegen, mit allen Blöcken
+- eine Sprache hinzufügen und Seiten in sie übersetzen (siehe
+  [Einstellungen der Seite](site-settings.md)); jede Übersetzung beginnt
+  als Entwurf, wie wenn Sie **Translate** drücken
 - einer Seite eine neue Adresse geben (Links und Weiterleitungen
   erledigt q.e.d., wie beim Verschieben in der App)
 - Seiten löschen, auf die nichts verlinkt, und Bilder und Dateien, die

@@ -139,6 +139,54 @@ pub fn write_part_text(root: &Path, file: &Path, text: &str, stamp: &str) -> Res
     replace_checked(root, file, &now, text)
 }
 
+/// Notes for `:icon-name:` in a page's text (`raw`, parsed as `content`)
+/// that won't become an icon on the website: names that neither q.e.d.
+/// nor the site (`media/icons/`) has, and icons written where the page
+/// shows plain text (a title, a headline, a button label, a question),
+/// since only Markdown text turns them into icons. Without these notes an
+/// assistant only learns it from the owner, who sees `:icon-…:` as text.
+pub fn icon_notes(root: &Path, content: &page::PageContent, raw: &str) -> Vec<String> {
+    if !raw.contains(":icon-") {
+        return Vec::new();
+    }
+    let site_icons = crate::icons::SiteIcons::load(&root.join(site::MEDIA_DIR));
+    let mut shown: Vec<&str> = site::markdown_texts(&content.blocks);
+    shown.extend(content.front.summary.as_deref());
+
+    let mut notes = Vec::new();
+    let mut unknown: Vec<String> = shown
+        .iter()
+        .flat_map(|text| crate::markdown::unknown_icons(text, &site_icons))
+        .collect();
+    unknown.sort();
+    unknown.dedup();
+    for name in unknown {
+        notes.push(format!(
+            "There is no icon \"{name}\", so `:icon-{name}:` shows as text; find_icons finds the names."
+        ));
+    }
+
+    // Each name as often as Markdown text has it; what's left over in the
+    // whole file is in a field that shows plain text.
+    let mut left: Vec<&str> = crate::markdown::icon_names(raw);
+    for name in shown
+        .iter()
+        .flat_map(|text| crate::markdown::icon_names(text))
+    {
+        if let Some(index) = left.iter().position(|left| *left == name) {
+            left.remove(index);
+        }
+    }
+    left.sort_unstable();
+    left.dedup();
+    for name in left {
+        notes.push(format!(
+            "`:icon-{name}:` is in a field that shows plain text (a title, headline, button label, question or column title), so it shows as text there. Icons work in Markdown text: Text blocks, the `text` of hero, call-to-action and text-image, image captions, FAQ answers and `summary`. A page's `icon` setting puts an icon beside it in menus."
+        ));
+    }
+    notes
+}
+
 /// The text of `site.toml`, the site's settings, with a stamp like
 /// [`page_text`]'s.
 pub fn settings_text(root: &Path) -> Result<(String, String), EditError> {
@@ -270,6 +318,24 @@ mod tests {
         // The stamp from before that write no longer fits.
         let error = write_page_text(root, file, new, &stamp).unwrap_err();
         assert!(matches!(error, EditError::Changed { .. }), "{error}");
+    }
+
+    #[test]
+    fn notes_icons_that_stay_text() {
+        let dir = site();
+        let raw = "+++\ntitle = \"Home\"\n+++\n\nCall :icon-phone: or :icon-telephon:.\n\n\
+                   ::: hero\nheadline = \":icon-heart: Welcome\"\ntext = \"With :icon-heart:\"\n:::\n";
+        let content = page::parse(raw).unwrap();
+        let notes = icon_notes(dir.path(), &content, raw);
+        assert_eq!(notes.len(), 2, "{notes:?}");
+        assert!(notes[0].contains("no icon \"telephon\""), "{notes:?}");
+        assert!(
+            notes[1].contains("`:icon-heart:` is in a field"),
+            "{notes:?}"
+        );
+
+        let fine = "+++\ntitle = \"Home\"\n+++\n\nCall :icon-phone:.\n";
+        assert!(icon_notes(dir.path(), &page::parse(fine).unwrap(), fine).is_empty());
     }
 
     #[test]

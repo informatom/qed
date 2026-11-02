@@ -271,3 +271,74 @@ fn reaches_static_files_the_footer_and_the_settings() {
     );
     assert!(root.join("_site/pdf/33C3.pdf").is_file());
 }
+
+/// The stamp at the top of a read_page, create_page or read_settings answer.
+fn stamp_of(answer: &str) -> String {
+    answer
+        .lines()
+        .find_map(|line| line.strip_prefix("stamp: "))
+        .unwrap()
+        .to_string()
+}
+
+#[test]
+fn makes_a_site_in_two_languages_and_notes_icons_that_stay_text() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    std::fs::write(
+        root.join("site.toml"),
+        "title = \"Test\"\nlanguage = \"de\"\n",
+    )
+    .unwrap();
+    std::fs::create_dir_all(root.join("pages")).unwrap();
+    std::fs::write(
+        root.join("pages/index.md"),
+        "+++\ntitle = \"Start\"\n+++\n\nHallo.\n",
+    )
+    .unwrap();
+    let mut session = Session::start(root);
+
+    // Not a language of the site yet: refused, with how to add it.
+    let (refused, failed) = session.call(
+        "create_translation",
+        json!({"file": "pages/index.md", "language": "en"}),
+    );
+    assert!(failed && refused.contains("languages"), "{refused}");
+
+    let (settings, _) = session.call("read_settings", json!({}));
+    let (saved, failed) = session.call(
+        "write_settings",
+        json!({"text": "title = \"Test\"\nlanguage = \"de\"\n\n[languages.en]\ntitle = \"Test\"\n",
+               "stamp": stamp_of(&settings)}),
+    );
+    assert!(!failed, "{saved}");
+    let (info, _) = session.call("site_info", json!({}));
+    assert!(info.contains("Further languages: en"), "{info}");
+
+    let (made, failed) = session.call(
+        "create_translation",
+        json!({"file": "pages/index.md", "language": "en"}),
+    );
+    assert!(
+        !failed && made.starts_with("Made /en in pages/index.en.md"),
+        "{made}"
+    );
+    assert!(made.contains("draft = true"), "{made}");
+
+    // Translated and out of draft, with one icon in a headline and one
+    // that doesn't exist: both come back as notes.
+    let text = "+++\ntitle = \"Home\"\n+++\n\nHello :icon-telephon:.\n\n\
+                ::: hero\nheadline = \":icon-heart: Welcome\"\n:::\n";
+    let (saved, failed) = session.call(
+        "write_page",
+        json!({"file": "pages/index.en.md", "text": text, "stamp": stamp_of(&made)}),
+    );
+    assert!(!failed, "{saved}");
+    assert!(saved.contains("To fix:"), "{saved}");
+    assert!(saved.contains("no icon \"telephon\""), "{saved}");
+    assert!(saved.contains("`:icon-heart:` is in a field"), "{saved}");
+
+    let (built, failed) = session.call("build_site", json!({}));
+    assert!(!failed, "{built}");
+    assert!(root.join("_site/en/index.html").is_file());
+}

@@ -27,6 +27,9 @@ boxed = true
 :::
 
 - read, write and make pages and posts, with all blocks
+- add a language and translate pages into it (see
+  [Site settings](site-settings.md)); each translation starts as a
+  draft, like when you press **Translate**
 - give a page a new address (links and redirects are taken care of, as
   when you move a page in q.e.d.)
 - delete pages that nothing links to, and pictures and files that
