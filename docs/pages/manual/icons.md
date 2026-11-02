@@ -29,8 +29,11 @@ and :icon-heart-filled: `heart-filled`.
 ## In text
 
 Write the icon's name between colons and `icon-`: `:icon-phone:` gives
-:icon-phone:. It works in every block with text: a Text block, a column,
-an FAQ answer, the footer. A line like
+:icon-phone:. It works wherever you write text: a Text block (also in a
+column or the footer), the text of a Hero, Call to action or Text with
+image, an image's caption, an FAQ answer and a page's **Summary**. In
+headlines, titles, button labels and FAQ questions it stays as text;
+for an icon next to a page in menus, see below. A line like
 
 ```text
 :icon-phone: 01 234 56 78 · :icon-mail: hello@example.com

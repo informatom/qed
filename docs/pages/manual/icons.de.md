@@ -30,9 +30,13 @@ mit ihren Namen. Der Name eines gefüllten Icons endet auf `-filled`:
 ## Im Text
 
 Schreiben Sie den Namen des Icons zwischen Doppelpunkte und `icon-`:
-`:icon-phone:` ergibt :icon-phone:. Das funktioniert in jedem Block mit
-Text: einem Block Text, einer Spalte, einer FAQ-Antwort, der Fußzeile.
-Eine Zeile wie
+`:icon-phone:` ergibt :icon-phone:. Das funktioniert überall, wo Sie
+Text schreiben: in einem Block Text (auch in einer Spalte oder der
+Fußzeile), im Text von Hero, Call to action und Text with image, in der
+Bildunterschrift, in einer FAQ-Antwort und im Feld **Summary** einer
+Seite. In Überschriften, Titeln, Beschriftungen von Schaltflächen und
+FAQ-Fragen bleibt es Text; für ein Icon neben einer Seite in Menüs
+siehe unten. Eine Zeile wie
 
 ```text
 :icon-phone: 01 234 56 78 · :icon-mail: hallo@example.com
