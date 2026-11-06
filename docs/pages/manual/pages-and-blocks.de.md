@@ -175,6 +175,9 @@ Der Tab **Settings** einer Seite:
   einen Kurs, den man der Reihe nach liest. Beiträge bekommen stattdessen
   **Older** und **Newer**, wie in einem Blog. Dieses Handbuch und seine
   Seiten funktionieren so.
+- **Include in the PDF of the site**: an, solange Sie es nicht
+  ausschalten, für eine Seite, die niemand auf Papier braucht, etwa eine
+  lange Liste (siehe [Bilder und Dateien](pictures-and-files.md)).
 - **Icon**: neben der Seite in Menüs gezeigt.
 - Für Beiträge: **Date**, **Authors**, **Tags** und eine **Summary** für
   Beitragslisten.

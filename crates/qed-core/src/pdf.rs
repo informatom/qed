@@ -253,6 +253,7 @@ impl<'a> Book<'a> {
         let pages: Vec<&Page> = published
             .into_iter()
             .filter(|page| page.language.as_deref() == language)
+            .filter(|page| page.content.front.pdf != Some(false))
             .filter(|page| {
                 page.content
                     .front
@@ -309,7 +310,7 @@ impl<'a> Book<'a> {
     /// The pages in the order of the book, each with its heading level:
     /// the start page, the tree of pages by weight and title, then a
     /// chapter for each page that has posts below it, with its own pages,
-    /// then its posts, newest first.
+    /// then its posts, oldest first.
     fn order(&self) -> Vec<Entry<'a>> {
         let main = |page: &Page| page.main_path().to_string();
         let (posts, others): (Vec<&Page>, Vec<&Page>) = self
@@ -338,13 +339,15 @@ impl<'a> Book<'a> {
             }
             posts_of.entry(parent).or_default().push(post);
         }
+        // Oldest first: a book is read forward, unlike the website's
+        // lists, which start with the newest.
         for list in posts_of.values_mut() {
             list.sort_by(|a, b| {
                 let key = |page: &Page| page.content.front.date.as_ref().and_then(|d| d.sort_key());
-                key(b)
-                    .cmp(&key(a))
-                    .then_with(|| b.content.front.weight.cmp(&a.content.front.weight))
-                    .then_with(|| podcast::same_day_order(b).cmp(&podcast::same_day_order(a)))
+                key(a)
+                    .cmp(&key(b))
+                    .then_with(|| a.content.front.weight.cmp(&b.content.front.weight))
+                    .then_with(|| podcast::same_day_order(a).cmp(&podcast::same_day_order(b)))
                     .then_with(|| a.path.cmp(&b.path))
             });
         }
@@ -1667,7 +1670,7 @@ impl<'n> Text<'_, '_, 'n> {
                         align.join(", ")
                     )
                 } else {
-                    rows.join("\n#v(-0.6em, weak: true)\n")
+                    rows.join("\n")
                 }
             }
             // Footnotes go where they're referred to.
@@ -1995,8 +1998,8 @@ mod tests {
         fs::write(path, text).unwrap();
     }
 
-    /// A start page, two pages with one below the first, a blog with two
-    /// posts, one from the future and a draft.
+    /// A start page, two pages with one below the first, one left out of
+    /// the PDF, a blog with two posts, one from the future and a draft.
     fn site_in(dir: &Path) -> Site {
         write(
             dir,
@@ -2076,8 +2079,8 @@ mod tests {
             "#heading(level: 2)[History]",
             "#heading(level: 1)[Contact]",
             "#heading(level: 1)[Blog]",
-            "#heading(level: 2)[New]",
             "#heading(level: 2)[Old]",
+            "#heading(level: 2)[New]",
         ];
         for pair in order.windows(2) {
             assert!(position(pair[0]) < position(pair[1]), "{pair:?}");
@@ -2086,6 +2089,7 @@ mod tests {
         assert!(!markup.contains("Later"), "no posts from the future");
         assert!(!markup.contains("Draft"));
         assert!(!markup.contains("[Home]"), "only the main language");
+        assert!(!markup.contains("Long list"), "pdf = false leaves it out");
     }
 
     #[test]

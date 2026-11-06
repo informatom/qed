@@ -4,6 +4,7 @@ description = "The 971 Rust libraries and the JavaScript packages q.e.d. is buil
 menu = "main"
 weight = 95
 summary = "Everything q.e.d. is built from, with versions and licenses."
+pdf = false
 +++
 
 q.e.d. is made of its own code and of the work of many others: **971

@@ -39,6 +39,7 @@ All page settings; only `title` is required, and settings left out take their de
 - `hide_title = true`: no title above the content, for a page that opens with a heading of its own.
 - `menu`: "main" or "footer", for the menus q.e.d. makes by itself. `weight`: order among sibling pages, lower first. `icon`: an icon name (see Icons below; find_icons finds them), shown in menus.
 - `back_next = true`: the pages below this one get links to the one before and after ("Older"/"Newer" for posts).
+- `pdf = false`: the page is left out of the site's PDF (Make PDF of the site in the Downloads tab); leave it out otherwise.
 - `redirect_from`: earlier addresses of the page, which then lead to it: `["/2016/10/02/beginn.html", "/old-about"]`. Slashes at either end don't matter. An address ending in `.html` becomes that file, any other a folder with an `index.html`. Only for addresses of pages: an old address of a PDF or image can't be a redirect.
 - `episode`: a table that makes the page a podcast episode; edit episodes in the app.
 

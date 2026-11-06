@@ -1169,7 +1169,9 @@ rest is done.
   Title page, table of contents and bookmarks of two levels, pages in
   menu order (each top-level page on a new page), then a chapter per
   page with posts below it: its own content and pages, then the posts,
-  newest first. Blocks in print: columns as a grid, call to action
+  oldest first (the user, after reading it: a book reads forward).
+  Pages with `pdf = false` (page setting **Include in the PDF of the
+  site**, on by default) stay out; the Libraries page has it. Blocks in print: columns as a grid, call to action
   framed, FAQ open, player as a link to the episode page, chapters as a
   table, transcripts in small type; links to other sites with their
   address in a footnote (not in tables). Photos larger than 1600 px get

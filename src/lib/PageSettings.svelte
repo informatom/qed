@@ -314,6 +314,12 @@
           <input id="setting-back-next" type="checkbox" class="toggle" bind:checked={form.back_next} />
           <span class="text-sm">Back and next links on the pages below (Older and newer for posts)</span>
         </label>
+        <label class="flex items-center gap-3">
+          <!-- `pdf = false` only for pages left out; ticked writes nothing. -->
+          <input id="setting-pdf" type="checkbox" class="toggle" checked={form.pdf !== false}
+            onchange={(event) => (form.pdf = event.currentTarget.checked ? null : false)} />
+          <span class="text-sm">Include in the PDF of the site</span>
+        </label>
       </div>
 
       <fieldset class="flex flex-col gap-2 @xl:col-span-2">

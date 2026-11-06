@@ -76,6 +76,11 @@ export const commands = {
 	 *  them (#136): "Back"/"Next" in their order, "Older"/"Newer" for posts.
 	 */
 	back_next?: boolean,
+	/**
+	 *  `false` leaves the page out of the site's PDF (#154), such as a
+	 *  long list nobody prints; empty means it's in.
+	 */
+	pdf: boolean | null,
 	menu?: Menu,
 	/**  A Tabler icon name from qed's set, shown in menus: `icon = "book"`. */
 	icon: string | null,
@@ -832,6 +837,11 @@ export type FrontMatter = {
 	 *  them (#136): "Back"/"Next" in their order, "Older"/"Newer" for posts.
 	 */
 	back_next?: boolean,
+	/**
+	 *  `false` leaves the page out of the site's PDF (#154), such as a
+	 *  long list nobody prints; empty means it's in.
+	 */
+	pdf: boolean | null,
 	menu?: Menu,
 	/**  A Tabler icon name from qed's set, shown in menus: `icon = "book"`. */
 	icon: string | null,

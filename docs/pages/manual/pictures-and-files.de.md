@@ -99,8 +99,9 @@ Inhaltsverzeichnis der obersten zwei Ebenen von Seiten, mit
 Seitenzahlen; PDF-Programme zeigen sie auch als Lesezeichen. Dann folgen
 die Seiten in der Reihenfolge der Website, jede Seite der obersten Ebene
 auf einer neuen Seite, und nach ihnen die Beiträge und Episoden, die
-neuesten zuerst, in einem eigenen Kapitel nach der Seite, die sie
-auflistet (etwa dem Blog).
+ältesten zuerst, in einem eigenen Kapitel nach der Seite, die sie
+auflistet (etwa dem Blog), damit man sie wie ein Tagebuch vorwärts
+liest.
 
 Das PDF ist schlichter schwarzer Text auf Weiß, ohne die Farben,
 Schriften und das Logo der Website. Bilder, Tabellen, Formeln, Diagramme
@@ -115,7 +116,8 @@ Sie es mit einem Block **Download** an. Eine Website in mehreren
 Sprachen bekommt ein PDF pro Sprache (`meine-seite-en.pdf`). Klicken Sie
 nach Änderungen an den Seiten noch einmal, um es auf den neuesten Stand
 zu bringen; Entwürfe und Beiträge mit einem Datum in der Zukunft bleiben
-draußen.
+draußen, ebenso Seiten, bei denen **Include in the PDF of the site**
+ausgeschaltet ist.
 
 ::: faq
 [[items]]

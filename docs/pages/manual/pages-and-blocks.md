@@ -157,6 +157,9 @@ The **Settings** tab of a page:
   get links to the page before and after them at the bottom, for a
   manual or a course read in order. Posts get **Older** and **Newer**
   instead, as on a blog. This manual and its pages work that way.
+- **Include in the PDF of the site**: on unless you switch it off, for a
+  page nobody needs on paper, such as a long list (see
+  [Pictures and files](pictures-and-files.md)).
 - **Icon**: shown next to the page in menus.
 - For posts: **Date**, **Authors**, **Tags** and a **Summary** for lists
   of posts.
