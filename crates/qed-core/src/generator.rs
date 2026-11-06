@@ -1069,7 +1069,7 @@ fn feed_sources<'a>(pages: &[&'a Page], today: Date) -> Vec<&'a Page> {
 
 /// The page whose feed has the post at `path`: the one above it, past
 /// pages named by a date (`2026`, `2026-10`, `2026-10-21`).
-fn feed_parent(path: &str) -> &str {
+pub(crate) fn feed_parent(path: &str) -> &str {
     let mut parent = path.rsplit_once('/').map_or("", |(up, _)| up);
     while let Some(last) = parent.rsplit('/').next().filter(|_| !parent.is_empty())
         && is_date_name(last)
@@ -2853,7 +2853,7 @@ struct FaqEntry {
 
 /// The cues of an episode's transcript; none without one, or when its
 /// file can't be read (the build notes that, see `audio_notes`).
-fn transcript(site: &Site, episode: &podcast::Episode) -> Vec<podcast::Cue> {
+pub(crate) fn transcript(site: &Site, episode: &podcast::Episode) -> Vec<podcast::Cue> {
     episode
         .transcript
         .as_deref()
@@ -2873,12 +2873,12 @@ fn transcript(site: &Site, episode: &podcast::Episode) -> Vec<podcast::Cue> {
 
 /// A paragraph of a transcript on an episode page: what one voice says
 /// until the next one speaks.
-struct TranscriptParagraph {
+pub(crate) struct TranscriptParagraph {
     /// When it starts, in whole seconds, "01:02:03".
-    start: String,
+    pub(crate) start: String,
     /// The speaker's name, if the file names them.
-    voice: Option<String>,
-    text: String,
+    pub(crate) voice: Option<String>,
+    pub(crate) text: String,
 }
 
 /// A pause longer than this starts a new paragraph of a transcript.
@@ -2892,7 +2892,7 @@ const PARAGRAPH_MAX_MS: u64 = 60_000;
 /// pause, or after a minute. Transcripts without voices (Whisper's, say)
 /// would otherwise be one paragraph. The name shows only when the voice
 /// changes.
-fn paragraphs(cues: &[podcast::Cue]) -> Vec<TranscriptParagraph> {
+pub(crate) fn paragraphs(cues: &[podcast::Cue]) -> Vec<TranscriptParagraph> {
     let mut out: Vec<TranscriptParagraph> = Vec::new();
     // The voice, start and end of the paragraph being written.
     let mut current: Option<(&str, u64, u64)> = None;
@@ -3840,7 +3840,7 @@ fn list_source<'a>(from: &'a Option<String>, links: &'a LinkContext) -> &'a str 
 /// The pages one level below the page at `parent` that aren't posts, by
 /// weight, then title. Titles compare by their slug, so `André` sorts next
 /// to `Andreas` and not after `Z`.
-fn children<'a>(pages: &[&'a Page], parent: &str) -> Vec<&'a Page> {
+pub(crate) fn children<'a>(pages: &[&'a Page], parent: &str) -> Vec<&'a Page> {
     let mut children: Vec<(String, &Page)> = pages
         .iter()
         .copied()
@@ -4104,7 +4104,7 @@ fn format_size(bytes: u64) -> String {
 
 /// The file inside `media/` an image field points to: `team.jpg` or
 /// `/media/team.jpg`. Full URLs and other site paths aren't media files.
-fn media_name(image: &str) -> Option<&str> {
+pub(crate) fn media_name(image: &str) -> Option<&str> {
     if image.contains(':') {
         None
     } else if let Some(name) = image.strip_prefix("/media/") {

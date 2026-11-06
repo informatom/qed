@@ -54,6 +54,7 @@ export type Page = Sent<Rust.Page>;
 export type PreviewInfo = Sent<Rust.PreviewInfo>;
 export type Progress = Sent<Rust.Progress>;
 export type PublishReport = Sent<Rust.PublishReport>;
+export type PdfReport = Sent<Rust.PdfReport>;
 export type SecretStatus = Sent<Rust.SecretStatus>;
 export type Site = Sent<Rust.Site>;
 export type SiteConfig = Sent<Rust.SiteConfig>;

@@ -371,6 +371,8 @@ export const commands = {
 	cloneSite: (url: string, folder: string, hostKey: string | null, onProgress: Channel<Transfer>) => __TAURI_INVOKE<RemoteOutcome>("clone_site", { url, folder, hostKey, onProgress }),
 	/**  Builds the site at `path` into its `_site` folder. */
 	buildSite: (path: string) => __TAURI_INVOKE<BuildReport>("build_site", { path }),
+	/**  Makes the whole site into PDFs in `assets/`, one per language (#154). */
+	exportPdf: (root: string) => __TAURI_INVOKE<PdfReport>("export_pdf", { root }),
 	/**  Builds the site and serves it locally. */
 	previewSite: (path: string) => __TAURI_INVOKE<PreviewInfo>("preview_site", { path }),
 };
@@ -1091,6 +1093,26 @@ export type PageList = {
  *  (72rem, for columns) or the full window.
  */
 export type PageWidth = "normal" | "wide" | "full";
+
+/**  One PDF that was made. */
+export type PdfFile = {
+	/**  The file name in `assets/`. */
+	name: string,
+	/**  The language it's in, `None` for the main one. */
+	language: string | null,
+	pages: number,
+	/**  Its size in bytes. */
+	size: number,
+};
+
+/**
+ *  What [`export`] did: the PDFs it wrote, and what didn't make it into
+ *  them.
+ */
+export type PdfReport = {
+	files: PdfFile[],
+	notes: string[],
+};
 
 /**
  *  The settings of the site's podcast. Having them turns on episodes and

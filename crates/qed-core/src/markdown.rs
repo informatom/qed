@@ -454,7 +454,7 @@ fn escape(text: &str) -> String {
         .replace('>', "&gt;")
 }
 
-fn options() -> Options<'static> {
+pub(crate) fn options() -> Options<'static> {
     let mut options = Options::default();
     options.extension.strikethrough = true;
     options.extension.table = true;

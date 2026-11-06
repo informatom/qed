@@ -1,12 +1,12 @@
 +++
 title = "Libraries"
-description = "The 773 Rust libraries and the JavaScript packages q.e.d. is built from, with their versions and licenses."
+description = "The 971 Rust libraries and the JavaScript packages q.e.d. is built from, with their versions and licenses."
 menu = "main"
 weight = 95
 summary = "Everything q.e.d. is built from, with versions and licenses."
 +++
 
-q.e.d. is made of its own code and of the work of many others: **773
+q.e.d. is made of its own code and of the work of many others: **971
 Rust libraries** for the program, and a few JavaScript packages for its
 screens. Each is open source, and each license allows q.e.d. to use it
 and to pass it on. This page lists them all, for this version of
@@ -19,33 +19,35 @@ may use either. How often each license (or choice of licenses) occurs:
 
 | License | Libraries |
 | --- | --- |
-| Apache-2.0 OR MIT | 493 |
-| MIT | 158 |
-| Apache-2.0 OR MIT OR Zlib | 24 |
-| Unicode-3.0 | 18 |
-| MIT OR Unlicense | 12 |
-| Apache-2.0 | 10 |
-| BSD-3-Clause | 8 |
+| Apache-2.0 OR MIT | 602 |
+| MIT | 196 |
+| Apache-2.0 | 34 |
+| Unicode-3.0 | 27 |
+| Apache-2.0 OR MIT OR Zlib | 25 |
+| MIT OR Unlicense | 14 |
+| BSD-3-Clause | 10 |
+| Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 8 |
 | MPL-2.0 | 8 |
-| Zlib | 6 |
-| Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 5 |
-| (MIT OR Apache-2.0) AND Unicode-3.0 | 3 |
+| Zlib | 7 |
+| BSD-2-Clause | 5 |
+| (MIT OR Apache-2.0) AND Unicode-3.0 | 4 |
+| Apache-2.0 OR BSD-3-Clause | 3 |
 | Apache-2.0 OR ISC OR MIT | 3 |
 | ISC | 3 |
-| Apache-2.0 OR BSD-3-Clause | 2 |
+| Apache-2.0 OR BSD-2-Clause OR MIT | 2 |
 | Apache-2.0 OR BSD-3-Clause OR MIT | 2 |
 | Apache-2.0 OR LGPL-2.1-or-later OR MIT | 2 |
-| BSD-2-Clause | 2 |
+| Apache-2.0 WITH LLVM-exception | 2 |
 | BlueOak-1.0.0 | 2 |
 | (Apache-2.0 OR MIT) AND BSD-3-Clause | 1 |
 | (MIT OR Apache-2.0) AND Unicode-DFS-2016 | 1 |
 | 0BSD OR Apache-2.0 OR MIT | 1 |
+| 0BSD OR CC0-1.0 | 1 |
 | Apache-2.0 AND ISC | 1 |
 | Apache-2.0 AND MIT | 1 |
 | Apache-2.0 OR BSD-1-Clause OR MIT | 1 |
 | Apache-2.0 OR BSL-1.0 | 1 |
 | Apache-2.0 OR CC0-1.0 OR MIT-0 | 1 |
-| Apache-2.0 WITH LLVM-exception | 1 |
 | BSD-3-Clause AND MIT | 1 |
 | BSD-3-Clause OR MIT | 1 |
 | CDLA-Permissive-2.0 | 1 |
@@ -68,8 +70,10 @@ below are what these need in turn.
 | [git2](https://crates.io/crates/git2) | 0.21.0 | Apache-2.0 OR MIT | Bindings to libgit2 for interoperating with git repositories. This library is both threadsafe and memory safe and allows both reading and writing git… |
 | [image](https://crates.io/crates/image) | 0.25.10 | Apache-2.0 OR MIT | Imaging library. Provides basic image processing and encoders/decoders for common image formats. |
 | [include_dir](https://crates.io/crates/include_dir) | 0.7.4 | MIT | Embed the contents of a directory in your binary |
+| [jiff](https://crates.io/crates/jiff) | 0.2.38 | MIT OR Unlicense | A date-time library that encourages you to jump into the pit of success. This library is heavily inspired by the Temporal project. |
 | [keyring](https://crates.io/crates/keyring) | 4.2.0 | Apache-2.0 OR MIT | All-in-One Rust Keyring |
 | [lofty](https://crates.io/crates/lofty) | 0.25.5 | Apache-2.0 OR MIT | Audio metadata library |
+| [mitex](https://crates.io/crates/mitex) | 0.2.4 | Apache-2.0 | MiTeX is a TeX2Typst converter. |
 | [pagefind](https://crates.io/crates/pagefind) | 1.5.2 | MIT | Implement search on any static website. |
 | [pulldown-latex](https://crates.io/crates/pulldown-latex) | 0.8.0 | MIT | Pull parser to convert LaTeX equations to MathML |
 | [reqwest](https://crates.io/crates/reqwest) | 0.13.5 | Apache-2.0 OR MIT | higher level HTTP client library |
@@ -96,6 +100,9 @@ below are what these need in turn.
 | [toml](https://crates.io/crates/toml) | 1.1.8+spec-1.1.0 | Apache-2.0 OR MIT | A native Rust encoder and decoder of TOML-formatted files and streams. Provides implementations of the standard Serialize/Deserialize traits for TOML data to… |
 | [toml_edit](https://crates.io/crates/toml_edit) | 0.25.17+spec-1.1.0 | Apache-2.0 OR MIT | Yet another format-preserving TOML parser. |
 | [two-face](https://crates.io/crates/two-face) | 0.5.2+bat-0.26.1 | Apache-2.0 OR MIT | Extra syntax and theme definitions for syntect |
+| [typst](https://crates.io/crates/typst) | 0.15.1 | Apache-2.0 | A new markup-based typesetting system that is powerful and easy to learn. |
+| [typst-layout](https://crates.io/crates/typst-layout) | 0.15.1 | Apache-2.0 | Typst's layout engine. |
+| [typst-pdf](https://crates.io/crates/typst-pdf) | 0.15.1 | Apache-2.0 | PDF exporter for Typst. |
 | [uuid](https://crates.io/crates/uuid) | 1.28.0 | Apache-2.0 OR MIT | A library to generate and parse UUIDs. |
 | [webp](https://crates.io/crates/webp) | 0.3.1 | Apache-2.0 OR MIT | WebP conversion library. |
 
@@ -139,7 +146,7 @@ every website too.
 
 ## All Rust libraries
 
-All 773 of them, by name. Some appear twice, in two versions, when
+All 971 of them, by name. Some appear twice, in two versions, when
 libraries need different ones. Many are only used on one system
 (Windows, macOS or Linux).
 
@@ -150,6 +157,7 @@ libraries need different ones. Many are only used on one system
 | [aead](https://crates.io/crates/aead) | 0.6.1 | Apache-2.0 OR MIT | Traits for Authenticated Encryption with Associated Data (AEAD) algorithms, such as AES-GCM as ChaCha20Poly1305, which provide a high-level API |
 | [aes](https://crates.io/crates/aes) | 0.9.3 | Apache-2.0 OR MIT | Pure Rust implementation of the Advanced Encryption Standard (a.k.a. Rijndael) |
 | [aes-gcm](https://crates.io/crates/aes-gcm) | 0.11.1 | Apache-2.0 OR MIT | Pure Rust implementation of the AES-GCM (Galois/Counter Mode) Authenticated Encryption with Associated Data (AEAD) Cipher with optional architecture-specific… |
+| [ahash](https://crates.io/crates/ahash) | 0.7.8 | Apache-2.0 OR MIT | A non-cryptographic hash function using AES-NI for high performance |
 | [aho-corasick](https://crates.io/crates/aho-corasick) | 1.1.5 | MIT OR Unlicense | Fast multiple substring searching. |
 | [alloc-no-stdlib](https://crates.io/crates/alloc-no-stdlib) | 3.0.0 | BSD-3-Clause | A dynamic allocator that may be used with or without the stdlib. This allows a package with nostd to allocate memory dynamically and be used either with a… |
 | [alloc-stdlib](https://crates.io/crates/alloc-stdlib) | 0.3.0 | BSD-3-Clause | A dynamic allocator example that may be used with the stdlib |
@@ -162,9 +170,13 @@ libraries need different ones. Many are only used on one system
 | [anstyle-wincon](https://crates.io/crates/anstyle-wincon) | 3.0.11 | Apache-2.0 OR MIT | Styling legacy Windows terminals |
 | [anyhow](https://crates.io/crates/anyhow) | 1.0.104 | Apache-2.0 OR MIT | Flexible concrete Error type built on std&#58;&#58;error&#58;&#58;Error |
 | [apple-native-keyring-store](https://crates.io/crates/apple-native-keyring-store) | 1.0.2 | Apache-2.0 OR MIT | Apple-native credential store for keyring |
+| [approx](https://crates.io/crates/approx) | 0.5.1 | Apache-2.0 | Approximate floating point equality comparisons and assertions. |
+| [ar_archive_writer](https://crates.io/crates/ar_archive_writer) | 0.5.3 | Apache-2.0 WITH LLVM-exception | A writer for object file ar archives |
 | [arbitrary](https://crates.io/crates/arbitrary) | 1.5.0 | Apache-2.0 OR MIT | The trait for generating structured data from unstructured data |
 | [arc-swap](https://crates.io/crates/arc-swap) | 1.9.3 | Apache-2.0 OR MIT | Atomically swappable Arc |
 | [argon2](https://crates.io/crates/argon2) | 0.6.0 | Apache-2.0 OR MIT | Pure Rust implementation of the Argon2 password hashing function with support for the Argon2d, Argon2i, and Argon2id algorithmic variants |
+| [arrayref](https://crates.io/crates/arrayref) | 0.3.9 | BSD-2-Clause | Macros to take array references of slices |
+| [arrayvec](https://crates.io/crates/arrayvec) | 0.7.8 | Apache-2.0 OR MIT | A vector with fixed capacity, backed by an array (it can be stored on the stack too). Implements fixed capacity ArrayVec and ArrayString. |
 | [ascii](https://crates.io/crates/ascii) | 1.1.0 | Apache-2.0 OR MIT | ASCII-only equivalents to `char`, `str` and `String`. |
 | [askama](https://crates.io/crates/askama) | 0.16.1 | Apache-2.0 OR MIT | Type-safe, compiled Jinja-like templates for Rust |
 | [askama_derive](https://crates.io/crates/askama_derive) | 0.16.1 | Apache-2.0 OR MIT | Code generator of Askama templating engine |
@@ -185,6 +197,7 @@ libraries need different ones. Many are only used on one system
 | [atk-sys](https://crates.io/crates/atk-sys) | 0.18.2 | MIT | UNMAINTAINED FFI bindings to libatk-1 |
 | [atomic-waker](https://crates.io/crates/atomic-waker) | 1.1.2 | Apache-2.0 OR MIT | A synchronization primitive for task wakeup |
 | [autocfg](https://crates.io/crates/autocfg) | 1.5.1 | Apache-2.0 OR MIT | Automatic cfg for Rust compiler features |
+| [az](https://crates.io/crates/az) | 1.3.0 | Apache-2.0 OR MIT | Casts and checked casts. |
 | [base16ct](https://crates.io/crates/base16ct) | 1.0.0 | Apache-2.0 OR MIT | Pure Rust implementation of Base16 a.k.a hexadecimal (RFC 4648) which avoids any usages of data-dependent branches/LUTs and thereby provides portable "best… |
 | [base64](https://crates.io/crates/base64) | 0.21.7 | Apache-2.0 OR MIT | encodes and decodes base64 as bytes or utf8 |
 | [base64](https://crates.io/crates/base64) | 0.22.1 | Apache-2.0 OR MIT | encodes and decodes base64 as bytes or utf8 |
@@ -192,6 +205,8 @@ libraries need different ones. Many are only used on one system
 | [base64ct](https://crates.io/crates/base64ct) | 1.8.3 | Apache-2.0 OR MIT | Pure Rust implementation of Base64 (RFC 4648) which avoids any usages of data-dependent branches/LUTs and thereby provides portable "best effort" constant-time… |
 | [basic-toml](https://crates.io/crates/basic-toml) | 0.1.10 | Apache-2.0 OR MIT | Minimal TOML library with few dependencies |
 | [bcrypt-pbkdf](https://crates.io/crates/bcrypt-pbkdf) | 0.11.0 | Apache-2.0 OR MIT | bcrypt-pbkdf password-based key derivation function |
+| [beef](https://crates.io/crates/beef) | 0.5.2 | Apache-2.0 OR MIT | More compact Cow |
+| [biblatex](https://crates.io/crates/biblatex) | 0.12.0 | Apache-2.0 OR MIT | Parsing, writing, and evaluating BibTeX and BibLaTeX files |
 | [bincode](https://crates.io/crates/bincode) | 1.3.3 | MIT | A binary serialization / deserialization strategy that uses Serde for transforming structs into bytes and vice versa! |
 | [bit-set](https://crates.io/crates/bit-set) | 0.10.0 | Apache-2.0 OR MIT | A set of bits |
 | [bit-set](https://crates.io/crates/bit-set) | 0.8.0 | Apache-2.0 OR MIT | A set of bits |
@@ -199,6 +214,7 @@ libraries need different ones. Many are only used on one system
 | [bit-vec](https://crates.io/crates/bit-vec) | 0.9.1 | Apache-2.0 OR MIT | A vector of bits |
 | [bitflags](https://crates.io/crates/bitflags) | 1.3.2 | Apache-2.0 OR MIT | A macro to generate structures which behave like bitflags. |
 | [bitflags](https://crates.io/crates/bitflags) | 2.13.2 | Apache-2.0 OR MIT | A macro to generate structures which behave like bitflags. |
+| [bitvec](https://crates.io/crates/bitvec) | 1.1.1 | MIT | Addresses memory by bits, for packed collections and bitfields |
 | [blake2](https://crates.io/crates/blake2) | 0.11.0 | Apache-2.0 OR MIT | BLAKE2 hash functions |
 | [block-buffer](https://crates.io/crates/block-buffer) | 0.10.4 | Apache-2.0 OR MIT | Buffer type for block processing of data |
 | [block-buffer](https://crates.io/crates/block-buffer) | 0.12.1 | Apache-2.0 OR MIT | Buffer types for block processing of data |
@@ -210,7 +226,11 @@ libraries need different ones. Many are only used on one system
 | [brotli-decompressor](https://crates.io/crates/brotli-decompressor) | 6.0.1 | BSD-3-Clause OR MIT | A brotli decompressor that with an interface avoiding the rust stdlib. This makes it suitable for embedded devices and kernels. It is designed with a pluggable… |
 | [bs58](https://crates.io/crates/bs58) | 0.5.1 | Apache-2.0 OR MIT | Another Base58 codec implementation. |
 | [bumpalo](https://crates.io/crates/bumpalo) | 3.20.3 | Apache-2.0 OR MIT | A fast bump allocation arena for Rust. |
+| [by_address](https://crates.io/crates/by_address) | 1.2.1 | Apache-2.0 OR MIT | Wrapper for comparing and hashing pointers by address |
+| [bytecheck](https://crates.io/crates/bytecheck) | 0.6.12 | MIT | Derive macro for bytecheck |
+| [bytecheck_derive](https://crates.io/crates/bytecheck_derive) | 0.6.12 | MIT | Derive macro for bytecheck |
 | [bytemuck](https://crates.io/crates/bytemuck) | 1.25.2 | Apache-2.0 OR MIT OR Zlib | A crate for mucking around with piles of bytes. |
+| [bytemuck_derive](https://crates.io/crates/bytemuck_derive) | 1.12.1 | Apache-2.0 OR MIT OR Zlib | derive proc-macros for `bytemuck` |
 | [byteorder](https://crates.io/crates/byteorder) | 1.5.0 | MIT OR Unlicense | Library for reading/writing numbers in big-endian and little-endian. |
 | [byteorder-lite](https://crates.io/crates/byteorder-lite) | 0.1.0 | MIT OR Unlicense | Library for reading/writing numbers in big-endian and little-endian. |
 | [bytes](https://crates.io/crates/bytes) | 1.12.1 | MIT | Types and traits for working with bytes |
@@ -237,17 +257,28 @@ libraries need different ones. Many are only used on one system
 | [chematic-rxn](https://crates.io/crates/chematic-rxn) | 1.2.1 | Apache-2.0 OR MIT | Reaction SMILES/SMIRKS parser and writer for chematic — pure-Rust RDKit alternative |
 | [chematic-smarts](https://crates.io/crates/chematic-smarts) | 1.2.1 | Apache-2.0 OR MIT | SMARTS parser, VF2 subgraph isomorphism and MCS for chematic — pure-Rust RDKit alternative |
 | [chematic-smiles](https://crates.io/crates/chematic-smiles) | 1.2.1 | Apache-2.0 OR MIT | OpenSMILES parser, writer and canonical SMILES for chematic — pure Rust, WASM-compatible |
+| [chinese-number](https://crates.io/crates/chinese-number) | 0.7.8 | MIT | Convert primitive numbers to Chinese numbers, or parse Chinese numbers to primitive numbers. |
+| [chinese-variant](https://crates.io/crates/chinese-variant) | 1.1.6 | MIT | An enum to represent the variants of the Chinese Language. |
 | [chrono](https://crates.io/crates/chrono) | 0.4.45 | Apache-2.0 OR MIT | Date and time library for Rust |
 | [chunked_transfer](https://crates.io/crates/chunked_transfer) | 1.5.0 | Apache-2.0 OR MIT | Encoder and decoder for HTTP chunked transfer coding (RFC 7230 § 4.1) |
+| [ciborium](https://crates.io/crates/ciborium) | 0.2.2 | Apache-2.0 | serde implementation of CBOR using ciborium-basic |
+| [ciborium-io](https://crates.io/crates/ciborium-io) | 0.2.2 | Apache-2.0 | Simplified Read/Write traits for no_std usage |
+| [ciborium-ll](https://crates.io/crates/ciborium-ll) | 0.2.2 | Apache-2.0 | Low-level CBOR codec primitives |
 | [cipher](https://crates.io/crates/cipher) | 0.5.2 | Apache-2.0 OR MIT | Traits for describing block ciphers and stream ciphers |
+| [citationberg](https://crates.io/crates/citationberg) | 0.7.0 | Apache-2.0 OR MIT | A parser for CSL files |
 | [clap](https://crates.io/crates/clap) | 4.6.7 | Apache-2.0 OR MIT | A simple to use, efficient, and full-featured Command Line Argument Parser |
 | [clap_builder](https://crates.io/crates/clap_builder) | 4.6.7 | Apache-2.0 OR MIT | A simple to use, efficient, and full-featured Command Line Argument Parser |
 | [clap_derive](https://crates.io/crates/clap_derive) | 4.6.7 | Apache-2.0 OR MIT | Parse command line argument by defining a struct, derive crate. |
 | [clap_lex](https://crates.io/crates/clap_lex) | 1.1.1 | Apache-2.0 OR MIT | Minimal, flexible command line parser |
 | [cmov](https://crates.io/crates/cmov) | 0.5.4 | Apache-2.0 OR MIT | Conditional move CPU intrinsics which are guaranteed on major platforms (ARM32/ARM64, x86/x86_64, RISC-V) to execute in constant-time and not be rewritten as… |
+| [cobs](https://crates.io/crates/cobs) | 0.3.0 | Apache-2.0 OR MIT | This is an implementation of the Consistent Overhead Byte Stuffing (COBS) algorithm. COBS is an algorithm for transforming a message into an encoding where a… |
+| [codex](https://crates.io/crates/codex) | 0.3.0 | Apache-2.0 | Human-friendly notation for Unicode symbols. |
+| [color](https://crates.io/crates/color) | 0.3.3 | Apache-2.0 OR MIT | A library for representing and manipulating colors |
 | [color_quant](https://crates.io/crates/color_quant) | 1.1.0 | MIT | Color quantization library to reduce n colors to 256 colors. |
 | [colorchoice](https://crates.io/crates/colorchoice) | 1.0.5 | Apache-2.0 OR MIT | Global override of color control |
 | [combine](https://crates.io/crates/combine) | 4.6.9 | MIT | Fast parser combinators on arbitrary streams with zero-copy support. |
+| [comemo](https://crates.io/crates/comemo) | 0.5.1 | Apache-2.0 OR MIT | Incremental computation through constrained memoization. |
+| [comemo-macros](https://crates.io/crates/comemo-macros) | 0.5.1 | Apache-2.0 OR MIT | Procedural macros for comemo. |
 | [compression-codecs](https://crates.io/crates/compression-codecs) | 0.4.46 | Apache-2.0 OR MIT | Adaptors for various compression algorithms. |
 | [compression-core](https://crates.io/crates/compression-core) | 0.4.34 | Apache-2.0 OR MIT | Abstractions for compression algorithms. |
 | [comrak](https://crates.io/crates/comrak) | 0.57.0 | BSD-2-Clause | A 100% CommonMark-compatible GitHub Flavored Markdown parser and formatter |
@@ -265,6 +296,8 @@ libraries need different ones. Many are only used on one system
 | [core-graphics](https://crates.io/crates/core-graphics) | 0.25.0 | Apache-2.0 OR MIT | Bindings to Core Graphics for macOS |
 | [core-graphics-types](https://crates.io/crates/core-graphics-types) | 0.2.0 | Apache-2.0 OR MIT | Bindings for some fundamental Core Graphics types |
 | [core_detect](https://crates.io/crates/core_detect) | 1.0.0 | Apache-2.0 OR MIT | A `no_std` version of the `std&#58;&#58;is_x86_feature_detected!` macro. |
+| [core_maths](https://crates.io/crates/core_maths) | 0.1.1 | MIT | Extension trait for full float functionality in `#[no_std]` backed by `libm`. |
+| [countme](https://crates.io/crates/countme) | 3.0.1 | Apache-2.0 OR MIT | Counts the number of live instances of types |
 | [cpubits](https://crates.io/crates/cpubits) | 0.1.1 | Apache-2.0 OR MIT | Compile-time detection heuristics for the optimal word size to use for the target CPU, which in some cases may differ from its address size a.k.a… |
 | [cpufeatures](https://crates.io/crates/cpufeatures) | 0.2.17 | Apache-2.0 OR MIT | Lightweight runtime CPU feature detection for aarch64, loongarch64, and x86/x86_64 targets, with no_std support and support for mobile targets including Android… |
 | [cpufeatures](https://crates.io/crates/cpufeatures) | 0.3.1 | Apache-2.0 OR MIT | Lightweight runtime CPU feature detection for aarch64, loongarch64, and x86/x86_64 targets, with no_std support and support for mobile targets including Android… |
@@ -273,6 +306,7 @@ libraries need different ones. Many are only used on one system
 | [crossbeam-deque](https://crates.io/crates/crossbeam-deque) | 0.8.8 | Apache-2.0 OR MIT | Concurrent work-stealing deque |
 | [crossbeam-epoch](https://crates.io/crates/crossbeam-epoch) | 0.9.21 | Apache-2.0 OR MIT | Epoch-based garbage collection |
 | [crossbeam-utils](https://crates.io/crates/crossbeam-utils) | 0.8.23 | Apache-2.0 OR MIT | Utilities for concurrent programming |
+| [crunchy](https://crates.io/crates/crunchy) | 0.2.4 | MIT | Crunchy unroller&#58; deterministically unroll constant loops |
 | [crypto-bigint](https://crates.io/crates/crypto-bigint) | 0.7.5 | Apache-2.0 OR MIT | Pure Rust implementation of a big integer library which has been designed from the ground-up for use in cryptographic applications. Provides constant-time… |
 | [crypto-common](https://crates.io/crates/crypto-common) | 0.1.7 | Apache-2.0 OR MIT | Common cryptographic traits |
 | [crypto-common](https://crates.io/crates/crypto-common) | 0.2.2 | Apache-2.0 OR MIT | Common traits used by cryptographic algorithms |
@@ -281,6 +315,8 @@ libraries need different ones. Many are only used on one system
 | [cssparser](https://crates.io/crates/cssparser) | 0.37.0 | MPL-2.0 | Rust implementation of CSS Syntax Level 3 |
 | [cssparser-macros](https://crates.io/crates/cssparser-macros) | 0.6.1 | MPL-2.0 | Procedural macros for cssparser |
 | [cssparser-macros](https://crates.io/crates/cssparser-macros) | 0.7.1 | MPL-2.0 | Procedural macros for cssparser |
+| [csv](https://crates.io/crates/csv) | 1.4.0 | MIT OR Unlicense | Fast CSV parsing with support for serde. |
+| [csv-core](https://crates.io/crates/csv-core) | 0.1.13 | MIT OR Unlicense | Bare bones CSV parsing with no_std support. |
 | [ctor](https://crates.io/crates/ctor) | 1.0.13 | Apache-2.0 OR MIT | Global, no_std-compatible constructors for all platforms that run before main (like C/C++ __attribute__((constructor))) |
 | [ctr](https://crates.io/crates/ctr) | 0.10.1 | Apache-2.0 OR MIT | CTR block modes of operation |
 | [ctutils](https://crates.io/crates/ctutils) | 0.4.3 | Apache-2.0 OR MIT | Constant-time utility library with selection and equality testing support targeting cryptographic applications. Supports `const fn` where appropriate. Built on… |
@@ -291,6 +327,7 @@ libraries need different ones. Many are only used on one system
 | [darling_macro](https://crates.io/crates/darling_macro) | 0.24.1 | MIT | Internal support for a proc-macro library for reading attributes into structs when implementing custom derives. Use https&#58;//crates.io/crates/darling in your… |
 | [dashmap](https://crates.io/crates/dashmap) | 6.2.1 | MIT | Blazing fast concurrent HashMap for Rust. |
 | [data-encoding](https://crates.io/crates/data-encoding) | 2.11.1 | MIT | Efficient and customizable data-encoding functions like base64, base32, and hex |
+| [data-url](https://crates.io/crates/data-url) | 0.3.2 | Apache-2.0 OR MIT | Processing of data&#58; URL according to WHATWG’s Fetch Standard |
 | [dbus](https://crates.io/crates/dbus) | 0.9.12 | Apache-2.0 OR MIT | Bindings to D-Bus, which is a bus commonly used on Linux for inter-process communication. |
 | [defmt](https://crates.io/crates/defmt) | 1.2.0 | Apache-2.0 OR MIT | A highly efficient logging framework that targets resource-constrained devices, like microcontrollers |
 | [defmt-macros](https://crates.io/crates/defmt-macros) | 1.2.0 | Apache-2.0 OR MIT | defmt macros |
@@ -318,6 +355,7 @@ libraries need different ones. Many are only used on one system
 | [dunce](https://crates.io/crates/dunce) | 1.0.5 | Apache-2.0 OR CC0-1.0 OR MIT-0 | Normalize Windows paths to the most compatible format, avoiding UNC where possible |
 | [dyn-clone](https://crates.io/crates/dyn-clone) | 1.0.20 | Apache-2.0 OR MIT | Clone trait that is dyn-compatible |
 | [ecdsa](https://crates.io/crates/ecdsa) | 0.17.0 | Apache-2.0 OR MIT | Pure Rust implementation of the Elliptic Curve Digital Signature Algorithm (ECDSA) as specified in FIPS 186-4 (Digital Signature Standard), implemented… |
+| [ecow](https://crates.io/crates/ecow) | 0.2.6 | Apache-2.0 OR MIT | Compact, clone-on-write vector and string. |
 | [ed25519](https://crates.io/crates/ed25519) | 3.0.0 | Apache-2.0 OR MIT | Edwards Digital Signature Algorithm (EdDSA) over Curve25519 (as specified in RFC 8032) support library providing signature type definitions and PKCS#8 private… |
 | [ed25519-dalek](https://crates.io/crates/ed25519-dalek) | 3.0.0 | BSD-3-Clause | Fast and efficient ed25519 EdDSA key generations, signing, and verification in pure Rust. |
 | [either](https://crates.io/crates/either) | 1.19.0 | Apache-2.0 OR MIT | The enum `Either` with variants `Left` and `Right` is a general purpose sum type with two cases. |
@@ -325,10 +363,13 @@ libraries need different ones. Many are only used on one system
 | [embed-resource](https://crates.io/crates/embed-resource) | 3.0.12 | MIT | A Cargo library to handle compilation and inclusion of Windows resources in the most resilient fashion imaginable |
 | [embed_plist](https://crates.io/crates/embed_plist) | 1.2.2 | Apache-2.0 OR MIT | Embed property list files like Info.plist directly in your executable binary. |
 | [emojis](https://crates.io/crates/emojis) | 0.8.2 | (MIT OR Apache-2.0) AND Unicode-3.0 | ✨ Lookup emoji in *O(1)* time, access metadata and GitHub shortcodes, iterate over all emoji, and more! |
+| [ena](https://crates.io/crates/ena) | 0.14.4 | Apache-2.0 OR MIT | Union-find, congruence closure, and other unification code. Based on code from rustc. |
 | [encode_unicode](https://crates.io/crates/encode_unicode) | 1.0.0 | Apache-2.0 OR MIT | UTF-8 and UTF-16 character types, iterators and related methods for char, u8 and u16. |
 | [encoding_rs](https://crates.io/crates/encoding_rs) | 0.8.42 | (Apache-2.0 OR MIT) AND BSD-3-Clause | A Gecko-oriented implementation of the Encoding Standard |
 | [endi](https://crates.io/crates/endi) | 1.1.1 | MIT | A simple endian-handling library |
 | [entities](https://crates.io/crates/entities) | 1.0.1 | MIT | Provides the raw data needed to convert to and from HTML entities. |
+| [enum-ordinalize](https://crates.io/crates/enum-ordinalize) | 4.4.2 | MIT | This library enables enums to not only obtain the ordinal values of their variants but also allows for the construction of enums from an ordinal value. |
+| [enum-ordinalize-derive](https://crates.io/crates/enum-ordinalize-derive) | 4.4.2 | MIT | This crate provides a procedural macro that enables enums to not only obtain the ordinal values of their variants but also allows for the construction of enums… |
 | [enum_dispatch](https://crates.io/crates/enum_dispatch) | 0.3.13 | Apache-2.0 OR MIT | Near drop-in replacement for dynamic-dispatched method calls with up to 10x the speed |
 | [enumflags2](https://crates.io/crates/enumflags2) | 0.7.12 | Apache-2.0 OR MIT | Enum-based bit flags |
 | [enumflags2_derive](https://crates.io/crates/enumflags2_derive) | 0.7.12 | Apache-2.0 OR MIT | Do not use directly, use the reexport in the `enumflags2` crate. This allows for better compatibility across versions. |
@@ -336,11 +377,13 @@ libraries need different ones. Many are only used on one system
 | [equivalent](https://crates.io/crates/equivalent) | 1.0.3 | Apache-2.0 OR MIT | Traits for key comparison in maps. |
 | [erased-serde](https://crates.io/crates/erased-serde) | 0.4.10 | Apache-2.0 OR MIT | Type-erased Serialize and Serializer traits |
 | [errno](https://crates.io/crates/errno) | 0.3.14 | Apache-2.0 OR MIT | Cross-platform interface to the `errno` variable. |
+| [euclid](https://crates.io/crates/euclid) | 0.22.14 | Apache-2.0 OR MIT | Geometry primitives |
 | [event-listener](https://crates.io/crates/event-listener) | 5.4.2 | Apache-2.0 OR MIT | Notify async tasks or threads |
 | [event-listener-strategy](https://crates.io/crates/event-listener-strategy) | 0.5.4 | Apache-2.0 OR MIT | Block or poll on event_listener easily |
 | [fancy-regex](https://crates.io/crates/fancy-regex) | 0.16.2 | MIT | An implementation of regexes, supporting a relatively rich set of features, including backreferences and look-around. |
 | [fastrand](https://crates.io/crates/fastrand) | 2.5.0 | Apache-2.0 OR MIT | A simple and fast random number generator |
 | [fdeflate](https://crates.io/crates/fdeflate) | 0.3.7 | Apache-2.0 OR MIT | Fast specialized deflate implementation |
+| [fearless_simd](https://crates.io/crates/fearless_simd) | 0.4.1 | Apache-2.0 OR MIT | Safer and easier SIMD |
 | [fearless_simd](https://crates.io/crates/fearless_simd) | 1.1.0 | Apache-2.0 OR MIT | Safer and easier SIMD |
 | [fearless_simd_macros](https://crates.io/crates/fearless_simd_macros) | 0.1.0 | Apache-2.0 OR MIT | Procedural macros for fearless_simd |
 | [ff](https://crates.io/crates/ff) | 0.14.0 | Apache-2.0 OR MIT | Library for building and interfacing with finite fields |
@@ -350,12 +393,17 @@ libraries need different ones. Many are only used on one system
 | [find-msvc-tools](https://crates.io/crates/find-msvc-tools) | 0.1.15 | Apache-2.0 OR MIT | Find windows-specific tools, read MSVC versions from the registry and from COM interfaces |
 | [finl_unicode](https://crates.io/crates/finl_unicode) | 1.5.0 | (MIT OR Apache-2.0) AND Unicode-DFS-2016 | Library for handling Unicode functionality for finl (categories and grapheme segmentation) |
 | [flate2](https://crates.io/crates/flate2) | 1.1.10 | Apache-2.0 OR MIT | DEFLATE compression and decompression exposed as Read/BufRead/Write streams. Supports miniz_oxide and multiple zlib implementations. Supports zlib, gzip, and… |
+| [float-cmp](https://crates.io/crates/float-cmp) | 0.9.0 | MIT | Floating point approximate comparison traits |
 | [fnv](https://crates.io/crates/fnv) | 1.0.7 | Apache-2.0 OR MIT | Fowler–Noll–Vo hash function |
 | [foldhash](https://crates.io/crates/foldhash) | 0.2.0 | Zlib | A fast, non-cryptographic, minimally DoS-resistant hashing algorithm. |
+| [font-types](https://crates.io/crates/font-types) | 0.11.3 | Apache-2.0 OR MIT | Scalar types used in fonts. |
+| [fontconfig-parser](https://crates.io/crates/fontconfig-parser) | 0.5.8 | MIT | fontconfig file parser in pure Rust |
+| [fontdb](https://crates.io/crates/fontdb) | 0.23.0 | MIT | A simple, in-memory font database with CSS-like queries. |
 | [foreign-types](https://crates.io/crates/foreign-types) | 0.5.0 | Apache-2.0 OR MIT | A framework for Rust wrappers over C APIs |
 | [foreign-types-macros](https://crates.io/crates/foreign-types-macros) | 0.2.4 | Apache-2.0 OR MIT | An internal crate used by foreign-types |
 | [foreign-types-shared](https://crates.io/crates/foreign-types-shared) | 0.3.1 | Apache-2.0 OR MIT | An internal crate used by foreign-types |
 | [form_urlencoded](https://crates.io/crates/form_urlencoded) | 1.2.2 | Apache-2.0 OR MIT | Parser and serializer for the application/x-www-form-urlencoded syntax, as used by HTML forms. |
+| [funty](https://crates.io/crates/funty) | 2.0.0 | MIT | Trait generalization over the primitive types |
 | [futures](https://crates.io/crates/futures) | 0.3.34 | Apache-2.0 OR MIT | An implementation of futures and streams featuring zero allocations, composability, and iterator-like interfaces. |
 | [futures-channel](https://crates.io/crates/futures-channel) | 0.3.34 | Apache-2.0 OR MIT | Channels for asynchronous communication using futures-rs. |
 | [futures-core](https://crates.io/crates/futures-core) | 0.3.34 | Apache-2.0 OR MIT | The core traits and types in for the `futures` library. |
@@ -366,6 +414,7 @@ libraries need different ones. Many are only used on one system
 | [futures-sink](https://crates.io/crates/futures-sink) | 0.3.34 | Apache-2.0 OR MIT | The asynchronous `Sink` trait for the futures-rs library. |
 | [futures-task](https://crates.io/crates/futures-task) | 0.3.34 | Apache-2.0 OR MIT | Tools for working with tasks. |
 | [futures-util](https://crates.io/crates/futures-util) | 0.3.34 | Apache-2.0 OR MIT | Common utilities and extension traits for the futures-rs library. |
+| [fxhash](https://crates.io/crates/fxhash) | 0.2.1 | Apache-2.0 OR MIT | A fast, non-secure, hashing algorithm derived from an internal hasher used in FireFox and Rustc. |
 | [gdk](https://crates.io/crates/gdk) | 0.18.2 | MIT | UNMAINTAINED Rust bindings for the GDK 3 library (use gdk4 instead) |
 | [gdk-pixbuf](https://crates.io/crates/gdk-pixbuf) | 0.18.5 | MIT | Rust bindings for the GdkPixbuf library |
 | [gdk-pixbuf-sys](https://crates.io/crates/gdk-pixbuf-sys) | 0.18.0 | MIT | FFI bindings to libgdk_pixbuf-2.0 |
@@ -386,6 +435,8 @@ libraries need different ones. Many are only used on one system
 | [glib](https://crates.io/crates/glib) | 0.18.5 | MIT | Rust bindings for the GLib library |
 | [glib-macros](https://crates.io/crates/glib-macros) | 0.18.5 | MIT | Rust bindings for the GLib library, proc macros crate |
 | [glib-sys](https://crates.io/crates/glib-sys) | 0.18.1 | MIT | FFI bindings to libglib-2.0 |
+| [glidesort](https://crates.io/crates/glidesort) | 0.1.2 | Apache-2.0 OR MIT | Glidesort sorting algorithm |
+| [glifo](https://crates.io/crates/glifo) | 0.1.1 | Apache-2.0 OR MIT | Glifo provides APIs for efficiently rendering text. |
 | [glob](https://crates.io/crates/glob) | 0.3.4 | Apache-2.0 OR MIT | Support for matching file paths against Unix shell style patterns. |
 | [gloo-timers](https://crates.io/crates/gloo-timers) | 0.4.0 | Apache-2.0 OR MIT | Convenience crate for working with JavaScript timers |
 | [gobject-sys](https://crates.io/crates/gobject-sys) | 0.18.0 | MIT | FFI bindings to libgobject-2.0 |
@@ -393,10 +444,24 @@ libraries need different ones. Many are only used on one system
 | [gtk](https://crates.io/crates/gtk) | 0.18.2 | MIT | UNMAINTAINED Rust bindings for the GTK+ 3 library (use gtk4 instead) |
 | [gtk-sys](https://crates.io/crates/gtk-sys) | 0.18.2 | MIT | UNMAINTAINED FFI bindings to libgtk-3 (use gtk4-sys instead) |
 | [gtk3-macros](https://crates.io/crates/gtk3-macros) | 0.18.2 | MIT | UNMAINTAINED Rust bindings for the GTK 3 library (use gtk4-macros instead) |
+| [guillotiere](https://crates.io/crates/guillotiere) | 0.7.0 | Apache-2.0 OR MIT | A dynamic 2D texture atlas allocator with fast deallocation. |
+| [half](https://crates.io/crates/half) | 2.7.1 | Apache-2.0 OR MIT | Half-precision floating point f16 and bf16 types for Rust implementing the IEEE 754-2008 standard binary16 and bfloat16 types. |
 | [hashbrown](https://crates.io/crates/hashbrown) | 0.12.3 | Apache-2.0 OR MIT | A Rust port of Google's SwissTable hash map |
 | [hashbrown](https://crates.io/crates/hashbrown) | 0.14.5 | Apache-2.0 OR MIT | A Rust port of Google's SwissTable hash map |
 | [hashbrown](https://crates.io/crates/hashbrown) | 0.16.1 | Apache-2.0 OR MIT | A Rust port of Google's SwissTable hash map |
 | [hashbrown](https://crates.io/crates/hashbrown) | 0.17.1 | Apache-2.0 OR MIT | A Rust port of Google's SwissTable hash map |
+| [hayagriva](https://crates.io/crates/hayagriva) | 0.10.1 | Apache-2.0 OR MIT | Work with references&#58; Literature database management, storage, and citation formatting |
+| [hayro](https://crates.io/crates/hayro) | 0.7.1 | Apache-2.0 OR MIT | A rasterizer for PDF files. |
+| [hayro-ccitt](https://crates.io/crates/hayro-ccitt) | 0.3.0 | Apache-2.0 OR MIT | A decoder for group 3 and group 4 CCITT images. |
+| [hayro-ccitt](https://crates.io/crates/hayro-ccitt) | 0.4.0 | Apache-2.0 OR MIT | A decoder for group 3 and group 4 CCITT images. |
+| [hayro-cmap](https://crates.io/crates/hayro-cmap) | 0.1.1 | Apache-2.0 OR MIT | A parser for CMap files. |
+| [hayro-interpret](https://crates.io/crates/hayro-interpret) | 0.7.0 | Apache-2.0 OR MIT | A crate for interpreting PDF files. |
+| [hayro-jbig2](https://crates.io/crates/hayro-jbig2) | 0.3.1 | Apache-2.0 OR MIT | A memory-safe, pure-Rust JBIG2 decoder. |
+| [hayro-jpeg2000](https://crates.io/crates/hayro-jpeg2000) | 0.3.5 | Apache-2.0 OR MIT | A memory-safe, pure-Rust JPEG 2000 decoder. |
+| [hayro-postscript](https://crates.io/crates/hayro-postscript) | 0.2.0 | Apache-2.0 OR MIT | A lightweight PostScript scanner. |
+| [hayro-svg](https://crates.io/crates/hayro-svg) | 0.7.0 | Apache-2.0 OR MIT | Converting PDF pages into SVG files. |
+| [hayro-syntax](https://crates.io/crates/hayro-syntax) | 0.7.2 | Apache-2.0 OR MIT | A low-level crate for reading PDF files. |
+| [hayro-write](https://crates.io/crates/hayro-write) | 0.7.0 | Apache-2.0 OR MIT | A crate for rewriting pages of a PDF file. |
 | [heck](https://crates.io/crates/heck) | 0.4.1 | Apache-2.0 OR MIT | heck is a case conversion library. |
 | [heck](https://crates.io/crates/heck) | 0.5.0 | Apache-2.0 OR MIT | heck is a case conversion library. |
 | [hermit-abi](https://crates.io/crates/hermit-abi) | 0.5.3 | Apache-2.0 OR MIT | Hermit system calls definitions. |
@@ -404,6 +469,7 @@ libraries need different ones. Many are only used on one system
 | [hex-literal](https://crates.io/crates/hex-literal) | 1.1.0 | Apache-2.0 OR MIT | A macro for converting hexadecimal string literals to a byte array at compile time |
 | [hkdf](https://crates.io/crates/hkdf) | 0.13.0 | Apache-2.0 OR MIT | HMAC-based Extract-and-Expand Key Derivation Function (HKDF) |
 | [hmac](https://crates.io/crates/hmac) | 0.13.0 | Apache-2.0 OR MIT | Generic implementation of Hash-based Message Authentication Code (HMAC) |
+| [home](https://crates.io/crates/home) | 0.5.12 | Apache-2.0 OR MIT | Shared definitions of home directories. |
 | [html-escape](https://crates.io/crates/html-escape) | 0.2.15 | MIT | This library is for encoding/escaping special characters in HTML and decoding/unescaping HTML entities as well. |
 | [html5ever](https://crates.io/crates/html5ever) | 0.39.0 | Apache-2.0 OR MIT | High-performance browser-grade HTML5 parser |
 | [http](https://crates.io/crates/http) | 1.5.0 | Apache-2.0 OR MIT | A set of types for representing HTTP requests and responses. |
@@ -416,25 +482,37 @@ libraries need different ones. Many are only used on one system
 | [hyper](https://crates.io/crates/hyper) | 1.12.0 | MIT | A protective and efficient HTTP library for all. |
 | [hyper-rustls](https://crates.io/crates/hyper-rustls) | 0.27.10 | Apache-2.0 OR ISC OR MIT | Rustls+hyper integration for pure rust HTTPS |
 | [hyper-util](https://crates.io/crates/hyper-util) | 0.1.21 | MIT | hyper utilities |
+| [hypher](https://crates.io/crates/hypher) | 0.1.8 | Apache-2.0 OR MIT | hypher separates words into syllables. |
 | [iana-time-zone](https://crates.io/crates/iana-time-zone) | 0.1.65 | Apache-2.0 OR MIT | get the IANA time zone for the current system |
 | [iana-time-zone-haiku](https://crates.io/crates/iana-time-zone-haiku) | 0.1.2 | Apache-2.0 OR MIT | iana-time-zone support crate for Haiku OS |
 | [ico](https://crates.io/crates/ico) | 0.5.0 | MIT | A library for encoding/decoding ICO image files |
+| [icu_collator](https://crates.io/crates/icu_collator) | 2.3.1 | Unicode-3.0 | API for comparing strings according to language-dependent conventions |
+| [icu_collator_data](https://crates.io/crates/icu_collator_data) | 2.3.0 | Unicode-3.0 | Data for the icu_collator crate |
 | [icu_collections](https://crates.io/crates/icu_collections) | 2.3.0 | Unicode-3.0 | Collection of API for use in ICU libraries. |
+| [icu_locale](https://crates.io/crates/icu_locale) | 2.3.1 | Unicode-3.0 | API for Unicode Language and Locale Identifiers canonicalization |
 | [icu_locale_core](https://crates.io/crates/icu_locale_core) | 2.3.0 | Unicode-3.0 | API for managing Unicode Language and Locale Identifiers |
+| [icu_locale_data](https://crates.io/crates/icu_locale_data) | 2.3.0 | Unicode-3.0 | Data for the icu_locale crate |
+| [icu_locale_fallback](https://crates.io/crates/icu_locale_fallback) | 2.3.0 | Unicode-3.0 | API for Locale Fallback algorithms |
+| [icu_locale_fallback_data](https://crates.io/crates/icu_locale_fallback_data) | 2.3.0 | Unicode-3.0 | Data for the icu_locale_fallback crate |
 | [icu_normalizer](https://crates.io/crates/icu_normalizer) | 2.3.0 | Unicode-3.0 | API for normalizing text into Unicode Normalization Forms |
 | [icu_normalizer_data](https://crates.io/crates/icu_normalizer_data) | 2.3.0 | Unicode-3.0 | Data for the icu_normalizer crate |
 | [icu_properties](https://crates.io/crates/icu_properties) | 2.3.0 | Unicode-3.0 | Definitions for Unicode properties |
 | [icu_properties_data](https://crates.io/crates/icu_properties_data) | 2.3.0 | Unicode-3.0 | Data for the icu_properties crate |
 | [icu_provider](https://crates.io/crates/icu_provider) | 2.3.1 | Unicode-3.0 | Trait and struct definitions for the ICU data provider |
+| [icu_provider_blob](https://crates.io/crates/icu_provider_blob) | 2.3.0 | Unicode-3.0 | ICU4X data provider that reads from blobs in memory |
+| [icu_segmenter](https://crates.io/crates/icu_segmenter) | 2.3.0 | Unicode-3.0 | Unicode line breaking and text segmentation algorithms for text boundaries analysis |
+| [icu_segmenter_data](https://crates.io/crates/icu_segmenter_data) | 2.3.0 | Unicode-3.0 | Data for the icu_segmenter crate |
 | [ident_case](https://crates.io/crates/ident_case) | 1.0.1 | Apache-2.0 OR MIT | Utility for applying case rules to Rust identifiers. |
 | [idna](https://crates.io/crates/idna) | 1.1.0 | Apache-2.0 OR MIT | IDNA (Internationalizing Domain Names in Applications) and Punycode. |
 | [idna_adapter](https://crates.io/crates/idna_adapter) | 1.2.2 | Apache-2.0 OR MIT | Back end adapter for idna |
 | [image](https://crates.io/crates/image) | 0.25.10 | Apache-2.0 OR MIT | Imaging library. Provides basic image processing and encoders/decoders for common image formats. |
 | [image-webp](https://crates.io/crates/image-webp) | 0.2.4 | Apache-2.0 OR MIT | WebP encoding and decoding in pure Rust |
+| [imagesize](https://crates.io/crates/imagesize) | 0.14.0 | MIT | Quick probing of image dimensions without loading the entire file. |
 | [include_dir](https://crates.io/crates/include_dir) | 0.7.4 | MIT | Embed the contents of a directory in your binary |
 | [include_dir_macros](https://crates.io/crates/include_dir_macros) | 0.7.4 | MIT | The procedural macro used by include_dir |
 | [indexmap](https://crates.io/crates/indexmap) | 1.9.3 | Apache-2.0 OR MIT | A hash table with consistent order and fast iteration. |
 | [indexmap](https://crates.io/crates/indexmap) | 2.14.2 | Apache-2.0 OR MIT | A hash table with consistent order and fast iteration. |
+| [infer](https://crates.io/crates/infer) | 0.19.0 | MIT | Small crate to infer file type based on magic number signatures |
 | [infer](https://crates.io/crates/infer) | 0.22.0 | MIT | Small crate to infer file type based on magic number signatures |
 | [inout](https://crates.io/crates/inout) | 0.2.5 | Apache-2.0 OR MIT | Custom reference types for code generic over in-place and buffer-to-buffer modes of operation. |
 | [ipnet](https://crates.io/crates/ipnet) | 2.12.2 | Apache-2.0 OR MIT | Provides types and useful methods for working with IPv4 and IPv6 network addresses, commonly called IP prefixes. The new `IpNet`, `Ipv4Net`, and `Ipv6Net` types… |
@@ -460,6 +538,7 @@ libraries need different ones. Many are only used on one system
 | [js-sys](https://crates.io/crates/js-sys) | 0.3.106 | Apache-2.0 OR MIT | Bindings for all JS global objects and functions in all JS environments like Node.js and browsers, built on `#[wasm_bindgen]` using the `wasm-bindgen` crate. |
 | [json-patch](https://crates.io/crates/json-patch) | 4.2.0 | Apache-2.0 OR MIT | RFC 6902, JavaScript Object Notation (JSON) Patch |
 | [jsonptr](https://crates.io/crates/jsonptr) | 0.7.1 | Apache-2.0 OR MIT | Data structures and logic for resolving, assigning, and deleting by JSON Pointers (RFC 6901) |
+| [kamadak-exif](https://crates.io/crates/kamadak-exif) | 0.6.2 | BSD-2-Clause | Exif parsing library written in pure Rust |
 | [keccak](https://crates.io/crates/keccak) | 0.2.2 | Apache-2.0 OR MIT | Pure Rust implementation of the Keccak sponge functions |
 | [kem](https://crates.io/crates/kem) | 0.3.0 | Apache-2.0 OR MIT | Traits for Key Encapsulation Mechanisms (KEMs)&#58; public-key cryptosystems designed to enable a sender (a.k.a. encapsulator) to generate and encrypt a short… |
 | [keyboard-types](https://crates.io/crates/keyboard-types) | 0.8.3 | Apache-2.0 OR MIT | Contains types to define keyboard related events. |
@@ -467,6 +546,9 @@ libraries need different ones. Many are only used on one system
 | [keyring-core](https://crates.io/crates/keyring-core) | 1.0.1 | Apache-2.0 OR MIT | Cross-platform library for managing passwords/secrets |
 | [konst](https://crates.io/crates/konst) | 0.2.20 | Zlib | Const equivalents of std functions, compile-time comparison, and parsing |
 | [konst_macro_rules](https://crates.io/crates/konst_macro_rules) | 0.2.19 | Zlib | Implementation detail of the konst crate |
+| [krilla](https://crates.io/crates/krilla) | 0.8.2 | Apache-2.0 OR MIT | A high-level crate for creating PDF files. |
+| [krilla-svg](https://crates.io/crates/krilla-svg) | 0.8.1 | Apache-2.0 OR MIT | Converting SVG files to PDF. |
+| [kurbo](https://crates.io/crates/kurbo) | 0.13.1 | Apache-2.0 OR MIT | A 2D curves library |
 | [lazy_static](https://crates.io/crates/lazy_static) | 1.5.1 | Apache-2.0 OR MIT | A macro for declaring lazily evaluated statics in Rust. |
 | [lexical-core](https://crates.io/crates/lexical-core) | 1.0.6 | Apache-2.0 OR MIT | Lexical, to- and from-string conversion routines. |
 | [lexical-parse-float](https://crates.io/crates/lexical-parse-float) | 1.0.6 | Apache-2.0 OR MIT | Efficient parsing of floats from strings. |
@@ -480,21 +562,29 @@ libraries need different ones. Many are only used on one system
 | [libdbus-sys](https://crates.io/crates/libdbus-sys) | 0.2.7 | Apache-2.0 OR MIT | FFI bindings to libdbus. |
 | [libgit2-sys](https://crates.io/crates/libgit2-sys) | 0.18.8+1.9.7 | Apache-2.0 OR MIT | Native bindings to the libgit2 library |
 | [libloading](https://crates.io/crates/libloading) | 0.7.4 | ISC | Bindings around the platform's dynamic library loading primitives with greatly improved memory safety. |
+| [libm](https://crates.io/crates/libm) | 0.2.16 | MIT | libm in pure Rust |
 | [libredox](https://crates.io/crates/libredox) | 0.1.25 | MIT | Redox stable ABI |
 | [libwebp-sys](https://crates.io/crates/libwebp-sys) | 0.9.6 | MIT | Bindings to libwebp (bindgen, static linking) |
 | [libz-sys](https://crates.io/crates/libz-sys) | 1.1.30 | Apache-2.0 OR MIT | Low-level bindings to the system libz library (also known as zlib). |
+| [linebender_resource_handle](https://crates.io/crates/linebender_resource_handle) | 0.1.1 | Apache-2.0 OR MIT | Raw resource handle for immutable blobs with dynamic lifetimes. |
 | [linked-hash-map](https://crates.io/crates/linked-hash-map) | 0.5.6 | Apache-2.0 OR MIT | A HashMap wrapper that holds key-value pairs in insertion order |
 | [linux-raw-sys](https://crates.io/crates/linux-raw-sys) | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | Generated bindings for Linux's userspace API |
+| [linux-raw-sys](https://crates.io/crates/linux-raw-sys) | 0.4.15 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | Generated bindings for Linux's userspace API |
+| [lipsum](https://crates.io/crates/lipsum) | 0.9.1 | MIT | Lipsum is a lorem ipsum text generation library. It generates pseudo-random Latin text. Use this if you need filler or dummy text for your application. The text… |
 | [litemap](https://crates.io/crates/litemap) | 0.8.3 | Unicode-3.0 | A key-value Map implementation based on a flat, sorted Vec. |
 | [lock_api](https://crates.io/crates/lock_api) | 0.4.14 | Apache-2.0 OR MIT | Wrappers to create fully-featured Mutex and RwLock types. Compatible with no_std. |
 | [lofty](https://crates.io/crates/lofty) | 0.25.5 | Apache-2.0 OR MIT | Audio metadata library |
 | [lofty_attr](https://crates.io/crates/lofty_attr) | 0.13.0 | Apache-2.0 OR MIT | Macros for Lofty |
 | [log](https://crates.io/crates/log) | 0.4.34 | Apache-2.0 OR MIT | A lightweight logging facade for Rust |
+| [logos](https://crates.io/crates/logos) | 0.13.0 | Apache-2.0 OR MIT | Create ridiculously fast Lexers |
+| [logos-codegen](https://crates.io/crates/logos-codegen) | 0.13.0 | Apache-2.0 OR MIT | Implementation details for logos-codegen and logos-derive. Not for public consumption. |
+| [logos-derive](https://crates.io/crates/logos-derive) | 0.13.0 | Apache-2.0 OR MIT | Create ridiculously fast Lexers |
 | [lol_html](https://crates.io/crates/lol_html) | 2.9.0 | BSD-3-Clause | Streaming HTML rewriter/parser with CSS selector-based API |
 | [markup5ever](https://crates.io/crates/markup5ever) | 0.39.0 | Apache-2.0 OR MIT | Common code for xml5ever and html5ever |
 | [md5](https://crates.io/crates/md5) | 0.8.1 | Apache-2.0 OR MIT | The package provides the MD5 hash function. |
 | [memchr](https://crates.io/crates/memchr) | 2.8.3 | MIT OR Unlicense | Provides extremely fast (uses SIMD on x86_64, aarch64 and wasm32) routines for 1, 2 or 3 byte search and single substring search. |
 | [memchr-n](https://crates.io/crates/memchr-n) | 0.1.10 | Apache-2.0 OR MIT | Fast SIMD-accelerated search and iteration over the bytes belonging to an arbitrary set of byte values |
+| [memmap2](https://crates.io/crates/memmap2) | 0.9.12 | Apache-2.0 OR MIT | Cross-platform Rust API for memory-mapped file IO |
 | [memoffset](https://crates.io/crates/memoffset) | 0.9.1 | MIT | offset_of functionality for Rust structs. |
 | [mime](https://crates.io/crates/mime) | 0.3.17 | Apache-2.0 OR MIT | Strongly Typed Mimes |
 | [minicbor](https://crates.io/crates/minicbor) | 2.3.1 | BlueOak-1.0.0 | A small CBOR codec suitable for no_std environments. |
@@ -505,11 +595,18 @@ libraries need different ones. Many are only used on one system
 | [miniz_oxide](https://crates.io/crates/miniz_oxide) | 0.8.9 | Apache-2.0 OR MIT OR Zlib | DEFLATE compression and decompression library rewritten in Rust based on miniz |
 | [miniz_oxide](https://crates.io/crates/miniz_oxide) | 0.9.1 | Apache-2.0 OR MIT OR Zlib | DEFLATE compression and decompression library rewritten in Rust based on miniz |
 | [mio](https://crates.io/crates/mio) | 1.2.4 | MIT | Lightweight non-blocking I/O. |
+| [mitex](https://crates.io/crates/mitex) | 0.2.4 | Apache-2.0 | MiTeX is a TeX2Typst converter. |
+| [mitex-glob](https://crates.io/crates/mitex-glob) | 0.2.4 | Apache-2.0 | Glob impl for MiTeX |
+| [mitex-lexer](https://crates.io/crates/mitex-lexer) | 0.2.4 | Apache-2.0 | Lexer for MiTeX |
+| [mitex-parser](https://crates.io/crates/mitex-parser) | 0.2.4 | Apache-2.0 | Parser for MiTeX |
+| [mitex-spec](https://crates.io/crates/mitex-spec) | 0.2.4 | Apache-2.0 | Specification Library for MiTeX |
+| [mitex-spec-gen](https://crates.io/crates/mitex-spec-gen) | 0.2.4 | Apache-2.0 | Guard to geneate specification files for dependent crates |
 | [ml-kem](https://crates.io/crates/ml-kem) | 0.3.3 | Apache-2.0 OR MIT | Pure Rust implementation of the Module-Lattice-Based Key-Encapsulation Mechanism Standard (formerly known as Kyber) as described in FIPS 203 |
 | [module-lattice](https://crates.io/crates/module-lattice) | 0.2.3 | Apache-2.0 OR MIT | Functionality shared between the `ml-kem` and `ml-dsa` crates, including linear algebra with degree-256 polynomials over a prime-order field, vectors of such… |
 | [moxcms](https://crates.io/crates/moxcms) | 0.8.1 | Apache-2.0 OR BSD-3-Clause | Simple Color Management in Rust |
 | [muda](https://crates.io/crates/muda) | 0.20.0 | Apache-2.0 OR MIT | Menu Utilities for Desktop Applications |
 | [multiversion_no_op](https://crates.io/crates/multiversion_no_op) | 1.0.0 | Apache-2.0 OR MIT | Provides a pass-through function attribute called multiversion for optimizing build times |
+| [mutate_once](https://crates.io/crates/mutate_once) | 0.1.2 | BSD-2-Clause | Interior mutability, write-once and borrowable as plain &T |
 | [ndk](https://crates.io/crates/ndk) | 0.9.0 | Apache-2.0 OR MIT | Safe Rust bindings to the Android NDK |
 | [ndk-context](https://crates.io/crates/ndk-context) | 0.1.1 | Apache-2.0 OR MIT | Handles for accessing Android APIs |
 | [ndk-sys](https://crates.io/crates/ndk-sys) | 0.6.0+11769913 | Apache-2.0 OR MIT | FFI bindings for the Android NDK |
@@ -545,6 +642,7 @@ libraries need different ones. Many are only used on one system
 | [objc2-ui-kit](https://crates.io/crates/objc2-ui-kit) | 0.3.2 | Apache-2.0 OR MIT OR Zlib | Bindings to the UIKit framework |
 | [objc2-user-notifications](https://crates.io/crates/objc2-user-notifications) | 0.3.2 | Apache-2.0 OR MIT OR Zlib | Bindings to the UserNotifications framework |
 | [objc2-web-kit](https://crates.io/crates/objc2-web-kit) | 0.3.2 | Apache-2.0 OR MIT OR Zlib | Bindings to the WebKit framework |
+| [object](https://crates.io/crates/object) | 0.39.1 | Apache-2.0 OR MIT | A unified interface for reading and writing object file formats. |
 | [ogg_pager](https://crates.io/crates/ogg_pager) | 0.8.0 | Apache-2.0 OR MIT | A simple OGG page reader |
 | [once_cell](https://crates.io/crates/once_cell) | 1.21.4 | Apache-2.0 OR MIT | Single assignment cells and lazy values. |
 | [once_cell_polyfill](https://crates.io/crates/once_cell_polyfill) | 1.70.2 | Apache-2.0 OR MIT | Polyfill for `OnceCell` stdlib feature for use with older MSRVs |
@@ -559,6 +657,9 @@ libraries need different ones. Many are only used on one system
 | [pageant](https://crates.io/crates/pageant) | 0.2.4 | Apache-2.0 | Pageant SSH agent transport client. |
 | [pagefind](https://crates.io/crates/pagefind) | 1.5.2 | MIT | Implement search on any static website. |
 | [pagefind_stem](https://crates.io/crates/pagefind_stem) | 1.0.0 | MIT | Snowball stemming algorithms repackaged for Rust, with languages behind feature flags. |
+| [palette](https://crates.io/crates/palette) | 0.7.7 | Apache-2.0 OR MIT | Convert and manage colors with a focus on correctness, flexibility and ease of use. |
+| [palette_derive](https://crates.io/crates/palette_derive) | 0.7.7 | Apache-2.0 OR MIT | Automatically implement traits from the palette crate. |
+| [palette_math](https://crates.io/crates/palette_math) | 0.7.7 | Apache-2.0 OR MIT | The low level color math behind the more high level `palette` crate. |
 | [pango](https://crates.io/crates/pango) | 0.18.3 | MIT | Rust bindings for the Pango library |
 | [pango-sys](https://crates.io/crates/pango-sys) | 0.18.0 | MIT | FFI bindings to libpango-1.0 |
 | [parking](https://crates.io/crates/parking) | 2.2.1 | Apache-2.0 OR MIT | Thread parking and unparking |
@@ -569,7 +670,9 @@ libraries need different ones. Many are only used on one system
 | [pastey](https://crates.io/crates/pastey) | 0.2.3 | Apache-2.0 OR MIT | Macros for all your token pasting needs. Successor of paste. |
 | [path-slash](https://crates.io/crates/path-slash) | 0.2.1 | MIT | Conversion to/from a file path from/to slash path |
 | [pbkdf2](https://crates.io/crates/pbkdf2) | 0.13.0 | Apache-2.0 OR MIT | Generic implementation of PBKDF2 |
+| [pdf-writer](https://crates.io/crates/pdf-writer) | 0.15.0 | Apache-2.0 OR MIT | A step-by-step PDF writer. |
 | [pem-rfc7468](https://crates.io/crates/pem-rfc7468) | 1.0.0 | Apache-2.0 OR MIT | PEM Encoding (RFC 7468) for PKIX, PKCS, and CMS Structures, implementing a strict subset of the original Privacy-Enhanced Mail encoding intended specifically… |
+| [peniko](https://crates.io/crates/peniko) | 0.6.1 | Apache-2.0 OR MIT | Primitive types for styling vector graphics |
 | [percent-encoding](https://crates.io/crates/percent-encoding) | 2.3.2 | Apache-2.0 OR MIT | Percent encoding and decoding |
 | [phc](https://crates.io/crates/phc) | 0.6.1 | Apache-2.0 OR MIT | Pure Rust implementation of the Password Hashing Competition (PHC) string format which is used for storing password hashes |
 | [phf](https://crates.io/crates/phf) | 0.13.1 | MIT | Runtime support for perfect hash function data structures |
@@ -581,6 +684,8 @@ libraries need different ones. Many are only used on one system
 | [phf_macros](https://crates.io/crates/phf_macros) | 0.13.1 | MIT | Macros to generate types in the phf crate |
 | [phf_shared](https://crates.io/crates/phf_shared) | 0.13.1 | MIT | Support code shared by PHF libraries |
 | [phf_shared](https://crates.io/crates/phf_shared) | 0.14.0 | MIT | Support code shared by PHF libraries |
+| [pic-scale](https://crates.io/crates/pic-scale) | 0.7.12 | Apache-2.0 OR BSD-3-Clause | High performance image scaling |
+| [pico-args](https://crates.io/crates/pico-args) | 0.5.0 | MIT | An ultra simple CLI arguments parser. |
 | [pin-project-lite](https://crates.io/crates/pin-project-lite) | 0.2.17 | Apache-2.0 OR MIT | A lightweight version of pin-project written with declarative macros. |
 | [piper](https://crates.io/crates/piper) | 0.2.5 | Apache-2.0 OR MIT | An asynchronous single-consumer single-producer pipe for bytes. |
 | [pkcs1](https://crates.io/crates/pkcs1) | 0.8.0-rc.4 | Apache-2.0 OR MIT | Pure Rust implementation of Public-Key Cryptography Standards (PKCS) #1&#58; RSA Cryptography Specifications Version 2.2 (RFC 8017) |
@@ -592,12 +697,15 @@ libraries need different ones. Many are only used on one system
 | [png](https://crates.io/crates/png) | 0.18.1 | Apache-2.0 OR MIT | PNG decoding and encoding library in pure Rust |
 | [polling](https://crates.io/crates/polling) | 3.11.0 | Apache-2.0 OR MIT | Portable interface to epoll, kqueue, event ports, and IOCP |
 | [poly1305](https://crates.io/crates/poly1305) | 0.9.1 | Apache-2.0 OR MIT | The Poly1305 universal hash function and message authentication code |
+| [polycool](https://crates.io/crates/polycool) | 0.4.0 | Apache-2.0 OR MIT | Polynomial root-finding |
 | [polyval](https://crates.io/crates/polyval) | 0.7.3 | Apache-2.0 OR MIT | POLYVAL is a GHASH-like universal hash over GF(2^128) useful for constructing a Message Authentication Code (MAC) |
 | [pori](https://crates.io/crates/pori) | 0.0.0 | MIT | Parser state and error extensions for nom. |
 | [portable-atomic](https://crates.io/crates/portable-atomic) | 1.15.0 | Apache-2.0 OR MIT | Portable atomic types including support for 128-bit atomics, atomic float, etc. |
 | [portable-atomic-util](https://crates.io/crates/portable-atomic-util) | 0.2.8 | Apache-2.0 OR MIT | Synchronization primitives built with portable-atomic. |
+| [postcard](https://crates.io/crates/postcard) | 1.1.3 | Apache-2.0 OR MIT | A no_std + serde compatible message library for Rust |
 | [potential_utf](https://crates.io/crates/potential_utf) | 0.1.6 | Unicode-3.0 | Unvalidated string and character types |
 | [powerfmt](https://crates.io/crates/powerfmt) | 0.2.1 | Apache-2.0 OR MIT | `powerfmt` is a library that provides utilities for formatting values. This crate makes it significantly easier to support filling to a minimum width with… |
+| [ppv-lite86](https://crates.io/crates/ppv-lite86) | 0.2.21 | Apache-2.0 OR MIT | Cross-platform cryptography-oriented low-level SIMD library. |
 | [precomputed-hash](https://crates.io/crates/precomputed-hash) | 0.1.1 | MIT | A library intending to be a base dependency to expose a precomputed hash |
 | [prettyplease](https://crates.io/crates/prettyplease) | 0.2.37 | Apache-2.0 OR MIT | A minimal `syn` syntax tree pretty-printer |
 | [primefield](https://crates.io/crates/primefield) | 0.14.0 | Apache-2.0 OR MIT | Generic implementation of prime fields built on `crypto-bigint`, along with macros for writing field element newtypes including ones with formally verified… |
@@ -607,32 +715,52 @@ libraries need different ones. Many are only used on one system
 | [proc-macro-crate](https://crates.io/crates/proc-macro-crate) | 3.5.0 | Apache-2.0 OR MIT | Replacement for crate (macro_rules keyword) in proc-macros |
 | [proc-macro-error](https://crates.io/crates/proc-macro-error) | 1.0.4 | Apache-2.0 OR MIT | Almost drop-in replacement to panics in proc-macros |
 | [proc-macro-error-attr](https://crates.io/crates/proc-macro-error-attr) | 1.0.4 | Apache-2.0 OR MIT | Attribute macro for proc-macro-error crate |
+| [proc-macro-hack](https://crates.io/crates/proc-macro-hack) | 0.5.20+deprecated | Apache-2.0 OR MIT | Procedural macros in expression position |
 | [proc-macro2](https://crates.io/crates/proc-macro2) | 1.0.107 | Apache-2.0 OR MIT | A substitute implementation of the compiler's `proc_macro` API to decouple token-based libraries from the procedural macro use case. |
+| [psm](https://crates.io/crates/psm) | 0.1.32 | Apache-2.0 OR MIT | Portable Stack Manipulation&#58; stack manipulation and introspection routines |
+| [ptr_meta](https://crates.io/crates/ptr_meta) | 0.1.4 | MIT | A radioactive stabilization of the ptr_meta rfc |
+| [ptr_meta_derive](https://crates.io/crates/ptr_meta_derive) | 0.1.4 | MIT | Macros for ptr_meta |
 | [pulldown-latex](https://crates.io/crates/pulldown-latex) | 0.8.0 | MIT | Pull parser to convert LaTeX equations to MathML |
 | [pxfm](https://crates.io/crates/pxfm) | 0.1.30 | Apache-2.0 OR BSD-3-Clause | Fast and accurate math |
 | [quick-error](https://crates.io/crates/quick-error) | 2.0.1 | Apache-2.0 OR MIT | A macro which makes error types pleasant to write. |
+| [quick-xml](https://crates.io/crates/quick-xml) | 0.38.4 | MIT | High performance xml reader and writer |
 | [quick-xml](https://crates.io/crates/quick-xml) | 0.42.0 | MIT | High performance xml reader and writer |
 | [quote](https://crates.io/crates/quote) | 1.0.47 | Apache-2.0 OR MIT | Quasi-quoting macro quote!(...) |
 | [r-efi](https://crates.io/crates/r-efi) | 5.3.0 | Apache-2.0 OR LGPL-2.1-or-later OR MIT | UEFI Reference Specification Protocol Constants and Definitions |
 | [r-efi](https://crates.io/crates/r-efi) | 6.0.0 | Apache-2.0 OR LGPL-2.1-or-later OR MIT | UEFI Reference Specification Protocol Constants and Definitions |
+| [radium](https://crates.io/crates/radium) | 0.7.0 | MIT | Portable interfaces for maybe-atomic types |
 | [rand](https://crates.io/crates/rand) | 0.10.3 | Apache-2.0 OR MIT | Random number generators and other randomness functionality. |
+| [rand](https://crates.io/crates/rand) | 0.8.8 | Apache-2.0 OR MIT | Random number generators and other randomness functionality. |
+| [rand_chacha](https://crates.io/crates/rand_chacha) | 0.3.1 | Apache-2.0 OR MIT | ChaCha random number generator |
 | [rand_core](https://crates.io/crates/rand_core) | 0.10.1 | Apache-2.0 OR MIT | Core random number generation traits and tools for implementation. |
+| [rand_core](https://crates.io/crates/rand_core) | 0.6.4 | Apache-2.0 OR MIT | Core random number generator traits and tools for implementation. |
 | [raw-window-handle](https://crates.io/crates/raw-window-handle) | 0.6.2 | Apache-2.0 OR MIT OR Zlib | Interoperability library for Rust Windowing applications. |
 | [rayon](https://crates.io/crates/rayon) | 1.12.0 | Apache-2.0 OR MIT | Simple work-stealing parallelism for Rust |
 | [rayon-core](https://crates.io/crates/rayon-core) | 1.13.0 | Apache-2.0 OR MIT | Core APIs for Rayon |
+| [read-fonts](https://crates.io/crates/read-fonts) | 0.39.2 | Apache-2.0 OR MIT | Reading OpenType font files. |
 | [redox_syscall](https://crates.io/crates/redox_syscall) | 0.5.18 | MIT | A Rust library to access raw Redox system calls |
 | [redox_users](https://crates.io/crates/redox_users) | 0.5.3 | MIT | A Rust library to access Redox users and groups functionality |
 | [ref-cast](https://crates.io/crates/ref-cast) | 1.0.27 | Apache-2.0 OR MIT | Safely cast &T to &U where the struct U contains a single field of type T. |
 | [ref-cast-impl](https://crates.io/crates/ref-cast-impl) | 1.0.27 | Apache-2.0 OR MIT | Derive implementation for ref_cast&#58;&#58;RefCast. |
 | [regex](https://crates.io/crates/regex) | 1.13.1 | Apache-2.0 OR MIT | An implementation of regular expressions for Rust. This implementation uses finite automata and guarantees linear time matching on all inputs. |
 | [regex-automata](https://crates.io/crates/regex-automata) | 0.4.18 | Apache-2.0 OR MIT | Automata construction and matching using regular expressions. |
+| [regex-syntax](https://crates.io/crates/regex-syntax) | 0.6.29 | Apache-2.0 OR MIT | A regular expression parser. |
 | [regex-syntax](https://crates.io/crates/regex-syntax) | 0.8.11 | Apache-2.0 OR MIT | A regular expression parser. |
+| [rend](https://crates.io/crates/rend) | 0.4.2 | MIT | Endian-aware primitives for Rust |
 | [reqwest](https://crates.io/crates/reqwest) | 0.13.5 | Apache-2.0 OR MIT | higher level HTTP client library |
+| [resvg](https://crates.io/crates/resvg) | 0.47.0 | Apache-2.0 OR MIT | An SVG rendering library. |
 | [rfc6979](https://crates.io/crates/rfc6979) | 0.6.0 | Apache-2.0 OR MIT | Pure Rust implementation of RFC6979&#58; Deterministic Usage of the Digital Signature Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA) |
 | [rfd](https://crates.io/crates/rfd) | 0.16.0 | MIT | Rusty File Dialog |
+| [rgb](https://crates.io/crates/rgb) | 0.8.53 | MIT | `struct RGB/RGBA/etc.` for sharing pixels between crates + convenience methods for color manipulation. Allows no-copy high-level interoperability. Also adds… |
 | [ring](https://crates.io/crates/ring) | 0.17.14 | Apache-2.0 AND ISC | An experiment. |
+| [rkyv](https://crates.io/crates/rkyv) | 0.7.46 | MIT | Zero-copy deserialization framework for Rust |
+| [rkyv_derive](https://crates.io/crates/rkyv_derive) | 0.7.46 | MIT | Derive macro for rkyv |
 | [rmcp](https://crates.io/crates/rmcp) | 3.8.0 | Apache-2.0 | Rust SDK for Model Context Protocol |
 | [rmcp-macros](https://crates.io/crates/rmcp-macros) | 3.8.0 | Apache-2.0 | Rust SDK for Model Context Protocol macros library |
+| [roman-numerals-rs](https://crates.io/crates/roman-numerals-rs) | 3.1.0 | 0BSD OR CC0-1.0 | Manipulate well-formed Roman numerals |
+| [rowan](https://crates.io/crates/rowan) | 0.15.19 | Apache-2.0 OR MIT | Library for generic lossless syntax trees |
+| [roxmltree](https://crates.io/crates/roxmltree) | 0.20.0 | Apache-2.0 OR MIT | Represent an XML as a read-only tree. |
+| [roxmltree](https://crates.io/crates/roxmltree) | 0.21.2 | Apache-2.0 OR MIT | Represent an XML as a read-only tree. |
 | [rsa](https://crates.io/crates/rsa) | 0.10.0-rc.18 | Apache-2.0 OR MIT | Pure Rust RSA implementation |
 | [russh](https://crates.io/crates/russh) | 0.64.1 | Apache-2.0 | A client and server SSH library. |
 | [russh-cryptovec](https://crates.io/crates/russh-cryptovec) | 0.62.0 | Apache-2.0 | A vector which zeroes its memory on clears and reallocations. |
@@ -640,8 +768,11 @@ libraries need different ones. Many are only used on one system
 | [russh-util](https://crates.io/crates/russh-util) | 0.52.0 | Apache-2.0 | Runtime abstraction utilities for russh. |
 | [rust-patch](https://crates.io/crates/rust-patch) | 0.1.3 | Apache-2.0 OR MIT | Patch structs with other structs |
 | [rust-patch-derive](https://crates.io/crates/rust-patch-derive) | 0.1.3 | Apache-2.0 OR MIT | Derive macro implementation for rust-patch |
+| [rust_decimal](https://crates.io/crates/rust_decimal) | 1.43.0 | MIT | Decimal number implementation written in pure Rust suitable for financial and fixed-precision calculations. |
+| [rustc-hash](https://crates.io/crates/rustc-hash) | 1.1.0 | Apache-2.0 OR MIT | speed, non-cryptographic hash used in rustc |
 | [rustc-hash](https://crates.io/crates/rustc-hash) | 2.1.3 | Apache-2.0 OR MIT | A speedy, non-cryptographic hashing algorithm used by rustc |
 | [rustc_version](https://crates.io/crates/rustc_version) | 0.4.1 | Apache-2.0 OR MIT | A library for querying the version of a installed rustc compiler |
+| [rustix](https://crates.io/crates/rustix) | 0.38.44 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | Safe Rust bindings to POSIX/Unix/Linux/Winsock-like syscalls |
 | [rustix](https://crates.io/crates/rustix) | 1.1.5 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | Safe Rust bindings to POSIX/Unix/Linux/Winsock-like syscalls |
 | [rustls](https://crates.io/crates/rustls) | 0.23.46 | Apache-2.0 OR ISC OR MIT | Rustls is a modern TLS library written in Rust. |
 | [rustls-native-certs](https://crates.io/crates/rustls-native-certs) | 0.8.5 | Apache-2.0 OR ISC OR MIT | rustls-native-certs allows rustls to use the platform native certificate store |
@@ -650,6 +781,7 @@ libraries need different ones. Many are only used on one system
 | [rustls-platform-verifier-android](https://crates.io/crates/rustls-platform-verifier-android) | 0.2.0 | Apache-2.0 OR MIT | The internal JVM support component of the rustls-platform-verifier crate. You shouldn't depend on this directly. |
 | [rustls-webpki](https://crates.io/crates/rustls-webpki) | 0.103.16 | ISC | Web PKI X.509 Certificate Verification. |
 | [rustversion](https://crates.io/crates/rustversion) | 1.0.23 | Apache-2.0 OR MIT | Conditional compilation according to rustc compiler version |
+| [rustybuzz](https://crates.io/crates/rustybuzz) | 0.20.1 | MIT | A complete harfbuzz shaping algorithm port to Rust. |
 | [ryu](https://crates.io/crates/ryu) | 1.0.23 | Apache-2.0 OR BSL-1.0 | Fast floating point to string conversion |
 | [salsa20](https://crates.io/crates/salsa20) | 0.11.0 | Apache-2.0 OR MIT | Pure Rust implementation of the Salsa20 stream cipher |
 | [same-file](https://crates.io/crates/same-file) | 1.0.6 | MIT OR Unlicense | A simple crate for determining whether two file paths point to the same file. |
@@ -661,6 +793,7 @@ libraries need different ones. Many are only used on one system
 | [schemars_derive](https://crates.io/crates/schemars_derive) | 1.2.3 | MIT | Macros for #[derive(JsonSchema)], for use with schemars |
 | [scopeguard](https://crates.io/crates/scopeguard) | 1.2.0 | Apache-2.0 OR MIT | A RAII scope guard that will run a given closure when it goes out of scope, even if the code between panics (assuming unwinding panic). Defines the macros… |
 | [scrypt](https://crates.io/crates/scrypt) | 0.12.0 | Apache-2.0 OR MIT | Scrypt password-based key derivation function |
+| [seahash](https://crates.io/crates/seahash) | 4.1.0 | MIT | A blazingly fast, portable hash function with proven statistical guarantees. |
 | [sec1](https://crates.io/crates/sec1) | 0.8.1 | Apache-2.0 OR MIT | Pure Rust implementation of SEC1&#58; Elliptic Curve Cryptography encoding formats including ASN.1 DER encoded private keys as well as the… |
 | [secret-service](https://crates.io/crates/secret-service) | 5.2.0 | Apache-2.0 OR MIT | Library to interface with Secret Service API |
 | [security-framework](https://crates.io/crates/security-framework) | 3.7.0 | Apache-2.0 OR MIT | Security.framework bindings for macOS and iOS |
@@ -676,12 +809,14 @@ libraries need different ones. Many are only used on one system
 | [serde_derive_internals](https://crates.io/crates/serde_derive_internals) | 0.29.1 | Apache-2.0 OR MIT | AST representation used by Serde derive macros. Unstable. |
 | [serde_derive_internals](https://crates.io/crates/serde_derive_internals) | 0.30.0 | Apache-2.0 OR MIT | AST representation used by Serde derive macros. Unstable. |
 | [serde_json](https://crates.io/crates/serde_json) | 1.0.154 | Apache-2.0 OR MIT | A JSON serialization file format |
+| [serde_path_to_error](https://crates.io/crates/serde_path_to_error) | 0.1.20 | Apache-2.0 OR MIT | Path to the element that failed to deserialize |
 | [serde_repr](https://crates.io/crates/serde_repr) | 0.1.21 | Apache-2.0 OR MIT | Derive Serialize and Deserialize that delegates to the underlying repr of a C-like enum. |
 | [serde_spanned](https://crates.io/crates/serde_spanned) | 0.6.9 | Apache-2.0 OR MIT | Serde-compatible spanned Value |
 | [serde_spanned](https://crates.io/crates/serde_spanned) | 1.1.2 | Apache-2.0 OR MIT | Serde-compatible spanned Value |
 | [serde_with](https://crates.io/crates/serde_with) | 3.24.0 | Apache-2.0 OR MIT | Custom de/serialization functions for Rust's serde |
 | [serde_with_macros](https://crates.io/crates/serde_with_macros) | 3.24.0 | Apache-2.0 OR MIT | proc-macro library for serde_with |
 | [serde_yaml](https://crates.io/crates/serde_yaml) | 0.8.26 | Apache-2.0 OR MIT | YAML support for Serde |
+| [serde_yaml](https://crates.io/crates/serde_yaml) | 0.9.34+deprecated | Apache-2.0 OR MIT | YAML data format for Serde |
 | [serdect](https://crates.io/crates/serdect) | 0.4.3 | Apache-2.0 OR MIT | Constant-time serde serializer/deserializer helpers for data that potentially contains secrets (e.g. cryptographic keys) |
 | [serialize-to-javascript](https://crates.io/crates/serialize-to-javascript) | 0.1.2 | Apache-2.0 OR MIT | Serialize a serde&#58;&#58;Serialize item to a JavaScript literal template using serde_json |
 | [serialize-to-javascript-impl](https://crates.io/crates/serialize-to-javascript-impl) | 0.1.2 | Apache-2.0 OR MIT | Implementation detail of `serialize-to-javascript` |
@@ -699,8 +834,11 @@ libraries need different ones. Many are only used on one system
 | [simd-adler32](https://crates.io/crates/simd-adler32) | 0.3.10 | MIT | A SIMD-accelerated Adler-32 hash algorithm implementation. |
 | [simd_cesu8](https://crates.io/crates/simd_cesu8) | 1.2.0 | Apache-2.0 OR MIT | An extremely fast, SIMD accelerated, encoding and decoding library for CESU-8 and Modified UTF-8. |
 | [simdutf8](https://crates.io/crates/simdutf8) | 0.1.5 | Apache-2.0 OR MIT | SIMD-accelerated UTF-8 validation. |
+| [simplecss](https://crates.io/crates/simplecss) | 0.2.2 | Apache-2.0 OR MIT | A simple CSS 2 parser and selector. |
 | [siphasher](https://crates.io/crates/siphasher) | 1.0.4 | Apache-2.0 OR MIT | SipHash-2-4 and SipHash-1-3 keyed hash functions in pure Rust, with 64-bit and 128-bit output and no_std support |
+| [skrifa](https://crates.io/crates/skrifa) | 0.42.1 | Apache-2.0 OR MIT | Metadata reader and glyph scaler for OpenType fonts. |
 | [slab](https://crates.io/crates/slab) | 0.4.12 | MIT | Pre-allocated storage for a uniform data type |
+| [slotmap](https://crates.io/crates/slotmap) | 1.1.1 | Zlib | Slotmap data structure |
 | [smallvec](https://crates.io/crates/smallvec) | 1.16.3 | Apache-2.0 OR MIT | 'Small vector' optimization&#58; store up to a small number of items on the stack |
 | [socket2](https://crates.io/crates/socket2) | 0.6.5 | Apache-2.0 OR MIT | Utilities for handling networking sockets with a maximal amount of configuration possible intended. |
 | [softbuffer](https://crates.io/crates/softbuffer) | 0.4.8 | Apache-2.0 OR MIT | Cross-platform software buffer |
@@ -711,17 +849,24 @@ libraries need different ones. Many are only used on one system
 | [specta-serde](https://crates.io/crates/specta-serde) | 0.0.12 | MIT | Serde support for Specta |
 | [specta-typescript](https://crates.io/crates/specta-typescript) | 0.0.12 | MIT | Export your Rust types to TypeScript |
 | [specta-util](https://crates.io/crates/specta-util) | 0.0.12 | MIT | High-level utilities for working with Specta |
+| [spin](https://crates.io/crates/spin) | 0.9.9 | MIT | Spin-based synchronization primitives |
 | [spki](https://crates.io/crates/spki) | 0.8.1 | Apache-2.0 OR MIT | X.509 Subject Public Key Info (RFC5280) describing public keys as well as their associated AlgorithmIdentifiers (i.e. OIDs) |
 | [sponge-cursor](https://crates.io/crates/sponge-cursor) | 0.1.0 | Apache-2.0 OR MIT | Cursor for sponge-based absorption and squeezing |
 | [ssh-cipher](https://crates.io/crates/ssh-cipher) | 0.3.0 | Apache-2.0 OR MIT | Pure Rust implementation of SSH symmetric encryption including support for the modern aes128-gcm@openssh.com/aes256-gcm@openssh.com and… |
 | [ssh-encoding](https://crates.io/crates/ssh-encoding) | 0.3.0 | Apache-2.0 OR MIT | Pure Rust implementation of SSH data type decoders/encoders as described in RFC4251 |
 | [ssh-key](https://crates.io/crates/ssh-key) | 0.7.0-rc.11 | Apache-2.0 OR MIT | Pure Rust implementation of SSH key file format decoders/encoders as described in RFC4251/RFC4253 and OpenSSH key formats, as well as "sshsig" signatures and… |
 | [stable_deref_trait](https://crates.io/crates/stable_deref_trait) | 1.2.1 | Apache-2.0 OR MIT | An unsafe marker trait for types like Box and Rc that dereference to a stable address even when moved, and hence can be used with libraries such as owning_ref… |
+| [stacker](https://crates.io/crates/stacker) | 0.1.25 | Apache-2.0 OR MIT | A stack growth library useful when implementing deeply recursive algorithms that may accidentally blow the stack. |
 | [static_vcruntime](https://crates.io/crates/static_vcruntime) | 3.0.0 | Apache-2.0 OR MIT OR Zlib | Statically link the VCRuntime when using the MSVC toolchain. |
+| [strict-num](https://crates.io/crates/strict-num) | 0.1.1 | MIT | A collection of bounded numeric types |
 | [string_cache](https://crates.io/crates/string_cache) | 0.9.0 | Apache-2.0 OR MIT | A string interning library for Rust, developed as part of the Servo project. |
 | [string_cache_codegen](https://crates.io/crates/string_cache_codegen) | 0.6.1 | Apache-2.0 OR MIT | A codegen library for string-cache, developed as part of the Servo project. |
 | [strsim](https://crates.io/crates/strsim) | 0.11.1 | MIT | Implementations of string similarity metrics. Includes Hamming, Levenshtein, OSA, Damerau-Levenshtein, Jaro, Jaro-Winkler, and Sørensen-Dice. |
+| [strum](https://crates.io/crates/strum) | 0.27.2 | MIT | Helpful macros for working with enums and strings |
+| [strum_macros](https://crates.io/crates/strum_macros) | 0.27.2 | MIT | Helpful macros for working with enums and strings |
+| [subsetter](https://crates.io/crates/subsetter) | 0.2.6 | Apache-2.0 OR MIT | Reduces the size and coverage of OpenType fonts. |
 | [subtle](https://crates.io/crates/subtle) | 2.6.1 | BSD-3-Clause | Pure-Rust traits and utilities for constant-time cryptographic implementations. |
+| [svgtypes](https://crates.io/crates/svgtypes) | 0.16.2 | Apache-2.0 OR MIT | SVG types parser. |
 | [swift-rs](https://crates.io/crates/swift-rs) | 1.0.9 | Apache-2.0 OR MIT | Call Swift from Rust with ease! |
 | [syn](https://crates.io/crates/syn) | 1.0.109 | Apache-2.0 OR MIT | Parser for Rust source code |
 | [syn](https://crates.io/crates/syn) | 2.0.119 | Apache-2.0 OR MIT | Parser for Rust source code |
@@ -734,6 +879,7 @@ libraries need different ones. Many are only used on one system
 | [system-deps](https://crates.io/crates/system-deps) | 6.2.2 | Apache-2.0 OR MIT | Discover and configure system dependencies from declarative dependencies in Cargo.toml |
 | [tao](https://crates.io/crates/tao) | 0.37.1 | Apache-2.0 | Cross-platform window manager library. |
 | [tao-macros](https://crates.io/crates/tao-macros) | 0.1.4 | Apache-2.0 OR MIT | Proc macros for tao |
+| [tap](https://crates.io/crates/tap) | 1.0.1 | MIT | Generic extensions for tapping values in Rust |
 | [tar](https://crates.io/crates/tar) | 0.4.46 | Apache-2.0 OR MIT | A Rust implementation of a TAR file reader and writer. This library does not currently handle compression, but it is abstract over all I/O readers and writers… |
 | [target-lexicon](https://crates.io/crates/target-lexicon) | 0.12.16 | Apache-2.0 WITH LLVM-exception | Targeting utilities for compilers and related tools |
 | [tauri](https://crates.io/crates/tauri) | 2.12.4 | Apache-2.0 OR MIT | Make tiny, secure apps for all desktop platforms with Tauri |
@@ -754,6 +900,8 @@ libraries need different ones. Many are only used on one system
 | [tauri-winres](https://crates.io/crates/tauri-winres) | 0.3.7 | MIT | Create and set windows icons and metadata for executables |
 | [tempfile](https://crates.io/crates/tempfile) | 3.27.0 | Apache-2.0 OR MIT | A library for managing temporary files and directories. |
 | [tendril](https://crates.io/crates/tendril) | 0.5.1 | Apache-2.0 OR MIT | Compact buffer/string type for zero-copy parsing |
+| [text-size](https://crates.io/crates/text-size) | 1.1.1 | Apache-2.0 OR MIT | Newtypes for text offsets |
+| [thin-vec](https://crates.io/crates/thin-vec) | 0.2.21 | Apache-2.0 OR MIT | A Vec that takes up less space on the stack. |
 | [thiserror](https://crates.io/crates/thiserror) | 1.0.69 | Apache-2.0 OR MIT | derive(Error) |
 | [thiserror](https://crates.io/crates/thiserror) | 2.0.21 | Apache-2.0 OR MIT | derive(Error) |
 | [thiserror-impl](https://crates.io/crates/thiserror-impl) | 1.0.69 | Apache-2.0 OR MIT | Implementation detail of the `thiserror` crate |
@@ -763,6 +911,8 @@ libraries need different ones. Many are only used on one system
 | [time](https://crates.io/crates/time) | 0.3.55 | Apache-2.0 OR MIT | Date and time library. Fully interoperable with the standard library. Mostly compatible with #![no_std]. |
 | [time-core](https://crates.io/crates/time-core) | 0.1.9 | Apache-2.0 OR MIT | This crate is an implementation detail and should not be relied upon directly. |
 | [time-macros](https://crates.io/crates/time-macros) | 0.2.32 | Apache-2.0 OR MIT | Procedural macros for the time crate. This crate is an implementation detail and should not be relied upon directly. |
+| [tiny-skia](https://crates.io/crates/tiny-skia) | 0.12.0 | BSD-3-Clause | A tiny Skia subset ported to Rust. |
+| [tiny-skia-path](https://crates.io/crates/tiny-skia-path) | 0.12.0 | BSD-3-Clause | A tiny-skia Bezier path implementation |
 | [tiny_http](https://crates.io/crates/tiny_http) | 0.12.0 | Apache-2.0 OR MIT | Low level HTTP server library |
 | [tinystr](https://crates.io/crates/tinystr) | 0.8.4 | Unicode-3.0 | A small ASCII-only bounded length string representation. |
 | [tinyvec](https://crates.io/crates/tinyvec) | 1.13.3 | Apache-2.0 OR MIT OR Zlib | `tinyvec` provides 100% safe vec-like data structures. |
@@ -791,26 +941,59 @@ libraries need different ones. Many are only used on one system
 | [try-lock](https://crates.io/crates/try-lock) | 0.2.5 | MIT | A lightweight atomic lock. |
 | [ttf-parser](https://crates.io/crates/ttf-parser) | 0.25.1 | Apache-2.0 OR MIT | A high-level, safe, zero-allocation font parser for TrueType, OpenType, and AAT. |
 | [twelf](https://crates.io/crates/twelf) | 0.15.0 | MIT | Twelf is a configuration solution for Rust including 12-Factor support. It is designed with layers in order to configure different sources and formats to build… |
+| [two-face](https://crates.io/crates/two-face) | 0.4.5 | Apache-2.0 OR MIT | Extra syntax and theme definitions for syntect |
 | [two-face](https://crates.io/crates/two-face) | 0.5.2+bat-0.26.1 | Apache-2.0 OR MIT | Extra syntax and theme definitions for syntect |
 | [typed-arena](https://crates.io/crates/typed-arena) | 2.0.2 | MIT | The arena, a fast but limited type of allocator |
 | [typed-builder](https://crates.io/crates/typed-builder) | 0.23.2 | Apache-2.0 OR MIT | Compile-time type-checked builder derive |
 | [typed-builder-macro](https://crates.io/crates/typed-builder-macro) | 0.23.2 | Apache-2.0 OR MIT | Compile-time type-checked builder derive |
 | [typeid](https://crates.io/crates/typeid) | 1.0.3 | Apache-2.0 OR MIT | Const TypeId and non-'static TypeId |
 | [typenum](https://crates.io/crates/typenum) | 1.20.1 | Apache-2.0 OR MIT | Typenum is a Rust library for type-level numbers evaluated at compile time. It currently supports bits, unsigned integers, and signed integers. It also provides… |
+| [typst](https://crates.io/crates/typst) | 0.15.1 | Apache-2.0 | A new markup-based typesetting system that is powerful and easy to learn. |
+| [typst-assets](https://crates.io/crates/typst-assets) | 0.15.1 | Apache-2.0 | Assets for the Typst compiler. |
+| [typst-eval](https://crates.io/crates/typst-eval) | 0.15.1 | Apache-2.0 | Typst's code interpreter. |
+| [typst-html](https://crates.io/crates/typst-html) | 0.15.1 | Apache-2.0 | Typst's HTML exporter. |
+| [typst-layout](https://crates.io/crates/typst-layout) | 0.15.1 | Apache-2.0 | Typst's layout engine. |
+| [typst-library](https://crates.io/crates/typst-library) | 0.15.1 | Apache-2.0 | Typst's standard library. |
+| [typst-macros](https://crates.io/crates/typst-macros) | 0.15.1 | Apache-2.0 | Proc-macros for Typst. |
+| [typst-pdf](https://crates.io/crates/typst-pdf) | 0.15.1 | Apache-2.0 | PDF exporter for Typst. |
+| [typst-realize](https://crates.io/crates/typst-realize) | 0.15.1 | Apache-2.0 | Typst's realization subsystem. |
+| [typst-svg](https://crates.io/crates/typst-svg) | 0.15.1 | Apache-2.0 | SVG exporter for Typst. |
+| [typst-syntax](https://crates.io/crates/typst-syntax) | 0.15.1 | Apache-2.0 | Parser and syntax tree for Typst. |
+| [typst-timing](https://crates.io/crates/typst-timing) | 0.15.1 | Apache-2.0 | Performance timing for Typst. |
+| [typst-utils](https://crates.io/crates/typst-utils) | 0.15.1 | Apache-2.0 | Utilities for Typst. |
 | [uds_windows](https://crates.io/crates/uds_windows) | 1.2.1 | MIT | Unix Domain Sockets for Windows! |
+| [unic-langid](https://crates.io/crates/unic-langid) | 0.9.6 | Apache-2.0 OR MIT | API for managing Unicode Language Identifiers |
+| [unic-langid-impl](https://crates.io/crates/unic-langid-impl) | 0.9.6 | Apache-2.0 OR MIT | API for managing Unicode Language Identifiers |
+| [unic-langid-macros](https://crates.io/crates/unic-langid-macros) | 0.9.6 | Apache-2.0 OR MIT | API for managing Unicode Language Identifiers |
+| [unic-langid-macros-impl](https://crates.io/crates/unic-langid-macros-impl) | 0.9.6 | Apache-2.0 OR MIT | API for managing Unicode Language Identifiers |
+| [unicode-bidi](https://crates.io/crates/unicode-bidi) | 0.3.18 | Apache-2.0 OR MIT | Implementation of the Unicode Bidirectional Algorithm |
+| [unicode-bidi-mirroring](https://crates.io/crates/unicode-bidi-mirroring) | 0.4.0 | Apache-2.0 OR MIT | Unicode Bidi Mirroring property detection |
+| [unicode-ccc](https://crates.io/crates/unicode-ccc) | 0.4.0 | Apache-2.0 OR MIT | Unicode Canonical Combining Class detection |
 | [unicode-ident](https://crates.io/crates/unicode-ident) | 1.0.27 | (MIT OR Apache-2.0) AND Unicode-3.0 | Determine whether characters have the XID_Start or XID_Continue properties according to Unicode Standard Annex #31 |
+| [unicode-math-class](https://crates.io/crates/unicode-math-class) | 0.1.0 | Apache-2.0 OR MIT | Determine the Unicode class of a mathematical character. |
 | [unicode-normalization](https://crates.io/crates/unicode-normalization) | 0.1.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | This crate provides functions for normalization of Unicode strings, including Canonical and Compatible Decomposition and Recomposition, as described in Unicode… |
+| [unicode-properties](https://crates.io/crates/unicode-properties) | 0.1.5 | (MIT OR Apache-2.0) AND Unicode-3.0 | Query character Unicode properties according to UAX #44 and UTR #51. |
+| [unicode-script](https://crates.io/crates/unicode-script) | 0.5.9 | Apache-2.0 OR MIT | This crate exposes the Unicode `Script` and `Script_Extension` properties from [UAX #24](http&#58;//www.unicode.org/reports/tr24/) |
 | [unicode-segmentation](https://crates.io/crates/unicode-segmentation) | 1.13.3 | Apache-2.0 OR MIT | This crate provides Grapheme Cluster, Word and Sentence boundaries according to Unicode Standard Annex #29 rules. |
+| [unicode-vo](https://crates.io/crates/unicode-vo) | 0.1.0 | Apache-2.0 OR MIT | Unicode vertical orientation detection |
 | [unicode-width](https://crates.io/crates/unicode-width) | 0.2.3 | Apache-2.0 OR MIT | Determine displayed width of `char` and `str` types according to Unicode Standard Annex #11 rules. |
 | [unicode-xid](https://crates.io/crates/unicode-xid) | 0.2.6 | Apache-2.0 OR MIT | Determine whether characters have the XID_Start or XID_Continue properties according to Unicode Standard Annex #31. |
 | [universal-hash](https://crates.io/crates/universal-hash) | 0.6.1 | Apache-2.0 OR MIT | Traits which describe the functionality of universal hash functions (UHFs) |
+| [unsafe-libyaml](https://crates.io/crates/unsafe-libyaml) | 0.2.11 | MIT | libyaml transpiled to rust by c2rust |
+| [unscanny](https://crates.io/crates/unscanny) | 0.1.0 | Apache-2.0 OR MIT | Painless string scanning. |
 | [untrusted](https://crates.io/crates/untrusted) | 0.9.0 | ISC | Safe, fast, zero-panic, zero-crashing, zero-allocation parsing of untrusted inputs in Rust. |
 | [url](https://crates.io/crates/url) | 2.5.8 | Apache-2.0 OR MIT | URL library for Rust, based on the WHATWG URL Standard |
 | [urlpattern](https://crates.io/crates/urlpattern) | 0.6.0 | MIT | rust-urlpattern is a Rust implementation of the URLPattern standard |
+| [usvg](https://crates.io/crates/usvg) | 0.47.0 | Apache-2.0 OR MIT | An SVG simplification library. |
+| [utf16_iter](https://crates.io/crates/utf16_iter) | 1.1.0 | Apache-2.0 OR MIT | Iterator by char over potentially-invalid UTF-16 in &[u16] |
 | [utf8_iter](https://crates.io/crates/utf8_iter) | 1.0.4 | Apache-2.0 OR MIT | Iterator by char over potentially-invalid UTF-8 in &[u8] |
 | [utf8parse](https://crates.io/crates/utf8parse) | 0.2.2 | Apache-2.0 OR MIT | Table-driven UTF-8 parser |
+| [utf_types](https://crates.io/crates/utf_types) | 1.0.0 | Apache-2.0 OR MIT | Types for UTF-8 and UTF-16 code units and code unit sequences |
 | [uuid](https://crates.io/crates/uuid) | 1.28.0 | Apache-2.0 OR MIT | A library to generate and parse UUIDs. |
 | [vcpkg](https://crates.io/crates/vcpkg) | 0.2.15 | Apache-2.0 OR MIT | A library to find native dependencies in a vcpkg tree at build time in order to be used in Cargo build scripts. |
+| [vello_common](https://crates.io/crates/vello_common) | 0.0.8 | Apache-2.0 OR MIT | Core data structures and utilities shared across the Vello rendering, including geometry processing and tiling logic. |
+| [vello_common](https://crates.io/crates/vello_common) | 0.0.9 | Apache-2.0 OR MIT | Core data structures and utilities shared across the Vello rendering, including geometry processing and tiling logic. |
+| [vello_cpu](https://crates.io/crates/vello_cpu) | 0.0.8 | Apache-2.0 OR MIT | A CPU-based renderer for Vello, optimized for SIMD and multithreaded execution. |
 | [version-compare](https://crates.io/crates/version-compare) | 0.2.1 | MIT | Rust library to easily compare version numbers with no specific format, and test against various comparison operators. |
 | [version_check](https://crates.io/crates/version_check) | 0.9.5 | Apache-2.0 OR MIT | Tiny crate to check the version of the installed/running rustc. |
 | [vswhom](https://crates.io/crates/vswhom) | 0.1.0 | MIT | FFI to Jon Blow's VS discovery script |
@@ -825,6 +1008,11 @@ libraries need different ones. Many are only used on one system
 | [wasm-bindgen-macro-support](https://crates.io/crates/wasm-bindgen-macro-support) | 0.2.129 | Apache-2.0 OR MIT | Implementation APIs for the `#[wasm_bindgen]` attribute |
 | [wasm-bindgen-shared](https://crates.io/crates/wasm-bindgen-shared) | 0.2.129 | Apache-2.0 OR MIT | Shared support between wasm-bindgen and wasm-bindgen cli, an internal dependency. |
 | [wasm-streams](https://crates.io/crates/wasm-streams) | 0.5.0 | Apache-2.0 OR MIT | Bridging between web streams and Rust streams using WebAssembly |
+| [wasmi](https://crates.io/crates/wasmi) | 1.1.0 | Apache-2.0 OR MIT | WebAssembly interpreter |
+| [wasmi_collections](https://crates.io/crates/wasmi_collections) | 1.1.0 | Apache-2.0 OR MIT | Specialized data structures for the Wasmi interpreter |
+| [wasmi_core](https://crates.io/crates/wasmi_core) | 1.1.0 | Apache-2.0 OR MIT | Core primitives for the wasmi WebAssembly interpreter |
+| [wasmi_ir](https://crates.io/crates/wasmi_ir) | 1.1.0 | Apache-2.0 OR MIT | WebAssembly interpreter internal bytecode representation |
+| [wasmparser](https://crates.io/crates/wasmparser) | 0.239.0 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | A simple event-driven library for parsing WebAssembly binary files. |
 | [wax](https://crates.io/crates/wax) | 0.7.0 | MIT | Opinionated and portable globs that can be matched against paths and directory trees. |
 | [web-sys](https://crates.io/crates/web-sys) | 0.3.106 | Apache-2.0 OR MIT | Bindings for all Web APIs, a procedurally generated crate from WebIDL |
 | [web-time](https://crates.io/crates/web-time) | 1.1.0 | Apache-2.0 OR MIT | Drop-in replacement for std&#58;&#58;time for Wasm in browsers |
@@ -837,6 +1025,7 @@ libraries need different ones. Many are only used on one system
 | [webview2-com-macros](https://crates.io/crates/webview2-com-macros) | 0.8.1 | MIT | Macros which generate callback implementations for WebView2 COM APIs |
 | [webview2-com-sys](https://crates.io/crates/webview2-com-sys) | 0.39.1 | MIT | Bindings generated with the windows crate for the WebView2 COM APIs |
 | [weezl](https://crates.io/crates/weezl) | 0.1.12 | Apache-2.0 OR MIT | Fast LZW compression and decompression. |
+| [which](https://crates.io/crates/which) | 5.0.0 | MIT | A Rust equivalent of Unix command "which". Locate installed executable in cross platforms. |
 | [winapi](https://crates.io/crates/winapi) | 0.3.9 | Apache-2.0 OR MIT | Raw FFI bindings for all of Windows API. |
 | [winapi-i686-pc-windows-gnu](https://crates.io/crates/winapi-i686-pc-windows-gnu) | 0.4.0 | Apache-2.0 OR MIT | Import libraries for the i686-pc-windows-gnu target. Please don't use this crate directly, depend on winapi instead. |
 | [winapi-util](https://crates.io/crates/winapi-util) | 0.1.11 | MIT OR Unlicense | A dumping ground for high level safe wrappers over windows-sys. |
@@ -855,35 +1044,44 @@ libraries need different ones. Many are only used on one system
 | [windows-result](https://crates.io/crates/windows-result) | 0.4.1 | Apache-2.0 OR MIT | Windows error handling |
 | [windows-strings](https://crates.io/crates/windows-strings) | 0.5.1 | Apache-2.0 OR MIT | Windows string types |
 | [windows-sys](https://crates.io/crates/windows-sys) | 0.45.0 | Apache-2.0 OR MIT | Rust for Windows |
+| [windows-sys](https://crates.io/crates/windows-sys) | 0.48.0 | Apache-2.0 OR MIT | Rust for Windows |
 | [windows-sys](https://crates.io/crates/windows-sys) | 0.52.0 | Apache-2.0 OR MIT | Rust for Windows |
 | [windows-sys](https://crates.io/crates/windows-sys) | 0.60.2 | Apache-2.0 OR MIT | Rust for Windows |
 | [windows-sys](https://crates.io/crates/windows-sys) | 0.61.2 | Apache-2.0 OR MIT | Rust for Windows |
 | [windows-targets](https://crates.io/crates/windows-targets) | 0.42.2 | Apache-2.0 OR MIT | Import libs for Windows |
+| [windows-targets](https://crates.io/crates/windows-targets) | 0.48.5 | Apache-2.0 OR MIT | Import libs for Windows |
 | [windows-targets](https://crates.io/crates/windows-targets) | 0.52.6 | Apache-2.0 OR MIT | Import libs for Windows |
 | [windows-targets](https://crates.io/crates/windows-targets) | 0.53.5 | Apache-2.0 OR MIT | Import libs for Windows |
 | [windows-threading](https://crates.io/crates/windows-threading) | 0.2.1 | Apache-2.0 OR MIT | Windows threading |
 | [windows-version](https://crates.io/crates/windows-version) | 0.1.7 | Apache-2.0 OR MIT | Windows version information |
 | [windows_aarch64_gnullvm](https://crates.io/crates/windows_aarch64_gnullvm) | 0.42.2 | Apache-2.0 OR MIT | Import lib for Windows |
+| [windows_aarch64_gnullvm](https://crates.io/crates/windows_aarch64_gnullvm) | 0.48.5 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_aarch64_gnullvm](https://crates.io/crates/windows_aarch64_gnullvm) | 0.52.6 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_aarch64_gnullvm](https://crates.io/crates/windows_aarch64_gnullvm) | 0.53.1 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_aarch64_msvc](https://crates.io/crates/windows_aarch64_msvc) | 0.42.2 | Apache-2.0 OR MIT | Import lib for Windows |
+| [windows_aarch64_msvc](https://crates.io/crates/windows_aarch64_msvc) | 0.48.5 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_aarch64_msvc](https://crates.io/crates/windows_aarch64_msvc) | 0.52.6 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_aarch64_msvc](https://crates.io/crates/windows_aarch64_msvc) | 0.53.1 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_i686_gnu](https://crates.io/crates/windows_i686_gnu) | 0.42.2 | Apache-2.0 OR MIT | Import lib for Windows |
+| [windows_i686_gnu](https://crates.io/crates/windows_i686_gnu) | 0.48.5 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_i686_gnu](https://crates.io/crates/windows_i686_gnu) | 0.52.6 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_i686_gnu](https://crates.io/crates/windows_i686_gnu) | 0.53.1 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_i686_gnullvm](https://crates.io/crates/windows_i686_gnullvm) | 0.52.6 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_i686_gnullvm](https://crates.io/crates/windows_i686_gnullvm) | 0.53.1 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_i686_msvc](https://crates.io/crates/windows_i686_msvc) | 0.42.2 | Apache-2.0 OR MIT | Import lib for Windows |
+| [windows_i686_msvc](https://crates.io/crates/windows_i686_msvc) | 0.48.5 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_i686_msvc](https://crates.io/crates/windows_i686_msvc) | 0.52.6 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_i686_msvc](https://crates.io/crates/windows_i686_msvc) | 0.53.1 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_gnu](https://crates.io/crates/windows_x86_64_gnu) | 0.42.2 | Apache-2.0 OR MIT | Import lib for Windows |
+| [windows_x86_64_gnu](https://crates.io/crates/windows_x86_64_gnu) | 0.48.5 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_gnu](https://crates.io/crates/windows_x86_64_gnu) | 0.52.6 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_gnu](https://crates.io/crates/windows_x86_64_gnu) | 0.53.1 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_gnullvm](https://crates.io/crates/windows_x86_64_gnullvm) | 0.42.2 | Apache-2.0 OR MIT | Import lib for Windows |
+| [windows_x86_64_gnullvm](https://crates.io/crates/windows_x86_64_gnullvm) | 0.48.5 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_gnullvm](https://crates.io/crates/windows_x86_64_gnullvm) | 0.52.6 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_gnullvm](https://crates.io/crates/windows_x86_64_gnullvm) | 0.53.1 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_msvc](https://crates.io/crates/windows_x86_64_msvc) | 0.42.2 | Apache-2.0 OR MIT | Import lib for Windows |
+| [windows_x86_64_msvc](https://crates.io/crates/windows_x86_64_msvc) | 0.48.5 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_msvc](https://crates.io/crates/windows_x86_64_msvc) | 0.52.6 | Apache-2.0 OR MIT | Import lib for Windows |
 | [windows_x86_64_msvc](https://crates.io/crates/windows_x86_64_msvc) | 0.53.1 | Apache-2.0 OR MIT | Import lib for Windows |
 | [winnow](https://crates.io/crates/winnow) | 0.5.40 | MIT | A byte-oriented, zero-copy, parser combinators library |
@@ -891,11 +1089,16 @@ libraries need different ones. Many are only used on one system
 | [winreg](https://crates.io/crates/winreg) | 0.56.0 | MIT | Rust bindings to MS Windows Registry API |
 | [wit-bindgen](https://crates.io/crates/wit-bindgen) | 0.57.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | Rust bindings generator and runtime support for WIT and the component model. Used when compiling Rust programs to the component model. |
 | [wnaf](https://crates.io/crates/wnaf) | 0.14.1 | Apache-2.0 OR MIT | wNAF (w-ary non-adjacent form) variable-time scalar multiplication implemented generically over elliptic curve groups with full `no_alloc` support, including… |
+| [write-fonts](https://crates.io/crates/write-fonts) | 0.48.1 | Apache-2.0 OR MIT | Writing font files. |
+| [write16](https://crates.io/crates/write16) | 1.0.0 | Apache-2.0 OR MIT | A UTF-16 analog of the Write trait |
 | [writeable](https://crates.io/crates/writeable) | 0.6.4 | Unicode-3.0 | A more efficient alternative to fmt&#58;&#58;Display |
 | [wry](https://crates.io/crates/wry) | 0.57.0 | Apache-2.0 OR MIT | Cross-platform WebView rendering library |
+| [wyz](https://crates.io/crates/wyz) | 0.5.1 | MIT | myrrlyn’s utility collection |
 | [x11](https://crates.io/crates/x11) | 2.21.0 | MIT | X11 library bindings for Rust |
 | [x11-dl](https://crates.io/crates/x11-dl) | 2.21.0 | MIT | X11 library bindings for Rust |
 | [xattr](https://crates.io/crates/xattr) | 1.6.1 | Apache-2.0 OR MIT | unix extended filesystem attributes |
+| [xmlwriter](https://crates.io/crates/xmlwriter) | 0.1.0 | MIT | A simple, streaming XML writer. |
+| [xmp-writer](https://crates.io/crates/xmp-writer) | 0.3.3 | Apache-2.0 OR MIT | Write XMP metadata, step by step. |
 | [yaml-rust](https://crates.io/crates/yaml-rust) | 0.4.5 | Apache-2.0 OR MIT | The missing YAML 1.2 parser for rust |
 | [yoke](https://crates.io/crates/yoke) | 0.8.3 | Unicode-3.0 | Abstraction allowing borrowed data to be carried along with the backing data it borrows from |
 | [yoke-derive](https://crates.io/crates/yoke-derive) | 0.8.4 | Unicode-3.0 | Custom derive for the yoke crate |
@@ -904,6 +1107,8 @@ libraries need different ones. Many are only used on one system
 | [zbus_macros](https://crates.io/crates/zbus_macros) | 5.19.0 | MIT | proc-macros for zbus |
 | [zbus_names](https://crates.io/crates/zbus_names) | 4.3.5 | MIT | A collection of D-Bus bus names types (deprecated&#58; merged into zbus) |
 | [zcheapstr](https://crates.io/crates/zcheapstr) | 1.1.0 | MIT | An immutable, cheaply cloneable string type with borrowed, static and shared variants |
+| [zerocopy](https://crates.io/crates/zerocopy) | 0.8.63 | Apache-2.0 OR BSD-2-Clause OR MIT | Zerocopy makes zero-cost memory manipulation effortless. We write "unsafe" so you don't have to. |
+| [zerocopy-derive](https://crates.io/crates/zerocopy-derive) | 0.8.63 | Apache-2.0 OR BSD-2-Clause OR MIT | Custom derive for traits from the zerocopy crate |
 | [zerofrom](https://crates.io/crates/zerofrom) | 0.1.8 | Unicode-3.0 | ZeroFrom trait for constructing |
 | [zerofrom-derive](https://crates.io/crates/zerofrom-derive) | 0.1.8 | Unicode-3.0 | Custom derive for the zerofrom crate |
 | [zeroize](https://crates.io/crates/zeroize) | 1.9.1 | Apache-2.0 OR MIT | Securely clear secrets from memory with a simple trait built on stable Rust primitives which guarantee memory is zeroed using an operation will not be… |

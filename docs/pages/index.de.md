@@ -94,3 +94,16 @@ sudo apt install ./qed_*.deb
 Auf jeder anderen Distribution laden Sie das `.AppImage` herunter,
 machen es ausführbar (`chmod +x qed_*.AppImage`) und starten es.
 ::::
+
+::::: section
+::: settings
+title = "Diese Website herunterladen"
+:::
+Die Website als PDF, zum Lesen ohne Internet oder zum Ausdrucken: das
+Handbuch und die Startseite, mit Inhaltsverzeichnis.
+
+::: download
+file = "q-e-d-de.pdf"
+label = "q.e.d. als PDF"
+:::
+:::::

@@ -48,24 +48,6 @@ Nothing open.
   strings too), or both. Old feed addresses per format would be a
   podcast setting, filled in by the import.
 
-- **#154 The whole site as a PDF.** A button in the app makes one PDF
-  of the site, only when asked (user, 2026-11-06). It lands in
-  `assets/` like any other PDF, so it can be linked from a page, offered
-  for download and published with the site. It starts with a table of
-  contents of the top two levels of pages (top-level pages and the
-  pages in their folders), with page numbers and PDF bookmarks. Made
-  with [Typst](https://typst.app), as in the user's Phoenix app
-  mercator (offers and order confirmations, "fantastic" results); there
-  it ran the `typst` program, here the `typst` and `typst-pdf` crates
-  can be compiled into qed-core, so nobody has to install anything.
-  Decided 2026-11-06: all posts and episodes come along, in a chapter
-  of their own after the pages; a translated site gets one PDF per
-  language; blocks keep their meaning in print (columns, FAQ, call to
-  action, text with image, galleries), while the player and the
-  subscribe button become a link; plain black text on white, without
-  the site's theme, fonts or logo; links between pages jump inside the
-  PDF where the page is in it, else they keep the web address.
-
 - **#151 New manual screenshots.** The screenshots in
   `docs/media/manual/` still show the app's Lucide icons from before
   #149, and the theme tab is slightly older than that. Retake them all

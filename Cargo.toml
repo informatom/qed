@@ -35,6 +35,28 @@ moxcms = { opt-level = 3 }
 # WebP copies (#085): libwebp is C, built by the cc crate, which takes
 # the optimization level from here too.
 libwebp-sys = { opt-level = 3 }
+# Typst (#154) sets a site's PDF many times slower unoptimized.
+typst = { opt-level = 3 }
+typst-library = { opt-level = 3 }
+typst-layout = { opt-level = 3 }
+typst-realize = { opt-level = 3 }
+typst-eval = { opt-level = 3 }
+typst-syntax = { opt-level = 3 }
+typst-pdf = { opt-level = 3 }
+typst-utils = { opt-level = 3 }
+comemo = { opt-level = 3 }
+krilla = { opt-level = 3 }
+krilla-svg = { opt-level = 3 }
+rustybuzz = { opt-level = 3 }
+ttf-parser = { opt-level = 3 }
+subsetter = { opt-level = 3 }
+skrifa = { opt-level = 3 }
+read-fonts = { opt-level = 3 }
+hypher = { opt-level = 3 }
+icu_segmenter = { opt-level = 3 }
+usvg = { opt-level = 3 }
+tiny-skia = { opt-level = 3 }
+tiny-skia-path = { opt-level = 3 }
 
 # No debug information for the dependencies: nobody steps through them in
 # a debugger, and it was most of target/ (tens of GB across `tauri dev`,

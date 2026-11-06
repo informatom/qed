@@ -17,6 +17,7 @@ use qed_core::history::{
 use qed_core::media::{self, Library, MediaFile};
 use qed_core::media_settings::{self, Focus};
 use qed_core::page::{FrontMatter, PageContent, PageDate};
+use qed_core::pdf::{self, PdfReport};
 use qed_core::podcast;
 use qed_core::preview::Preview;
 use qed_core::remote::{self, RemoteError, RemoteInfo, RemoteReport, Transfer};
@@ -448,6 +449,14 @@ async fn restore_site(root: PathBuf, version: String) -> Result<Version, String>
 #[specta::specta]
 async fn build_site(path: PathBuf) -> Result<BuildReport, String> {
     build(&path)
+}
+
+/// Makes the whole site into PDFs in `assets/`, one per language (#154).
+#[tauri::command]
+#[specta::specta]
+async fn export_pdf(root: PathBuf) -> Result<PdfReport, String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    pdf::export(&site).map_err(|error| error.to_string())
 }
 
 /// What `preview_site` returns: where to look, and what was built.
@@ -1097,6 +1106,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             pull_site,
             clone_site,
             build_site,
+            export_pdf,
             preview_site,
         ])
         // Failed commands reject their promise with the error message, as

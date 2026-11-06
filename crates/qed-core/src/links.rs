@@ -267,7 +267,7 @@ fn is_external(url: &str) -> bool {
 }
 
 /// `logo.png` is a file, `about` and `blog/post` are pages.
-fn looks_like_file(path: &str) -> bool {
+pub(crate) fn looks_like_file(path: &str) -> bool {
     path.rsplit('/')
         .next()
         .is_some_and(|last| last.contains('.'))

@@ -8,12 +8,15 @@
   import Folder from "@tabler/icons-svelte-runes/icons/folder";
   import FolderInput from "@tabler/icons-svelte-runes/icons/folder-down";
   import FolderOpen from "@tabler/icons-svelte-runes/icons/folder-open";
+  import FileTypePdf from "@tabler/icons-svelte-runes/icons/file-type-pdf";
   import Trash from "@tabler/icons-svelte-runes/icons/trash";
   import Upload from "@tabler/icons-svelte-runes/icons/upload";
   import ImageViewer from "$lib/ImageViewer.svelte";
   import PdfViewer from "$lib/PdfViewer.svelte";
   import TextViewer from "$lib/TextViewer.svelte";
-  import { commands, formatSize, libraryUrl, pageLabel, type Focus, type Library, type MediaFile, type MediaKind } from "$lib/site";
+  import {
+    commands, formatSize, libraryUrl, pageLabel, type Focus, type Library, type MediaFile, type MediaKind, type PdfReport,
+  } from "$lib/site";
 
   interface Props {
     siteRoot: string;
@@ -44,6 +47,22 @@
   let viewing = $state<string | null>(null);
   /** The PDF open in the viewer. */
   let pdf = $state<string | null>(null);
+  /** What the last "Make PDF of the site" made (#154). */
+  let made = $state<PdfReport | null>(null);
+  let making = $state(false);
+
+  async function makePdf() {
+    making = true;
+    error = null;
+    try {
+      made = await commands.exportPdf(siteRoot);
+      await refresh();
+    } catch (e) {
+      error = String(e);
+    } finally {
+      making = false;
+    }
+  }
 
   function isPdf(name: string): boolean {
     return name.toLowerCase().endsWith(".pdf");
@@ -239,6 +258,13 @@
         <FolderInput class="size-4" /> Import folder…
       </button>
     {/if}
+    {#if library === "assets" && !onpick}
+      <button type="button" id="make-site-pdf" class="btn" onclick={makePdf} disabled={making}
+        title="The whole site as a PDF, with a table of contents; one per language">
+        {#if making}<span class="loading loading-spinner loading-sm"></span>{:else}<FileTypePdf class="size-4" />{/if}
+        Make PDF of the site
+      </button>
+    {/if}
     <button type="button" id="import-{library}" class="btn btn-primary" onclick={importFiles} disabled={busy}>
       {#if busy}<span class="loading loading-spinner loading-sm"></span>{:else}<Upload class="size-4" />{/if}
       {library === "media" ? "Import images…" : library === "audio" ? "Import audio…" : library === "transcripts" ? "Import transcripts…" : "Import files…"}
@@ -276,6 +302,25 @@
           onclick={() => openFolder(crumb.path)}>{crumb.name}</button>
       {/each}
     </nav>
+  {/if}
+
+  {#if made}
+    <div id="site-pdf-made" role="status" class="alert alert-success alert-soft flex flex-col items-start gap-1 text-sm">
+      {#each made.files as file (file.name)}
+        <span>
+          Made <button type="button" class="link font-mono" onclick={() => (pdf = file.name)}>{file.name}</button>:
+          {file.pages} pages, {formatSize(file.size)}.
+        </span>
+      {/each}
+      {#if made.notes.length}
+        <details>
+          <summary class="cursor-pointer">{made.notes.length} {made.notes.length === 1 ? "note" : "notes"}</summary>
+          <ul class="list-disc pl-5">
+            {#each made.notes as note, index (index)}<li>{note}</li>{/each}
+          </ul>
+        </details>
+      {/if}
+    </div>
   {/if}
 
   {#if error}

@@ -1157,6 +1157,29 @@ rest is done.
   titles can be edited, with the fallback as placeholder. The page
   picker lists main-language pages only. Manual (*Menus*, en + de) and
   MCP guide updated.
+- **#154 The whole site as a PDF.** Requested by the user 2026-11-06,
+  with Typst as in his Phoenix app mercator. *Decided 2026-11-06
+  (user):* all posts and episodes, in chapters of their own; one PDF
+  per language; plain black on white, without theme, fonts or logo;
+  links between pages inside the PDF. *Done 2026-11-06*: `qed_core::pdf`
+  turns the pages into Typst markup and sets it with the `typst`,
+  `typst-layout` and `typst-pdf` crates, compiled in (fonts from
+  typst-assets in `assets/typst-fonts/`, 3 MB); LaTeX formulas through
+  mitex, each checked alone and shown as LaTeX if Typst can't set it.
+  Title page, table of contents and bookmarks of two levels, pages in
+  menu order (each top-level page on a new page), then a chapter per
+  page with posts below it: its own content and pages, then the posts,
+  newest first. Blocks in print: columns as a grid, call to action
+  framed, FAQ open, player as a link to the episode page, chapters as a
+  table, transcripts in small type; links to other sites with their
+  address in a footnote (not in tables). Photos larger than 1600 px get
+  a smaller copy. **Make PDF of the site** in the Downloads tab writes
+  `assets/<site>.pdf` (`<site>-en.pdf` for further languages); example
+  `cargo run -p qed-core --example pdf -- docs`. Docs site: 271 + 34
+  pages in about 8 s in a dev build, after splitting long tables, no
+  highlighting and no footnotes in tables (it was 90 s). Manual
+  (*Pictures and files*, en + de) and blog post
+  [The site as a book](blog/2026-11-06-the-site-as-a-book.md).
 
 - **Phase 3: Beyond the basics.** Everything after podcasting that
   the owner's own sites and tests asked for: push and pull with git

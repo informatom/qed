@@ -85,6 +85,29 @@ The **Download** block offers one file from Downloads, with its type and
 size. In text, link it as `[the menu](/assets/menu.pdf)`. A **Video**
 block can play a video file from Downloads, too.
 
+## The whole site as a PDF
+
+:icon-file-type-pdf: **Make PDF of the site** in the Downloads tab puts
+the whole site into one PDF, to print, to archive or to offer for
+download. It starts with a title page and a table of contents of the
+top two levels of pages, with page numbers; PDF readers show them as
+bookmarks, too. Then come the pages in the order of the site, each
+top-level page on a new page, and after them the posts and episodes,
+newest first, in a chapter of their own after the page that lists them
+(such as the Blog).
+
+The PDF is plain black text on white, without the site's colors, fonts
+or logo. Pictures, tables, formulas, charts and columns come along;
+links to other pages jump inside the PDF, and links to other websites
+show their address in a footnote, so they can be read on paper. The
+player and videos become a link to their page on the website.
+
+It's made only when you click, and lands in Downloads like any other
+file: `my-site.pdf`, named after the site. Offer it with a **Download**
+block. A site in several languages gets one PDF per language
+(`my-site-en.pdf`). Click again after changing pages to bring it up to
+date; drafts and posts dated in the future stay out.
+
 ::: faq
 [[items]]
 question = "My PDFs are in Media. Is that a problem?"

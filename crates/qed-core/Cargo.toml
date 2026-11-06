@@ -55,6 +55,13 @@ toml_edit = { version = "0.25.17", features = ["serde"] }
 uuid = { version = "1.28.0", features = ["v4", "v5"] }
 lofty = "0.25.5"
 include_dir = "0.7.4"
+# The whole site as a PDF (#154): Typst, compiled in, with its own fonts.
+# Its fonts are in assets/typst-fonts/ (a few of typst-assets').
+typst = "0.15.1"
+typst-layout = "0.15.1"
+typst-pdf = "0.15.1"
+# LaTeX formulas as Typst math.
+mitex = "0.2.4"
 
 [dev-dependencies]
 tempfile = "3.27.0"

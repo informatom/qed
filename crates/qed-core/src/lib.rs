@@ -23,6 +23,7 @@ pub mod media_settings;
 pub mod moving;
 pub mod page;
 pub mod page_writer;
+pub mod pdf;
 pub mod podcast;
 pub mod preview;
 pub mod remote;

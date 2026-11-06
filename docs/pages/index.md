@@ -90,3 +90,16 @@ text = "The blog explains the Rust, Svelte and TypeScript behind q.e.d., step by
 button_label = "Start with the first post"
 button_link = "/blog/2026-10-21-one-title-three-languages"
 :::
+
+::::: section
+::: settings
+title = "Download this web page"
+:::
+The whole site as a PDF, to read offline or print: the manual, the
+development notes and the blog, with a table of contents.
+
+::: download
+file = "q-e-d.pdf"
+label = "q.e.d. as a PDF"
+:::
+:::::
