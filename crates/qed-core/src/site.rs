@@ -140,6 +140,11 @@ pub struct SiteConfig {
 pub struct MenuItem {
     /// The text shown; for a page, its title if empty.
     pub title: Option<String>,
+    /// The text in further languages (#145), by code:
+    /// `titles = { en = "About us" }`. Without one, a page shows its
+    /// translation's title there, a link or group its `title`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub titles: BTreeMap<String, String>,
     /// A page by its address (`elixir`, `` for the start page); follows the
     /// page when it moves.
     pub page: Option<String>,
@@ -2811,6 +2816,7 @@ mod tests {
         config.main_menu = vec![
             MenuItem {
                 title: Some("Stacks".into()),
+                titles: BTreeMap::from([("en".into(), "Stacks of things".into())]),
                 items: vec![
                     page("elixir"),
                     MenuItem {
@@ -2830,7 +2836,7 @@ mod tests {
         save_config(dir.path(), &config).unwrap();
         let text = fs::read_to_string(dir.path().join("site.toml")).unwrap();
         assert!(
-            text.contains("[[main_menu]]\ntitle = \"Stacks\"\n\n[[main_menu.items]]\npage = \"elixir\"\n\n[[main_menu.items]]\ndivider = true\n"),
+            text.contains("[[main_menu]]\ntitle = \"Stacks\"\ntitles = { en = \"Stacks of things\" }\n\n[[main_menu.items]]\npage = \"elixir\"\n\n[[main_menu.items]]\ndivider = true\n"),
             "{text}"
         );
         assert!(text.contains("[[main_menu]]\npage = \"kontakt\""), "{text}");

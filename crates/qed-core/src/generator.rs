@@ -2006,13 +2006,25 @@ struct NavItem {
 fn hand_made_menu(
     items: &[crate::site::MenuItem],
     links: &LinkContext,
-    page_path: &str,
+    page: &Page,
     pages: &[&Page],
 ) -> Vec<NavItem> {
+    let page_path = page.path.as_str();
     items
         .iter()
         .filter_map(|item| {
-            let title = item.title.clone().filter(|t| !t.trim().is_empty());
+            // The title in the page's language; in a further one without
+            // its own title, a page entry takes its translation's title.
+            let translated = page
+                .language
+                .as_deref()
+                .and_then(|code| item.titles.get(code))
+                .filter(|t| !t.trim().is_empty());
+            let title = match translated {
+                Some(title) => Some(title.clone()),
+                None if page.language.is_some() && item.page.is_some() => None,
+                None => item.title.clone().filter(|t| !t.trim().is_empty()),
+            };
             if item.divider {
                 return Some(NavItem {
                     title: String::new(),
@@ -2024,7 +2036,7 @@ fn hand_made_menu(
                 });
             }
             if !item.items.is_empty() {
-                let children = hand_made_menu(&item.items, links, page_path, pages);
+                let children = hand_made_menu(&item.items, links, page, pages);
                 return Some(NavItem {
                     title: title.unwrap_or_default(),
                     href: String::new(),
@@ -2038,9 +2050,9 @@ fn hand_made_menu(
                 // A page in the page's language; one without a
                 // translation in it is left out.
                 let path = links.translated(crate::site::menu_page_path(path));
-                let page = pages.iter().find(|page| page.path == path)?;
+                let target = pages.iter().find(|page| page.path == path)?;
                 (
-                    title.unwrap_or_else(|| page.content.front.title.clone()),
+                    title.unwrap_or_else(|| target.content.front.title.clone()),
                     links.page(&path),
                     Some(path),
                 )
@@ -3117,7 +3129,7 @@ fn render_page(
         .and_then(|base| share_image(page, base, context.images));
 
     // A hand-made menu replaces the automatic one.
-    let nav = hand_made_menu(&config.main_menu, &links, &page.path, context.pages);
+    let nav = hand_made_menu(&config.main_menu, &links, page, context.pages);
     let main_links = if nav.is_empty() {
         menu_links(main_menu)
     } else {
@@ -5160,6 +5172,68 @@ mod tests {
 
         let about = read(out.path().join("about/index.html"));
         assert!(about.contains(r#"href="../people/zoe/""#), "{about}");
+    }
+
+    #[test]
+    fn translates_a_hand_made_menu() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |file: &str, text: &str| {
+            let path = dir.path().join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write(
+            "site.toml",
+            "title = \"Seite\"\nlanguage = \"de\"\n\n[languages.en]\n\n\
+             [[main_menu]]\ntitle = \"Wir\"\npage = \"ueber\"\n\n\
+             [[main_menu]]\ntitle = \"Kontakt\"\npage = \"kontakt\"\ntitles = { en = \"Contact\" }\n\n\
+             [[main_menu]]\ntitle = \"Mehr\"\ntitles = { en = \"More\" }\n\n\
+             [[main_menu.items]]\ntitle = \"Anderswo\"\nlink = \"https://example.org/\"\ntitles = { en = \"Elsewhere\" }\n\n\
+             [[main_menu.items]]\ntitle = \"Nur hier\"\nlink = \"https://example.net/\"\n\n\
+             [[main_menu.items]]\npage = \"nur\"\n",
+        );
+        write("pages/index.md", "+++\ntitle = \"Start\"\n+++\n");
+        write("pages/index.en.md", "+++\ntitle = \"Home\"\n+++\n");
+        write("pages/ueber.md", "+++\ntitle = \"Über uns\"\n+++\n");
+        write("pages/ueber.en.md", "+++\ntitle = \"About us\"\n+++\n");
+        write("pages/kontakt.md", "+++\ntitle = \"Kontakt\"\n+++\n");
+        write(
+            "pages/kontakt.en.md",
+            "+++\ntitle = \"Get in touch\"\n+++\n",
+        );
+        write("pages/nur.md", "+++\ntitle = \"Nur deutsch\"\n+++\n");
+        let site = site::open(dir.path()).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        build_on(&site, out.path(), TODAY).unwrap();
+        let menu = |file: &str| {
+            let html = read(out.path().join(file));
+            html.split("</header>").next().unwrap().to_string()
+        };
+        let de = menu("index.html");
+        for title in [
+            ">Wir<",
+            ">Kontakt<",
+            ">Mehr<",
+            ">Anderswo<",
+            ">Nur hier<",
+            ">Nur deutsch<",
+        ] {
+            assert!(de.contains(title), "{title}: {de}");
+        }
+        let en = menu("en/index.html");
+        // Its own title; a page without one takes its translation's title,
+        // a link without one keeps the main title.
+        for title in [
+            ">About us<",
+            ">Contact<",
+            ">More<",
+            ">Elsewhere<",
+            ">Nur hier<",
+        ] {
+            assert!(en.contains(title), "{title}: {en}");
+        }
+        assert!(!en.contains(">Wir<") && !en.contains(">Mehr<"), "{en}");
+        assert!(!en.contains("Nur deutsch"), "not translated: {en}");
     }
 
     #[test]

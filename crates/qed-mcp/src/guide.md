@@ -103,7 +103,7 @@ The site's own settings are `site.toml`, read with read_settings and written wit
 - `[colors]`: which theme color goes where: `links`, `buttons`, `call_to_action`, `hero`, `boxes`, `content`, `footer` (`footer = "shaded"`, for example).
 - `profiles`: the owner's profiles elsewhere, `["https://fosstodon.org/@name"]`. Every page links them with `rel="me"`, so Mastodon shows the site as verified on the profile.
 - `[fonts]`: `text` and `headings`, fonts the owner added in the app.
-- `[[main_menu]]`: a menu arranged by hand, entries in order. Each has `page` (a page's address, `""` for the start page) or `link` (any address), an optional `title`, and for a dropdown `[[main_menu.items]]` entries of its own. Without any, the menu is made from the pages' `menu = "main"`.
+- `[[main_menu]]`: a menu arranged by hand, entries in order. Each has `page` (a page's address, `""` for the start page) or `link` (any address), an optional `title` (with `titles = { en = "…" }` for further languages), and for a dropdown `[[main_menu.items]]` entries of its own. Without any, the menu is made from the pages' `menu = "main"`.
 
 ```
 [[main_menu]]
@@ -135,7 +135,7 @@ A site can be in several languages: the main one (`language` in site.toml) at `/
 3. A translation starts as a draft copy. Translate its title and text with write_page and take out `draft = true`, or it isn't on the website.
 4. The footer in that language is `footer.en.md` (write it with write_page); without one, pages in that language show the main footer.
 
-Menus, post lists and feeds of each language show only its own pages; a page without a translation isn't there in that language. A switch in the header leads between the languages by itself, so don't make links or menu entries for that. Links in a translation point to the main language's file (`[About](about.md)`) and lead to its translation where there is one.
+Menus, post lists and feeds of each language show only its own pages; a page without a translation isn't there in that language. A switch in the header leads between the languages by itself, so don't make links or menu entries for that. A hand-made menu is the same in every language: page entries lead to the page's translation and show its title; give links, groups and renamed pages their title in each further language with `titles = { en = "About us" }`. Links in a translation point to the main language's file (`[About](about.md)`) and lead to its translation where there is one.
 
 ## Links and files
 

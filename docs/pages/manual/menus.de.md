@@ -29,7 +29,8 @@ Fußzeilenmenü entsteht immer so; Impressum und Datenschutz gehören
 dorthin.
 
 Auf einer Website mit mehreren Sprachen hat jede Sprache ihre eigenen
-Menüs, aus ihren eigenen Seiten.
+Menüs, aus ihren eigenen Seiten. Ein von Hand angeordnetes Menü (siehe
+unten) ist in jeder Sprache dasselbe; nur seine Titel werden übersetzt.
 
 ## In einer Seitenleiste
 
@@ -81,6 +82,18 @@ offen. Eine **Line** in einer Gruppe teilt sie.
 Die Pfeile schieben einen Eintrag nach oben und unten, :icon-trash:
 entfernt ihn. **Save menu** speichert es; **Back to automatic** kehrt
 zum Menü aus den Einstellungen der Seiten zurück.
+
+### In mehreren Sprachen
+
+Auf einer Website mit mehreren Sprachen stehen über den Einträgen
+:icon-language: Knöpfe mit den Kürzeln der Sprachen (*DE EN*). Drücken
+Sie das Kürzel einer weiteren Sprache, um den Einträgen ihre Titel in
+dieser Sprache zu geben; Einträge und ihre Reihenfolge bleiben, wie sie
+in der Hauptsprache sind. Ein Seiteneintrag führt zur Übersetzung der
+Seite und zeigt deren Titel; einen eigenen braucht er nur, wenn Sie ihn
+im Menü umbenannt haben. Links und Gruppen zeigen den Haupttitel, bis
+Sie ihnen einen geben. Seiten ohne Übersetzung stehen nicht im Menü
+dieser Sprache.
 
 Eine Seite, die ein Entwurf ist oder gelöscht wurde, steht nicht im
 Menü. Ihr Eintrag bleibt im Tab Menu mit einer Warnung, und das Bauen der

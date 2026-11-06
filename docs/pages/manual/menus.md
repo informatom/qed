@@ -27,7 +27,8 @@ New pages are in no menu until you choose one. The footer menu is
 always made this way; the imprint and privacy pages belong there.
 
 On a site in several languages, each language has menus of its own,
-from its own pages.
+from its own pages. A menu arranged by hand (see below) is the same in
+every language; only its titles are translated.
 
 ## In a sidebar
 
@@ -78,6 +79,17 @@ divides it.
 The arrows move an entry up and down, :icon-trash: removes it. **Save
 menu** saves it; **Back to automatic** returns to the menu made from the
 pages' settings.
+
+### In several languages
+
+On a site in several languages, :icon-language: buttons with the
+languages' codes (*DE EN*) sit above the entries. Press a further
+language's code to give the entries their titles in it; entries and
+their order stay as they are in the main language. A page entry leads
+to the page's translation and shows its title, so it needs a title of
+its own only if you renamed it in the menu. Links and groups show the
+main title until you give them one. Pages without a translation aren't
+in that language's menu.
 
 A page that is a draft, or was deleted, isn't shown in the menu. Its
 entry stays in the Menu tab with a warning, and building the website

@@ -1145,6 +1145,18 @@ rest is done.
   Deleting an image (app or `delete_file`) forgets its entry. Manual
   (*Where pictures are cut*, en + de), MCP guide and blog post
   [Where to cut a picture](blog/2026-11-01-where-to-cut.md).
+- **#153 Translated titles in a hand-made menu.** Found by the user
+  2026-11-06: on a site in several languages (#145) a menu arranged by
+  hand showed its typed titles (groups, links, renamed pages) in the main
+  language everywhere. *Decided 2026-11-06 (user):* one menu for all
+  languages, titles per entry. *Done 2026-11-06*: `MenuItem` has
+  `titles = { en = "About us" }`; in a further language an entry shows
+  its own title there, a page entry without one its translation's title,
+  a link or group without one the main title. The Menu tab has a
+  language bar like the page editor; in a further language only the
+  titles can be edited, with the fallback as placeholder. The page
+  picker lists main-language pages only. Manual (*Menus*, en + de) and
+  MCP guide updated.
 
 - **Phase 3: Beyond the basics.** Everything after podcasting that
   the owner's own sites and tests asked for: push and pull with git

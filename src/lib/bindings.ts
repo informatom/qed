@@ -991,6 +991,12 @@ export type MenuItem_Deserialize = {
 	/**  The text shown; for a page, its title if empty. */
 	title: string | null,
 	/**
+	 *  The text in further languages (#145), by code:
+	 *  `titles = { en = "About us" }`. Without one, a page shows its
+	 *  translation's title there, a link or group its `title`.
+	 */
+	titles?: { [key in string]: string },
+	/**
 	 *  A page by its address (`elixir`, `` for the start page); follows the
 	 *  page when it moves.
 	 */
@@ -1010,6 +1016,12 @@ export type MenuItem_Deserialize = {
 export type MenuItem_Serialize = {
 	/**  The text shown; for a page, its title if empty. */
 	title: string | null,
+	/**
+	 *  The text in further languages (#145), by code:
+	 *  `titles = { en = "About us" }`. Without one, a page shows its
+	 *  translation's title there, a link or group its `title`.
+	 */
+	titles?: { [key in string]: string },
 	/**
 	 *  A page by its address (`elixir`, `` for the start page); follows the
 	 *  page when it moves.
