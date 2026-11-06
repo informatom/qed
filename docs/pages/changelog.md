@@ -11,6 +11,24 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.18.0 · 2026-11-06
+
+The whole site as a PDF.
+
+- **The site as a PDF** (#154): :icon-file-type-pdf: **Make PDF of the
+  site** in the Downloads tab puts the whole site into one PDF, with a
+  title page and a table of contents. It comes as plain black text on
+  white, with page numbers and bookmarks. Posts and episodes come
+  after the pages, in chapters of their own, and links between pages
+  jump inside the PDF. A site in several languages gets one PDF per
+  language. The PDF lands in Downloads, ready for a Download block. See
+  [Pictures and files](manual/pictures-and-files.md) and
+  [The site as a book](blog/2026-11-06-the-site-as-a-book.md).
+- **Translated menu titles** (#153): in a menu arranged by hand, each
+  entry can have its title in every language of the site. The Menu tab
+  has a language bar for them. See [Menus](manual/menus.md).
+- **Icons** in the manual: where icons work and where they stay text.
+
 ## 0.17.0 · 2026-11-02
 
 AI assistants get icons right and can translate.
