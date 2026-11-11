@@ -29,7 +29,7 @@
     </div>
     <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Close" onclick={onclose}><X class="size-4" /></button>
   </div>
-  <BlockEditor {saved} {siteRoot} bind:dirty types={[...EPISODE_PART_TYPES, ...PAGE_BLOCK_TYPES]}
+  <BlockEditor {saved} {siteRoot} file="episode.md" bind:dirty types={[...EPISODE_PART_TYPES, ...PAGE_BLOCK_TYPES]}
     empty="Episode pages show only their title. Add a part below."
     persist={async (blocks) => {
       const stored = await commands.saveEpisodeLayout(siteRoot, blocks);

@@ -11,6 +11,14 @@
    `cargo test` keeps the file current. Sites have the same file. */
 @import "../crates/qed-core/assets/catppuccin.css";
 
+/* The block previews (#155) are the generator's HTML in the app's colors:
+   the classes of the site templates (and those the generator picks in
+   Rust), Markdown as `prose`, and the rules blocks need, as on a site. */
+@source "../crates/qed-core/templates";
+@source "../crates/qed-core/src/generator.rs";
+@plugin "@tailwindcss/typography";
+@import "../crates/qed-core/assets/blocks.css";
+
 /* Monospaced text (file names, the text viewer). Tailwind's own list names
    Mac and Windows fonts only, so on Linux it fell through to DejaVu Sans
    Mono, which looks bold at small sizes. Linux fonts come before Windows'

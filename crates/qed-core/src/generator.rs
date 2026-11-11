@@ -341,55 +341,8 @@ fn build_on(site: &Site, out_dir: &Path, today: Date) -> Result<BuildReport, Bui
             .map(|page| page.path.clone())
             .collect::<BTreeSet<String>>(),
     );
-    // Feeds need full addresses, so only a site with a web address gets them.
-    // A podcast's episodes get podcast feeds instead (see `feed.rs`).
     let podcast = site.config.podcast.as_ref();
-    let sources: Vec<&Page> = feed_sources(&published, today)
-        .into_iter()
-        .filter(|page| podcast.is_none() || page.path != podcast::EPISODES_PATH)
-        .collect();
-    let feeds: Vec<Feed> = match &site.config.base_url {
-        Some(_) => sources
-            .iter()
-            .map(|page| Feed {
-                page,
-                file: feed_file(&page.path),
-                title: feed_title(&site.config, page),
-            })
-            .collect(),
-        None => {
-            if !sources.is_empty() {
-                notes.push(
-                    "No RSS feed: feeds need the site's web address, under Site → Settings."
-                        .to_string(),
-                );
-            }
-            Vec::new()
-        }
-    };
-    // The podcast feeds, one per format, the main one first.
-    let podcast_feeds: Vec<PodcastFeed> = match (podcast, &site.config.base_url) {
-        (Some(podcast), Some(_)) => podcast
-            .formats()
-            .into_iter()
-            .map(|format| PodcastFeed {
-                file: podcast::feed_file(format),
-                label: if podcast.formats().len() > 1 {
-                    format!("Podcast feed ({})", format.label())
-                } else {
-                    "Podcast feed".to_string()
-                },
-            })
-            .collect(),
-        (Some(_), None) => {
-            notes.push(
-                "No podcast feed: feeds need the site's web address, under Site → Settings."
-                    .to_string(),
-            );
-            Vec::new()
-        }
-        _ => Vec::new(),
-    };
+    let (feeds, podcast_feeds) = site_feeds(site, &published, today, &mut notes);
     let light = site.config.light();
     let dark_look = site.config.dark_look();
     let dark = light.is_dark();
@@ -1030,6 +983,65 @@ struct PodcastFeed {
     file: String,
     /// "Podcast feed (MP3)".
     label: String,
+}
+
+/// The site's RSS feeds and podcast feeds. Feeds need full addresses, so
+/// only a site with a web address gets them; `notes` says so otherwise.
+fn site_feeds<'a>(
+    site: &Site,
+    published: &[&'a Page],
+    today: Date,
+    notes: &mut Vec<String>,
+) -> (Vec<Feed<'a>>, Vec<PodcastFeed>) {
+    // A podcast's episodes get podcast feeds instead (see `feed.rs`).
+    let podcast = site.config.podcast.as_ref();
+    let sources: Vec<&Page> = feed_sources(published, today)
+        .into_iter()
+        .filter(|page| podcast.is_none() || page.path != podcast::EPISODES_PATH)
+        .collect();
+    let feeds: Vec<Feed> = match &site.config.base_url {
+        Some(_) => sources
+            .iter()
+            .map(|page| Feed {
+                page,
+                file: feed_file(&page.path),
+                title: feed_title(&site.config, page),
+            })
+            .collect(),
+        None => {
+            if !sources.is_empty() {
+                notes.push(
+                    "No RSS feed: feeds need the site's web address, under Site → Settings."
+                        .to_string(),
+                );
+            }
+            Vec::new()
+        }
+    };
+    // The podcast feeds, one per format, the main one first.
+    let podcast_feeds: Vec<PodcastFeed> = match (podcast, &site.config.base_url) {
+        (Some(podcast), Some(_)) => podcast
+            .formats()
+            .into_iter()
+            .map(|format| PodcastFeed {
+                file: podcast::feed_file(format),
+                label: if podcast.formats().len() > 1 {
+                    format!("Podcast feed ({})", format.label())
+                } else {
+                    "Podcast feed".to_string()
+                },
+            })
+            .collect(),
+        (Some(_), None) => {
+            notes.push(
+                "No podcast feed: feeds need the site's web address, under Site → Settings."
+                    .to_string(),
+            );
+            Vec::new()
+        }
+        _ => Vec::new(),
+    };
+    (feeds, podcast_feeds)
 }
 
 /// One RSS feed: the posts below `page`.
@@ -3357,6 +3369,78 @@ fn render_html(
     in_column: bool,
 ) -> Result<String, askama::Error> {
     block_html(&render_block(block, links, context)?, context, in_column)
+}
+
+/// Each block's HTML as the site shows it, for the previews in the app's
+/// block editor (#155). `page_file` is the file the blocks belong to (a
+/// page, the footer, a shared block …), for their language and, in the
+/// footer, the compact lists. The colors are the site's choices without
+/// its light and dark sides: the app draws them in its own theme.
+///
+/// Links start at the site root (`/media/photo.jpg`); the app points
+/// those at the files in the site folder. A Shared block shows its
+/// piece's blocks; the parts of an episode page show nothing.
+pub fn preview_blocks(
+    site: &Site,
+    page_file: &Path,
+    blocks: &[Block],
+) -> Result<Vec<String>, askama::Error> {
+    let today = calendar::today();
+    let page = site.with_blocks().find(|page| page.file == page_file);
+    let language = page.and_then(|page| page.language.as_deref());
+    let people_pages = contributor_pages(site);
+    let published: Vec<&Page> = site
+        .pages
+        .iter()
+        .filter(|p| !p.content.front.draft && p.path != NOT_FOUND_PATH)
+        .chain(&people_pages)
+        .collect();
+    let in_language: Vec<&Page> = published
+        .iter()
+        .copied()
+        .filter(|p| p.language.as_deref() == language)
+        .collect();
+    let page_paths = Arc::new(
+        published
+            .iter()
+            .map(|page| page.path.clone())
+            .collect::<BTreeSet<String>>(),
+    );
+    let (feeds, podcast_feeds) = site_feeds(site, &published, today, &mut Vec::new());
+    let media_dir = site.root.join(MEDIA_DIR);
+    let images = Images::new(&media_dir).with_settings(site.media.clone());
+    let site_icons = SiteIcons::load(&media_dir);
+    let light = site.config.light();
+    let colors = color_classes(light.colors, light.is_dark());
+    let button_color = button_hex(light);
+    let context = Context {
+        podcast_feeds: &podcast_feeds,
+        podcast: site.config.podcast.as_ref(),
+        button_color: button_color.as_deref(),
+        contributors: &site.contributors,
+        colors: &colors,
+        root: &site.root,
+        images: &images,
+        site_icons: &site_icons,
+        pages: &in_language,
+        all_pages: &published,
+        page_paths: &page_paths,
+        feeds: &feeds,
+        today,
+        language: page.map_or(&site.config.language, |page| site.config.language_of(page)),
+        footer: page.is_some_and(|page| page.path == crate::site::FOOTER_PATH),
+    };
+    let links = LinkContext::rooted("/", page_file).in_language(language, page_paths.clone());
+    blocks
+        .iter()
+        .map(|block| {
+            // A Shared block becomes its piece's blocks, one after another.
+            crate::shared::expand_blocks(site, std::slice::from_ref(block), language)
+                .iter()
+                .map(|block| render_html(block, &links, &context, false))
+                .collect::<Result<String, _>>()
+        })
+        .collect()
 }
 
 /// The HTML of a block ready for the template.
@@ -5742,6 +5826,37 @@ mod tests {
             report.notes.iter().any(|note| note.contains("\"gone\"")),
             "{:?}",
             report.notes
+        );
+    }
+
+    #[test]
+    fn previews_blocks_with_links_from_the_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let site = blog(dir.path());
+        fs::create_dir(dir.path().join("shared")).unwrap();
+        fs::write(
+            dir.path().join("shared/hours.md"),
+            "+++\ntitle = \"Hours\"\n+++\n\nOpen **9–17**.\n",
+        )
+        .unwrap();
+        let site = site::open(&site.root).unwrap();
+        let blocks = [
+            Block::Text {
+                markdown: "See ![a photo](/media/photo.jpg) and [the blog](/blog).".into(),
+            },
+            Block::Shared(crate::block::Shared {
+                name: Some("hours".into()),
+            }),
+        ];
+        let html = preview_blocks(&site, Path::new("pages/about.md"), &blocks).unwrap();
+
+        assert_eq!(html.len(), 2, "one preview per block");
+        assert!(html[0].contains(r#"src="/media/photo.jpg""#), "{}", html[0]);
+        assert!(html[0].contains(r#"href="/blog/""#), "{}", html[0]);
+        assert!(
+            html[1].contains("Open <strong>9–17</strong>"),
+            "the piece: {}",
+            html[1]
         );
     }
 

@@ -54,6 +54,13 @@ A page is made of blocks, one below the other. The row at the bottom
 (**Add:**) adds one; the arrows move a block up or down, the handle on
 the left drags it, and :icon-trash: removes it.
 
+Each block shows as a preview, the way it looks on the site, but in the
+app's colors. Click it, or :icon-pencil: **Edit** at its top left, to
+change it; :icon-check: **Done** (or Esc) shows the preview again.
+Several blocks can be open at once, and a new block starts open. To see
+every block's fields at once, as before, switch on **All blocks as
+forms** above the blocks.
+
 - **Text**: Markdown, a simple way of writing formatted text (see below).
 - **Hero**: a large header with a headline, text and a button, on a
   picture or a color.

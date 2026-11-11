@@ -13,6 +13,8 @@
 /* The four Catppuccin flavors as daisyUI themes, made from the catppuccin
    crate by qed-core (catppuccin_themes.rs); `cargo test` keeps it current. */
 @import "./catppuccin.css";
+/* What blocks need, shared with the app's previews. */
+@import "./blocks.css";
 
 /* Light and dark mode (#146). A site with a dark side (`[dark]` in
    site.toml) follows the system's setting; the switch in the header
@@ -58,47 +60,6 @@
   background-color: color-mix(in oklab, currentColor 18%, transparent);
 }
 
-/* Theme colors beyond buttons: links in text get an underline in the
-   site's link color (primary unless `[colors] links` says otherwise),
-   quotes an accent bar. Text itself keeps the base color, so it stays
-   readable in every theme. Utilities, so `mode-dark:` works on them. */
-@utility links-secondary {
-  --qed-link: var(--color-secondary);
-}
-@utility links-accent {
-  --qed-link: var(--color-accent);
-}
-@utility links-neutral {
-  --qed-link: var(--color-neutral);
-}
-.prose a {
-  text-decoration-color: var(--qed-link, var(--color-primary));
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-}
-.prose blockquote {
-  border-inline-start-color: var(--color-accent);
-}
-
-/* Keys (`<kbd>Ctrl</kbd>`) as keycaps, in the theme's base colors like
-   daisyUI's kbd; on a colored area in its text color. */
-.prose kbd {
-  display: inline-block;
-  min-width: 1.6em;
-  padding: 0 0.4em;
-  border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
-  border-bottom-width: 2px;
-  border-radius: var(--radius-field, 0.25rem);
-  background-color: var(--color-base-200);
-  color: var(--color-base-content);
-  box-shadow: none;
-  font-family: inherit;
-  font-size: 0.85em;
-  font-weight: 500;
-  line-height: 1.5;
-  text-align: center;
-  vertical-align: 0.05em;
-}
 .site-footer .prose kbd {
   background-color: transparent;
   color: inherit;
@@ -119,10 +80,9 @@
   background-color: color-mix(in oklab, var(--color-neutral) 10%, var(--color-base-100));
 }
 
-/* The footer's blocks, and Markdown on a colored box (`on-color`: a Hero,
-   a Call to action, a boxed column in a theme color), take the area's
-   text color: text, headings and links in the color's own text color
-   instead of the page's. */
+/* The footer's blocks take the footer's text color: text, headings and
+   links in its own text color instead of the page's (like `on-color`,
+   blocks.css). */
 .site-footer .prose {
   font-size: inherit;
 }
@@ -137,34 +97,6 @@
   --tw-prose-quotes: currentColor;
   --tw-prose-hr: currentColor;
 }
-@utility on-color {
-  & .prose {
-    color: inherit;
-    --tw-prose-body: currentColor;
-    --tw-prose-headings: currentColor;
-    --tw-prose-links: currentColor;
-    --tw-prose-bold: currentColor;
-    --tw-prose-bullets: currentColor;
-    --tw-prose-counters: currentColor;
-    --tw-prose-quotes: currentColor;
-    --tw-prose-hr: currentColor;
-  }
-  & .prose kbd {
-    background-color: transparent;
-    color: inherit;
-  }
-}
-/* A button on a section of its own color would vanish: inside a
-   section in a theme color (`on-primary` and so on, generator.rs), buttons
-   of that color are drawn plain, as on a Hero or a Call to action. */
-.on-primary .btn-primary,
-.on-secondary .btn-secondary,
-.on-accent .btn-accent,
-.on-neutral .btn-neutral {
-  --btn-color: initial;
-  --btn-fg: var(--color-base-content);
-}
-
 /* Lists in the footer look like its compact Post and Page lists: no
    bullets, tight, links underlined on hover only. */
 .site-footer .prose :where(ul, ol) {
@@ -185,26 +117,6 @@
 .site-footer .prose a:hover {
   text-decoration: underline;
   text-decoration-color: currentColor;
-}
-
-/* Icons written into text as `:icon-phone:` (markdown.rs): as tall as the
-   letters, on their line. */
-.inline-icon {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.125em;
-  margin-inline-end: 0.3em;
-}
-
-/* A site's own icons from media/icons/ (logos, in their own colors):
-   a little taller than the letters, as wide as they are drawn. */
-.prose .inline-icon.site-icon,
-.inline-icon.site-icon {
-  width: auto;
-  height: 1.5em;
-  margin-block: 0;
-  vertical-align: middle;
 }
 
 /* Links in text that lead to other sites (`mark_external_links`): Tabler's
@@ -261,69 +173,4 @@
   --pf-mark: var(--color-base-content);
   --pf-border-radius: var(--radius-field);
   --pf-font: inherit;
-}
-
-/* A formula with a mistake (#107): its LaTeX, in red. */
-.prose code.math-error,
-.prose code.chem-error,
-.prose pre.chart-error code {
-  color: var(--color-error);
-}
-
-/* A molecule from SMILES (#130): centered, in the text color; the boxes
-   behind atom labels in the page color, so bonds stop short of them. */
-.prose .molecule {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.molecule svg {
-  max-width: 100%;
-  height: auto;
-}
-.molecule rect {
-  fill: var(--color-base-100);
-}
-.prose .molecule figcaption {
-  margin-top: 0.25rem;
-}
-
-/* Charts (#131) from charts-rs: its fixed colors and font replaced by
-   the theme's (a CSS rule beats an SVG attribute). Series keep their
-   colors. Stratigraphic columns (strata.rs) draw in the text color. */
-.prose .chart,
-.prose .strata {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.chart svg,
-.strata svg {
-  max-width: 100%;
-  height: auto;
-}
-.chart text,
-.strata text {
-  font-family: inherit;
-}
-.chart > svg > rect:first-child {
-  fill: transparent;
-}
-.chart [fill="#FFFFFF"] {
-  fill: var(--color-base-100);
-}
-.chart [fill="#464646"] {
-  fill: var(--color-base-content);
-}
-.chart [fill="#6E7079"] {
-  fill: color-mix(in oklab, var(--color-base-content) 70%, transparent);
-}
-.chart [stroke="#6E7079"] {
-  stroke: color-mix(in oklab, var(--color-base-content) 50%, transparent);
-}
-.chart [stroke="#E0E6F2"] {
-  stroke: var(--color-base-300);
-}
-.prose pre.chart-error {
-  white-space: pre-wrap;
 }

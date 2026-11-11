@@ -103,6 +103,12 @@ export const commands = {
 	 */
 	savePageBlocks: (root: string, file: string, blocks: Block[], base: Block[] | null) => __TAURI_INVOKE<SaveOutcome>("save_page_blocks", { root, file, blocks, base }),
 	/**
+	 *  Each block's HTML as the site shows it, for the block editor's
+	 *  previews (#155). `file`: the file the blocks are in, relative to the
+	 *  site folder. Links start at `/`; the app points them at the folder.
+	 */
+	previewBlocks: (root: string, file: string, blocks: Block[]) => __TAURI_INVOKE<string[]>("preview_blocks", { root, file, blocks }),
+	/**
 	 *  Saves the site footer's blocks into `footer.md`; no blocks removes it.
 	 *  Returns the blocks as they read back.
 	 */

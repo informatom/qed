@@ -250,6 +250,12 @@ pub(crate) fn expanded(site: &Site, notes: &mut Vec<String>) -> Site {
     expanded
 }
 
+/// `blocks` with their Shared blocks replaced by the pieces' blocks, as on
+/// a page in `language`; for the app's block previews (#155).
+pub(crate) fn expand_blocks(site: &Site, blocks: &[Block], language: Option<&str>) -> Vec<Block> {
+    expand(blocks, &site.shared, language, &mut BTreeSet::new())
+}
+
 /// `language`: a piece's translation (`teaser.en.md` for `teaser`) wins
 /// on a page in that language.
 fn expand(

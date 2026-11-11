@@ -27,7 +27,7 @@
     </div>
     <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Close" onclick={onclose}><X class="size-4" /></button>
   </div>
-  <BlockEditor {saved} {siteRoot} bind:dirty
+  <BlockEditor {saved} {siteRoot} file="footer.md" bind:dirty
     persist={async (blocks) => {
       const stored = await commands.saveFooter(siteRoot, blocks);
       onsaved(stored);

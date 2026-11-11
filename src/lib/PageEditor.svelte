@@ -177,7 +177,7 @@
   <!-- Content and Settings stay mounted, so switching tabs keeps unsaved edits. -->
   {#key restoreCount}
     <div class={[tab !== "content" && "hidden"]}>
-      <BlockEditor saved={page.blocks} {siteRoot} start={restored?.blocks} bind:dirty={contentDirty}
+      <BlockEditor saved={page.blocks} {siteRoot} file={page.file} start={restored?.blocks} bind:dirty={contentDirty}
         persist={async (blocks) => {
           const base = $state.snapshot(page.blocks);
           const result = await saveChecked(

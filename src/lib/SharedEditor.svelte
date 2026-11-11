@@ -105,7 +105,7 @@
       aria-label="Delete shared block" onclick={remove}><Trash class="size-4" /></button>
     <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Close" onclick={onclose}><X class="size-4" /></button>
   </div>
-  <BlockEditor saved={piece.blocks} {siteRoot} bind:dirty
+  <BlockEditor saved={piece.blocks} {siteRoot} file={piece.file} bind:dirty
     persist={async (blocks) => {
       const saved = await commands.saveShared(siteRoot, name, blocks);
       onsaved(saved);

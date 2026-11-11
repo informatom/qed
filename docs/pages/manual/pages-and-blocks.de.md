@@ -63,6 +63,14 @@ unten (**Add:**) fügt einen hinzu; die Pfeile schieben einen Block nach
 oben oder unten, der Griff links zieht ihn, und :icon-trash: entfernt
 ihn.
 
+Jeder Block zeigt sich als Vorschau, so wie er auf der Website aussieht,
+nur in den Farben der App. Klicken Sie darauf oder auf :icon-pencil:
+**Edit** links oben, um ihn zu ändern; :icon-check: **Done** (oder Esc)
+zeigt wieder die Vorschau. Es können mehrere Blöcke gleichzeitig offen
+sein, und ein neuer Block ist gleich offen. Wenn Sie alle Felder aller
+Blöcke auf einmal sehen möchten, wie früher, schalten Sie **All blocks
+as forms** über den Blöcken ein.
+
 - **Text**: Markdown, eine einfache Art, formatierten Text zu schreiben
   (siehe unten).
 - **Hero**: ein großer Kopfbereich mit Überschrift, Text und einer

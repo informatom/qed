@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import BlockList from "$lib/BlockList.svelte";
+  import { BlockPreviews, provideBlockPreviews } from "$lib/blockPreviews.svelte";
   import { normalizeBlock, type Block, type BlockType } from "$lib/site";
 
   interface Props {
@@ -17,9 +18,16 @@
     types?: BlockType[];
     /** What an empty list says. */
     empty?: string;
+    /** The file the blocks are in, relative to the site folder; with it,
+     *  blocks show as previews until clicked (#155). */
+    file?: string;
   }
 
-  let { saved, siteRoot, persist, start, dirty = $bindable(false), types, empty }: Props = $props();
+  let { saved, siteRoot, persist, start, dirty = $bindable(false), types, empty, file }: Props = $props();
+
+  // One per editor: the previews it has made stay while it's open.
+  const previews = untrack(() => (file ? new BlockPreviews(siteRoot, file) : undefined));
+  if (previews) provideBlockPreviews(previews);
 
   // An editable copy. BlockList keys blocks by the objects themselves, so
   // Svelte can tell them apart while they move (the Markdown editors keep
@@ -57,6 +65,16 @@
 </script>
 
 <div id="block-editor" class="flex flex-col gap-4">
+  {#if previews}
+    <div class="flex items-center justify-end gap-3 text-sm text-base-content/60">
+      {#if !previews.forms}<span>Click a block to change it.</span>{/if}
+      <label class="flex items-center gap-2" title="Show every block's form instead of its preview">
+        <input type="checkbox" id="block-forms" class="toggle toggle-sm" checked={previews.forms}
+          onchange={(e) => previews.setForms(e.currentTarget.checked)} />
+        All blocks as forms
+      </label>
+    </div>
+  {/if}
   <BlockList bind:blocks {siteRoot} {types} {empty} />
 
   <div class="flex flex-wrap items-center justify-end gap-2">

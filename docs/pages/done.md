@@ -1182,6 +1182,21 @@ rest is done.
   highlighting and no footnotes in tables (it was 90 s). Manual
   (*Pictures and files*, en + de) and blog post
   [The site as a book](blog/2026-11-06-the-site-as-a-book.md).
+- **#155 Blocks as previews.** On a page with many blocks the Content
+  tab was a wall of forms, and the place to change was hard to find
+  (user, 2026-11-11). *Decided with the user:* previews are the
+  generator's HTML in the app's colors; several blocks open at once; a
+  switch for all blocks as forms. *Done 2026-11-11*:
+  `generator::preview_blocks` (command `preview_blocks`) renders one
+  HTML string per block with links from `/` (a Shared block shows its
+  piece); the app points media, downloads and audio at the site folder,
+  drops `srcset` and scripts, and shows the HTML `inert`. A click or
+  **Edit** opens the form, **Done** or Esc closes it, a new block starts
+  open; **All blocks as forms** is remembered. app.css scans the site
+  templates, and the hand-written block rules moved into
+  `assets/blocks.css`, imported by both stylesheets. Manual (*Pages and
+  blocks*, en + de) and blog post
+  [Blocks as previews](blog/2026-11-11-blocks-as-previews.md).
 
 - **Phase 3: Beyond the basics.** Everything after podcasting that
   the owner's own sites and tests asked for: push and pull with git

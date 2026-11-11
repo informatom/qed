@@ -1,9 +1,11 @@
 <script lang="ts">
+  import Check from "@tabler/icons-svelte-runes/icons/check";
   import ChevronDown from "@tabler/icons-svelte-runes/icons/chevron-down";
   import ChevronLeft from "@tabler/icons-svelte-runes/icons/chevron-left";
   import ChevronRight from "@tabler/icons-svelte-runes/icons/chevron-right";
   import ChevronUp from "@tabler/icons-svelte-runes/icons/chevron-up";
   import GripVertical from "@tabler/icons-svelte-runes/icons/grip-vertical";
+  import Pencil from "@tabler/icons-svelte-runes/icons/pencil";
   import Component from "@tabler/icons-svelte-runes/icons/components";
   import ImagePlus from "@tabler/icons-svelte-runes/icons/photo-plus";
   import Plus from "@tabler/icons-svelte-runes/icons/plus";
@@ -11,6 +13,7 @@
   // A component may use itself: each column holds a BlockList of its own.
   import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import BlockList from "$lib/BlockList.svelte";
+  import { blockPreviews } from "$lib/blockPreviews.svelte";
   import ImageField from "$lib/ImageField.svelte";
   import { BLOCK_ICONS } from "$lib/icons";
   import MarkdownEditor from "$lib/MarkdownEditor.svelte";
@@ -45,6 +48,27 @@
     ),
   );
   let canShare = $derived(shared !== undefined && !shared.insidePiece);
+
+  // Blocks show as previews until clicked (#155); `open` holds those that
+  // show their form. Without previews (or with "All blocks as forms"),
+  // every block shows its form.
+  const previews = blockPreviews();
+  const open = new SvelteSet<Block>();
+  function previewing(block: Block): boolean {
+    return previews !== undefined && !previews.forms && !open.has(block);
+  }
+
+  $effect(() => {
+    if (previews && !previews.forms) previews.load(blocks.filter((block) => !open.has(block)));
+  });
+
+  /** What a preview says when the block shows nothing on the site. */
+  function nothingShown(block: Block): string {
+    if (EPISODE_PART_TYPES.includes(block.type)) return `Each episode page shows its ${BLOCK_NAMES[block.type].toLowerCase()} here.`;
+    if (block.type === "shared" && !block.name) return "No shared block picked yet. Click to pick one.";
+    if (block.type === "latest-episode") return "Shows the latest episode, once there is one.";
+    return "Nothing to show yet. Click to fill it in.";
+  }
 
   /** The block "Make shared" was clicked on, its new name, and what went wrong. */
   let sharing = $state<Block | null>(null);
@@ -125,6 +149,8 @@
 
   function add(type: BlockType) {
     blocks.push(newBlock(type));
+    // A new block is empty: it starts with its form.
+    open.add(blocks[blocks.length - 1]);
   }
 
   function remove(index: number) {
@@ -219,7 +245,15 @@
 <div class={["flex flex-col", nested ? "gap-2" : "gap-4"]}>
   {#each blocks as block, index (block)}
     {@const Icon = BLOCK_ICONS[block.type]}
+    <!-- svelte-ignore a11y_no_static_element_interactions (Esc from the block's own fields) -->
     <section id={nested ? undefined : `block-${index}`} bind:this={cards[index]}
+      onkeydown={(e) => {
+        // Esc puts the preview back, unless it's meant for a dialog inside.
+        if (e.key === "Escape" && open.has(block) && !(e.target as Element).closest("dialog")) {
+          e.stopPropagation();
+          open.delete(block);
+        }
+      }}
       class={["@container card relative border border-base-300", nested ? "bg-base-200/40" : "bg-base-100", drag?.from === index && "opacity-50"]}>
       <!-- Where a dragged block would land: a line in the gap above this
            block, or below the last one. Placed absolutely, so nothing moves
@@ -235,6 +269,15 @@
             title="Drag to move" aria-label="Drag to move"
             onpointerdown={(e) => dragStart(e, index)} onpointermove={dragMove} onpointerup={dragEnd}
             onpointercancel={() => (drag = null)}><GripVertical class="size-4" /></button>
+          {#if previews && !previews.forms}
+            {#if open.has(block)}
+              <button type="button" class="btn btn-primary btn-xs" title="Show the preview again (Esc)"
+                onclick={() => open.delete(block)}><Check class="size-3.5" /> Done</button>
+            {:else}
+              <button type="button" class="btn btn-soft btn-primary btn-xs" title="Change this block"
+                onclick={() => open.add(block)}><Pencil class="size-3.5" /> Edit</button>
+            {/if}
+          {/if}
           <span class="badge badge-soft gap-1.5"><Icon class="size-3.5" />{BLOCK_NAMES[block.type]}</span>
           <div class="flex-1"></div>
           {#if canShare && block.type !== "shared" && !EPISODE_PART_TYPES.includes(block.type)}
@@ -273,7 +316,30 @@
           </form>
         {/if}
 
-        {#if block.type === "text"}
+        {#if previewing(block)}
+          {@const preview = previews?.get(block)}
+          <div role="button" tabindex="0" title="Click to change this block"
+            class="block-preview -m-1 cursor-pointer overflow-hidden rounded-field p-1 hover:bg-base-200/60 focus-visible:outline-2 focus-visible:outline-primary"
+            onclick={() => open.add(block)}
+            onkeydown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                open.add(block);
+              }
+            }}>
+            {#if !preview}
+              <span class="loading loading-dots loading-sm text-base-content/40"></span>
+            {:else if "error" in preview}
+              <p class="text-sm text-error">Can't show a preview: {preview.error}</p>
+            {:else if preview.html.trim()}
+              <!-- `inert`: links, buttons and players in it don't react; a
+                   click anywhere opens the form. -->
+              <div inert class="pointer-events-none">{@html preview.html}</div>
+            {:else}
+              <p class="text-sm text-base-content/50">{nothingShown(block)}</p>
+            {/if}
+          </div>
+        {:else if block.type === "text"}
           <MarkdownEditor bind:value={block.markdown} placeholder="Write in Markdown…" />
         {:else if block.type === "image"}
           <div class="grid gap-3 @2xl:grid-cols-2">

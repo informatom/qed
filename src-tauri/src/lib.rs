@@ -221,6 +221,20 @@ async fn save_page_blocks(
     Ok(outcome)
 }
 
+/// Each block's HTML as the site shows it, for the block editor's
+/// previews (#155). `file`: the file the blocks are in, relative to the
+/// site folder. Links start at `/`; the app points them at the folder.
+#[tauri::command]
+#[specta::specta]
+async fn preview_blocks(
+    root: PathBuf,
+    file: PathBuf,
+    blocks: Vec<Block>,
+) -> Result<Vec<String>, String> {
+    let site = site::open(&root).map_err(|error| error.to_string())?;
+    generator::preview_blocks(&site, &file, &blocks).map_err(|error| error.to_string())
+}
+
 /// Saves the site footer's blocks into `footer.md`; no blocks removes it.
 /// Returns the blocks as they read back.
 #[tauri::command]
@@ -1048,6 +1062,7 @@ fn commands() -> tauri_specta::Builder<tauri::Wry> {
             move_documents_to_assets,
             save_page_settings,
             save_page_blocks,
+            preview_blocks,
             save_footer,
             save_episode_layout,
             create_shared,
