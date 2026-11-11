@@ -11,6 +11,23 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.19.0 · 2026-11-11
+
+Blocks as previews.
+
+- **Blocks as previews** (#155): a page's blocks no longer show as a
+  wall of forms. Each block shows as it looks on the site, in the
+  app's colors. Click it, or :icon-pencil: **Edit** at its top left, to
+  change it; :icon-check: **Done** (or Esc) shows the preview again.
+  Several blocks can be open at once, and a new block starts open.
+  **All blocks as forms** shows every block's fields, as before. See
+  [Pages and blocks](manual/pages-and-blocks.md) and
+  [Blocks as previews](blog/2026-11-11-blocks-as-previews.md).
+- **The site as a PDF** (#154): posts and episodes now come oldest
+  first, so the book reads forward. A page can stay out of the PDF:
+  switch off **Include in the PDF of the site** in its settings. Parts
+  of a long table no longer overlap.
+
 ## 0.18.0 · 2026-11-06
 
 The whole site as a PDF.

@@ -67,7 +67,7 @@ For qed's desktop UI, the user wants layouts that use the whole window and avoid
 
 ## qed status
 
-State on 2026-11-10: phases 1 (CMS + site generator), 2 (podcasting) and 3 (beyond the basics) are done. **v0.18.0 is published** (00a685d: #154 whole site as a PDF, #153). On top of it, d506305 (#154 follow-ups: posts oldest first, "Include in the PDF of the site" page setting, no overlapping tables) is committed but not pushed. The 0.17.0 release is still a draft on GitHub. On top of it, #155 (blocks as previews in the editor, 2026-11-11) is committed, not pushed. Last backlog item number: #155. Learning posts: weights 1–79 (next post is 80).
+State on 2026-11-11: phases 1 (CMS + site generator), 2 (podcasting) and 3 (beyond the basics) are done. **v0.18.0 is published**; **v0.19.0** (#155 blocks as previews, #154 follow-ups) is committed and tagged, not pushed yet. The 0.17.0 release is still a draft on GitHub. Last backlog item number: #155. Learning posts: weights 1–79 (next post is 80).
 
 **Next:** Phase 4 "Podcast Publisher Import" (#123, #034, #124, #151 new manual screenshots last), then Phase 5 "Roll out" (#070).
 
