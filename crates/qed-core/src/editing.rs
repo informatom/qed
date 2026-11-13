@@ -75,8 +75,39 @@ pub fn write_page_text(
     if content.front.title.trim().is_empty() {
         return Err(invalid("a page needs a title".to_string()).into());
     }
+    // An episode gets the checks of the app's Settings tab.
+    if let Some(episode) = &content.front.episode {
+        site::check_episode(root, file, episode)?;
+        // Its own cover follows the podcast cover's rules, or the build
+        // refuses it later.
+        if let Some(image) = episode.image.as_deref().map(str::trim)
+            && !image.is_empty()
+        {
+            let problems = crate::podcast::check_cover(&root.join(site::MEDIA_DIR), image);
+            if !problems.is_empty() {
+                return Err(invalid(format!(
+                    "episode image {image}: {}; without `image`, the podcast's cover shows",
+                    problems.join(", ")
+                ))
+                .into());
+            }
+        }
+    }
     if now != text {
         site::write_atomically(&root.join(file), text)?;
+    }
+    // An episode written without a guid gets one, as in the app.
+    if content
+        .front
+        .episode
+        .as_ref()
+        .is_some_and(|episode| episode.guid.trim().is_empty())
+    {
+        return Ok(site::update_page(root, file, |content| {
+            if let Some(episode) = content.front.episode.as_mut() {
+                episode.guid = crate::podcast::new_guid();
+            }
+        })?);
     }
     Ok(site::read_page(root, file)?)
 }
@@ -205,11 +236,47 @@ pub fn write_settings_text(root: &Path, text: &str, stamp: &str) -> Result<(), E
             file: CONFIG_FILE.to_string(),
         });
     }
-    toml::from_str::<SiteConfig>(text).map_err(|source| SiteError::Config {
+    let config = toml::from_str::<SiteConfig>(text).map_err(|source| SiteError::Config {
         path: root.join(CONFIG_FILE),
         source,
     })?;
-    replace_checked(root, Path::new(CONFIG_FILE), &now, text)
+    // The team must be contributors, as the Podcast tab makes sure.
+    if let Some(person) = config
+        .podcast
+        .iter()
+        .flat_map(|p| &p.people)
+        .find(|person| {
+            !root
+                .join(crate::contributors::CONTRIBUTORS_DIR)
+                .join(format!("{}.md", person.contributor))
+                .is_file()
+        })
+    {
+        return Err(SiteError::Invalid {
+            path: Path::new(CONFIG_FILE).to_path_buf(),
+            message: format!(
+                "podcast: there is no contributor “{}”; save them first",
+                person.contributor
+            ),
+        }
+        .into());
+    }
+    replace_checked(root, Path::new(CONFIG_FILE), &now, text)?;
+    // A podcast gets what the Podcast tab gives it: its lasting guid once
+    // the site has a web address (saving the settings makes it), and
+    // `audio/` kept out of the history unless it's meant to be in it.
+    if let Some(podcast) = &config.podcast {
+        let has_address = config
+            .base_url
+            .as_deref()
+            .is_some_and(|url| !url.trim().is_empty());
+        if has_address && podcast.guid.as_deref().is_none_or(|g| g.trim().is_empty()) {
+            site::save_config(root, &config)?;
+        } else {
+            crate::podcast::sync_audio_ignore(root, Some(podcast))?;
+        }
+    }
+    Ok(())
 }
 
 /// Writes `text` over `before` in `file` (an empty text removes it), then
@@ -429,5 +496,103 @@ mod tests {
         );
         let error = write_settings_text(root, &new, &stamp).unwrap_err();
         assert!(matches!(error, EditError::Changed { .. }), "{error}");
+    }
+
+    #[test]
+    fn podcast_settings_as_text_get_what_the_podcast_tab_gives() {
+        let dir = site();
+        let root = dir.path();
+        let (text, stamp) = settings_text(root).unwrap();
+
+        // The team must be contributors.
+        let team = format!(
+            "{text}base_url = \"https://pod.example/\"\n\n[podcast]\nauthor = \"S\"\n\n\
+             [[podcast.people]]\ncontributor = \"stefan-haslinger\"\n"
+        );
+        let error = write_settings_text(root, &team, &stamp).unwrap_err();
+        assert!(error.to_string().contains("no contributor"), "{error}");
+
+        let podcast =
+            format!("{text}base_url = \"https://pod.example/\"\n\n[podcast]\nauthor = \"S\"\n");
+        write_settings_text(root, &podcast, &stamp).unwrap();
+        let config = site::open(root).unwrap().config;
+        let saved = config.podcast.unwrap();
+        assert_eq!(saved.author.as_deref(), Some("S"));
+        assert_eq!(
+            saved.guid.as_deref(),
+            Some(crate::podcast::podcast_guid("https://pod.example/episodes.mp3.rss").as_str())
+        );
+        assert!(root.join("audio/.gitignore").is_file());
+    }
+
+    #[test]
+    fn checks_episodes_written_as_text() {
+        let dir = site();
+        let root = dir.path();
+        fs::write(root.join("site.toml"), "title = \"S\"\n\n[podcast]\n").unwrap();
+        let first = crate::podcast::create_episode_at(
+            root,
+            "Episode 0",
+            Some(0),
+            crate::page::PageDate::parse("2016-03-22"),
+            Some("episode0"),
+        )
+        .unwrap();
+        assert_eq!(first.path, "episodes/episode0");
+        let second = crate::podcast::create_episode(root, "Episode 1", None).unwrap();
+        let old_guid = "https://pod.example/2016/03/22/episode0.html";
+
+        let (text, stamp) = page_text(root, &first.file).unwrap();
+        let guid_line = text.lines().find(|l| l.starts_with("guid")).unwrap();
+        let with = |replacement: &str| text.replace(guid_line, replacement);
+
+        // Chapters out of order and unknown contributors are refused.
+        let chapters = with(&format!(
+            "guid = \"{old_guid}\"\n\n[[episode.chapters]]\nstart = \"00:10:00\"\ntitle = \"B\"\n\n\
+             [[episode.chapters]]\nstart = \"00:01:00\"\ntitle = \"A\""
+        ));
+        let error = write_page_text(root, &first.file, &chapters, &stamp).unwrap_err();
+        assert!(error.to_string().contains("starts before"), "{error}");
+        let same = chapters.replace("00:10:00", "00:01:00");
+        let error = write_page_text(root, &first.file, &same, &stamp).unwrap_err();
+        assert!(error.to_string().contains("same time"), "{error}");
+        // An own cover must follow the cover's rules.
+        fs::create_dir_all(root.join("media")).unwrap();
+        image::RgbImage::new(360, 360)
+            .save(root.join("media/small.png"))
+            .unwrap();
+        let small = with(&format!("guid = \"{old_guid}\"\nimage = \"small.png\""));
+        let error = write_page_text(root, &first.file, &small, &stamp).unwrap_err();
+        assert!(error.to_string().contains("at least 1400"), "{error}");
+        let people = with(&format!(
+            "guid = \"{old_guid}\"\n\n[[episode.people]]\ncontributor = \"nobody\""
+        ));
+        let error = write_page_text(root, &first.file, &people, &stamp).unwrap_err();
+        assert!(error.to_string().contains("no contributor"), "{error}");
+
+        // The old feed's guid is taken, but not twice.
+        let page = write_page_text(
+            root,
+            &first.file,
+            &with(&format!("guid = \"{old_guid}\"")),
+            &stamp,
+        )
+        .unwrap();
+        assert_eq!(page.content.front.episode.unwrap().guid, old_guid);
+        let (text, stamp) = page_text(root, &second.file).unwrap();
+        let guid_line = text.lines().find(|l| l.starts_with("guid")).unwrap();
+        let error = write_page_text(
+            root,
+            &second.file,
+            &text.replace(guid_line, &format!("guid = \"{old_guid}\"")),
+            &stamp,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("has the guid"), "{error}");
+
+        // Without a guid, it gets a new one.
+        let page =
+            write_page_text(root, &second.file, &text.replace(guid_line, ""), &stamp).unwrap();
+        assert!(!page.content.front.episode.unwrap().guid.is_empty());
     }
 }

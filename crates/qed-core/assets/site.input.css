@@ -174,3 +174,29 @@
   --pf-border-radius: var(--radius-field);
   --pf-font: inherit;
 }
+
+/* Podlove Web Player (#158): it draws itself at most 950 px wide, in an
+   iframe as wide as the content, so on wide pages part of the iframe is
+   empty. In dark mode the page's color-scheme (dark) differs from the
+   player document's (none, so light), and browsers then paint that empty
+   part opaque white. The same scheme on the iframe keeps it transparent;
+   the player's own colors come from config-dark.json. */
+[data-podlove-player] iframe {
+  color-scheme: light;
+}
+
+/* The player's subscribe overlay (#158): embed.js appends it to <body> as
+   an iframe and makes it fixed and 0 × 0 only once its document has
+   loaded; until then it would sit below the footer, full width and 150 px
+   tall, white in dark mode. Fixed and 0 × 0 from the start; opening it
+   still fills the window (the script's inline width/height win), and the
+   same color-scheme as the player keeps its canvas transparent. */
+body > iframe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border: 0;
+  color-scheme: light;
+}

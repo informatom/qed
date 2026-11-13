@@ -76,7 +76,8 @@ struct DeleteFile {
     /// The file's name as list_files shows it: `team.jpg`, `logos/a.png`;
     /// in static also a folder.
     name: String,
-    /// `media` (images, the default), `assets` or `static`.
+    /// `media` (images, the default), `assets`, `static`, `audio` or
+    /// `transcripts`.
     library: Option<String>,
 }
 
@@ -132,8 +133,9 @@ struct MovePage {
 
 #[derive(Deserialize, schemars::JsonSchema)]
 struct Files {
-    /// `media` (images, the default), `assets` (files to download) or
-    /// `static` (files the website gets as they are).
+    /// `media` (images, the default), `assets` (files to download),
+    /// `static` (files the website gets as they are), and on podcast sites
+    /// `audio` (episode audio) or `transcripts` (WebVTT files).
     library: Option<String>,
 }
 
@@ -142,8 +144,10 @@ struct Import {
     /// The full path of a file on this computer to copy into the site; for
     /// `static`, also a folder, copied with everything in it.
     path: String,
-    /// `media` (images, the default), `assets` (files to download) or
-    /// `static` (files the website gets as they are, at the same address).
+    /// `media` (images, the default), `assets` (files to download),
+    /// `static` (files the website gets as they are, at the same address),
+    /// and on podcast sites `audio` (MP3, M4A, Ogg, Opus, FLAC) or
+    /// `transcripts` (WebVTT `.vtt`).
     library: Option<String>,
     /// Only for `static`: the folder in it to copy into, `pdf` or
     /// `talks/2019`; the top of `static/` if left out.
@@ -155,6 +159,54 @@ struct Versions {
     /// Only the versions that changed this file (`pages/about.md`); all
     /// versions of the site if left out.
     file: Option<String>,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
+struct CreateEpisode {
+    title: String,
+    /// The episode's number; the one after the highest if left out.
+    number: Option<u32>,
+    /// `YYYY-MM-DD` (or `YYYY-MM-DDTHH:MM:SS`), for an episode carried
+    /// over from an old site; now if left out.
+    date: Option<String>,
+    /// The last part of its address, to keep the name it had elsewhere:
+    /// `2016-03-22-episode0`. Left out, it comes from the date and title.
+    slug: Option<String>,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
+struct AudioName {
+    /// The file's name in the site's audio, as import_file returned it or
+    /// list_files (library audio) shows it: `episode1.mp3`.
+    name: String,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
+struct ContributorLinkInput {
+    /// The link text, `Website` or `Mastodon`; the address if left out.
+    title: Option<String>,
+    url: String,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
+struct SaveContributor {
+    /// The contributor's id (their file name in `contributors/`, which
+    /// episodes refer to) to change them; left out for a new one, whose id
+    /// comes from the name: `Stefan Haslinger` is `stefan-haslinger`.
+    id: Option<String>,
+    name: String,
+    /// A picture in the site's images (media), best square.
+    photo: Option<String>,
+    /// Their website, Mastodon profile and so on.
+    links: Option<Vec<ContributorLinkInput>>,
+    /// About them, in Markdown.
+    bio: Option<String>,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
+struct ContributorId {
+    /// The contributor's id, as list_contributors shows it.
+    id: String,
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
@@ -206,6 +258,13 @@ impl Qed {
                 "none"
             },
         );
+        if config.podcast.is_some() {
+            out.push_str(&format!(
+                "Episodes: {} · Contributors: {}\n",
+                qed_core::podcast::episodes(&site).count(),
+                site.contributors.len()
+            ));
+        }
         if !config.languages.is_empty() {
             let codes: Vec<&str> = config.languages.keys().map(String::as_str).collect();
             out.push_str(&format!(
@@ -316,12 +375,12 @@ impl Qed {
         self.record()?;
         let (_, stamp) = editing::page_text(&self.root, &page.file).map_err(text)?;
         let notes = editing::icon_notes(&self.root, &page.content, &content);
+        let blocks = match page.content.blocks.len() {
+            1 => "1 block".to_string(),
+            count => format!("{count} blocks"),
+        };
         Ok(with_notes(
-            format!(
-                "Saved /{} ({} blocks). New stamp: {stamp}",
-                page.path,
-                page.content.blocks.len()
-            ),
+            format!("Saved /{} ({blocks}). New stamp: {stamp}", page.path),
             &notes,
         ))
     }
@@ -452,7 +511,7 @@ impl Qed {
     }
 
     #[tool(
-        description = "The site's images (library media), files to download (library assets) or files the website gets as they are (library static): name, size, image size, and which pages use each. Images are used in blocks by name (image = \"team.jpg\") and in text as /media/team.jpg; static/pdf/talk.pdf is at /pdf/talk.pdf."
+        description = "The site's images (library media), files to download (library assets), files the website gets as they are (library static), or on a podcast site its episode audio (library audio) and transcripts (library transcripts): name, size, image size, and which pages use each. Images are used in blocks by name (image = \"team.jpg\") and in text as /media/team.jpg; static/pdf/talk.pdf is at /pdf/talk.pdf."
     )]
     async fn list_files(&self, Parameters(Files { library }): Parameters<Files>) -> Reply {
         let library = parse_library(library.as_deref())?;
@@ -505,7 +564,7 @@ impl Qed {
     }
 
     #[tool(
-        description = "Copies a file from this computer into the site's images (media) or downloads (assets), with a clean name, which it returns. Into static, a file or a whole folder keeps its name and goes into the given folder, so the website has it at the same address as before: folder pdf puts 33C3.pdf at /pdf/33C3.pdf. Static files are for what must stay as it is, such as old slide shows or verification files; images belong in media."
+        description = "Copies a file from this computer into the site's images (media), downloads (assets), episode audio (audio) or transcripts (transcripts), with a clean name, which it returns: episodes refer to audio and transcripts by that name. Into static, a file or a whole folder keeps its name and goes into the given folder, so the website has it at the same address as before: folder pdf puts 33C3.pdf at /pdf/33C3.pdf. Static files are for what must stay as it is, such as old slide shows or verification files; images belong in media."
     )]
     async fn import_file(
         &self,
@@ -567,6 +626,150 @@ impl Qed {
             out.push_str(&format!("Note: {note}\n"));
         }
         Ok(out)
+    }
+
+    #[tool(
+        description = "Makes the site a podcast site, as the app's Podcast tab does: `[podcast]` in site.toml (MP3, audio kept out of the history), and the latest episode and the Subscribe button on the start page if it has neither. Then fill `[podcast]` with write_settings (the guide's Podcasts part lists its settings) and make episodes with create_episode."
+    )]
+    async fn start_podcast(&self) -> Reply {
+        qed_core::podcast::start_podcast(&self.root).map_err(text)?;
+        let site = site::open(&self.root).map_err(text)?;
+        qed_core::podcast::sync_audio_ignore(&self.root, site.config.podcast.as_ref())
+            .map_err(text)?;
+        self.record()?;
+        Ok("The site is a podcast site now. Its feed will be /episodes.mp3.rss.".to_string())
+    }
+
+    #[tool(
+        description = "Makes a new podcast episode below /episodes (the first one also makes the /episodes page, which lists them), with a number, a guid of its own and the podcast's team as its people. For an episode carried over from an old site, give its date and old name (slug). Returns the new page's file, text and stamp; fill in its `[episode]` settings (audio, duration, chapters, people, the old guid) and show notes with write_page."
+    )]
+    async fn create_episode(
+        &self,
+        Parameters(CreateEpisode {
+            title,
+            number,
+            date,
+            slug,
+        }): Parameters<CreateEpisode>,
+    ) -> Reply {
+        let date = match date.as_deref() {
+            Some(date) => Some(PageDate::parse(date).ok_or(format!(
+                "\"{date}\" isn't a date like 2026-10-29 or 2026-10-29T14:30:00"
+            ))?),
+            None => PageDate::now(),
+        };
+        let page =
+            qed_core::podcast::create_episode_at(&self.root, &title, number, date, slug.as_deref())
+                .map_err(text)?;
+        self.record()?;
+        let (content, stamp) = editing::page_text(&self.root, &page.file).map_err(text)?;
+        Ok(format!(
+            "Made /{} in {}.\nstamp: {stamp}\n\n{content}",
+            page.path,
+            page.file.display()
+        ))
+    }
+
+    #[tool(
+        description = "An audio file's format, size in bytes and length, read from the file in the site's audio, for an episode's `[[episode.audio]]` (`format`, `file`, `length`) and its `duration`."
+    )]
+    async fn audio_info(&self, Parameters(AudioName { name }): Parameters<AudioName>) -> Reply {
+        let path = media::path_of(&self.root, Library::Audio, &name).map_err(text)?;
+        let info = qed_core::podcast::audio_info(&path)?;
+        Ok(format!(
+            "format = \"{}\"\nfile = \"{name}\"\nlength = {}\nduration = \"{}\"",
+            info.format.extension(),
+            info.length,
+            info.duration
+        ))
+    }
+
+    #[tool(
+        description = "The podcast's contributors (hosts, guests and others in its episodes): id, name, photo, links, and where they're listed. Episodes and the podcast's team refer to them by id (`contributor = \"stefan-haslinger\"`)."
+    )]
+    async fn list_contributors(&self) -> Reply {
+        let site = site::open(&self.root).map_err(text)?;
+        if site.contributors.is_empty() {
+            return Ok("No contributors yet; save_contributor makes one.".to_string());
+        }
+        let mut out = String::new();
+        for contributor in &site.contributors {
+            let links: Vec<String> = contributor
+                .links
+                .iter()
+                .map(|link| match &link.title {
+                    Some(title) => format!("{title} <{}>", link.url),
+                    None => link.url.clone(),
+                })
+                .collect();
+            let listed = qed_core::contributors::episodes_with(&site, &contributor.id);
+            out.push_str(&format!(
+                "{} · {}{}{} · {}\n",
+                contributor.id,
+                contributor.name,
+                contributor
+                    .photo
+                    .as_deref()
+                    .map(|photo| format!(" · photo {photo}"))
+                    .unwrap_or_default(),
+                if links.is_empty() {
+                    String::new()
+                } else {
+                    format!(" · {}", links.join(", "))
+                },
+                if listed.is_empty() {
+                    "in no episode".to_string()
+                } else {
+                    format!("in {}", listed.join(", "))
+                }
+            ));
+        }
+        Ok(out)
+    }
+
+    #[tool(
+        description = "Saves a contributor: a new one without id (the id comes from the name and is returned), or changes the one with that id, whose id stays when the name changes. Everything is replaced by what's given, so pass the links and bio they should keep."
+    )]
+    async fn save_contributor(
+        &self,
+        Parameters(SaveContributor {
+            id,
+            name,
+            photo,
+            links,
+            bio,
+        }): Parameters<SaveContributor>,
+    ) -> Reply {
+        let contributor = qed_core::contributors::Contributor {
+            id: id.unwrap_or_default(),
+            name,
+            photo,
+            links: links
+                .unwrap_or_default()
+                .into_iter()
+                .map(|link| qed_core::contributors::ContributorLink {
+                    title: link.title,
+                    url: link.url,
+                })
+                .collect(),
+            bio: bio.unwrap_or_default(),
+        };
+        let saved = qed_core::contributors::save(&self.root, &contributor).map_err(text)?;
+        self.record()?;
+        Ok(format!("Saved {} as {}.", saved.name, saved.id))
+    }
+
+    #[tool(
+        description = "Deletes a contributor, unless an episode or the podcast's team still lists them (they're named then)."
+    )]
+    async fn delete_contributor(
+        &self,
+        Parameters(ContributorId { id }): Parameters<ContributorId>,
+    ) -> Reply {
+        let site = site::open(&self.root).map_err(text)?;
+        qed_core::contributors::delete(&site, &id).map_err(text)?;
+        self.record()?;
+        Ok(format!("Deleted {id}."))
     }
 
     #[tool(
@@ -682,8 +885,10 @@ fn parse_library(name: Option<&str>) -> Result<Library, String> {
         "media" => Ok(Library::Media),
         "assets" => Ok(Library::Assets),
         "static" => Ok(Library::Static),
+        "audio" => Ok(Library::Audio),
+        "transcripts" => Ok(Library::Transcripts),
         other => Err(format!(
-            "\"{other}\" isn't a library: use media, assets or static"
+            "\"{other}\" isn't a library: use media, assets, static, audio or transcripts"
         )),
     }
 }

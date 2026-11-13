@@ -1529,33 +1529,11 @@ pub fn save_front_matter(root: &Path, file: &Path, front: FrontMatter) -> Result
     }
     let mut front = front;
     if let Some(episode) = front.episode.as_mut() {
-        if let Some(problem) = episode.problem() {
-            return Err(SiteError::Invalid {
-                path: file.to_path_buf(),
-                message: problem,
-            });
-        }
-        if let Some(person) = episode.people.iter().find(|person| {
-            !root
-                .join(crate::contributors::CONTRIBUTORS_DIR)
-                .join(format!("{}.md", person.contributor))
-                .is_file()
-        }) {
-            return Err(SiteError::Invalid {
-                path: file.to_path_buf(),
-                message: format!(
-                    "there is no contributor “{}” in {}/",
-                    person.contributor,
-                    crate::contributors::CONTRIBUTORS_DIR
-                ),
-            });
-        }
+        check_episode(root, file, episode)?;
         // An episode written by hand may come without one.
         episode.guid = episode.guid.trim().to_string();
         if episode.guid.is_empty() {
             episode.guid = crate::podcast::new_guid();
-        } else {
-            check_episode_guid(root, file, &episode.guid)?;
         }
     }
     front.redirect_from = front
@@ -1584,6 +1562,42 @@ pub fn old_address(written: &str) -> Option<String> {
     let address = address.split(['#', '?']).next().unwrap_or_default();
     let address = address.trim_matches('/');
     (!address.is_empty()).then(|| format!("/{address}"))
+}
+
+/// Checks an episode's settings before the page `file` gets them: times,
+/// chapters and audio files as [`Episode::problem`](crate::podcast::Episode::problem)
+/// wants them, every person a contributor in `contributors/`, and a guid
+/// (if it has one) no other episode has. For the Settings tab and for an
+/// episode page written as text (`editing::write_page_text`).
+pub fn check_episode(
+    root: &Path,
+    file: &Path,
+    episode: &crate::podcast::Episode,
+) -> Result<(), SiteError> {
+    let invalid = |message: String| SiteError::Invalid {
+        path: file.to_path_buf(),
+        message,
+    };
+    if let Some(problem) = episode.problem() {
+        return Err(invalid(problem));
+    }
+    if let Some(person) = episode.people.iter().find(|person| {
+        !root
+            .join(crate::contributors::CONTRIBUTORS_DIR)
+            .join(format!("{}.md", person.contributor))
+            .is_file()
+    }) {
+        return Err(invalid(format!(
+            "there is no contributor “{}” in {}/",
+            person.contributor,
+            crate::contributors::CONTRIBUTORS_DIR
+        )));
+    }
+    let guid = episode.guid.trim();
+    if !guid.is_empty() {
+        check_episode_guid(root, file, guid)?;
+    }
+    Ok(())
 }
 
 /// Refuses a guid that changed (one carried over from an old feed, typed

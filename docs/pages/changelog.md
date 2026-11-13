@@ -11,6 +11,19 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## Unreleased
+
+- **Page width "Extra wide"**: one more step between Wide and Full.
+- **AI assistants and podcasts** (#156): an assistant can now work on a
+  podcast site too. It can switch the podcast on and fill in its
+  settings, make episodes (also ones moved over from an old site, with
+  their old date, address and guid), add audio and transcripts, chapters
+  and people, and keep the contributors. Episodes it writes get the same
+  checks as in the app. See [AI assistants](manual/ai-assistants.md).
+- **Fixed:** in dark mode, the Podlove Web Player had a white area to
+  its right on pages wider than normal, and a white bar flickered below
+  the footer while it started (#158).
+
 ## 0.19.0 · 2026-11-11
 
 Blocks as previews.

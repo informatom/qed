@@ -1209,6 +1209,19 @@ rest is done.
   picture is cut (#152). *All done 2026-11-02*, released in 0.9.0 to
   0.16.0; the last item, #148, closed when the user had made a site
   with Claude Desktop on Windows.
+- **#158 Podlove Web Player in dark mode.** Found by the user on
+  aua-uff-co.de, 2026-11-13. *Done 2026-11-14*, two white areas, both
+  from the browser painting an iframe opaque white when its document's
+  color scheme (none, so light) differs from the page's (`color-scheme:
+  dark` from daisyUI): (1) beside the player on wide pages, where the
+  player (at most 950 px) is narrower than its iframe; (2) a 150 px bar
+  flickering below the footer while the player starts, which is the
+  player's subscribe overlay: `embed.js` appends it to `<body>` as an
+  iframe and makes it fixed and 0 × 0 only once it has loaded. Fixed in
+  site.input.css: `color-scheme: light` on `[data-podlove-player]
+  iframe`, and `body > iframe` fixed, 0 × 0 and light from the start
+  (opening the overlay still fills the window through the script's
+  inline styles).
 
 ## Dropped
 

@@ -410,7 +410,12 @@ impl Episode {
                     chapter.start
                 ));
             };
-            if last.is_some_and(|last| start <= last) {
+            if last == Some(start) {
+                return Some(format!(
+                    "chapter “{title}” starts at the same time as the one above it; give it a later start or leave one out"
+                ));
+            }
+            if last.is_some_and(|last| start < last) {
                 return Some(format!(
                     "chapter “{title}” starts before the one above it; chapters go in order"
                 ));
@@ -1130,6 +1135,19 @@ pub fn episodes(site: &Site) -> impl Iterator<Item = &Page> {
 /// the season of the latest episode and a guid of its own. The first episode also makes the `/episodes` page
 /// itself, the archive, which lists them.
 pub fn create_episode(root: &Path, title: &str, number: Option<u32>) -> Result<Page, SiteError> {
+    create_episode_at(root, title, number, PageDate::now(), None)
+}
+
+/// [`create_episode`] on a given date and, if `slug` is given, with that
+/// last part of its address: for an episode carried over from another
+/// site, which keeps its date (`2016-03-22`) and name (`episode0`).
+pub fn create_episode_at(
+    root: &Path,
+    title: &str,
+    number: Option<u32>,
+    date: Option<PageDate>,
+    slug: Option<&str>,
+) -> Result<Page, SiteError> {
     let site = site::open(root)?;
     if site.config.podcast.is_none() {
         return Err(SiteError::Invalid {
@@ -1156,7 +1174,7 @@ pub fn create_episode(root: &Path, title: &str, number: Option<u32>) -> Result<P
         .as_ref()
         .map(|podcast| podcast.people.clone())
         .unwrap_or_default();
-    let page = site::create_page(root, EPISODES_PATH, title, PageDate::now())?;
+    let page = site::create_page_named(root, EPISODES_PATH, title, slug, date)?;
     site::update_page(root, &page.file, |content| {
         content.front.episode = Some(Episode {
             season,

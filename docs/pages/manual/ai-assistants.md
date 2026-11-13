@@ -40,6 +40,10 @@ boxed = true
 - change the footer, shared blocks and the site settings (menu, logo,
   theme, web address, your profiles elsewhere); the site has to open
   with them, or q.e.d. refuses
+- on a podcast site: switch the podcast on and fill in its settings, make
+  episodes (also ones moved over from an old site, with their old date,
+  address and guid), add their audio and transcripts, chapters and
+  people, and keep the contributors
 - build the site and report broken links
 - save a version with a note saying what it changed
 

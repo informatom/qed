@@ -41,6 +41,11 @@ boxed = true
 - die Fußzeile, geteilte Blöcke und die Einstellungen der Website ändern
   (Menü, Logo, Theme, Web-Adresse, Ihre Profile anderswo); die Website
   muss sich damit öffnen lassen, sonst lehnt q.e.d. ab
+- auf einer Podcast-Website: den Podcast einschalten und seine
+  Einstellungen ausfüllen, Episoden anlegen (auch solche von einer alten
+  Website, mit altem Datum, alter Adresse und guid), ihr Audio und ihre
+  Transkripte hinzufügen, Kapitel und Mitwirkende eintragen und die
+  Mitwirkenden pflegen
 - die Website bauen und kaputte Links melden
 - eine Version mit einer Notiz sichern, was er geändert hat
 

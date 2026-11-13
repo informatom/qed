@@ -48,6 +48,30 @@ Nothing open.
   strings too), or both. Old feed addresses per format would be a
   podcast setting, filled in by the import.
 
+- **#156 Podcasts through the MCP server.** `qed mcp` covered pages,
+  files and settings only; episodes, audio, contributors and `[podcast]`
+  were left to the app. New (2026-11-13, for moving aua-uff-co.de over
+  from jekyll-octopod with a headless Claude run): the tools
+  `start_podcast`, `create_episode` (also with an old date and address),
+  `audio_info`, `list_contributors`, `save_contributor`,
+  `delete_contributor`, the libraries `audio` and `transcripts` for the
+  file tools, and a Podcasts part in the guide. Episode pages written as
+  text get the Settings tab's checks (times, chapter order, contributors,
+  guid not taken twice) and a guid if they have none; podcast settings
+  written as text get their `podcast:guid` and `audio/.gitignore`.
+  The aua-uff-co.de run (2026-11-13) moved all 35 episodes with it; its
+  findings are fixed (same-time chapters get their own message, an
+  episode `image` is checked as a cover on writing, the guide explains
+  the podcast guid). Open: `create_episode` should also take summary,
+  redirects, guid and people, so an imported episode is one call plus
+  the audio instead of four (the agent threw the create's text away
+  every time). Making a new site and adding fonts stay in the app.
+  Related: #034.
+- **#157 Notes for links without a scheme.** A Markdown link like
+  `[Projects](teams.example.org/projects)` is a relative link to a page
+  that doesn't exist, but `build_site` (and the app's Build) doesn't note
+  it; found in aua-uff-co.de episode 6. Note it, best with "did you mean
+  https://…?" when it looks like a domain.
 - **#151 New manual screenshots.** The screenshots in
   `docs/media/manual/` still show the app's Lucide icons from before
   #149, and the theme tab is slightly older than that. Retake them all

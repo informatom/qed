@@ -41,7 +41,7 @@ All page settings; only `title` is required, and settings left out take their de
 - `back_next = true`: the pages below this one get links to the one before and after ("Older"/"Newer" for posts).
 - `pdf = false`: the page is left out of the site's PDF (Make PDF of the site in the Downloads tab); leave it out otherwise.
 - `redirect_from`: earlier addresses of the page, which then lead to it: `["/2016/10/02/beginn.html", "/old-about"]`. Slashes at either end don't matter. An address ending in `.html` becomes that file, any other a folder with an `index.html`. Only for addresses of pages: an old address of a PDF or image can't be a redirect.
-- `episode`: a table that makes the page a podcast episode; edit episodes in the app.
+- `episode`: a table that makes the page a podcast episode; see Podcasts below.
 
 Every other block is a `:::` container with its fields in TOML. Empty fields are left out. The block types and their fields:
 
@@ -100,7 +100,7 @@ The site's own settings are `site.toml`, read with read_settings and written wit
 - `title`, `description`, `language` (the main language's code), `base_url` (the web address, `"https://example.com/"`; needed for feeds and the sitemap).
 - `logo` and `icon`: images in `media/` by name; `icon` is the browser-tab icon (an SVG, a square PNG or an ICO).
 - `theme`: one of the names listed under Themes below, or `"custom"` with a `[custom_theme]` table (made in the app's Theme tab). `[dark]` with its own `theme` gives the site a dark side that follows the visitor's system.
-- `navigation`: "top" or "sidebar" for the main menu. `header`: "plain", "primary", "secondary", "accent" or "neutral". `logo_size`: "small", "medium", "large" or "original". `page_width`: "normal", "wide" or "full". `title_in_header`, `search`, `mark_external_links`: true or false.
+- `navigation`: "top" or "sidebar" for the main menu. `header`: "plain", "primary", "secondary", "accent" or "neutral". `logo_size`: "small", "medium", "large" or "original". `page_width`: "normal", "wide", "extra-wide" or "full". `title_in_header`, `search`, `mark_external_links`: true or false.
 - `[colors]`: which theme color goes where: `links`, `buttons`, `call_to_action`, `hero`, `boxes`, `content`, `footer` (`footer = "shaded"`, for example).
 - `profiles`: the owner's profiles elsewhere, `["https://fosstodon.org/@name"]`. Every page links them with `rel="me"`, so Mastodon shows the site as verified on the profile.
 - `[fonts]`: `text` and `headings`, fonts the owner added in the app.
@@ -119,7 +119,76 @@ page = "listener-manual"
 ```
 
 - `[languages.en]` with `title` and `description`: a further language; see Languages below.
-- `[podcast]`: a podcast's settings; leave them to the app's Podcast tab.
+- `[podcast]`: a podcast's settings; see Podcasts below.
+
+## Podcasts
+
+A site can have one podcast. start_podcast turns it on (site_info says whether it's on); its feed is `/episodes.mp3.rss`, the address jekyll-octopod used too, so a podcast moving over keeps its subscribers. Its settings are `[podcast]` in site.toml, all optional:
+
+```
+[podcast]
+description = "What the podcast is about; the site's description if left out."
+author = "Shown below the name in podcast apps"
+owner_name = "Who directories write to"
+owner_email = "podcast@example.com"
+cover = "cover.jpg"            # a square image in media/, 1400–3000 px
+categories = ["Technology"]    # Apple's; a subcategory as "Sports > Running"
+copyright = "CC BY 4.0"
+explicit = false
+
+[[podcast.funding]]
+url = "https://liberapay.com/name"
+title = "Support us"
+
+[[podcast.people]]             # the team; new episodes start with it
+contributor = "stefan-haslinger"
+role = "host"
+```
+
+Don't write `guid`, `formats` or `audio_files` yourself. q.e.d. makes the `guid` from the feed address as soon as the site has a `base_url`, writes it into `[podcast]`, and never changes it afterwards; keep it as it is when you write the settings.
+
+Contributors are the people in the podcast: list_contributors, save_contributor and delete_contributor. Save them before naming them in `[[podcast.people]]` or an episode. Roles: `host`, `co-host`, `guest-host`, `guest`, `narrator`, `producer`, `audio-editor`, `sound-designer`, `composer`, `transcriber`, `cover-art-designer`.
+
+Episodes are posts below `/episodes`; make each with create_episode (for one carried over from an old site, with its `date`, `number` and old name as `slug`), then write its settings and show notes with write_page. Their settings are an `[episode]` table after the page's own:
+
+```
++++
+title = "Episode 3"
+summary = "A short teaser, such as an old subtitle; lists and feeds show it."
+date = 2016-05-06
+redirect_from = ["/2016/05/06/episode3.html"]
+
+[episode]
+number = 3
+season = 1                     # optional
+guid = "https://example.com/2016/05/06/episode3.html"
+duration = "01:00:38"
+
+[[episode.audio]]
+format = "mp3"
+file = "episode3.mp3"          # in the site's audio
+length = 58224640              # size in bytes
+
+[[episode.chapters]]
+start = "00:00:00.000"
+title = "Intro"
+
+[[episode.people]]
+contributor = "stefan-haslinger"
+role = "host"
++++
+
+## Show notes
+
+Text and blocks, as on any page.
+```
+
+- `guid`: the episode's identity in the feed. create_episode makes one; for an episode carried over, write the guid the old feed gave it, so apps don't show it again as new. Never change it afterwards.
+- Audio goes in with import_file (library `audio`); audio_info gives its `format`, `length` and `duration`. `type` is `full` (left out), `trailer` or `bonus`; `explicit` and `image` override the podcast's; `image` is an own cover in media/ with the cover's rules (square JPEG or PNG, 1400–3000 px), so a smaller picture belongs in the show notes or in the page's own `image` setting instead.
+- `transcript`: a WebVTT file imported into the library `transcripts`.
+- Chapters go in order of their `start`; each may have a `link`.
+
+write_page refuses an episode with mistakes (a time that isn't one, chapters out of order or two at the same time, a contributor who doesn't exist, a guid another episode has, an `image` that isn't a valid cover). The player, the people, the show notes and the chapters on episode pages come from `episode.md`, the episode layout; the blocks `latest-episode` and `subscribe` show the newest episode and a Subscribe button on other pages.
 
 ## Languages
 
