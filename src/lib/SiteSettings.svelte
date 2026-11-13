@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import ImageField from "$lib/ImageField.svelte";
   import { trackUnsaved } from "$lib/unsaved.svelte";
-  import { commands, sameData, type Site, type SiteConfig } from "$lib/site";
+  import { commands, sameData, type PageWidth, type Site, type SiteConfig } from "$lib/site";
 
   interface Props {
     site: Site;
@@ -237,13 +237,19 @@
     <div class="flex flex-wrap items-center gap-3 text-sm">
       <span class="font-medium">Page width</span>
       <div class="join">
-        {#each [["normal", "Normal"], ["wide", "Wide"], ["full", "Full"]] as [value, label] (value)}
+        {#each [["normal", "Normal"], ["wide", "Wide"], ["extra-wide", "Extra wide"], ["full", "Full"]] as [value, label] (value)}
           <button type="button" id="page-width-{value}" class={["btn join-item btn-sm", form.page_width === value && "btn-active"]}
-            onclick={() => (form.page_width = value as "normal" | "wide" | "full")}>{label}</button>
+            onclick={() => (form.page_width = value as PageWidth)}>{label}</button>
         {/each}
       </div>
-      <span class="text-base-content/60">Normal suits text; Wide gives columns room; Full uses the whole window.</span>
     </div>
+    <p class="text-sm text-base-content/60">
+      How wide the content of each page gets at most. <strong>Normal</strong> (896 px) suits text: lines stay short
+      enough to read comfortably. <strong>Wide</strong> (1152 px) gives columns room. <strong>Extra wide</strong>
+      (1280 px) suits pages with several columns, tiles or big images. <strong>Full</strong> uses the whole window.
+      With sidebar navigation each width is one step larger, since the sidebar takes room of its own: Normal 1152 px,
+      Wide 1280 px, Extra wide 1536 px. On narrower screens pages always fit the window.
+    </p>
   </section>
 
   {#if error}

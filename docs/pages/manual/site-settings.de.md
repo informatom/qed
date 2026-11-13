@@ -103,8 +103,14 @@ nichts geht an andere Dienste. Für neue Websites ist sie eingeschaltet.
 
 ## Layout
 
-**Page width**: **Normal** passt zu Text, **Wide** gibt Spalten Platz,
-**Full** nutzt das ganze Fenster.
+**Page width**: wie breit der Inhalt jeder Seite höchstens wird.
+**Normal** (896 px) passt zu Text: Die Zeilen bleiben kurz genug zum
+bequemen Lesen. **Wide** (1152 px) gibt Spalten Platz. **Extra wide**
+(1280 px) passt zu Seiten mit mehreren Spalten, Kacheln oder großen
+Bildern. **Full** nutzt das ganze Fenster. Mit Seitenleisten-Navigation
+ist jede Breite eine Stufe größer, weil die Seitenleiste selbst Platz
+braucht: Normal 1152 px, Wide 1280 px, Extra wide 1536 px. Auf
+schmaleren Bildschirmen passen die Seiten immer ins Fenster.
 
 ::: call-to-action
 headline = "Farben, Schriften und Menüs"

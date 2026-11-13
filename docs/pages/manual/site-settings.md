@@ -97,8 +97,14 @@ services. It's on for new sites.
 
 ## Layout
 
-**Page width**: **Normal** suits text, **Wide** gives columns room,
-**Full** uses the whole window.
+**Page width**: how wide the content of each page gets at most.
+**Normal** (896 px) suits text: lines stay short enough to read
+comfortably. **Wide** (1152 px) gives columns room. **Extra wide**
+(1280 px) suits pages with several columns, tiles or big images.
+**Full** uses the whole window. With sidebar navigation each width is
+one step larger, since the sidebar takes room of its own: Normal
+1152 px, Wide 1280 px, Extra wide 1536 px. On narrower screens pages
+always fit the window.
 
 ::: call-to-action
 headline = "Colors, fonts and menus"

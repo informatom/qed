@@ -25,7 +25,7 @@ export const commands = rustCommands as {
   ) => Promise<Sent<Awaited<ReturnType<RustCommands[K]>>>>;
 };
 
-export type { AudioFiles, AudioFormat, Role, EpisodeType, PodcastType, Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, SftpAuth, Side, Stage, Surface, ThemeColor } from "./bindings";
+export type { AudioFiles, AudioFormat, Role, EpisodeType, PodcastType, Corners, HeaderStyle, Library, Menu, MediaKind, Navigation, PageDate, PageWidth, SftpAuth, Side, Stage, Surface, ThemeColor } from "./bindings";
 export type Colors = Sent<Rust.Colors>;
 export type Block = Sent<Rust.Block>;
 export type CustomTheme = Sent<Rust.CustomTheme>;

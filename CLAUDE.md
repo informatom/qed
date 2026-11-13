@@ -21,7 +21,7 @@ Built in two phases: (1) CMS + site generator, (2) podcasting. Product decisions
 
 ## Ask questions freely
 
-Ask the user questions whenever a design decision is open, rather than picking silently.
+Ask the user questions whenever a design decision is open, rather than picking silently. Ask before guessing (user, 2026-11-13).
 
 **Why:** user said so explicitly (2026-10-20); they also have sibling repos with existing implementations of many features and will point to them "in time".
 **How to apply:** before modelling a feature, ask about open choices; also ask whether a sibling repo already implements it before building from scratch. See qed-project-vision.

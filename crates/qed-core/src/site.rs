@@ -275,14 +275,16 @@ fn yes() -> bool {
 }
 
 /// How wide pages get: normal (56rem, a good line length for text), wide
-/// (72rem, for columns) or the full window.
+/// (72rem, for columns), extra wide (80rem) or the full window. With a
+/// sidebar each step is one size larger.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 pub enum PageWidth {
     #[default]
     Normal,
     Wide,
+    ExtraWide,
     Full,
 }
 
@@ -291,6 +293,7 @@ impl PageWidth {
         match self {
             PageWidth::Normal => "normal",
             PageWidth::Wide => "wide",
+            PageWidth::ExtraWide => "extra-wide",
             PageWidth::Full => "full",
         }
     }

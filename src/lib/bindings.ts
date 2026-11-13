@@ -1106,9 +1106,10 @@ export type PageList = {
 
 /**
  *  How wide pages get: normal (56rem, a good line length for text), wide
- *  (72rem, for columns) or the full window.
+ *  (72rem, for columns), extra wide (80rem) or the full window. With a
+ *  sidebar each step is one size larger.
  */
-export type PageWidth = "normal" | "wide" | "full";
+export type PageWidth = "normal" | "wide" | "extra-wide" | "full";
 
 /**  One PDF that was made. */
 export type PdfFile = {

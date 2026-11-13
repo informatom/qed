@@ -3305,7 +3305,8 @@ fn render_page(
         width: match (config.page_width, sidebar) {
             (PageWidth::Normal, false) => "max-w-4xl",
             (PageWidth::Normal, true) | (PageWidth::Wide, false) => "max-w-6xl",
-            (PageWidth::Wide, true) => "max-w-7xl",
+            (PageWidth::Wide, true) | (PageWidth::ExtraWide, false) => "max-w-7xl",
+            (PageWidth::ExtraWide, true) => "max-w-[96rem]",
             (PageWidth::Full, _) => "max-w-none",
         },
         header: site_header_classes(config),
@@ -6296,6 +6297,7 @@ mod tests {
         for (width, class) in [
             (PageWidth::Normal, "max-w-4xl"),
             (PageWidth::Wide, "max-w-6xl"),
+            (PageWidth::ExtraWide, "max-w-7xl"),
             (PageWidth::Full, "max-w-none"),
         ] {
             site.config.page_width = width;
