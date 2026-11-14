@@ -17,7 +17,8 @@ itself (App → Check for updates).
 - **AI assistants and podcasts** (#156): an assistant can now work on a
   podcast site too. It can switch the podcast on and fill in its
   settings, make episodes (also ones moved over from an old site, with
-  their old date, address and guid), add audio and transcripts, chapters
+  their old date, address, guid, summary, people and audio in one
+  step), add audio and transcripts, chapters
   and people, and keep the contributors. Episodes it writes get the same
   checks as in the app. See [AI assistants](manual/ai-assistants.md).
 - **Fixed:** in dark mode, the Podlove Web Player had a white area to

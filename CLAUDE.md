@@ -70,7 +70,7 @@ For qed's desktop UI, the user wants layouts that use the whole window and avoid
 
 State on 2026-11-11: phases 1 (CMS + site generator), 2 (podcasting) and 3 (beyond the basics) are done. **v0.18.0 is published**; **v0.19.0** (#155 blocks as previews, #154 follow-ups) is committed and tagged, not pushed yet. The 0.17.0 release is still a draft on GitHub. Last backlog item number: #158. Learning posts: weights 1–79 (next post is 80).
 
-**Since 0.19.0 (committed 2026-11-14, changelog "Unreleased"):** Extra wide page width; MCP podcast tools #156 (start_podcast, create_episode with date/slug, audio_info, contributor tools, libraries audio/transcripts, guide part "Podcasts"; core: `site::check_episode`, `podcast::create_episode_at`, episode checks + guid in `editing::write_page_text`, podcast guid + audio ignore in `write_settings_text`; still open in #156: a richer create_episode); #158 done (Podlove player white areas in dark mode, site.input.css). Open from this session: #157 (notes for links without a scheme).
+**Since 0.19.0 (committed 2026-11-14, changelog "Unreleased"):** Extra wide page width; MCP podcast tools #156 (start_podcast, create_episode with date/slug, audio_info, contributor tools, libraries audio/transcripts, guide part "Podcasts"; core: `site::check_episode`, `podcast::create_episode_at`, episode checks + guid in `editing::write_page_text`, podcast guid + audio ignore in `write_settings_text`; create_episode also with summary, redirect_from, guid, people, audio → #156 done 2026-11-14); #158 done (Podlove player white areas in dark mode, site.input.css). Open from this session: #157 (notes for links without a scheme).
 
 **Next:** Phase 4 "Podcast Publisher Import" (#123, #034, #124, #151 new manual screenshots last), then Phase 5 "Roll out" (#070).
 
@@ -186,7 +186,7 @@ Don't use the session scratchpad without asking the user first: no git worktrees
 
 ## Ask before compiling
 
-Before every command that compiles Rust, ask the user and wait for a yes: `cargo build`, `cargo run` (examples too, e.g. `--example build`), `cargo test`, `cargo check`, `cargo clippy`, `npm run check:all`, release builds. Say what it compiles and why, in one line. Plain `cargo fmt` and non-Rust commands don't count.
+Before every command that compiles Rust, ask the user and wait for a yes: `cargo build`, `cargo run` (examples too, e.g. `--example build`), `cargo test`, `cargo check`, `cargo clippy`, `npm run check:all`, release builds. Say what it compiles and why, in one line. Plain `cargo fmt` and non-Rust commands don't count. `cargo test -p qed-core` / `cargo build -p qed-mcp` don't reuse `tauri dev`'s build (other features) and recompile the dependencies (~2 min, user 2026-11-14): say so when asking, run them in one go.
 
 **Why:** on 2026-11-06 (#154, Typst) Claude compiled the ~220 new crates many times (a scratchpad worktree, profile changes, a release build for a size measurement, then `cargo run --example build` just to check a page edit, while rust-analyzer was checking too). The user: "every time ask for permission to compile".
 

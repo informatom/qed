@@ -1135,24 +1135,68 @@ pub fn episodes(site: &Site) -> impl Iterator<Item = &Page> {
 /// the season of the latest episode and a guid of its own. The first episode also makes the `/episodes` page
 /// itself, the archive, which lists them.
 pub fn create_episode(root: &Path, title: &str, number: Option<u32>) -> Result<Page, SiteError> {
-    create_episode_at(root, title, number, PageDate::now(), None)
+    create_episode_at(
+        root,
+        title,
+        number,
+        PageDate::now(),
+        None,
+        NewEpisode::default(),
+    )
+}
+
+/// What an episode carried over from another site brings along, for
+/// [`create_episode_at`]; what's left out gets what a new episode gets.
+#[derive(Debug, Clone, Default)]
+pub struct NewEpisode {
+    /// The teaser lists and feeds show (an old subtitle).
+    pub summary: Option<String>,
+    /// Old addresses that lead to the episode (`/2016/03/22/episode0.html`).
+    pub redirect_from: Vec<String>,
+    /// The guid the old feed gave it, so apps don't show it again as new.
+    pub guid: Option<String>,
+    /// Who's in it; the podcast's team if left out.
+    pub people: Option<Vec<crate::contributors::EpisodePerson>>,
+    /// Files in `audio/`, one per format; their size, format and the
+    /// episode's duration are read from them.
+    pub audio: Vec<String>,
 }
 
 /// [`create_episode`] on a given date and, if `slug` is given, with that
 /// last part of its address: for an episode carried over from another
-/// site, which keeps its date (`2016-03-22`) and name (`episode0`).
+/// site, which keeps its date (`2016-03-22`) and name (`episode0`), and
+/// with what `details` brings. The episode gets the checks of the Settings
+/// tab; if they fail, no episode is made.
 pub fn create_episode_at(
     root: &Path,
     title: &str,
     number: Option<u32>,
     date: Option<PageDate>,
     slug: Option<&str>,
+    details: NewEpisode,
 ) -> Result<Page, SiteError> {
     let site = site::open(root)?;
     if site.config.podcast.is_none() {
         return Err(SiteError::Invalid {
             path: PathBuf::from(site::CONFIG_FILE),
             message: "the site has no podcast; turn it on in the Podcast tab first".to_string(),
+        });
+    }
+    // The audio is read first: a missing file stops it before anything
+    // is made.
+    let mut audio = Vec::new();
+    let mut duration = None;
+    for name in &details.audio {
+        let path = crate::media::path_of(root, crate::media::Library::Audio, name)?;
+        let info = audio_info(&path).map_err(|message| SiteError::Invalid {
+            path: PathBuf::from(AUDIO_DIR).join(name),
+            message,
+        })?;
+        duration.get_or_insert(info.duration);
+        audio.push(EpisodeAudio {
+            format: info.format,
+            file: name.clone(),
+            length: Some(info.length),
         });
     }
     if !site.pages.iter().any(|page| page.path == EPISODES_PATH) {
@@ -1168,21 +1212,34 @@ pub fn create_episode_at(
     let season = known.last().and_then(|e| e.season);
 
     // The podcast's team, to change as the episode needs.
-    let people = site
-        .config
-        .podcast
-        .as_ref()
-        .map(|podcast| podcast.people.clone())
-        .unwrap_or_default();
+    let people = details.people.unwrap_or_else(|| {
+        site.config
+            .podcast
+            .as_ref()
+            .map(|podcast| podcast.people.clone())
+            .unwrap_or_default()
+    });
     let page = site::create_page_named(root, EPISODES_PATH, title, slug, date)?;
-    site::update_page(root, &page.file, |content| {
-        content.front.episode = Some(Episode {
-            season,
-            number: Some(number),
-            guid: new_guid(),
-            people,
-            ..Episode::default()
-        });
+    let mut front = page.content.front.clone();
+    front.summary = details
+        .summary
+        .map(|summary| summary.trim().to_string())
+        .filter(|summary| !summary.is_empty());
+    front.redirect_from = details.redirect_from;
+    front.episode = Some(Episode {
+        season,
+        number: Some(number),
+        // An empty one gets a new guid on saving.
+        guid: details.guid.unwrap_or_default(),
+        audio,
+        duration,
+        people,
+        ..Episode::default()
+    });
+    // The Settings tab's checks (people, guid, old addresses); an episode
+    // they refuse is taken out again, so it can simply be tried again.
+    site::save_front_matter(root, &page.file, front).inspect_err(|_| {
+        let _ = std::fs::remove_file(root.join(&page.file));
     })
 }
 
@@ -1420,6 +1477,70 @@ mod tests {
         site::create_site(dir.path(), "Pages only", "en").unwrap();
         let error = create_episode(dir.path(), "One", None).unwrap_err();
         assert!(error.to_string().contains("no podcast"), "{error}");
+    }
+
+    #[test]
+    fn carries_an_episode_over_in_one_go() {
+        let dir = podcast_site();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join(AUDIO_DIR)).unwrap();
+        std::fs::write(root.join(AUDIO_DIR).join("episode0.mp3"), mp3()).unwrap();
+        crate::contributors::save(
+            root,
+            &crate::contributors::Contributor {
+                id: String::new(),
+                name: "Stefan Haslinger".to_string(),
+                photo: None,
+                links: Vec::new(),
+                bio: String::new(),
+            },
+        )
+        .unwrap();
+        let old_guid = "https://old.example/2016/03/22/episode0.html";
+        let details = NewEpisode {
+            summary: Some(" Wie alles begann ".to_string()),
+            redirect_from: vec!["https://old.example/2016/03/22/episode0.html".to_string()],
+            guid: Some(old_guid.to_string()),
+            people: Some(vec![crate::contributors::EpisodePerson {
+                contributor: "stefan-haslinger".to_string(),
+                role: crate::contributors::Role::from_name("co-host").unwrap(),
+            }]),
+            audio: vec!["episode0.mp3".to_string()],
+        };
+        let date = PageDate::parse("2016-03-22");
+        let page = create_episode_at(
+            root,
+            "Episode 0",
+            Some(0),
+            date.clone(),
+            Some("episode0"),
+            details.clone(),
+        )
+        .unwrap();
+        let front = &page.content.front;
+        assert_eq!(front.summary.as_deref(), Some("Wie alles begann"));
+        assert_eq!(front.redirect_from, ["/2016/03/22/episode0.html"]);
+        let episode = front.episode.as_ref().unwrap();
+        assert_eq!(episode.guid, old_guid);
+        assert_eq!(episode.people[0].role, crate::contributors::Role::CoHost);
+        assert_eq!(episode.audio[0].format, AudioFormat::Mp3);
+        assert_eq!(episode.audio[0].length, Some(417 * 39));
+        assert_eq!(episode.duration.as_deref(), Some("00:00:01"));
+
+        // The same guid again is refused, and no second episode is left.
+        let error = create_episode_at(root, "Episode 0b", None, date, None, details)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("has the guid"), "{error}");
+        assert_eq!(episodes(&site::open(root).unwrap()).count(), 1);
+
+        // Unknown audio stops it before anything is made.
+        let missing = NewEpisode {
+            audio: vec!["nope.mp3".to_string()],
+            ..NewEpisode::default()
+        };
+        assert!(create_episode_at(root, "Zwei", None, None, None, missing).is_err());
+        assert_eq!(episodes(&site::open(root).unwrap()).count(), 1);
     }
 
     #[test]

@@ -536,6 +536,7 @@ mod tests {
             Some(0),
             crate::page::PageDate::parse("2016-03-22"),
             Some("episode0"),
+            crate::podcast::NewEpisode::default(),
         )
         .unwrap();
         assert_eq!(first.path, "episodes/episode0");

@@ -149,7 +149,7 @@ Don't write `guid`, `formats` or `audio_files` yourself. q.e.d. makes the `guid`
 
 Contributors are the people in the podcast: list_contributors, save_contributor and delete_contributor. Save them before naming them in `[[podcast.people]]` or an episode. Roles: `host`, `co-host`, `guest-host`, `guest`, `narrator`, `producer`, `audio-editor`, `sound-designer`, `composer`, `transcriber`, `cover-art-designer`.
 
-Episodes are posts below `/episodes`; make each with create_episode (for one carried over from an old site, with its `date`, `number` and old name as `slug`), then write its settings and show notes with write_page. Their settings are an `[episode]` table after the page's own:
+Episodes are posts below `/episodes`; make each with create_episode. For one carried over from an old site, import its audio first, then give create_episode everything it takes in one call: `date`, `number`, the old name as `slug`, `summary`, the old addresses as `redirect_from`, the old `guid`, `people` and the `audio` file names (it reads their format, size and duration). Then add show notes and chapters to the text it returns and write that with write_page; don't write the page anew from scratch. Their settings are an `[episode]` table after the page's own:
 
 ```
 +++
@@ -183,7 +183,7 @@ role = "host"
 Text and blocks, as on any page.
 ```
 
-- `guid`: the episode's identity in the feed. create_episode makes one; for an episode carried over, write the guid the old feed gave it, so apps don't show it again as new. Never change it afterwards.
+- `guid`: the episode's identity in the feed. create_episode makes one; for an episode carried over, give it the guid the old feed gave it, so apps don't show it again as new. Never change it afterwards.
 - Audio goes in with import_file (library `audio`); audio_info gives its `format`, `length` and `duration`. `type` is `full` (left out), `trailer` or `bonus`; `explicit` and `image` override the podcast's; `image` is an own cover in media/ with the cover's rules (square JPEG or PNG, 1400–3000 px), so a smaller picture belongs in the show notes or in the page's own `image` setting instead.
 - `transcript`: a WebVTT file imported into the library `transcripts`.
 - Chapters go in order of their `start`; each may have a `link`.

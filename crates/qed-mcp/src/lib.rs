@@ -16,6 +16,7 @@
 
 use std::path::{Path, PathBuf};
 
+use qed_core::contributors::{EpisodePerson, Role};
 use qed_core::media::{self, Library};
 use qed_core::page::PageDate;
 use qed_core::site::SiteError;
@@ -172,6 +173,31 @@ struct CreateEpisode {
     /// The last part of its address, to keep the name it had elsewhere:
     /// `2016-03-22-episode0`. Left out, it comes from the date and title.
     slug: Option<String>,
+    /// A short teaser lists and feeds show, such as the old subtitle.
+    summary: Option<String>,
+    /// Old addresses that should lead to the episode:
+    /// `/2016/03/22/episode0.html`.
+    redirect_from: Option<Vec<String>>,
+    /// The guid the old feed gave the episode, so apps don't show it
+    /// again as new. A new one if left out.
+    guid: Option<String>,
+    /// Who's in it; the podcast's team if left out. Save the contributors
+    /// first.
+    people: Option<Vec<PersonInput>>,
+    /// The episode's audio files, already imported with import_file
+    /// (library audio), one per format: `episode0.mp3`. Their format,
+    /// size and the duration are read from them.
+    audio: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
+struct PersonInput {
+    /// The contributor's id, as list_contributors shows it.
+    contributor: String,
+    /// `host` (if left out), `co-host`, `guest-host`, `guest`, `narrator`,
+    /// `producer`, `audio-editor`, `sound-designer`, `composer`,
+    /// `transcriber` or `cover-art-designer`.
+    role: Option<String>,
 }
 
 #[derive(Deserialize, schemars::JsonSchema)]
@@ -641,7 +667,7 @@ impl Qed {
     }
 
     #[tool(
-        description = "Makes a new podcast episode below /episodes (the first one also makes the /episodes page, which lists them), with a number, a guid of its own and the podcast's team as its people. For an episode carried over from an old site, give its date and old name (slug). Returns the new page's file, text and stamp; fill in its `[episode]` settings (audio, duration, chapters, people, the old guid) and show notes with write_page."
+        description = "Makes a new podcast episode below /episodes (the first one also makes the /episodes page, which lists them), with a number, a guid of its own and the podcast's team as its people. For an episode carried over from an old site, give its date, old name (slug), summary, old addresses, old guid, people and audio files (imported first) here, all in this one call. Returns the new page's file, text and stamp: add the show notes and chapters to that text and write it with write_page."
     )]
     async fn create_episode(
         &self,
@@ -650,6 +676,11 @@ impl Qed {
             number,
             date,
             slug,
+            summary,
+            redirect_from,
+            guid,
+            people,
+            audio,
         }): Parameters<CreateEpisode>,
     ) -> Reply {
         let date = match date.as_deref() {
@@ -658,9 +689,40 @@ impl Qed {
             ))?),
             None => PageDate::now(),
         };
-        let page =
-            qed_core::podcast::create_episode_at(&self.root, &title, number, date, slug.as_deref())
-                .map_err(text)?;
+        let people = people
+            .map(|people| {
+                people
+                    .into_iter()
+                    .map(|person| {
+                        let role = match person.role.as_deref() {
+                            None => Role::default(),
+                            Some(name) => Role::from_name(name)
+                                .ok_or(format!("\"{name}\" isn't one of the roles"))?,
+                        };
+                        Ok(EpisodePerson {
+                            contributor: person.contributor,
+                            role,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, String>>()
+            })
+            .transpose()?;
+        let details = qed_core::podcast::NewEpisode {
+            summary,
+            redirect_from: redirect_from.unwrap_or_default(),
+            guid,
+            people,
+            audio: audio.unwrap_or_default(),
+        };
+        let page = qed_core::podcast::create_episode_at(
+            &self.root,
+            &title,
+            number,
+            date,
+            slug.as_deref(),
+            details,
+        )
+        .map_err(text)?;
         self.record()?;
         let (content, stamp) = editing::page_text(&self.root, &page.file).map_err(text)?;
         Ok(format!(

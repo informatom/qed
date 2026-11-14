@@ -129,6 +129,15 @@ impl Role {
         }
     }
 
+    /// The role as `role` in the files writes it (`co-host`), if `name`
+    /// is one.
+    pub fn from_name(name: &str) -> Option<Role> {
+        let name = name.trim();
+        Role::ALL
+            .into_iter()
+            .find(|role| role.taxonomy().0.replace(' ', "-") == name)
+    }
+
     /// The role for readers, in the site's language (German or English).
     pub fn label(self, language: &str) -> &'static str {
         let german = language.trim().to_lowercase().starts_with("de");
