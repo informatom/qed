@@ -200,6 +200,12 @@ fn missing_links(site: &Site, published: &[&Page]) -> Vec<String> {
             if !seen.insert(link.clone()) {
                 continue;
             }
+            if let Some(address) = crate::links::without_scheme(&link) {
+                notes.push(format!(
+                    "{place} links to \"{link}\", which browsers take for a page on this site; did you mean \"{address}\"?"
+                ));
+                continue;
+            }
             let problem = if let Some(path) = links.page_path_of(&link) {
                 let path = crate::preview::percent_decode(&path);
                 // A folder in `static/` is served as it is, like a page.
@@ -6017,7 +6023,7 @@ mod tests {
              [slides](/slides/) [mail](mailto:a@b.at) [web](https://example.com)\n\n\
              ![team](/media/team.png) [menu](/assets/menu.pdf)\n\n\
              [typo](/abuot) [draft](/secret) [gone](blog/gone.md) ![x](/media/nope.png) \
-             [y](/assets/nope.pdf) [typo again](/abuot)\n",
+             [y](/assets/nope.pdf) [typo again](/abuot) [teams](teams.example.org/projects)\n",
         )
         .unwrap();
         fs::write(
@@ -6055,6 +6061,7 @@ mod tests {
                 r#"/ links to "blog/gone.md", but there's no such page."#,
                 r#"/ links to "/media/nope.png", but that file isn't in Media."#,
                 r#"/ links to "/assets/nope.pdf", but that file isn't in Downloads."#,
+                r#"/ links to "teams.example.org/projects", which browsers take for a page on this site; did you mean "https://teams.example.org/projects"?"#,
                 r#"The footer links to "/contact", but there's no such page."#,
             ],
             "once each, drafts' own links unchecked"

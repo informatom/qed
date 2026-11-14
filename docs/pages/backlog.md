@@ -48,11 +48,6 @@ Nothing open.
   strings too), or both. Old feed addresses per format would be a
   podcast setting, filled in by the import.
 
-- **#157 Notes for links without a scheme.** A Markdown link like
-  `[Projects](teams.example.org/projects)` is a relative link to a page
-  that doesn't exist, but `build_site` (and the app's Build) doesn't note
-  it; found in aua-uff-co.de episode 6. Note it, best with "did you mean
-  https://…?" when it looks like a domain.
 - **#151 New manual screenshots.** The screenshots in
   `docs/media/manual/` still show the app's Lucide icons from before
   #149, and the theme tab is slightly older than that. Retake them all

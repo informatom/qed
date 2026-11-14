@@ -1243,6 +1243,15 @@ rest is done.
   text away every time); it gets the Settings tab's checks and is taken
   out again if they fail (`podcast::NewEpisode`). Making a new site and
   adding fonts stay in the app. Related: #034.
+- **#157 Notes for links without a scheme.** A Markdown link like
+  `[Projects](teams.example.org/projects)` is a relative link to a page
+  that doesn't exist, but `build_site` (and the app's Build) doesn't note
+  it; found in aua-uff-co.de episode 6. Note it, best with "did you mean
+  https://…?" when it looks like a domain. *Done 2026-11-14*: the build
+  notes links whose first part looks like a domain (a dot and then a
+  `/`, `www.`, or a common ending such as .com, .org, .at) with the
+  address plus `https://` (`links::without_scheme`); other relative
+  links stay unchecked, so links to files aren't taken for one.
 
 ## Dropped
 

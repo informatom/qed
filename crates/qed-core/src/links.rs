@@ -266,6 +266,39 @@ fn is_external(url: &str) -> bool {
         })
 }
 
+/// For a link that looks like a web address written without `https://`
+/// (`teams.example.org/projects`, `www.example.com`), that address with
+/// it (#157). Browsers read such a link as one to a page on this site,
+/// which isn't there. Only clear cases: the first part has a dot and is
+/// followed by a `/`, starts with `www.` or ends in a common domain
+/// ending, so files such as `photo.jpg` and `../talks/sub8.html` aren't
+/// taken for one.
+pub fn without_scheme(url: &str) -> Option<String> {
+    const ENDINGS: [&str; 22] = [
+        "com", "org", "net", "edu", "gov", "info", "io", "dev", "app", "social", "fm", "at", "de",
+        "ch", "eu", "uk", "it", "fr", "nl", "us", "co", "me",
+    ];
+    let url = url.trim();
+    if is_external(url) || url.starts_with(['/', '#', '.']) || url.ends_with(".md") {
+        return None;
+    }
+    let end = url.find(['/', '?', '#']).unwrap_or(url.len());
+    let (host, rest) = url.split_at(end);
+    let labels: Vec<&str> = host.split('.').collect();
+    let well_formed = labels.len() >= 2
+        && labels.iter().all(|label| {
+            !label.is_empty() && label.chars().all(|c| c.is_alphanumeric() || c == '-')
+        });
+    let ending = labels.last().copied().unwrap_or_default().to_lowercase();
+    if !well_formed || ending.len() < 2 || !ending.chars().all(char::is_alphabetic) {
+        return None;
+    }
+    let domain = rest.starts_with('/')
+        || host.to_lowercase().starts_with("www.")
+        || ENDINGS.contains(&ending.as_str());
+    domain.then(|| format!("https://{url}"))
+}
+
 /// `logo.png` is a file, `about` and `blog/post` are pages.
 pub(crate) fn looks_like_file(path: &str) -> bool {
     path.rsplit('/')
@@ -298,6 +331,43 @@ mod tests {
 
     fn context(path: &str, file: &str) -> LinkContext {
         LinkContext::new(path, Path::new(file))
+    }
+
+    #[test]
+    fn finds_web_addresses_without_scheme() {
+        let fixed = |url: &str| without_scheme(url);
+        assert_eq!(
+            fixed("teams.example.org/projects").as_deref(),
+            Some("https://teams.example.org/projects")
+        );
+        assert_eq!(
+            fixed("www.example.xyz").as_deref(),
+            Some("https://www.example.xyz")
+        );
+        assert_eq!(
+            fixed("informatom.com").as_deref(),
+            Some("https://informatom.com")
+        );
+        assert_eq!(
+            fixed("podcasterei.at#kontakt").as_deref(),
+            Some("https://podcasterei.at#kontakt")
+        );
+        for not_one in [
+            "photo.jpg",
+            "talks/sub8.html",
+            "../index.md",
+            "./slides.html",
+            "about",
+            "blog/post.md",
+            "/media/team.png",
+            "https://example.com",
+            "mailto:a@b.at",
+            "a@b.at",
+            "v1.2",
+            "#top",
+        ] {
+            assert_eq!(fixed(not_one), None, "{not_one}");
+        }
     }
 
     #[test]

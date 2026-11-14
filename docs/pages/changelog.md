@@ -21,6 +21,9 @@ itself (App → Check for updates).
   step), add audio and transcripts, chapters
   and people, and keep the contributors. Episodes it writes get the same
   checks as in the app. See [AI assistants](manual/ai-assistants.md).
+- **Links without https://**: the build notes a link like
+  `example.org/projects`, which browsers take for a page on the site, and
+  suggests the address with `https://` (#157).
 - **Fixed:** in dark mode, the Podlove Web Player had a white area to
   its right on pages wider than normal, and a white bar flickered below
   the footer while it started (#158).
