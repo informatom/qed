@@ -11,7 +11,9 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
-## Unreleased
+## 0.20.0 · 2026-11-19
+
+AI assistants for podcasts, page width Extra wide.
 
 - **Page width "Extra wide"**: one more step between Wide and Full.
 - **AI assistants and podcasts** (#156): an assistant can now work on a
