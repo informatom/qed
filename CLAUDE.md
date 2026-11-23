@@ -55,6 +55,7 @@ A feature step's post goes into the feature's own commit and is linked from the 
 For qed's desktop UI, the user wants layouts that use the whole window and avoid wasted space: no centered max-width column, side panels widen on large screens with fields in two columns (container queries), and related short lines sit side by side (e.g. header: app label + folder/stats on one line, site title + description on the next). Confirmed "perfect" on 2026-10-21 after these changes.
 
 **Why:** the user runs the app full HD and noticed scrolling while most of the window was empty.
+For a UI problem, offer the simplest fix first: for #159 (2026-11-23) the user rejected a redesign into a table they "can't really imagine" and asked for more contrast instead; dark neutral was "really heavy", the app's primary was right.
 **How to apply:** design new app screens desktop-first and dense; check at 1920px width that nothing needs scrolling that could fit side by side. Generated websites are different — they keep readable max widths. Related: qed-project-vision.
 
 ## Shell pitfalls
@@ -68,7 +69,7 @@ For qed's desktop UI, the user wants layouts that use the whole window and avoid
 
 ## qed status
 
-State on 2026-11-19: phases 1 (CMS + site generator), 2 (podcasting) and 3 (beyond the basics) are done. v0.19.0 is pushed; **v0.20.0** (Extra wide page width, MCP podcast tools #156, build notes links without https:// #157, Podlove player in dark mode #158) is committed and tagged, not pushed yet. The 0.17.0 release is still a draft on GitHub. Last backlog item number: #163. Learning posts: weights 1–79 (next post is 80).
+State on 2026-11-23: phases 1 (CMS + site generator), 2 (podcasting), 3 (beyond the basics) and 3.5 (theming) are done. v0.20.0 is pushed; **v0.21.0** (outlined Hero/Call to action #163, colored headings #160, footer with accent line #162, chosen option in primary #159) is committed and tagged, not pushed yet. The 0.17.0 release is still a draft on GitHub. Last backlog item number: #163. Learning posts: weights 1–80 (next post is 81).
 
 Phase 3.5 "Theming" (#159–#163) done on 2026-11-23 (decisions in docs/pages/theming.md): Material 3's roles; Hero and Call to action outlined by default (light container shade, 2 px border in the color, headline in an on-container tone; `hero_solid`/`call_to_action_solid` for the old fill), a Hero without an image only as high as its text, footer plain with a 4 px accent line on top, headings in a deep primary tone (`[colors] headings`), the chosen option in the app's button rows in primary (#159). New defaults change existing sites on purpose (q.e.d.'s own look). Not wanted: borders for boxes and sections ("too much"), colored link text, a pale tint with base-content text, more header options (#161 closed).
 
