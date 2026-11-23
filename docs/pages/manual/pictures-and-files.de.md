@@ -110,6 +110,14 @@ PDFs, und Links zu anderen Websites zeigen ihre Adresse in einer
 Fußnote, damit man sie auch auf Papier lesen kann. Der Player und Videos
 werden zu einem Link auf ihre Seite der Website.
 
+Neben dem Knopf wählen Sie, wie es gesetzt wird. **Book** ergibt eine
+Spalte in angenehmer Größe. **Magazine** ergibt zwei Spalten in kleinerer
+Schrift, wie in einer Zeitschrift: mehr auf jeder Seite, und jede Seite
+der obersten Ebene beginnt auf einer neuen Seite, mit ihrem Titel über
+beide Spalten. Was auf der Website nebeneinander steht (Spalten, Text mit
+Bild, Galerien), steht in der schmalen Spalte untereinander. Die Wahl
+bleibt bei der Website gespeichert.
+
 Es entsteht nur, wenn Sie klicken, und landet wie jede andere Datei in
 Downloads: `meine-seite.pdf`, nach dem Titel der Website benannt. Bieten
 Sie es mit einem Block **Download** an. Eine Website in mehreren

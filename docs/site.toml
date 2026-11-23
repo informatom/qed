@@ -7,6 +7,8 @@ base_url = "https://qed.informatom.com/"
 mark_external_links = true
 navigation = "sidebar"
 profiles = ["https://fosstodon.org/@informatom"]
+page_width = "extra-wide"
+pdf_layout = "magazine"
 
 [fonts]
 headings = "Saira Condensed"

@@ -102,6 +102,13 @@ links to other pages jump inside the PDF, and links to other websites
 show their address in a footnote, so they can be read on paper. The
 player and videos become a link to their page on the website.
 
+Beside the button, choose how it's set. **Book** gives one column in a
+comfortable size. **Magazine** gives two columns in smaller type, like a
+magazine: more on each page, and each top-level page opens on a new page
+with its title across both columns. What stands side by side on the
+website (columns, text with image, galleries) comes one below the other
+in a magazine's narrow column. The choice is kept with the site.
+
 It's made only when you click, and lands in Downloads like any other
 file: `my-site.pdf`, named after the site. Offer it with a **Download**
 block. A site in several languages gets one PDF per language

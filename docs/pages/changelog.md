@@ -11,6 +11,14 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## Unreleased
+
+- **The site's PDF as a magazine** (#164): next to **Make PDF of the
+  site** in the Downloads tab, choose **Book** (one column, as before)
+  or **Magazine**: two columns in smaller type, each top-level page
+  opening on a new page with its title across both columns. Columns,
+  text with image and galleries are stacked in the column.
+
 ## 0.21.0 · 2026-11-23
 
 A new look for every site's colors: calmer areas, colored headings.

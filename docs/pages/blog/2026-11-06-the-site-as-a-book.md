@@ -181,3 +181,61 @@ libraries table had one for every library. Links in tables now go
 without; they still work in the PDF. That took the rest from 10 seconds
 to 2. With the pictures and the German book, the whole button now takes
 about 8 seconds in a dev build.
+
+## Later: a magazine as well
+
+Since #164 the PDF can also be set like a magazine: two columns in
+9 point instead of one in 11. The choice sits beside the button (Book /
+Magazine) and is kept in `site.toml` as `pdf_layout = "magazine"`. In
+Rust it's an enum, `PdfLayout` in `crates/qed-core/src/site.rs`,
+with `Book` as its `#[default]`; `skip_serializing_if` leaves it out of
+the file while it's the default, so existing sites' `site.toml` don't
+change.
+
+Typst does columns on its own: [`set page(columns: 2)`](https://typst.app/docs/reference/layout/page/#parameters-columns)
+and all text flows from one column into the next. q.e.d. writes that
+rule only after the table of contents, so the title page and the
+contents still span the page. A chapter heading across both columns
+uses a [float](https://typst.app/docs/reference/layout/place/): placed
+at the top of the page, in the scope of the page rather than the column
+(`scope: "parent"`), so the two columns start below it:
+
+```
+#show heading.where(outlined: true, level: 1): it => {
+  pagebreak(weak: true)
+  place(top, scope: "parent", float: true, clearance: 1.2em,
+    { set text(size: 16.4pt); it })
+}
+```
+
+The sizes are the book's, scaled: `Book::pt(18.0)` gives `"18pt"` in a
+book and `"14.7pt"` in a magazine (9/11 of it, to a tenth). The rules
+at the top come from `preamble_rules(magazine)`, which fills
+placeholders in the book's rules, so the book's markup stays exactly as
+it was.
+
+What stands side by side on the website (Columns, Text with image,
+Gallery) is a `#grid` in the book. In a column 8 cm wide that gets
+cramped, so a magazine stacks the cells. One helper decides, and
+returns an [`Option`](https://doc.rust-lang.org/std/option/):
+
+```rust
+fn stacked<S: AsRef<str>>(&self, cells: &[S]) -> Option<String> {
+    self.magazine.then(|| {
+        cells.iter().map(|cell| format!("{}\n\n", cell.as_ref().trim())).collect()
+    })
+}
+```
+
+[`bool::then`](https://doc.rust-lang.org/std/primitive.bool.html#method.then)
+runs the closure and wraps its result in `Some` when the bool is true,
+and gives `None` otherwise: Elixir would write `if magazine, do: …`,
+which gives `nil` when it's false. Each block then writes
+`if let Some(stacked) = self.stacked(&cells) { return stacked; }` and
+goes on to build its grid. `S: AsRef<str>` makes the helper take a
+slice of anything that can be seen as a `&str`: the `Vec<String>` of a
+gallery's pictures as well as `[&left, &right]` of a Text with image,
+which only borrows the two halves instead of copying them, since the
+grid still needs them when it's a book. `collect()` can make a `String` because
+`String` implements `FromIterator<String>`: the pieces are joined
+together.

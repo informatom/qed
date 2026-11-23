@@ -1311,6 +1311,17 @@ rest is done.
   the app's primary color instead of daisyUI's barely darker grey
   (neutral was tried first: too heavy). No table.
 
+- **#164 The site's PDF as a magazine.** The user, 2026-11-23: a more
+  magazine-like PDF, two columns in a smaller font. Typst Universe has
+  no magazine template (only two-column papers and a newsletter), and
+  its packages would need downloading, so it's built in: `pdf_layout =
+  "magazine"` in site.toml, chosen beside Make PDF of the site in the
+  Downloads tab (Book / Magazine). Decided with the user: both layouts
+  stay, 9 point in Libertinus Serif, side-by-side blocks (columns, text
+  with image, galleries) stacked in the column, only top-level pages on
+  a new page, their heading across both columns (a float in the page's
+  scope). Title page and contents stay one column. Built 2026-11-23.
+
 ## Dropped
 
 Not needed in a single-user desktop app:
