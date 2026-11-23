@@ -33,10 +33,13 @@ Farben des Themes er bekommt:
   als die Seite) oder eine der vier Farben. Der Inhaltshintergrund nimmt
   nur einen hellen Hauch davon, damit Text lesbar bleibt.
 
-Bei einem dunklen Theme ist die Fußzeile **shaded**, außer Sie wählen
-eine andere Farbe: Die Akzentfarbe des Themes ist oft ein blasser Ton,
-der ein helles Band unter einer dunklen Seite ergäbe. Bei einem hellen
-Theme ist sie **accent**.
+In einer Farbe des Themes fallen **Hero** und **Call to action** auf,
+ohne eine große Fläche zu füllen: ein heller Ton der Farbe in einem
+Rahmen in der Farbe selbst, die Überschrift in einem tiefen Ton davon.
+Mit **Solid** sind sie stattdessen ganz in der Farbe gefüllt.
+
+Die Fußzeile ist **plain**, außer Sie wählen eine andere Farbe, mit
+einer Linie in der Akzentfarbe oben, wie beim schlichten Kopf.
 
 **Reset** setzt den Kopf und jede Farbe auf die Voreinstellung zurück.
 

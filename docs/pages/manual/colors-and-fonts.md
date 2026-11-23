@@ -30,9 +30,13 @@ colors it gets:
   than the page) or one of the four colors. The content background
   takes only a light tint, so text stays readable.
 
-On a dark theme the footer is **shaded** unless you pick another color:
-the theme's accent is often a pale color that would make a bright band
-below a dark page. On a light theme it's **accent**.
+In a theme color, the **Hero** and the **Call to action** stand out
+without filling a big area: a light shade of the color inside a border
+in the color itself, with the headline in a deep tone of it. Tick
+**Solid** to fill them with the color instead.
+
+The footer is **plain** unless you pick another color, with a line in
+the accent color along its top, like the plain header's.
 
 **Reset** puts the header and every color back to the defaults.
 
