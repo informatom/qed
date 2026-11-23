@@ -46,7 +46,7 @@
 /* Those classes come together in Rust, out of Tailwind's sight: every
    color class the generator picks (color_classes, header_classes), with
    either prefix. A test checks that each is in the stylesheet. */
-@source inline("{mode-light:,mode-dark:}{bg-base-100,bg-base-200,bg-primary,bg-secondary,bg-accent,bg-neutral,text-base-content,text-primary-content,text-secondary-content,text-accent-content,text-neutral-content,text-primary,font-semibold,border,border-t,border-b,border-t-4,border-base-300,border-t-accent,border-b-base-300,shadow-sm,on-color,btn-primary,btn-secondary,btn-accent,btn-neutral,content-primary,content-secondary,content-accent,content-neutral,links-secondary,links-accent,links-neutral,underline,decoration-2,underline-offset-4,link-hover,rounded-field,p-0.5,p-1}");
+@source inline("{mode-light:,mode-dark:}{bg-base-100,bg-base-200,bg-primary,bg-secondary,bg-accent,bg-neutral,text-base-content,text-primary-content,text-secondary-content,text-accent-content,text-neutral-content,text-primary,font-semibold,border,border-t,border-b,border-t-4,border-base-300,border-t-accent,border-b-base-300,shadow-sm,on-color,btn-primary,btn-secondary,btn-accent,btn-neutral,content-primary,content-secondary,content-accent,content-neutral,outlined-primary,outlined-secondary,outlined-accent,outlined-neutral,links-secondary,links-accent,links-neutral,underline,decoration-2,underline-offset-4,link-hover,rounded-field,p-0.5,p-1}");
 
 /* The switch: light, the system's setting, dark (mode.js); the current
    choice stands out, in the header's own text color, so it works on a

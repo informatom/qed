@@ -555,8 +555,18 @@ export type Colors = {
 	buttons: ThemeColor | null,
 	/**  The Call to action box; primary if empty. */
 	call_to_action: Surface | null,
+	/**
+	 *  The Call to action filled with its color; if empty, it's a light
+	 *  shade of the color with a border in it (#163).
+	 */
+	call_to_action_solid: boolean | null,
 	/**  A Hero without an image; secondary if empty. */
 	hero: Surface | null,
+	/**
+	 *  The Hero filled with its color; if empty, it's a light shade of the
+	 *  color with a border in it (#163).
+	 */
+	hero_solid: boolean | null,
 	/**
 	 *  Columns drawn as a box; plain (the page background, a border) if
 	 *  empty.
@@ -567,7 +577,7 @@ export type Colors = {
 	 *  plain if empty.
 	 */
 	content: Surface | null,
-	/**  The footer; accent if empty. */
+	/**  The footer; plain (a line in accent along its top) if empty. */
 	footer: Surface | null,
 };
 

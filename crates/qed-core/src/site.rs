@@ -462,15 +462,21 @@ pub struct Colors {
     pub buttons: Option<ThemeColor>,
     /// The Call to action box; primary if empty.
     pub call_to_action: Option<Surface>,
+    /// The Call to action filled with its color; if empty, it's a light
+    /// shade of the color with a border in it (#163).
+    pub call_to_action_solid: Option<bool>,
     /// A Hero without an image; secondary if empty.
     pub hero: Option<Surface>,
+    /// The Hero filled with its color; if empty, it's a light shade of the
+    /// color with a border in it (#163).
+    pub hero_solid: Option<bool>,
     /// Columns drawn as a box; plain (the page background, a border) if
     /// empty.
     pub boxes: Option<Surface>,
     /// The page background behind the content, a light tint of the color;
     /// plain if empty.
     pub content: Option<Surface>,
-    /// The footer; accent if empty.
+    /// The footer; plain (a line in accent along its top) if empty.
     pub footer: Option<Surface>,
 }
 

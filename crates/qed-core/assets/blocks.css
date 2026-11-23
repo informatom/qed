@@ -63,6 +63,45 @@
     color: inherit;
   }
 }
+/* A Hero or a Call to action outlined in a theme color (the default,
+   #163): a light shade of the color inside a border in the color itself,
+   the headline in a deep tone of it, text in the base color. Derived from
+   any theme, as Material 3 derives its container colors: in dark themes
+   the shade is dark and the headline's tone light. Whole utilities, so
+   `mode-dark:` works on them. */
+@utility outlined-primary {
+  border: 2px solid var(--color-primary);
+  background-color: color-mix(in oklch, var(--color-primary) 12%, var(--color-base-100));
+  color: var(--color-base-content);
+  & :is(h1, h2) {
+    color: color-mix(in oklch, var(--color-primary) 50%, var(--color-base-content));
+  }
+}
+@utility outlined-secondary {
+  border: 2px solid var(--color-secondary);
+  background-color: color-mix(in oklch, var(--color-secondary) 12%, var(--color-base-100));
+  color: var(--color-base-content);
+  & :is(h1, h2) {
+    color: color-mix(in oklch, var(--color-secondary) 50%, var(--color-base-content));
+  }
+}
+@utility outlined-accent {
+  border: 2px solid var(--color-accent);
+  background-color: color-mix(in oklch, var(--color-accent) 12%, var(--color-base-100));
+  color: var(--color-base-content);
+  & :is(h1, h2) {
+    color: color-mix(in oklch, var(--color-accent) 50%, var(--color-base-content));
+  }
+}
+@utility outlined-neutral {
+  border: 2px solid var(--color-neutral);
+  background-color: color-mix(in oklch, var(--color-neutral) 12%, var(--color-base-100));
+  color: var(--color-base-content);
+  & :is(h1, h2) {
+    color: color-mix(in oklch, var(--color-neutral) 50%, var(--color-base-content));
+  }
+}
+
 /* A button on a section of its own color would vanish: inside a
    section in a theme color (`on-primary` and so on, generator.rs), buttons
    of that color are drawn plain, as on a Hero or a Call to action. */

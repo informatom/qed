@@ -1637,11 +1637,11 @@ fn both_sides(light: &str, dark: &str) -> String {
 /// The site's color classes: for a site with dark mode, both sides'.
 fn site_colors(config: &SiteConfig) -> ColorClasses {
     let light = config.light();
-    let classes = color_classes(light.colors, light.is_dark());
+    let classes = color_classes(light.colors);
     let Some(dark) = config.dark_look() else {
         return classes;
     };
-    let other = color_classes(dark.colors, dark.is_dark());
+    let other = color_classes(dark.colors);
     ColorClasses {
         body: both_sides(&classes.body, &other.body),
         footer: both_sides(&classes.footer, &other.footer),
@@ -1730,14 +1730,13 @@ struct ColorClasses {
 
 /// Whole class names throughout, so Tailwind finds them when it scans this
 /// file. A colored area gets `on-color`: Markdown text in it takes the
-/// area's text color (site.input.css). `dark` is whether the theme's page
-/// background is dark: the footer is then shaded by default, not a pale
-/// band of the accent color below a dark page.
-fn color_classes(colors: &Colors, dark: bool) -> ColorClasses {
+/// area's text color (site.input.css).
+fn color_classes(colors: &Colors) -> ColorClasses {
     let buttons = colors.buttons.unwrap_or(ThemeColor::Primary);
     // A button on a box of its own color would vanish: it's drawn plain.
-    let button_on = |surface: Surface| {
-        if surface.color() == Some(buttons) {
+    // On an outlined box (a light shade of the color) it stands out.
+    let button_on = |surface: Surface, solid: bool| {
+        if solid && surface.color() == Some(buttons) {
             "btn"
         } else {
             match buttons {
@@ -1750,6 +1749,8 @@ fn color_classes(colors: &Colors, dark: bool) -> ColorClasses {
     };
     let hero = colors.hero.unwrap_or(Surface::Secondary);
     let call_to_action = colors.call_to_action.unwrap_or(Surface::Primary);
+    let hero_solid = colors.hero_solid.unwrap_or(false);
+    let call_to_action_solid = colors.call_to_action_solid.unwrap_or(false);
     let content = match colors.content.unwrap_or(Surface::Plain) {
         Surface::Plain => "bg-base-100",
         Surface::Shaded => "bg-base-200",
@@ -1766,19 +1767,19 @@ fn color_classes(colors: &Colors, dark: bool) -> ColorClasses {
     };
     ColorClasses {
         body: format!("{content}{links}"),
-        footer: match colors.footer.unwrap_or(if dark {
-            Surface::Shaded
-        } else {
-            Surface::Accent
-        }) {
-            Surface::Plain => "border-t border-base-300 bg-base-100 text-base-content".to_string(),
+        // Plain by default, in light and dark: the page background with a
+        // line in accent along its top, like the plain header's (#163).
+        footer: match colors.footer.unwrap_or(Surface::Plain) {
+            Surface::Plain => {
+                "border-t-4 border-t-accent bg-base-100 text-base-content".to_string()
+            }
             other => filled(other).to_string(),
         },
-        hero: filled(hero).to_string(),
-        hero_button: button_on(hero).to_string(),
-        image_button: button_on(Surface::Plain).to_string(),
-        call_to_action: filled(call_to_action).to_string(),
-        call_to_action_button: button_on(call_to_action).to_string(),
+        hero: outlined_or_filled(hero, hero_solid).to_string(),
+        hero_button: button_on(hero, hero_solid).to_string(),
+        image_button: button_on(Surface::Plain, true).to_string(),
+        call_to_action: outlined_or_filled(call_to_action, call_to_action_solid).to_string(),
+        call_to_action_button: button_on(call_to_action, call_to_action_solid).to_string(),
         boxed: match colors.boxes.unwrap_or(Surface::Plain) {
             // Its own text color too: on a colored section, it would
             // otherwise take the section's light text.
@@ -1800,6 +1801,21 @@ fn filled(surface: Surface) -> &'static str {
         Surface::Secondary => "on-color bg-secondary text-secondary-content",
         Surface::Accent => "on-color bg-accent text-accent-content",
         Surface::Neutral => "on-color bg-neutral text-neutral-content",
+    }
+}
+
+/// A Hero or a Call to action: by default outlined, a light shade of its
+/// theme color with a border in the color itself and the headline in a
+/// deep tone of it (Material 3's container and on-container, #163;
+/// blocks.css). Solid, it's filled like any other area. Plain and shaded
+/// have no color to outline.
+fn outlined_or_filled(surface: Surface, solid: bool) -> &'static str {
+    match (surface, solid) {
+        (Surface::Primary, false) => "outlined-primary",
+        (Surface::Secondary, false) => "outlined-secondary",
+        (Surface::Accent, false) => "outlined-accent",
+        (Surface::Neutral, false) => "outlined-neutral",
+        _ => filled(surface),
     }
 }
 
@@ -3418,7 +3434,7 @@ pub fn preview_blocks(
     let images = Images::new(&media_dir).with_settings(site.media.clone());
     let site_icons = SiteIcons::load(&media_dir);
     let light = site.config.light();
-    let colors = color_classes(light.colors, light.is_dark());
+    let colors = color_classes(light.colors);
     let button_color = button_hex(light);
     let context = Context {
         podcast_feeds: &podcast_feeds,
@@ -5454,6 +5470,7 @@ mod tests {
             header: HeaderStyle::Neutral,
             colors: Colors::default(),
         });
+        site.config.colors.footer = Some(Surface::Accent);
         build_on(&site, out.path(), TODAY).unwrap();
         let home = read(out.path().join("index.html"));
         assert!(home.contains(r#"data-theme="catppuccin-latte""#));
@@ -5463,9 +5480,9 @@ mod tests {
             "{home}"
         );
         assert!(home.contains(r#"id="mode-switch""#) && home.contains("Dunkle Farben"));
-        // The footer: accent on light, shaded on dark (the defaults).
+        // The footer: accent on light (picked), plain on dark (the default).
         assert!(
-            home.contains(r#"<footer class="mode-light:on-color mode-light:bg-accent mode-light:text-accent-content mode-dark:bg-base-200 mode-dark:text-base-content">"#),
+            home.contains(r#"<footer class="mode-light:on-color mode-light:bg-accent mode-light:text-accent-content mode-dark:border-t-4 mode-dark:border-t-accent mode-dark:bg-base-100 mode-dark:text-base-content">"#),
             "{home}"
         );
         // The header: plain on light, a neutral bar on dark.
@@ -5505,19 +5522,18 @@ mod tests {
         let mut classes = BTreeSet::new();
         let mut add = |text: &str| classes.extend(text.split_whitespace().map(str::to_string));
         for (&surface, &color) in surfaces.iter().zip(colors.iter().cycle()) {
-            for dark in [false, true] {
-                let picked = color_classes(
-                    &Colors {
-                        links: Some(color),
-                        buttons: Some(color),
-                        call_to_action: Some(surface),
-                        hero: Some(surface),
-                        boxes: Some(surface),
-                        content: Some(surface),
-                        footer: Some(surface),
-                    },
-                    dark,
-                );
+            for solid in [false, true] {
+                let picked = color_classes(&Colors {
+                    links: Some(color),
+                    buttons: Some(color),
+                    call_to_action: Some(surface),
+                    call_to_action_solid: Some(solid),
+                    hero: Some(surface),
+                    hero_solid: Some(solid),
+                    boxes: Some(surface),
+                    content: Some(surface),
+                    footer: Some(surface),
+                });
                 for text in [
                     &picked.body,
                     &picked.footer,
@@ -5730,26 +5746,41 @@ mod tests {
 
     #[test]
     fn uses_the_chosen_theme_colors() {
-        let defaults = color_classes(&Colors::default(), false);
+        let defaults = color_classes(&Colors::default());
         assert_eq!(
             defaults.body, "bg-base-100",
             "links in primary need no class"
         );
-        assert_eq!(defaults.footer, "on-color bg-accent text-accent-content");
-        let dark = color_classes(&Colors::default(), true);
-        assert_eq!(dark.footer, "bg-base-200 text-base-content");
+        assert_eq!(
+            defaults.footer,
+            "border-t-4 border-t-accent bg-base-100 text-base-content"
+        );
         let chosen = Colors {
             footer: Some(Surface::Accent),
             ..Colors::default()
         };
         assert_eq!(
-            color_classes(&chosen, true).footer,
+            color_classes(&chosen).footer,
             "on-color bg-accent text-accent-content",
             "a footer color that was picked wins"
         );
+        assert_eq!(defaults.hero, "outlined-secondary");
+        assert_eq!(defaults.call_to_action, "outlined-primary");
         assert_eq!(defaults.hero_button, "btn btn-primary");
         assert_eq!(
-            defaults.call_to_action_button, "btn",
+            defaults.call_to_action_button, "btn btn-primary",
+            "it stands out on the light shade of its color"
+        );
+        let solid = color_classes(&Colors {
+            call_to_action_solid: Some(true),
+            ..Colors::default()
+        });
+        assert_eq!(
+            solid.call_to_action,
+            "on-color bg-primary text-primary-content"
+        );
+        assert_eq!(
+            solid.call_to_action_button, "btn",
             "plain on its primary box"
         );
 
@@ -5759,6 +5790,7 @@ mod tests {
             links: Some(ThemeColor::Accent),
             buttons: Some(ThemeColor::Secondary),
             hero: Some(Surface::Secondary),
+            hero_solid: Some(true),
             content: Some(Surface::Primary),
             footer: Some(Surface::Plain),
             ..Colors::default()
@@ -5784,7 +5816,7 @@ mod tests {
         assert!(html.contains("content-primary links-accent"), "{html}");
         assert!(
             html.contains(
-                r#"<footer class="border-t border-base-300 bg-base-100 text-base-content">"#
+                r#"<footer class="border-t-4 border-t-accent bg-base-100 text-base-content">"#
             ),
             "{html}"
         );
@@ -5799,6 +5831,10 @@ mod tests {
         assert!(
             html.contains(r#"class="btn btn-secondary">Now</a>"#),
             "on the primary box: {html}"
+        );
+        assert!(
+            html.contains(r#"<section class="card outlined-primary">"#),
+            "the Call to action is outlined by default: {html}"
         );
     }
 

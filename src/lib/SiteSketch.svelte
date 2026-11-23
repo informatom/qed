@@ -1,13 +1,13 @@
 <script lang="ts">
   import type { Colors, HeaderStyle, Surface } from "$lib/site";
-  import { buttonOn, colorOf, contentBackground, FILLED } from "$lib/siteColors";
+  import { areaOf, buttonOn, colorOf, contentBackground, FILLED, isSolid } from "$lib/siteColors";
 
   interface Props {
     /** The header setting: a plain header, or a bar in one of the colors. */
     header?: HeaderStyle;
     /** The site's color choices; the defaults if missing. */
     colors?: Colors;
-    /** Whether the theme's page background is dark (the footer is then shaded by default). */
+    /** Whether the theme's page background is dark. */
     dark?: boolean;
   }
 
@@ -15,6 +15,8 @@
 
   let hero = $derived(colorOf(colors, "hero"));
   let callToAction = $derived(colorOf(colors, "call_to_action"));
+  let heroSolid = $derived(isSolid(colors, "hero"));
+  let callToActionSolid = $derived(isSolid(colors, "call_to_action"));
   let footer = $derived(colorOf(colors, "footer", dark));
   let links = $derived(colorOf(colors, "links"));
 
@@ -79,11 +81,11 @@
 
   <div class="flex flex-col gap-3 px-3 py-3">
     <!-- Hero without an image, with its button. -->
-    <div class={["relative flex flex-col items-center gap-1.5 rounded-box px-4 py-4", FILLED[hero]]}>
+    <div class={["relative flex flex-col items-center gap-1.5 rounded-box px-4 py-4", areaOf(colors, "hero")]}>
       {@render mark(number(hero))}
-      <span class="h-2.5 w-2/3 rounded-full bg-current opacity-80"></span>
+      <h2 class="h-2.5 w-2/3 rounded-full bg-current opacity-80"></h2>
       <span class="h-1.5 w-1/2 rounded-full bg-current opacity-50"></span>
-      <span class={["relative mt-1.5 h-4 w-14 rounded-field", buttonOn(colors, hero)]}>{@render mark(hero === colorOf(colors, "buttons") ? null : number(colorOf(colors, "buttons")))}</span>
+      <span class={["relative mt-1.5 h-4 w-14 rounded-field", buttonOn(colors, hero, heroSolid)]}>{@render mark(heroSolid && hero === colorOf(colors, "buttons") ? null : number(colorOf(colors, "buttons")))}</span>
     </div>
 
     <!-- Text with a link (its underline) and a quote (accent bar). -->
@@ -117,16 +119,16 @@
     </div>
 
     <!-- Call to action: a box with its button. -->
-    <div class={["relative flex flex-col items-center gap-1.5 rounded-box px-4 py-3", FILLED[callToAction]]}>
+    <div class={["relative flex flex-col items-center gap-1.5 rounded-box px-4 py-3", areaOf(colors, "call_to_action")]}>
       {@render mark(number(callToAction))}
-      <span class="h-2 w-1/3 rounded-full bg-current opacity-80"></span>
-      <span class={["h-3.5 w-12 rounded-field", buttonOn(colors, callToAction)]}></span>
+      <h2 class="h-2 w-1/3 rounded-full bg-current opacity-80"></h2>
+      <span class={["h-3.5 w-12 rounded-field", buttonOn(colors, callToAction, callToActionSolid)]}></span>
     </div>
   </div>
 
   <!-- The footer. -->
-  <div class={["relative flex items-center justify-between px-3 py-2.5", footer === "plain" ? "border-t border-base-300 bg-base-100" : FILLED[footer]]}>
-    {@render mark(number(footer), "-top-1.5 left-2")}
+  <div class={["relative flex items-center justify-between px-3 py-2.5", footer === "plain" ? "border-t-4 border-accent bg-base-100" : FILLED[footer]]}>
+    {@render mark(footer === "plain" ? 3 : number(footer), "-top-1.5 left-2")}
     <span class="h-1.5 w-12 rounded-full bg-current opacity-60"></span>
     <span class="h-1.5 w-16 rounded-full bg-current opacity-60"></span>
   </div>

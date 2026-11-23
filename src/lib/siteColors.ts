@@ -4,7 +4,20 @@
 
 import type { Colors, HeaderStyle, Surface, ThemeColor } from "$lib/site";
 
-export type ColorKey = keyof Colors;
+/** The color choices; `hero_solid` and `call_to_action_solid` are switches of their own. */
+export type ColorKey = Exclude<keyof Colors, "hero_solid" | "call_to_action_solid">;
+
+/** The areas that are outlined unless set to solid (#163), and their switch. */
+export const SOLID_KEYS: Partial<Record<ColorKey, "hero_solid" | "call_to_action_solid">> = {
+  hero: "hero_solid",
+  call_to_action: "call_to_action_solid",
+};
+
+/** Whether `key` is filled with its color: always, unless it's one that's outlined by default. */
+export function isSolid(colors: Colors | undefined, key: ColorKey): boolean {
+  const solid = SOLID_KEYS[key];
+  return solid ? (colors?.[solid] ?? false) : true;
+}
 
 export interface ColorSetting {
   key: ColorKey;
@@ -26,13 +39,13 @@ export const COLOR_SETTINGS: ColorSetting[] = [
   { key: "call_to_action", label: "Call to action", uses: "Call to action box", surface: true, fallback: "primary" },
   { key: "boxes", label: "Boxed columns", uses: "boxed columns", surface: true, fallback: "plain" },
   { key: "content", label: "Content background", uses: "tint of the page background", surface: true, fallback: "plain" },
-  { key: "footer", label: "Footer", uses: "footer", surface: true, fallback: "accent", darkFallback: "shaded" },
+  { key: "footer", label: "Footer", uses: "footer", surface: true, fallback: "plain" },
 ];
 
 export const THEME_COLORS: ThemeColor[] = ["primary", "secondary", "accent", "neutral"];
 export const SURFACES: Surface[] = ["plain", "shaded", ...THEME_COLORS];
 
-/** What an empty setting means: on a dark theme, the footer is shaded (as color_classes in generator.rs). */
+/** What an empty setting means, on a theme with a dark page background too. */
 export function fallbackOf(setting: ColorSetting, dark: boolean): Surface {
   return (dark && setting.darkFallback) || setting.fallback;
 }
@@ -66,10 +79,26 @@ export const FILLED: Record<Surface, string> = {
   neutral: "bg-neutral text-neutral-content",
 };
 
-/** A button on an area filled with `surface`: plain on its own color (as color_classes in generator.rs). */
-export function buttonOn(colors: Colors | undefined, surface: Surface): string {
+/** Whole class names: an area outlined in `surface` (a light shade, a border in the color; blocks.css), or filled for plain and shaded. */
+export const OUTLINED: Record<Surface, string> = {
+  plain: FILLED.plain,
+  shaded: FILLED.shaded,
+  primary: "outlined-primary",
+  secondary: "outlined-secondary",
+  accent: "outlined-accent",
+  neutral: "outlined-neutral",
+};
+
+/** The classes of the area `key` is drawn in: outlined or filled. */
+export function areaOf(colors: Colors | undefined, key: ColorKey, dark = false): string {
+  const surface = colorOf(colors, key, dark);
+  return isSolid(colors, key) ? FILLED[surface] : OUTLINED[surface];
+}
+
+/** A button on an area filled with `surface`: plain on its own color (as color_classes in generator.rs); on an outlined area it stands out anyway. */
+export function buttonOn(colors: Colors | undefined, surface: Surface, solid = true): string {
   const button = colorOf(colors, "buttons");
-  if (button === surface) return "bg-base-100";
+  if (solid && button === surface) return "bg-base-100";
   return { primary: "bg-primary", secondary: "bg-secondary", accent: "bg-accent", neutral: "bg-neutral" }[button as ThemeColor] ?? "bg-primary";
 }
 
@@ -86,7 +115,11 @@ export function usesOf(color: ThemeColor, colors: Colors | undefined, header: He
   const fixed: Record<ThemeColor, string[]> = {
     primary: header === "plain" ? ["current page in the top menu"] : [],
     secondary: ["dates in Post lists"],
-    accent: header === "plain" ? ["stripe along the top of the header", "bar beside quotes"] : ["bar beside quotes"],
+    accent: [
+      ...(header === "plain" ? ["stripe along the top of the header"] : []),
+      ...(colorOf(colors, "footer", dark) === "plain" ? ["line along the top of the footer"] : []),
+      "bar beside quotes",
+    ],
     neutral: ["current page in the sidebar menu", "file type in Download blocks"],
   };
   const chosen = COLOR_SETTINGS.filter((s) => colorOf(colors, s.key, dark) === color).map((s) => s.uses);

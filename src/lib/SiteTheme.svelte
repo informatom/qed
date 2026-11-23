@@ -12,7 +12,7 @@
   import ThemeLegend from "$lib/ThemeLegend.svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
   import { commands, type Colors, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type Surface, type ThemeChoice, type ThemeVariable } from "$lib/site";
-  import { COLOR_SETTINGS, colorOf, fallbackOf, isDarkHex, SURFACES, THEME_COLORS, type ColorSetting } from "$lib/siteColors";
+  import { COLOR_SETTINGS, colorOf, fallbackOf, isDarkHex, isSolid, SOLID_KEYS, SURFACES, THEME_COLORS, type ColorSetting } from "$lib/siteColors";
 
   interface Props {
     site: Site;
@@ -95,6 +95,14 @@
   let swatchStyle = $derived(variables.map((v) => `${v.name}: ${v.value}`).join("; "));
 
   // The default is saved as nothing, so site.toml only names what was changed.
+  /** Fills the Hero or the Call to action with its color, or outlines it again (the default). */
+  function setSolid(setting: ColorSetting, solid: boolean) {
+    const key = SOLID_KEYS[setting.key];
+    if (!key) return;
+    const colors = { ...$state.snapshot(side.colors ?? {}), [key]: solid ? true : null };
+    save(withSide({ colors: colors as Colors }));
+  }
+
   function setColor(setting: ColorSetting, value: Surface) {
     if (colorOf(side.colors, setting.key, dark) === value) return;
     const colors = { ...$state.snapshot(side.colors ?? {}), [setting.key]: value === fallbackOf(setting, dark) ? null : value };
@@ -103,7 +111,10 @@
 
   /** Whether any color, the header included, differs from its default. */
   let colorsChanged = $derived(
-    side.header !== "plain" || COLOR_SETTINGS.some((setting) => colorOf(side.colors, setting.key, dark) !== fallbackOf(setting, dark)),
+    side.header !== "plain" ||
+    COLOR_SETTINGS.some((setting) => colorOf(side.colors, setting.key, dark) !== fallbackOf(setting, dark)) ||
+    !!side.colors?.hero_solid ||
+    !!side.colors?.call_to_action_solid,
   );
 
   async function resetColors() {
@@ -409,21 +420,34 @@
         {#each COLOR_SETTINGS as setting (setting.key)}
           {@const current = colorOf(side.colors, setting.key, dark)}
           <span class="text-base-content/80">{setting.label}</span>
-          <div id="color-{setting.key}" class="join flex-wrap">
-            {#each setting.surface ? SURFACES : THEME_COLORS as value (value)}
-              <button type="button" id="color-{setting.key}-{value}"
-                class={["btn join-item btn-xs gap-1.5 capitalize", current === value && "btn-active"]}
-                title={value === fallbackOf(setting, dark) ? "The default" : undefined}
-                onclick={() => setColor(setting, value)}>
-                {@render swatch(value)}{value}
-              </button>
-            {/each}
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div id="color-{setting.key}" class="join flex-wrap">
+              {#each setting.surface ? SURFACES : THEME_COLORS as value (value)}
+                <button type="button" id="color-{setting.key}-{value}"
+                  class={["btn join-item btn-xs gap-1.5 capitalize", current === value && "btn-active"]}
+                  title={value === fallbackOf(setting, dark) ? "The default" : undefined}
+                  onclick={() => setColor(setting, value)}>
+                  {@render swatch(value)}{value}
+                </button>
+              {/each}
+            </div>
+            {#if SOLID_KEYS[setting.key]}
+              <label class="flex items-center gap-1.5 text-xs"
+                title="Filled with the color instead of a light shade of it inside a border in the color">
+                <input type="checkbox" id="color-{setting.key}-solid" class="checkbox checkbox-xs"
+                  disabled={current === "plain" || current === "shaded"}
+                  checked={isSolid(side.colors, setting.key)}
+                  onchange={(event) => setSolid(setting, event.currentTarget.checked)} />
+                Solid
+              </label>
+            {/if}
           </div>
         {/each}
       </div>
       <p class="text-xs text-base-content/60">
         Which of the theme's colors goes where; the legend shows the result. Plain is the page background, shaded a
-        shade darker. The content background takes a light tint of the color, so text stays readable. A button on a box
+        shade darker. The content background takes a light tint of the color, so text stays readable. Hero and Call to
+        action get a light shade of their color inside a border in it, unless they're solid. A button on a solid box
         of its own color is drawn plain.
       </p>
     </section>
