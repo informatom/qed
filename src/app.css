@@ -27,3 +27,11 @@
   --font-mono: ui-monospace, "SF Mono", Menlo, "Ubuntu Sans Mono", "Ubuntu Mono", "Noto Sans Mono",
     "Cascadia Mono", Consolas, "Liberation Mono", monospace;
 }
+
+/* The chosen option in a row of buttons (`join`) stands out in the app's
+   primary color, instead of daisyUI's barely darker grey (#159). */
+.join > .btn.btn-active {
+  --btn-color: var(--color-primary);
+  --btn-fg: var(--color-primary-content);
+  --btn-border: var(--color-primary);
+}

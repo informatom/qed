@@ -4,7 +4,8 @@ description = "How q.e.d. uses the daisyUI theme colors, and what color systems 
 +++
 
 Background for backlog #163 and Phase 3.5 "Theming" in the
-[Backlog](backlog.md). Collected on 2026-11-20; nothing is decided yet.
+[Backlog](backlog.md). Collected on 2026-11-20, decided and built on
+2026-11-23 (see Decisions; the items are in [Done](done.md)).
 
 ## What prompted it
 

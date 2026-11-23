@@ -1297,6 +1297,20 @@ rest is done.
   now outlined (owner: "it looks good"). The sites weren't pinned to
   their old look: new defaults change them on purpose, q.e.d.'s own look.
 
+- **#159 Color choices that show what's chosen.** In Site → Theme →
+  Colors the chosen option is only a slightly darker grey chip, so you
+  can't see at a glance what's set (user: the main problem). Make the
+  choice stand out (e.g. the chip filled in its color, a ring or a check
+  mark). Also: the rows have 4, 5 or 6 options, so "Primary" sits at a
+  different place in each row; line them up as a table with fixed
+  columns (an empty cell where an option doesn't apply), so a column
+  shows where a color is used. Plain and Shaded look the same (two
+  near-white dots): draw them as base-100 and base-200 with a border.
+  *Done 2026-11-23*: simpler than the table: the chosen option in every
+  row of buttons in the app (`.join > .btn-active`, app.css) is drawn in
+  the app's primary color instead of daisyUI's barely darker grey
+  (neutral was tried first: too heavy). No table.
+
 ## Dropped
 
 Not needed in a single-user desktop app:

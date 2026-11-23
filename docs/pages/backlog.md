@@ -20,30 +20,6 @@ Nothing open.
 
 ## To build
 
-### Phase 3.5: Theming
-
-How the theme's colors are chosen and used (user, 2026-11-20, from
-ki.mittenin.at in light mode: text and link text black, primary only in
-buttons, a Call to action in secondary as the biggest color patch). For
-comparison, daisyUI's roles: primary is "the main color of your brand",
-secondary and accent are "optional", neutral is "for not-saturated parts
-of UI", base-200 (*shaded*) is the page background "a darker shade, to
-create elevations", and base-content is the default text color. One step
-at a time; new defaults may change existing sites (decided
-2026-11-23). Not wanted: soft
-tints instead of full colors for big areas (user: "the absolute
-opposite").
-
-- **#159 Color choices that show what's chosen.** In Site → Theme →
-  Colors the chosen option is only a slightly darker grey chip, so you
-  can't see at a glance what's set (user: the main problem). Make the
-  choice stand out (e.g. the chip filled in its color, a ring or a check
-  mark). Also: the rows have 4, 5 or 6 options, so "Primary" sits at a
-  different place in each row; line them up as a table with fixed
-  columns (an empty cell where an option doesn't apply), so a column
-  shows where a color is used. Plain and Shaded look the same (two
-  near-white dots): draw them as base-100 and base-200 with a border.
-
 ### Phase 4: Podcast Publisher Import
 
 - **#123 Import from Podlove Publisher.** Bring a podcast over from
