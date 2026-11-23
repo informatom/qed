@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Colors, HeaderStyle, Surface } from "$lib/site";
-  import { areaOf, buttonOn, colorOf, contentBackground, FILLED, isSolid } from "$lib/siteColors";
+  import { areaOf, buttonOn, colorOf, contentBackground, FILLED, headingTone, isSolid } from "$lib/siteColors";
 
   interface Props {
     /** The header setting: a plain header, or a bar in one of the colors. */
@@ -19,6 +19,7 @@
   let callToActionSolid = $derived(isSolid(colors, "call_to_action"));
   let footer = $derived(colorOf(colors, "footer", dark));
   let links = $derived(colorOf(colors, "links"));
+  let headings = $derived(colorOf(colors, "headings"));
 
   /** The legend's number for a theme color; none for plain and shaded. */
   function number(surface: Surface): number | null {
@@ -107,7 +108,7 @@
 
     <!-- A post with its date (secondary). -->
     <div class="flex flex-col gap-1">
-      <span class="h-2 w-1/3 rounded-full bg-base-content/70"></span>
+      <span class="relative h-2 w-1/3 rounded-full" style:background-color={headingTone(headings)}>{@render mark(number(headings), "-top-1 -right-4")}</span>
       <span class="relative h-2.5 w-10 rounded-field bg-secondary">{@render mark(2, "-top-1 -right-5")}</span>
       <span class="h-1.5 w-2/3 rounded-full bg-base-content/25"></span>
     </div>

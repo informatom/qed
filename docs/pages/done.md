@@ -1253,6 +1253,50 @@ rest is done.
   address plus `https://` (`links::without_scheme`); other relative
   links stay unchecked, so links to files aren't taken for one.
 
+- **#163 A color model beyond daisyUI's single shades.** daisyUI has one
+  shade per theme color (plus the text on it), so q.e.d. can offer a
+  color only as a full patch (a Hero takes more than half of a full HD
+  start screen) or not at all, and text stays base-content. Color
+  systems (Radix, Material 3, Refactoring UI) use scales: light shades
+  for areas, the solid one for buttons, dark ones for text. To discuss:
+  following Material 3's roles (container, on-container, outline
+  derived per theme), a Hero and Call to action in a container shade or
+  with a border, a height setting for the Hero. Decided 2026-11-23:
+  Material 3's roles, a colored border as a choice for big solid areas,
+  new defaults may change existing sites. First step built 2026-11-23,
+  to evaluate on the docs site: Hero and Call to action outlined by
+  default (light container shade, 2 px border in the color, headline in
+  an on-container tone; `hero_solid` / `call_to_action_solid` for the
+  old fill), a Hero without an image only as high as its text, the
+  footer plain by default in light and dark with a 4 px accent line
+  along its top (like the plain header). Not for boxes and sections
+  (user, 2026-11-23: "that would be too much"). Findings and sources:
+  [Theming notes](theming.md). Related: #159, #160, #162. *Done 2026-11-23.*
+- **#160 Text in theme colors.** Today every color choice is a fill
+  (or a button, or a link's underline); text is always base-content.
+  Options for headings, link text, the Hero headline and the Call to
+  action title in a theme color. Link text would need a contrast check
+  (4.5:1 against the background; the generator knows the theme's hex
+  values), because some themes have light primaries: that's why link
+  text keeps the base color now (blocks.css).
+  Decided 2026-11-23: all headings (page title, h1–h6, block headings)
+  in a deep tone of one color, primary by default (`[colors] headings`,
+  plain for the old black); levels by size, not by color; link text
+  stays as it is (the underline is enough). Built 2026-11-23.
+- **#162 Defaults by role.** Today's defaults give three brand colors a
+  big area each: Hero secondary, Call to action primary, footer accent
+  (light). Decide whether primary should lead (buttons, links, current
+  menu item, Call to action) and secondary and accent stay small (dates,
+  quote bar), and whether a Hero without an image should default to
+  shaded, as daisyUI's own Hero example does. New defaults change every
+  site that uses them (informatom.com and blog.panoptikum.social in
+  production, podcasterei.at, waldgruber.at): write their current
+  choices into their site.toml first.
+  *Decided 2026-11-23*: the footer is plain by default with an accent
+  line on top (#163); Hero secondary and Call to action primary stay,
+  now outlined (owner: "it looks good"). The sites weren't pinned to
+  their old look: new defaults change them on purpose, q.e.d.'s own look.
+
 ## Dropped
 
 Not needed in a single-user desktop app:
@@ -1285,3 +1329,6 @@ Not needed in a single-user desktop app:
   and no remote in use requires it. libgit2 only stores signatures, so
   q.e.d. would have to sign with an SSH key itself. Back on the list if
   a site has to be pushed to a repository that requires signed commits.
+- #161 Header: Shaded too, closed 2026-11-23: the Header row offers
+  Plain and the four theme colors, the Footer row also Shaded. The owner:
+  the header has enough options.

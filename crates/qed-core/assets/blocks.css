@@ -24,6 +24,45 @@
   border-inline-start-color: var(--color-accent);
 }
 
+/* Headings (#160): in a deep tone of the site's heading color (primary
+   unless `[colors] headings` says otherwise), the color mixed with the
+   text color, so they stay readable in every theme, light or dark.
+   `headings-plain` mixes the text color with itself: the text color.
+   Markdown headings through the typography plugin's variable, the
+   templates' own headings through `qed-heading`; `:root body .prose` to
+   win over daisyUI's `:root .prose`. A colored area (`on-color`, the
+   footer) sets `--qed-heading-tone` to its text color, so its headings
+   keep that. */
+@utility headings-plain {
+  --qed-heading: var(--color-base-content);
+}
+@utility headings-secondary {
+  --qed-heading: var(--color-secondary);
+}
+@utility headings-accent {
+  --qed-heading: var(--color-accent);
+}
+@utility headings-neutral {
+  --qed-heading: var(--color-neutral);
+}
+@layer utilities {
+  :root body .prose {
+    --tw-prose-headings: var(
+      --qed-heading-tone,
+      color-mix(in oklch, var(--qed-heading, var(--color-primary)) 50%, var(--color-base-content))
+    );
+  }
+  body .qed-heading {
+    color: var(
+      --qed-heading-tone,
+      color-mix(in oklch, var(--qed-heading, var(--color-primary)) 50%, var(--color-base-content))
+    );
+  }
+  .site-footer {
+    --qed-heading-tone: currentColor;
+  }
+}
+
 /* Keys (`<kbd>Ctrl</kbd>`) as keycaps, in the theme's base colors like
    daisyUI's kbd; on a colored area in its text color. */
 .prose kbd {
@@ -47,6 +86,7 @@
 /* Markdown on a colored box (a Hero, a Call to action, a boxed column
    in a theme color) takes the area's text color. */
 @utility on-color {
+  --qed-heading-tone: currentColor;
   & .prose {
     color: inherit;
     --tw-prose-body: currentColor;

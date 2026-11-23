@@ -457,6 +457,9 @@ impl<'a> Look<'a> {
 pub struct Colors {
     /// The underline of links in text; primary if empty.
     pub links: Option<ThemeColor>,
+    /// Headings, in a deep tone of the color, or plain (the text color);
+    /// primary if empty (#160).
+    pub headings: Option<TextColor>,
     /// Buttons (Hero, Call to action); primary if empty. On a box of the
     /// same color they're drawn plain, so they don't vanish.
     pub buttons: Option<ThemeColor>,
@@ -484,6 +487,19 @@ impl Colors {
     pub fn is_default(&self) -> bool {
         *self == Colors::default()
     }
+}
+
+/// The color of text: the base text color (plain), or a deep tone of one
+/// of the theme's colors, readable in every theme.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "lowercase")]
+pub enum TextColor {
+    Plain,
+    Primary,
+    Secondary,
+    Accent,
+    Neutral,
 }
 
 /// One of the theme's four colors.

@@ -25,6 +25,9 @@ colors it gets:
 
 - **Header**: **Plain** (the page background) or a colored bar.
 - **Links** and **Buttons**: one of the four colors.
+- **Headings**: one of the four colors in a deep tone, mixed with the
+  text color so it stays readable, or **plain** (the text color).
+  Primary unless you pick another.
 - **Hero**, **Call to action**, **Boxed columns**, **Content
   background** and **Footer**: **plain**, **shaded** (a shade darker
   than the page) or one of the four colors. The content background

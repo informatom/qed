@@ -568,7 +568,9 @@ mod tests {
 
         let html = fs::read_to_string(out.join(&page.path).join("index.html")).unwrap();
         assert!(
-            html.contains("<h2 class=\"text-2xl font-semibold tracking-tight\">Mitwirkende</h2>"),
+            html.contains(
+                "<h2 class=\"qed-heading text-2xl font-semibold tracking-tight\">Mitwirkende</h2>"
+            ),
             "{html}"
         );
         assert!(html.contains("Moderation, Schnitt"), "{html}");

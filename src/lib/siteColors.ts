@@ -24,26 +24,36 @@ export interface ColorSetting {
   label: string;
   /** How it reads in the legend, after the color's name. */
   uses: string;
-  /** Theme colors only, or also plain and shaded. */
-  surface: boolean;
+  /** The options it offers. */
+  choices: readonly Surface[];
   /** What empty means; the defaults are how sites looked before. */
   fallback: Surface;
   /** What empty means on a theme with a dark page background, if that differs. */
   darkFallback?: Surface;
 }
 
-export const COLOR_SETTINGS: ColorSetting[] = [
-  { key: "links", label: "Links", uses: "underline of links in text", surface: false, fallback: "primary" },
-  { key: "buttons", label: "Buttons", uses: "buttons", surface: false, fallback: "primary" },
-  { key: "hero", label: "Hero", uses: "Hero without an image", surface: true, fallback: "secondary" },
-  { key: "call_to_action", label: "Call to action", uses: "Call to action box", surface: true, fallback: "primary" },
-  { key: "boxes", label: "Boxed columns", uses: "boxed columns", surface: true, fallback: "plain" },
-  { key: "content", label: "Content background", uses: "tint of the page background", surface: true, fallback: "plain" },
-  { key: "footer", label: "Footer", uses: "footer", surface: true, fallback: "plain" },
-];
-
 export const THEME_COLORS: ThemeColor[] = ["primary", "secondary", "accent", "neutral"];
 export const SURFACES: Surface[] = ["plain", "shaded", ...THEME_COLORS];
+/** Text: the text color (plain) or a deep tone of a theme color. */
+export const TEXT_COLORS: Surface[] = ["plain", ...THEME_COLORS];
+
+export const COLOR_SETTINGS: ColorSetting[] = [
+  { key: "links", label: "Links", uses: "underline of links in text", choices: THEME_COLORS, fallback: "primary" },
+  { key: "headings", label: "Headings", uses: "headings, in a deep tone", choices: TEXT_COLORS, fallback: "primary" },
+  { key: "buttons", label: "Buttons", uses: "buttons", choices: THEME_COLORS, fallback: "primary" },
+  { key: "hero", label: "Hero", uses: "Hero without an image", choices: SURFACES, fallback: "secondary" },
+  { key: "call_to_action", label: "Call to action", uses: "Call to action box", choices: SURFACES, fallback: "primary" },
+  { key: "boxes", label: "Boxed columns", uses: "boxed columns", choices: SURFACES, fallback: "plain" },
+  { key: "content", label: "Content background", uses: "tint of the page background", choices: SURFACES, fallback: "plain" },
+  { key: "footer", label: "Footer", uses: "footer", choices: SURFACES, fallback: "plain" },
+];
+
+/** A heading's color in a deep tone of `color` (as blocks.css): mixed with the text color. */
+export function headingTone(color: Surface): string {
+  return color === "plain" || color === "shaded"
+    ? "var(--color-base-content)"
+    : `color-mix(in oklch, var(--color-${color}) 50%, var(--color-base-content))`;
+}
 
 /** What an empty setting means, on a theme with a dark page background too. */
 export function fallbackOf(setting: ColorSetting, dark: boolean): Surface {

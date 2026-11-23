@@ -38,7 +38,7 @@
 {%- when RenderedBlock::LatestEpisode with { title, href, label, summary_html, audio, player, more } %}
 {#- `@container`: the player's room decides the height kept for it. #}
 <article class="latest-episode @container flex flex-col gap-3 rounded-box border border-base-300 p-6">
-  <h2 class="text-2xl font-semibold tracking-tight"><a href="{{ href }}" class="link link-hover">{{ title }}</a></h2>
+  <h2 class="qed-heading text-2xl font-semibold tracking-tight"><a href="{{ href }}" class="link link-hover">{{ title }}</a></h2>
   {%- if !label.is_empty() %}
   <p class="text-sm text-base-content/60">{{ label }}</p>
   {%- endif %}
@@ -81,7 +81,7 @@
 </section>
 {%- when RenderedBlock::EpisodePeople with { heading, people } %}
 <section id="people" class="flex flex-col gap-4">
-  <h2 class="text-2xl font-semibold tracking-tight">{{ heading }}</h2>
+  <h2 class="qed-heading text-2xl font-semibold tracking-tight">{{ heading }}</h2>
   <ul class="flex flex-wrap gap-x-8 gap-y-4">
     {%- for person in people %}
     <li>
@@ -210,7 +210,7 @@
 {%- when RenderedBlock::Faq with { heading, items } %}
 <section class="flex flex-col gap-2">
   {%- if let Some(heading) = heading %}
-  <h2 class="mb-2 text-2xl font-bold tracking-tight">{{ heading }}</h2>
+  <h2 class="qed-heading mb-2 text-2xl font-bold tracking-tight">{{ heading }}</h2>
   {%- endif %}
   {%- for item in items %}
   <details class="collapse collapse-arrow border border-base-300 bg-base-100">
@@ -224,7 +224,7 @@
   {%- for column in columns %}
   <div class="flex flex-col gap-4{% if column.boxed %} rounded-box p-6 {{ colors.boxed }}{% endif %}">
     {%- if let Some(title) = column.title %}
-    <h2 class="text-xl font-semibold tracking-tight">{{ title }}</h2>
+    <h2 class="qed-heading text-xl font-semibold tracking-tight">{{ title }}</h2>
     {%- endif %}
     {%- for html in column.blocks %}
     {{ html|safe }}
@@ -242,7 +242,7 @@
   {%- endif %}
   <div class="relative flex flex-col gap-8">
     {%- if let Some(title) = title %}
-    <h2 class="text-2xl font-bold tracking-tight text-balance">{{ title }}</h2>
+    <h2 class="qed-heading text-2xl font-bold tracking-tight text-balance">{{ title }}</h2>
     {%- endif %}
     {%- for html in blocks %}
     {{ html|safe }}

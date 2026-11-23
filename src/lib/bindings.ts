@@ -549,6 +549,11 @@ export type Colors = {
 	/**  The underline of links in text; primary if empty. */
 	links: ThemeColor | null,
 	/**
+	 *  Headings, in a deep tone of the color, or plain (the text color);
+	 *  primary if empty (#160).
+	 */
+	headings: TextColor | null,
+	/**
 	 *  Buttons (Hero, Call to action); primary if empty. On a box of the
 	 *  same color they're drawn plain, so they don't vanish.
 	 */
@@ -1706,6 +1711,12 @@ export type TextImage = {
 };
 
 /**  A theme as the app offers it: light ones and dark ones apart. */
+/**
+ *  The color of text: the base text color (plain), or a deep tone of one
+ *  of the theme's colors, readable in every theme.
+ */
+export type TextColor = "plain" | "primary" | "secondary" | "accent" | "neutral";
+
 export type ThemeChoice = {
 	name: string,
 	/**  Whether its page background is dark (see [`is_dark`]). */

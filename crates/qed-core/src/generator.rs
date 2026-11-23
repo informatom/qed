@@ -38,7 +38,7 @@ use crate::page::{FrontMatter, Menu, PageContent};
 use crate::podcast;
 use crate::site::{
     ASSETS_DIR, Colors, HeaderStyle, MEDIA_DIR, Navigation, Page, STATIC_DIR, Site, SiteConfig,
-    Surface, ThemeColor,
+    Surface, TextColor, ThemeColor,
 };
 use crate::site::{LogoSize, Look, PageWidth, translated_path};
 use crate::slug::slugify;
@@ -1765,8 +1765,15 @@ fn color_classes(colors: &Colors) -> ColorClasses {
         ThemeColor::Accent => " links-accent",
         ThemeColor::Neutral => " links-neutral",
     };
+    let headings = match colors.headings.unwrap_or(TextColor::Primary) {
+        TextColor::Primary => "",
+        TextColor::Plain => " headings-plain",
+        TextColor::Secondary => " headings-secondary",
+        TextColor::Accent => " headings-accent",
+        TextColor::Neutral => " headings-neutral",
+    };
     ColorClasses {
-        body: format!("{content}{links}"),
+        body: format!("{content}{links}{headings}"),
         // Plain by default, in light and dark: the page background with a
         // line in accent along its top, like the plain header's (#163).
         footer: match colors.footer.unwrap_or(Surface::Plain) {
@@ -4480,7 +4487,7 @@ mod tests {
             "footer menu link"
         );
         assert!(team.contains(
-            "<h1 class=\"text-4xl font-bold tracking-tight text-balance\">The team</h1>"
+            "<h1 class=\"qed-heading text-4xl font-bold tracking-tight text-balance\">The team</h1>"
         ));
     }
 
@@ -5525,6 +5532,13 @@ mod tests {
             for solid in [false, true] {
                 let picked = color_classes(&Colors {
                     links: Some(color),
+                    headings: Some(match surface {
+                        Surface::Plain | Surface::Shaded => TextColor::Plain,
+                        Surface::Primary => TextColor::Primary,
+                        Surface::Secondary => TextColor::Secondary,
+                        Surface::Accent => TextColor::Accent,
+                        Surface::Neutral => TextColor::Neutral,
+                    }),
                     buttons: Some(color),
                     call_to_action: Some(surface),
                     call_to_action_solid: Some(solid),
@@ -5749,7 +5763,7 @@ mod tests {
         let defaults = color_classes(&Colors::default());
         assert_eq!(
             defaults.body, "bg-base-100",
-            "links in primary need no class"
+            "links and headings in primary need no class"
         );
         assert_eq!(
             defaults.footer,
@@ -5788,6 +5802,7 @@ mod tests {
         let mut site = blog(dir.path());
         site.config.colors = Colors {
             links: Some(ThemeColor::Accent),
+            headings: Some(TextColor::Plain),
             buttons: Some(ThemeColor::Secondary),
             hero: Some(Surface::Secondary),
             hero_solid: Some(true),
@@ -5813,7 +5828,10 @@ mod tests {
         let out = tempfile::tempdir().unwrap();
         build_on(&site, out.path(), TODAY).unwrap();
         let html = read(out.path().join("index.html"));
-        assert!(html.contains("content-primary links-accent"), "{html}");
+        assert!(
+            html.contains("content-primary links-accent headings-plain"),
+            "{html}"
+        );
         assert!(
             html.contains(
                 r#"<footer class="border-t-4 border-t-accent bg-base-100 text-base-content">"#

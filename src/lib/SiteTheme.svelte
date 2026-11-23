@@ -12,7 +12,7 @@
   import ThemeLegend from "$lib/ThemeLegend.svelte";
   import ThemePicker from "$lib/ThemePicker.svelte";
   import { commands, type Colors, type Corners, type CustomTheme, type HeaderStyle, type Site, type SiteConfig, type Surface, type ThemeChoice, type ThemeVariable } from "$lib/site";
-  import { COLOR_SETTINGS, colorOf, fallbackOf, isDarkHex, isSolid, SOLID_KEYS, SURFACES, THEME_COLORS, type ColorSetting } from "$lib/siteColors";
+  import { COLOR_SETTINGS, colorOf, fallbackOf, isDarkHex, isSolid, SOLID_KEYS, type ColorSetting } from "$lib/siteColors";
 
   interface Props {
     site: Site;
@@ -82,7 +82,8 @@
   ];
 
   /** A small square of each choice, drawn in the site's theme. */
-  const SWATCHES: Record<Surface, string> = {
+  const SWATCHES: Record<Surface | "text", string> = {
+    text: "bg-base-content",
     plain: "bg-base-100",
     shaded: "bg-base-200",
     primary: "bg-primary",
@@ -394,7 +395,7 @@
       {/if}
     </section>
 
-    {#snippet swatch(value: Surface)}
+    {#snippet swatch(value: Surface | "text")}
       <span data-theme={swatchTheme} style={swatchStyle} class={["size-3 shrink-0 rounded-sm border border-black/20", SWATCHES[value]]}></span>
     {/snippet}
 
@@ -422,12 +423,12 @@
           <span class="text-base-content/80">{setting.label}</span>
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
             <div id="color-{setting.key}" class="join flex-wrap">
-              {#each setting.surface ? SURFACES : THEME_COLORS as value (value)}
+              {#each setting.choices as value (value)}
                 <button type="button" id="color-{setting.key}-{value}"
                   class={["btn join-item btn-xs gap-1.5 capitalize", current === value && "btn-active"]}
                   title={value === fallbackOf(setting, dark) ? "The default" : undefined}
                   onclick={() => setColor(setting, value)}>
-                  {@render swatch(value)}{value}
+                  {@render swatch(setting.key === "headings" && value === "plain" ? "text" : value)}{value}
                 </button>
               {/each}
             </div>
@@ -446,7 +447,7 @@
       </div>
       <p class="text-xs text-base-content/60">
         Which of the theme's colors goes where; the legend shows the result. Plain is the page background, shaded a
-        shade darker. The content background takes a light tint of the color, so text stays readable. Hero and Call to
+        shade darker. The content background takes a light tint of the color, so text stays readable, and headings a deep tone of it. Hero and Call to
         action get a light shade of their color inside a border in it, unless they're solid. A button on a solid box
         of its own color is drawn plain.
       </p>

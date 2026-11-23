@@ -27,7 +27,9 @@ Farben des Themes er bekommt:
 
 - **Header**: **Plain** (der Hintergrund der Seite) oder eine farbige
   Leiste.
-- **Links** und **Buttons**: eine der vier Farben.
+- **Headings** (Überschriften): eine der vier Farben in einem tiefen
+  Ton, mit der Textfarbe gemischt, damit sie lesbar bleibt, oder
+  **plain** (die Textfarbe). Primary, außer Sie wählen eine andere.
 - **Hero**, **Call to action**, **Boxed columns**, **Content
   background** und **Footer**: **plain**, **shaded** (eine Spur dunkler
   als die Seite) oder eine der vier Farben. Der Inhaltshintergrund nimmt

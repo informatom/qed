@@ -124,7 +124,8 @@ shade does what; Refactoring UI explains why.
   on-container, outline derived per theme).
 - **Big solid areas get a colored border** as a choice: "making it stand
   out, but not kick you in the brain" (user). At least Hero and Call to
-  action; whether header, footer, boxes and sections count too is open.
+  action only: boxes and sections don't get it (user: "that would be
+  too much"); the footer gets an accent line on top instead.
   The border **replaces the solid fill as the default**, with a lightly
   colored container shade inside; solid stays a choice.
 - **No height setting.** A Hero without an image only takes the height

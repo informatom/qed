@@ -16,25 +16,7 @@ the earlier Phoenix web app.
 
 ## To decide
 
-- **#163 A color model beyond daisyUI's single shades.** daisyUI has one
-  shade per theme color (plus the text on it), so q.e.d. can offer a
-  color only as a full patch (a Hero takes more than half of a full HD
-  start screen) or not at all, and text stays base-content. Color
-  systems (Radix, Material 3, Refactoring UI) use scales: light shades
-  for areas, the solid one for buttons, dark ones for text. To discuss:
-  following Material 3's roles (container, on-container, outline
-  derived per theme), a Hero and Call to action in a container shade or
-  with a border, a height setting for the Hero. Decided 2026-11-23:
-  Material 3's roles, a colored border as a choice for big solid areas,
-  new defaults may change existing sites. First step built 2026-11-23,
-  to evaluate on the docs site: Hero and Call to action outlined by
-  default (light container shade, 2 px border in the color, headline in
-  an on-container tone; `hero_solid` / `call_to_action_solid` for the
-  old fill), a Hero without an image only as high as its text, the
-  footer plain by default in light and dark with a 4 px accent line
-  along its top (like the plain header). Still open: borders for boxes
-  and sections. Findings and sources:
-  [Theming notes](theming.md). Related: Phase 3.5 (#159–#162).
+Nothing open.
 
 ## To build
 
@@ -47,7 +29,8 @@ comparison, daisyUI's roles: primary is "the main color of your brand",
 secondary and accent are "optional", neutral is "for not-saturated parts
 of UI", base-200 (*shaded*) is the page background "a darker shade, to
 create elevations", and base-content is the default text color. One step
-at a time, without breaking how existing sites look. Not wanted: soft
+at a time; new defaults may change existing sites (decided
+2026-11-23). Not wanted: soft
 tints instead of full colors for big areas (user: "the absolute
 opposite").
 
@@ -60,24 +43,6 @@ opposite").
   columns (an empty cell where an option doesn't apply), so a column
   shows where a color is used. Plain and Shaded look the same (two
   near-white dots): draw them as base-100 and base-200 with a border.
-- **#160 Text in theme colors.** Today every color choice is a fill
-  (or a button, or a link's underline); text is always base-content.
-  Options for headings, link text, the Hero headline and the Call to
-  action title in a theme color. Link text would need a contrast check
-  (4.5:1 against the background; the generator knows the theme's hex
-  values), because some themes have light primaries: that's why link
-  text keeps the base color now (blocks.css).
-- **#161 Header: Shaded too.** The Header row offers Plain and the four
-  theme colors, the Footer row also Shaded.
-- **#162 Defaults by role.** Today's defaults give three brand colors a
-  big area each: Hero secondary, Call to action primary, footer accent
-  (light). Decide whether primary should lead (buttons, links, current
-  menu item, Call to action) and secondary and accent stay small (dates,
-  quote bar), and whether a Hero without an image should default to
-  shaded, as daisyUI's own Hero example does. New defaults change every
-  site that uses them (informatom.com and blog.panoptikum.social in
-  production, podcasterei.at, waldgruber.at): write their current
-  choices into their site.toml first.
 
 ### Phase 4: Podcast Publisher Import
 
