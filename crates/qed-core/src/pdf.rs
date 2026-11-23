@@ -14,6 +14,11 @@
 //! player, the subscribe button, videos) becomes a link. Links between pages
 //! jump inside the PDF; links to other sites show their address in a
 //! footnote, so it can be read on paper.
+//!
+//! The site can choose a magazine instead (`pdf_layout = "magazine"`,
+//! #164): two columns in 9 point, chapters opening across both columns,
+//! and what stands side by side in a book (columns, text with image,
+//! galleries) stacked in the column.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Cursor;
@@ -35,7 +40,7 @@ use crate::calendar::{self, Date};
 use crate::icons::{SITE_ICONS_DIR, SiteIcons};
 use crate::links::LinkContext;
 use crate::podcast;
-use crate::site::{ASSETS_DIR, MEDIA_DIR, Page, Site};
+use crate::site::{ASSETS_DIR, MEDIA_DIR, Page, PdfLayout, Site};
 
 /// The page the generator shows for unknown addresses; not part of the book.
 const NOT_FOUND_PATH: &str = "404";
@@ -47,6 +52,17 @@ const IMAGE_MAX_PIXELS: u32 = 1600;
 /// A table longer than this many rows is set as several (see
 /// [`Text::block`]).
 const TABLE_ROWS: usize = 30;
+
+/// How much smaller the type is in a magazine (#164): 9 point, not 11.
+const MAGAZINE_SCALE: f64 = 9.0 / 11.0;
+
+/// How wide a picture gets at most at its own size, in points: about the
+/// width of the text in a book (A4 less 2.3 cm on either side) …
+const BOOK_WIDTH: f64 = 440.0;
+
+/// … and of a column in a magazine (A4 less 1.8 cm on either side, two
+/// columns 14 points apart).
+const MAGAZINE_COLUMN: f64 = 230.0;
 
 /// One PDF that was made.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -222,6 +238,10 @@ struct Book<'a> {
     notes: Vec<String>,
     words: Words,
     podcast_words: podcast::Words,
+    /// Set like a magazine (#164): two columns in 9 point; what stands
+    /// side by side in a book (columns, text with image, galleries) is
+    /// stacked in the column.
+    magazine: bool,
 }
 
 /// One part of the book, in order.
@@ -279,7 +299,40 @@ impl<'a> Book<'a> {
             notes: Vec::new(),
             words: Words::for_language(code),
             podcast_words: podcast::Words::for_language(&site.config.language),
+            magazine: site.config.pdf_layout == PdfLayout::Magazine,
         }
+    }
+
+    /// How much smaller the type is than in a book: 9 point instead of 11
+    /// in a magazine.
+    fn scale(&self) -> f64 {
+        if self.magazine { MAGAZINE_SCALE } else { 1.0 }
+    }
+
+    /// A type size given for the book, `"18pt"`, in this layout.
+    fn pt(&self, size: f64) -> String {
+        points(size * self.scale())
+    }
+
+    /// How wide a picture gets at most at its own size, in points: the
+    /// width of the text, or of a column in a magazine.
+    fn max_width(&self) -> f64 {
+        if self.magazine {
+            MAGAZINE_COLUMN
+        } else {
+            BOOK_WIDTH
+        }
+    }
+
+    /// Cells that stand side by side in a book, one below the other in a
+    /// magazine's column; `None` for the book's grid.
+    fn stacked<S: AsRef<str>>(&self, cells: &[S]) -> Option<String> {
+        self.magazine.then(|| {
+            cells
+                .iter()
+                .map(|cell| format!("{}\n\n", cell.as_ref().trim()))
+                .collect()
+        })
     }
 
     /// The book as Typst markup, the files it reads, and notes on what was
@@ -448,7 +501,7 @@ impl<'a> Book<'a> {
                 .unwrap_or_default()
         ));
         out.push_str(&text_language(self.code));
-        out.push_str(PREAMBLE);
+        out.push_str(&preamble_rules(self.magazine));
         out.push_str(MATH_HELPERS);
         out
     }
@@ -478,6 +531,11 @@ impl<'a> Book<'a> {
             "#outline(title: [{}], depth: 2)\n\n",
             escape(self.words.contents)
         ));
+        if self.magazine {
+            // The title page and the contents span the page; the pages
+            // after them run in two columns.
+            out.push_str("#set page(columns: 2)\n\n");
+        }
         out
     }
 
@@ -523,7 +581,8 @@ impl<'a> Book<'a> {
         }
         if !byline.is_empty() {
             out.push_str(&format!(
-                "#text(size: 9pt, style: \"italic\")[{}]\n\n",
+                "#text(size: {}, style: \"italic\")[{}]\n\n",
+                self.pt(9.0),
                 escape(&byline.join(" · "))
             ));
         }
@@ -585,7 +644,8 @@ impl<'a> Book<'a> {
                 }
                 if let Some(headline) = hero.headline.as_deref().filter(|h| !h.trim().is_empty()) {
                     out.push_str(&format!(
-                        "#text(size: 18pt, weight: \"bold\")[{}]\n\n",
+                        "#text(size: {}, weight: \"bold\")[{}]\n\n",
+                        self.pt(18.0),
                         escape(headline)
                     ));
                 }
@@ -631,6 +691,9 @@ impl<'a> Book<'a> {
                     block::Side::Left => (image, text),
                     block::Side::Right => (text, image),
                 };
+                if let Some(stacked) = self.stacked(&[&left, &right]) {
+                    return stacked;
+                }
                 format!(
                     "#grid(columns: (1fr, 1fr), column-gutter: 1.5em, [\n{left}\n], [\n{right}\n])\n"
                 )
@@ -641,19 +704,20 @@ impl<'a> Book<'a> {
                     level: spot.level,
                     narrow: true,
                 };
-                let cells: Vec<String> = gallery
+                let images: Vec<String> = gallery
                     .images
                     .iter()
                     .map(|image| {
-                        format!(
-                            "[{}]",
-                            self.block_image(&image.image, image.alt.as_deref(), &narrow, false)
-                        )
+                        self.block_image(&image.image, image.alt.as_deref(), &narrow, false)
                     })
                     .collect();
-                if cells.is_empty() {
+                if images.is_empty() {
                     return String::new();
                 }
+                if let Some(stacked) = self.stacked(&images) {
+                    return stacked;
+                }
+                let cells: Vec<String> = images.iter().map(|image| format!("[{image}]")).collect();
                 format!(
                     "#grid(columns: (1fr, 1fr, 1fr), gutter: 0.8em, {})\n",
                     cells.join(", ")
@@ -708,16 +772,30 @@ impl<'a> Book<'a> {
                         inner.push_str(&self.blocks(&column.blocks, &narrow));
                         if column.boxed {
                             format!(
-                                "[#block(stroke: 0.5pt, inset: 8pt, radius: 3pt, width: 100%)[\n{inner}\n]]"
+                                "#block(stroke: 0.5pt, inset: 8pt, radius: 3pt, width: 100%)[\n{inner}\n]"
                             )
                         } else {
-                            format!("[\n{inner}\n]")
+                            inner
                         }
                     })
                     .collect();
                 if cells.is_empty() {
                     return String::new();
                 }
+                if let Some(stacked) = self.stacked(&cells) {
+                    return stacked;
+                }
+                let cells: Vec<String> = cells
+                    .into_iter()
+                    .zip(&columns.items)
+                    .map(|(cell, column)| {
+                        if column.boxed {
+                            format!("[{cell}]")
+                        } else {
+                            format!("[\n{cell}\n]")
+                        }
+                    })
+                    .collect();
                 format!(
                     "#grid(columns: ({},), column-gutter: 1.5em, {})\n",
                     widths.join(", "),
@@ -736,7 +814,8 @@ impl<'a> Book<'a> {
                 let mut inner = String::new();
                 if let Some(headline) = cta.headline.as_deref().filter(|h| !h.trim().is_empty()) {
                     inner.push_str(&format!(
-                        "#text(size: 13pt, weight: \"bold\")[{}]\n\n",
+                        "#text(size: {}, weight: \"bold\")[{}]\n\n",
+                        self.pt(13.0),
                         escape(headline)
                     ));
                 }
@@ -996,7 +1075,7 @@ impl<'a> Book<'a> {
                     return String::new();
                 }
                 let mut out = self.inner_heading(self.podcast_words.transcript, 1, spot);
-                out.push_str("#[\n#set text(size: 9.5pt)\n");
+                out.push_str(&format!("#[\n#set text(size: {})\n", self.pt(9.5)));
                 for paragraph in paragraphs {
                     let voice = paragraph
                         .voice
@@ -1004,7 +1083,8 @@ impl<'a> Book<'a> {
                         .map(|voice| format!("*{}:* ", escape(voice)))
                         .unwrap_or_default();
                     out.push_str(&format!(
-                        "#text(size: 8pt)[{}] {voice}{}\n\n",
+                        "#text(size: {})[{}] {voice}{}\n\n",
+                        self.pt(8.0),
                         escape(&paragraph.start),
                         escape(&paragraph.text)
                     ));
@@ -1019,7 +1099,7 @@ impl<'a> Book<'a> {
     /// A heading inside a page: below the page's own, not in the table of
     /// contents. `depth` is its level inside the page (1 for `#`).
     fn inner_heading(&self, text: &str, depth: usize, spot: &Spot) -> String {
-        heading_markup(&escape(text), depth, spot.level)
+        heading_markup(&escape(text), depth, spot.level, self.scale())
     }
 
     /// A button: its label, linked to where it leads.
@@ -1105,26 +1185,66 @@ impl<'a> Book<'a> {
 }
 
 /// Settings for every page of the book.
-const PREAMBLE: &str = r#"#set page(paper: "a4", margin: (x: 2.3cm, top: 2.5cm, bottom: 2.8cm), numbering: "1")
-#set text(font: "Libertinus Serif", size: 11pt)
+const PREAMBLE: &str = r#"#set page(paper: "a4", margin: @margin@, numbering: "1")
+#set text(font: "Libertinus Serif", size: @text@)
 #set par(justify: true, leading: 0.62em, spacing: 1.1em)
 #show raw: set text(font: "DejaVu Sans Mono", size: 0.82em)
 #show raw.where(block: true): block.with(width: 100%, inset: 8pt, stroke: 0.5pt + luma(140), radius: 3pt)
 #show math.equation: set text(font: "New Computer Modern Math")
 #set heading(numbering: none)
 #show heading: set block(above: 1.6em, below: 0.8em)
-#show heading.where(outlined: true, level: 1): it => { pagebreak(weak: true); set text(size: 20pt); it }
-#show heading.where(outlined: true, level: 2): set text(size: 15pt)
+#show heading.where(outlined: true, level: 1): it => { pagebreak(weak: true); @chapter@ }
+#show heading.where(outlined: true, level: 2): set text(size: @h2@)
 #show heading.where(outlined: true, level: 2): set block(above: 2.4em)
-#show heading.where(outlined: true): it => { if it.level > 2 { set text(size: 13pt); it } else { it } }
+#show heading.where(outlined: true): it => { if it.level > 2 { set text(size: @h3@); it } else { it } }
 #show outline.entry.where(level: 1): set text(weight: "bold")
 #show outline.entry.where(level: 1): set block(above: 1.1em)
 #set table(stroke: 0.5pt)
 #set quote(block: true)
 #show quote: set pad(x: 1.5em)
-#show figure.caption: set text(size: 9.5pt)
+#show figure.caption: set text(size: @caption@)
 #show link: it => if type(it.dest) == str { underline(stroke: 0.4pt, offset: 2pt, it) } else { it }
 "#;
+
+/// The rules for the whole book, in the sizes of the book or, smaller,
+/// of a magazine. A magazine's chapters (the pages at the top) open on a
+/// new page with their heading across both columns: a float at the top
+/// of the page, in the page's scope rather than the column's.
+fn preamble_rules(magazine: bool) -> String {
+    let scale = if magazine { MAGAZINE_SCALE } else { 1.0 };
+    let size = |pt: f64| points(pt * scale);
+    let chapter = if magazine {
+        format!(
+            "place(top, scope: \"parent\", float: true, clearance: 1.2em, {{ set text(size: {}); it }})",
+            size(20.0)
+        )
+    } else {
+        format!("set text(size: {}); it", size(20.0))
+    };
+    let mut out = PREAMBLE
+        .replace(
+            "@margin@",
+            if magazine {
+                "(x: 1.8cm, top: 2cm, bottom: 2.4cm)"
+            } else {
+                "(x: 2.3cm, top: 2.5cm, bottom: 2.8cm)"
+            },
+        )
+        .replace("@text@", &size(11.0))
+        .replace("@chapter@", &chapter)
+        .replace("@h2@", &size(15.0))
+        .replace("@h3@", &size(13.0))
+        .replace("@caption@", &size(9.5));
+    if magazine {
+        out.push_str("#set columns(gutter: 14pt)\n");
+    }
+    out
+}
+
+/// A type size in points, to a tenth: `"9pt"`, `"16.4pt"`.
+fn points(size: f64) -> String {
+    format!("{}pt", (size * 10.0).round() / 10.0)
+}
 
 /// What LaTeX formulas need once mitex has turned them into Typst math:
 /// the names it writes that Typst doesn't have itself.
@@ -1176,12 +1296,15 @@ fn text_language(code: &str) -> String {
 
 /// A heading inside a page, `depth` levels below the page's heading at
 /// `level`; the size follows the depth, not the page's level.
-fn heading_markup(markup: &str, depth: usize, level: usize) -> String {
-    let size = match depth {
-        1 | 2 => "13pt",
-        3 => "11.5pt",
-        _ => "11pt",
-    };
+fn heading_markup(markup: &str, depth: usize, level: usize, scale: f64) -> String {
+    let size = points(
+        scale
+            * match depth {
+                1 | 2 => 13.0,
+                3 => 11.5,
+                _ => 11.0,
+            },
+    );
     format!(
         "#heading(level: {}, outlined: false)[#text(size: {size})[{markup}]]\n\n",
         level + depth
@@ -1326,7 +1449,7 @@ impl<'a> Book<'a> {
         Some(format!(
             "image({}, width: {}{alt})",
             string(&path),
-            print_width(width, full || spot.narrow)
+            print_width(width, full || spot.narrow, self.max_width())
         ))
     }
 
@@ -1423,7 +1546,7 @@ impl<'a> Book<'a> {
         format!(
             "#align(center, image({}, width: {}))\n\n",
             string(&path),
-            print_width(width, false)
+            print_width(width, false, self.max_width())
         )
     }
 
@@ -1481,11 +1604,11 @@ impl<'a> Book<'a> {
 }
 
 /// How wide a picture `pixels` wide is printed: at 96 pixels an inch
-/// like on a screen, but never wider than the text; as wide as its room
-/// when `fill`.
-fn print_width(pixels: Option<u32>, fill: bool) -> String {
+/// like on a screen, but never wider than `max` points (the text, or a
+/// magazine's column); as wide as its room when `fill`.
+fn print_width(pixels: Option<u32>, fill: bool, max: f64) -> String {
     match pixels {
-        Some(pixels) if !fill && f64::from(pixels) * 0.75 < 440.0 => {
+        Some(pixels) if !fill && f64::from(pixels) * 0.75 < max => {
             format!("{}pt", f64::from(pixels) * 0.75)
         }
         None if !fill => "auto".to_string(),
@@ -1554,7 +1677,12 @@ impl<'n> Text<'_, '_, 'n> {
             }
             NodeValue::Heading(heading) => {
                 let text = self.inlines(node);
-                heading_markup(&text, usize::from(heading.level), self.spot.level)
+                heading_markup(
+                    &text,
+                    usize::from(heading.level),
+                    self.spot.level,
+                    self.book.scale(),
+                )
             }
             NodeValue::BlockQuote | NodeValue::MultilineBlockQuote(_) => {
                 format!("#quote[\n{}\n]", self.children(node))
@@ -2152,6 +2280,41 @@ mod tests {
             assert!(pdf.starts_with(b"%PDF"));
             assert!(file.pages >= 3, "title, contents, pages: {file:?}");
         }
+    }
+
+    #[test]
+    fn sets_a_magazine_in_two_columns_with_columns_stacked() {
+        let dir = tempfile::tempdir().unwrap();
+        site_in(dir.path());
+        write(
+            dir.path(),
+            "pages/team.md",
+            "+++\ntitle = \"Team\"\n+++\n\n:::: columns\n::: column\nboxed = true\n:::\n\nLeft side.\n\n::: column\n:::\n\nRight side.\n\n::::\n",
+        );
+        let book = site::open(dir.path()).unwrap();
+        assert!(markup_on(&book, None).contains("#grid(columns: (1fr, 1fr,)"));
+
+        let config = fs::read_to_string(dir.path().join("site.toml")).unwrap();
+        write(
+            dir.path(),
+            "site.toml",
+            &format!("pdf_layout = \"magazine\"\n{config}"),
+        );
+        let site = site::open(dir.path()).unwrap();
+        let markup = markup_on(&site, None);
+        assert!(markup.contains("size: 9pt)"), "{markup}");
+        assert!(markup.contains("#set page(columns: 2)"), "{markup}");
+        assert!(
+            markup.contains("scope: \"parent\", float: true"),
+            "{markup}"
+        );
+        assert!(!markup.contains("#grid("), "{markup}");
+        assert!(markup.contains("width: 100%)[\nLeft side."), "{markup}");
+        let report = export_on(&site, TODAY).unwrap();
+        assert!(
+            report.files.iter().all(|file| file.pages >= 3),
+            "{report:?}"
+        );
     }
 
     #[test]

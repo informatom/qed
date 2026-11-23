@@ -16,6 +16,7 @@
   import TextViewer from "$lib/TextViewer.svelte";
   import {
     commands, formatSize, libraryUrl, pageLabel, type Focus, type Library, type MediaFile, type MediaKind, type PdfReport,
+    type Site, type SiteConfig,
   } from "$lib/site";
 
   interface Props {
@@ -30,9 +31,12 @@
     onmoved?: () => void;
     /** A page has unsaved changes; moving files (which edits pages) waits. */
     editing?: boolean;
+    /** In Downloads: the site, for the PDF's layout (#164), saved through `onsaved`. */
+    site?: Site;
+    onsaved?: (config: SiteConfig) => void;
   }
 
-  let { siteRoot, library = "media", onpick, only, onmoved, editing = false }: Props = $props();
+  let { siteRoot, library = "media", onpick, only, onmoved, editing = false, site, onsaved }: Props = $props();
   let folder = $derived(library);
   let isStatic = $derived(library === "static");
 
@@ -50,6 +54,20 @@
   /** What the last "Make PDF of the site" made (#154). */
   let made = $state<PdfReport | null>(null);
   let making = $state(false);
+
+  let magazine = $derived(site?.config.pdf_layout === "magazine");
+
+  // Saved at once, like the choices in the Theme tab.
+  async function choosePdfLayout(layout: "book" | "magazine") {
+    if (!site || (layout === "magazine") === magazine) return;
+    error = null;
+    try {
+      const config = { ...$state.snapshot(site.config), pdf_layout: layout };
+      onsaved?.(await commands.saveSiteConfig(site.root, config));
+    } catch (e) {
+      error = String(e);
+    }
+  }
 
   async function makePdf() {
     making = true;
@@ -259,6 +277,16 @@
       </button>
     {/if}
     {#if library === "assets" && !onpick}
+      {#if site}
+        <div id="pdf-layout" class="join" title="How the PDF is set">
+          <button type="button" id="pdf-layout-book" class={["btn btn-sm join-item", !magazine && "btn-active"]}
+            onclick={() => choosePdfLayout("book")} disabled={making}
+            title="One column in 11 point, like a book">Book</button>
+          <button type="button" id="pdf-layout-magazine" class={["btn btn-sm join-item", magazine && "btn-active"]}
+            onclick={() => choosePdfLayout("magazine")} disabled={making}
+            title="Two columns in 9 point, like a magazine">Magazine</button>
+        </div>
+      {/if}
       <button type="button" id="make-site-pdf" class="btn" onclick={makePdf} disabled={making}
         title="The whole site as a PDF, with a table of contents; one per language">
         {#if making}<span class="loading loading-spinner loading-sm"></span>{:else}<FileTypePdf class="size-4" />{/if}

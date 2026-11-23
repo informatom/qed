@@ -829,7 +829,7 @@
       {#if view === "media"}
         <MediaLibrary siteRoot={site.root} editing={editorDirty} onmoved={() => site && load(site.root)} />
       {:else if view === "assets"}
-        <MediaLibrary siteRoot={site.root} library="assets" />
+        <MediaLibrary siteRoot={site.root} library="assets" {site} onsaved={(config) => site && (site.config = config)} />
       {:else if view === "audio"}
         <MediaLibrary siteRoot={site.root} library="audio" />
       {:else if view === "transcripts"}

@@ -128,6 +128,10 @@ pub struct SiteConfig {
     /// Empty means the automatic menu from the pages' Menu setting.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub main_menu: Vec<MenuItem>,
+    /// How the site's PDF is set (#164): as a book, or two columns in
+    /// smaller type, like a magazine.
+    #[serde(default, skip_serializing_if = "PdfLayout::is_book")]
+    pub pdf_layout: PdfLayout,
     /// The site's podcast, if it has one; see `podcast.rs`.
     pub podcast: Option<Podcast>,
 }
@@ -296,6 +300,23 @@ impl PageWidth {
             PageWidth::ExtraWide => "extra-wide",
             PageWidth::Full => "full",
         }
+    }
+}
+
+/// How the site's PDF is set: one column in 11 point, like a book, or two
+/// columns in 9 point, like a magazine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "kebab-case")]
+pub enum PdfLayout {
+    #[default]
+    Book,
+    Magazine,
+}
+
+impl PdfLayout {
+    fn is_book(&self) -> bool {
+        *self == PdfLayout::Book
     }
 }
 

@@ -1138,6 +1138,12 @@ export type PdfFile = {
 };
 
 /**
+ *  How the site's PDF is set: one column in 11 point, like a book, or two
+ *  columns in 9 point, like a magazine.
+ */
+export type PdfLayout = "book" | "magazine";
+
+/**
  *  What [`export`] did: the PDFs it wrote, and what didn't make it into
  *  them.
  */
@@ -1505,6 +1511,11 @@ export type SiteConfig_Deserialize = {
 	 *  Empty means the automatic menu from the pages' Menu setting.
 	 */
 	main_menu?: MenuItem_Deserialize[],
+	/**
+	 *  How the site's PDF is set (#164): as a book, or two columns in
+	 *  smaller type, like a magazine.
+	 */
+	pdf_layout?: PdfLayout,
 	/**  The site's podcast, if it has one; see `podcast.rs`. */
 	podcast: Podcast | null,
 };
@@ -1593,6 +1604,11 @@ export type SiteConfig_Serialize = {
 	 *  Empty means the automatic menu from the pages' Menu setting.
 	 */
 	main_menu?: MenuItem_Serialize[],
+	/**
+	 *  How the site's PDF is set (#164): as a book, or two columns in
+	 *  smaller type, like a magazine.
+	 */
+	pdf_layout?: PdfLayout,
 	/**  The site's podcast, if it has one; see `podcast.rs`. */
 	podcast: Podcast | null,
 };
