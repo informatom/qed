@@ -1716,6 +1716,12 @@ export type TestOutcome =
 /**  The server's key isn't trusted yet; the user decides. */
 { outcome: "untrusted"; fingerprint: string };
 
+/**
+ *  The color of text: the base text color (plain), or a deep tone of one
+ *  of the theme's colors, readable in every theme.
+ */
+export type TextColor = "plain" | "primary" | "secondary" | "accent" | "neutral";
+
 /**  Text next to an image. */
 export type TextImage = {
 	/**  Markdown. */
@@ -1727,12 +1733,6 @@ export type TextImage = {
 };
 
 /**  A theme as the app offers it: light ones and dark ones apart. */
-/**
- *  The color of text: the base text color (plain), or a deep tone of one
- *  of the theme's colors, readable in every theme.
- */
-export type TextColor = "plain" | "primary" | "secondary" | "accent" | "neutral";
-
 export type ThemeChoice = {
 	name: string,
 	/**  Whether its page background is dark (see [`is_dark`]). */

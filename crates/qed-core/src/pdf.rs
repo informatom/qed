@@ -2309,7 +2309,7 @@ mod tests {
             "{markup}"
         );
         assert!(!markup.contains("#grid("), "{markup}");
-        assert!(markup.contains("width: 100%)[\nLeft side."), "{markup}");
+        assert!(markup.contains("width: 100%)[\nLeft side\\."), "{markup}");
         let report = export_on(&site, TODAY).unwrap();
         assert!(
             report.files.iter().all(|file| file.pages >= 3),
