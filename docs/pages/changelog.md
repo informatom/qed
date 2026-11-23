@@ -11,6 +11,30 @@ refer to the [backlog](backlog.md) and [Done](done.md). Installers are on
 [GitHub](https://github.com/informatom/qed/releases); the app updates
 itself (App → Check for updates).
 
+## 0.21.0 · 2026-11-23
+
+A new look for every site's colors: calmer areas, colored headings.
+
+- **Hero and Call to action outlined** (#163): in a theme color they're
+  now a light shade of it inside a border in the color itself, with the
+  headline in a deep tone of it, instead of a solid patch. Tick
+  **Solid** in Site → Theme → Colors to fill them as before. A Hero
+  without an image is only as high as its text.
+- **Headings in color** (#160): page titles, headings in text and block
+  headings take a deep tone of primary, readable in every theme. The new
+  **Headings** row picks another color, or **plain** for the text color
+  as before.
+- **Footer**: on the page background with a line in accent along its
+  top, like the plain header, in light and dark mode (#162). Before, it
+  was accent in light mode and shaded in dark mode.
+- **The chosen option stands out** (#159): in every row of buttons in
+  the app (colors, page width, alignment, …) the chosen one is drawn in
+  the app's primary color, not a barely darker grey.
+
+These are new defaults: sites that didn't pick these colors themselves
+change their look. See [Colors and fonts](manual/colors-and-fonts.md)
+and [Colors with roles](blog/2026-11-23-colors-with-roles.md).
+
 ## 0.20.0 · 2026-11-19
 
 AI assistants for podcasts, page width Extra wide.
